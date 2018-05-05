@@ -34,7 +34,7 @@ DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT detectionnum) {
 
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER_Pooling>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Pooling>(1);
 	cb.WidHei.x = Width;
 	cb.WidHei.y = Height;
 	cb.WidHei.z = PoolNum;

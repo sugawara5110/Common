@@ -25,8 +25,8 @@ protected:
 	int texNum;//テクスチャー数
 
 			   //コンスタントバッファOBJ
-	UploadBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
-	UploadBuffer<CONSTANT_BUFFER2> *mObject_MESHCB = nullptr;//マテリアル渡し用(1回しか更新しない)
+	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2> *mObject_MESHCB = nullptr;//マテリアル渡し用(1回しか更新しない)
 															 //UpLoad用
 	CONSTANT_BUFFER cb[2];
 	int sw = 0;//↑切り替え

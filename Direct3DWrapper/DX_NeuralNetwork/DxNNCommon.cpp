@@ -66,7 +66,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	//PSO
 	mPSOCom2 = CreatePsoCompute(pCS2.Get(), mRootSignatureCom2.Get());
 
-	mObjectCB2 = new UploadBuffer<NNCBTexture>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB2 = new ConstantBuffer<NNCBTexture>(1);
 	cb2.Wid_Hei.as(texWid, texHei, 0.0f, 0.0f);
 	mObjectCB2->CopyData(0, cb2);
 	created = true;

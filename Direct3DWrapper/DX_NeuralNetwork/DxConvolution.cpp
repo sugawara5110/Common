@@ -55,7 +55,7 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER_Convolution>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Convolution>(1);
 	cb.WidHei.x = Width;
 	cb.WidHei.y = Height;
 	cb.WidHei.z = FilNum;
@@ -343,7 +343,7 @@ void DxConvolution::Training() {
 void DxConvolution::Detection(UINT detectionnum) {
 	InputResourse();
 	ForwardPropagation(detectionnum);
-	TextureCopy(mOutputBuffer.Get(), com_no);
+	TextureCopy(mFilterBuffer.Get(), com_no);
 }
 
 void DxConvolution::TestFilter() {

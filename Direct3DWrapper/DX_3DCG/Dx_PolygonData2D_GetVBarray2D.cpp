@@ -245,7 +245,7 @@ void PolygonData2D::GetVBarray2D(int pcs) {
 	ver = pcs * 4;
 	d2varray = (MY_VERTEX2*)malloc(sizeof(MY_VERTEX2) * ver);
 	d2varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * (int)(ver * 1.5));
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER2D>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER2D>(1);
 	Vview = std::make_unique<VertexView>();
 	Iview = std::make_unique<IndexView>();
 }
@@ -317,12 +317,6 @@ void PolygonData2D::Create(bool blend, bool alpha) {
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
-
-	D3DCreateBlob(vbByteSize, &Vview->VertexBufferCPU);
-	CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), d2varray, vbByteSize);
-
-	D3DCreateBlob(ibByteSize, &Iview->IndexBufferCPU);
-	CopyMemory(Iview->IndexBufferCPU->GetBufferPointer(), d2varrayI, ibByteSize);
 
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
 		mCommandList, d2varray, vbByteSize, Vview->VertexBufferUploader);

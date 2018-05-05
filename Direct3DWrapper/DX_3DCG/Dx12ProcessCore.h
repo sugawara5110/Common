@@ -40,11 +40,11 @@
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
 
-#define COM_NO        7
+#define COM_NO 7
 
 //前方宣言
-template<typename T>
-class UploadBuffer;
+template<class T>
+class ConstantBuffer;
 class Dx12Process;
 class MeshData;
 class PolygonData;
@@ -90,9 +90,11 @@ private:
 	void End();
 };
 
-class Dx12Process final{
+class Dx12Process final {
 
 private:
+	template<class T>
+	friend class ConstantBuffer;
 	friend MeshData;
 	friend PolygonData;
 	friend PolygonData2D;
@@ -287,7 +289,6 @@ public:
 struct VertexView {
 
 	//各パラメーターを自分でコピーする
-	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
 
@@ -310,7 +311,6 @@ struct VertexView {
 struct IndexView {
 
 	//各パラメーターを自分でコピーする
-	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
@@ -352,46 +352,40 @@ struct StreamView {
 	}
 };
 
-template<typename T>
-class UploadBuffer {
+template<class T>
+class ConstantBuffer {
 
-protected:
+private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mUploadBuffer;
 	BYTE *mMappedData = nullptr;
 	UINT mElementByteSize = 0;
+	Dx12Process *dx = nullptr;
 
 public:
-	UploadBuffer(ID3D12Device *device, UINT elementCount, bool isConstantBuffer) {
+	ConstantBuffer(UINT elementCount) {
 
-		mElementByteSize = sizeof(T);
-
+		dx = Dx12Process::GetInstance();
 		//コンスタントバッファサイズは256バイト単位にしておく(アライメント)
-		// at m*256 byte offsets and of n*256 byte lengths. 
-		// typedef struct D3D12_CONSTANT_BUFFER_VIEW_DESC {
-		// UINT64 OffsetInBytes; // multiple of 256
-		// UINT   SizeInBytes;   // multiple of 256
-		// } D3D12_CONSTANT_BUFFER_VIEW_DESC;
-		if (isConstantBuffer)//コンスタントバッファの場合
-			mElementByteSize = (sizeof(T) + 255) & ~255;//255を足して255の補数の論理積を取る。(255単位に変換)
+		mElementByteSize = (sizeof(T) + 255) & ~255;//255を足して255の補数の論理積を取る
 
-		if (FAILED(device->CreateCommittedResource(
+		if (FAILED(dx->md3dDevice->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(mElementByteSize * elementCount),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(&mUploadBuffer)))) {
-			char *str = "UploadBufferエラー";
+			char *str = "ConstantBufferエラー";
 			throw str;
 		}
 
 		mUploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mMappedData));
 	}
 
-	UploadBuffer(const UploadBuffer& rhs) = delete;
-	UploadBuffer& operator=(const UploadBuffer& rhs) = delete;
+	ConstantBuffer(const ConstantBuffer& rhs) = delete;
+	ConstantBuffer& operator=(const ConstantBuffer& rhs) = delete;
 
-	~UploadBuffer() {
+	~ConstantBuffer() {
 
 		if (mUploadBuffer != nullptr)
 			mUploadBuffer->Unmap(0, nullptr);
@@ -505,8 +499,8 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	UploadBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
-	UploadBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
 	CONSTANT_BUFFER cb[2];
 	CONSTANT_BUFFER2 sg;
 	int sw = 0;
@@ -597,7 +591,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	UploadBuffer<CONSTANT_BUFFER2D> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2D> *mObjectCB = nullptr;
 	CONSTANT_BUFFER2D cb2[2];
 	int sw = 0;
 	//UpLoadカウント

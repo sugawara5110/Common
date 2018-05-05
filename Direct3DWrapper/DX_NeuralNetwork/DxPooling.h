@@ -27,7 +27,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutErrorReadBuffer = nullptr;
 
 	CONSTANT_BUFFER_Pooling cb;
-	UploadBuffer<CONSTANT_BUFFER_Pooling> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_Pooling> *mObjectCB = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[2] = { nullptr };
 

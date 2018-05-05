@@ -55,10 +55,10 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 	int texNum;//テクスチャー数
 
-    //コンスタントバッファOBJ
-	UploadBuffer<CONSTANT_BUFFER> *mObjectCB0 = nullptr;
-	UploadBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
-	UploadBuffer<SHADER_GLOBAL_BONES> *mObject_BONES = nullptr;
+	//コンスタントバッファOBJ
+	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB0 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
+	ConstantBuffer<SHADER_GLOBAL_BONES> *mObject_BONES = nullptr;
 	CONSTANT_BUFFER cb[2];
 	SHADER_GLOBAL_BONES sgb[2];
 	int sw = 0;
@@ -116,7 +116,7 @@ protected:
 	int SearchNodeCount(FbxNode *pnode, FbxNodeAttribute::EType SearchType);
 	FbxNode *SearchNode(FbxNode *pnode, FbxNodeAttribute::EType SearchType, int Ind);
 	HRESULT InitFBX(CHAR* szFileName, int p);
-	void CreateIndexBuffer(int cnt, int *pIndex, int IviewInd);
+	void CreateIndexBuffer(int cnt, int IviewInd);
 	void CreateIndexBuffer2(int *pIndex, int IviewInd);
 	HRESULT ReadSkinInfo(MY_VERTEX_S *pvVB);
 	MATRIX GetCurrentPoseMatrix(int index);

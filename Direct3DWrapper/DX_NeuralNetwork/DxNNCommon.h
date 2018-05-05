@@ -17,7 +17,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mUavHeap2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mTextureBuffer = nullptr;
 	NNCBTexture cb2;
-	UploadBuffer<NNCBTexture> *mObjectCB2 = nullptr;
+	ConstantBuffer<NNCBTexture> *mObjectCB2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS2 = nullptr;
 	UINT texWid;
 	UINT texHei;

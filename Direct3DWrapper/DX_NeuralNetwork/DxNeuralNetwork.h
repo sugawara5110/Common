@@ -26,7 +26,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mErrorReadBuffer = nullptr;
 
 	CONSTANT_BUFFER_NeuralNetwork cb;
-	UploadBuffer<CONSTANT_BUFFER_NeuralNetwork> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork> *mObjectCB = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[5] = { nullptr };
 
 	bool firstIn = false;

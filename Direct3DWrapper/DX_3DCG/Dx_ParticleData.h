@@ -27,7 +27,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	UploadBuffer<CONSTANT_BUFFER_P> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_P> *mObjectCB = nullptr;
 	CONSTANT_BUFFER_P cbP[2];
 	int sw = 0;
 	//UpLoadカウント

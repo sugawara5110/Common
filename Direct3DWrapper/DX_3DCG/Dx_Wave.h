@@ -23,9 +23,9 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
-	UploadBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
-	UploadBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
-	UploadBuffer<CONSTANT_BUFFER_WAVE> *mObjectCB_WAVE = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_WAVE> *mObjectCB_WAVE = nullptr;
 	CONSTANT_BUFFER cb[2];
 	CONSTANT_BUFFER2 sg;
 	CONSTANT_BUFFER_WAVE cbw;

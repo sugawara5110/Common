@@ -55,9 +55,9 @@ void Wave::GetVBarray(int v) {
 	ver = verI = v;
 	d3varray = (Vertex*)malloc(sizeof(Vertex) * ver);
 	d3varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * verI);
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER>(dx->md3dDevice.Get(), 1, true);
-	mObjectCB1 = new UploadBuffer<CONSTANT_BUFFER2>(dx->md3dDevice.Get(), 1, true);
-	mObjectCB_WAVE = new UploadBuffer<CONSTANT_BUFFER_WAVE>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
+	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
+	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
 	Vview = std::make_unique<VertexView>();
 	Iview = std::make_unique<IndexView>();
 }
@@ -172,12 +172,6 @@ void Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
-
-	D3DCreateBlob(vbByteSize, &Vview->VertexBufferCPU);
-	CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), d3varray, vbByteSize);
-
-	D3DCreateBlob(ibByteSize, &Iview->IndexBufferCPU);
-	CopyMemory(Iview->IndexBufferCPU->GetBufferPointer(), d3varrayI, ibByteSize);
 
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
 		mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);

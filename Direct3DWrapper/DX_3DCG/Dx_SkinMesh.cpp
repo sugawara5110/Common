@@ -290,8 +290,8 @@ HRESULT SkinMesh::GetFbx(CHAR* szFileName) {
 
 void SkinMesh::GetBuffer(float end_frame) {
 
-	mObjectCB0 = new UploadBuffer<CONSTANT_BUFFER>(dx->md3dDevice.Get(), 1, true);
-	mObject_BONES = new UploadBuffer<SHADER_GLOBAL_BONES>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB0 = new ConstantBuffer<CONSTANT_BUFFER>(1);
+	mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
 
 	fbx[0].end_frame = end_frame;
 	FbxScene *pScene = GetScene(0);//シーン取得
@@ -335,7 +335,7 @@ void SkinMesh::GetBuffer(float end_frame) {
 	m_pMaterial = new MY_MATERIAL_S[MateAllpcs];
 
 	//マテリアルコンスタントバッファ
-	mObjectCB1 = new UploadBuffer<CONSTANT_BUFFER2>(dx->md3dDevice.Get(), MateAllpcs, true);
+	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(MateAllpcs);
 
 	//VBO
 	Vview = std::make_unique<VertexView>();
@@ -587,7 +587,7 @@ void SkinMesh::SetVertex() {
 			}
 
 			//インデックスバッファ生成1段回目
-			if (iCount > 0) CreateIndexBuffer(iCount, pIndex[mInd], mInd);
+			if (iCount > 0) CreateIndexBuffer(iCount, mInd);
 			m_pMaterial[mInd].dwNumFace = polygon_cnt;//そのマテリアル内のポリゴン数	
 			mInd++;
 		}
@@ -667,8 +667,6 @@ void SkinMesh::CreateFromFBX(bool disp) {
 	//バーテックスバッファー作成
 	const UINT vbByteSize = (UINT)IndexCount34MeAll * sizeof(MY_VERTEX_S);
 
-	D3DCreateBlob(vbByteSize, &Vview->VertexBufferCPU);
-	CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), pvVB, vbByteSize);
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
 		mCommandList, pvVB, vbByteSize, Vview->VertexBufferUploader);
 	Vview->VertexByteStride = sizeof(MY_VERTEX_S);
@@ -780,12 +778,9 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 	}
 }
 
-void SkinMesh::CreateIndexBuffer(int cnt, int *pIndex, int IviewInd) {
+void SkinMesh::CreateIndexBuffer(int cnt, int IviewInd) {
 
 	const UINT ibByteSize = (UINT)cnt * sizeof(UINT);
-
-	D3DCreateBlob(ibByteSize, &Iview[IviewInd].IndexBufferCPU);
-	CopyMemory(Iview[IviewInd].IndexBufferCPU->GetBufferPointer(), pIndex, ibByteSize);
 
 	Iview[IviewInd].IndexFormat = DXGI_FORMAT_R32_UINT;
 	Iview[IviewInd].IndexBufferByteSize = ibByteSize;

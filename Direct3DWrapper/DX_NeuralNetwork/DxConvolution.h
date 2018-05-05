@@ -29,7 +29,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterReadBuffer = nullptr;
 
 	CONSTANT_BUFFER_Convolution cb;
-	UploadBuffer<CONSTANT_BUFFER_Convolution> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_Convolution> *mObjectCB = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[4] = { nullptr };
 	UINT Width; //“ü—Í‰æ‘œƒTƒCƒY

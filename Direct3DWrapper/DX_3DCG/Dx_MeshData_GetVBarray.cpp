@@ -148,7 +148,7 @@ void MeshData::GetBuffer(char *FileName) {
 
 	strcpy_s(mFileName, FileName);
 
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 
 	int VCount = 0;//読み込みカウンター
 	int VNCount = 0;//読み込みカウンター
@@ -201,7 +201,7 @@ void MeshData::GetBuffer(char *FileName) {
 	pvNormal = new VECTOR3[VNCount]();
 	pvTexture = new VECTOR2[VTCount]();
 
-	mObject_MESHCB = new UploadBuffer<CONSTANT_BUFFER2>(dx->md3dDevice.Get(), MaterialCount, true);//アドレスずらして各Materialアクセス
+	mObject_MESHCB = new ConstantBuffer<CONSTANT_BUFFER2>(MaterialCount);//アドレスずらして各Materialアクセス
 	Vview = std::make_unique<VertexView>();
 	Iview = std::make_unique<IndexView[]>(MaterialCount);
 
@@ -356,9 +356,6 @@ void MeshData::SetVertex() {
 
 		const UINT ibByteSize = (UINT)dwPartFCount * 3 * sizeof(UINT);
 
-		D3DCreateBlob(ibByteSize, &Iview[i].IndexBufferCPU);
-		CopyMemory(Iview[i].IndexBufferCPU->GetBufferPointer(), &piFaceBuffer[FaceCount * 3 * i], ibByteSize);
-
 		Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
 		Iview[i].IndexBufferByteSize = ibByteSize;
 		Iview[i].IndexCount = dwPartFCount * 3;
@@ -395,9 +392,6 @@ void MeshData::SetVertex() {
 	fclose(fp);
 
 	const UINT vbByteSize = (UINT)FCount * 3 * sizeof(VertexM);
-
-	D3DCreateBlob(vbByteSize, &Vview->VertexBufferCPU);
-	CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), pvVertexBuffer, vbByteSize);
 
 	Vview->VertexByteStride = sizeof(VertexM);
 	Vview->VertexBufferByteSize = vbByteSize;

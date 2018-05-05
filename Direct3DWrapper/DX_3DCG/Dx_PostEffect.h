@@ -21,7 +21,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 
-	UploadBuffer<CONSTANT_BUFFER_PostMosaic> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_PostMosaic> *mObjectCB = nullptr;
 
 	void ComCreate(int no);
 	void Compute(bool On, int size, float blurX, float blurY, float blurLevel);

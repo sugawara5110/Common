@@ -117,8 +117,8 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 	d3varray = (Vertex*)malloc(sizeof(Vertex) * ver);
 	d3varrayBC = (VertexBC*)malloc(sizeof(VertexBC) * ver);
 	d3varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * verI);
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER>(dx->md3dDevice.Get(), 1, true);
-	mObjectCB1 = new UploadBuffer<CONSTANT_BUFFER2>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
+	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
 	Vview = std::make_unique<VertexView>();
 	Iview = std::make_unique<IndexView>();
 }
@@ -211,15 +211,6 @@ void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 
 	const UINT vbByteSize = VertexSize * ver;
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
-
-	D3DCreateBlob(vbByteSize, &Vview->VertexBufferCPU);
-	if (tNo == -1 && !m_on)
-		CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), d3varrayBC, vbByteSize);
-	else
-		CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), d3varray, vbByteSize);
-
-	D3DCreateBlob(ibByteSize, &Iview->IndexBufferCPU);
-	CopyMemory(Iview->IndexBufferCPU->GetBufferPointer(), d3varrayI, ibByteSize);
 
 	if (tNo == -1 && !m_on)
 		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),

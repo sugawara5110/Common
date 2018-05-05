@@ -34,7 +34,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[2] = { nullptr };
 
 	CBSearchPixel cb;
-	UploadBuffer<CBSearchPixel> *mObjectCB = nullptr;
+	ConstantBuffer<CBSearchPixel> *mObjectCB = nullptr;
 	SearchPixelData *sdata;
 	float *outInd;
 

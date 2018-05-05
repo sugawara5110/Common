@@ -81,7 +81,7 @@ DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT dete
 
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER_NeuralNetwork>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
 }
 
 DxNeuralNetwork::~DxNeuralNetwork() {

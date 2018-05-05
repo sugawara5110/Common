@@ -123,7 +123,7 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 }
 
 void ParticleData::GetBufferParticle(int texture_no, float size, float density) {
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER_P>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
 	Sview1 = std::make_unique<StreamView[]>(2);
 	Sview2 = std::make_unique<StreamView[]>(2);
@@ -133,7 +133,7 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 void ParticleData::GetBufferBill(int v) {
 	ver = v;
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER_P>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
 	Sview1 = std::make_unique<StreamView[]>(2);
 	Sview2 = std::make_unique<StreamView[]>(2);
@@ -141,9 +141,6 @@ void ParticleData::GetBufferBill(int v) {
 
 void ParticleData::CreateVbObj() {
 	const UINT vbByteSize = ver * sizeof(PartPos);
-
-	D3DCreateBlob(vbByteSize, &Vview->VertexBufferCPU);
-	CopyMemory(Vview->VertexBufferCPU->GetBufferPointer(), P_pos, vbByteSize);
 
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
 		mCommandList, P_pos, vbByteSize, Vview->VertexBufferUploader);

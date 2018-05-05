@@ -9,7 +9,7 @@
 PostEffect::PostEffect() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	mObjectCB = new UploadBuffer<CONSTANT_BUFFER_PostMosaic>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_PostMosaic>(1);
 }
 
 PostEffect::~PostEffect() {

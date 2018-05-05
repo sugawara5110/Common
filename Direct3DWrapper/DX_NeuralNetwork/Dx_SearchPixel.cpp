@@ -53,7 +53,7 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, UIN
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 
-	mObjectCB = new UploadBuffer<CBSearchPixel>(dx->md3dDevice.Get(), 1, true);
+	mObjectCB = new ConstantBuffer<CBSearchPixel>(1);
 	cb.InWH_OutWH.as(srcWidth, srcHeight, outWid, outHei);
 	cb.seaWH_step_PDNum.as(seaWid, seaHei, Step, searchNum);
 	cb.Threshold.x = Threshold;
