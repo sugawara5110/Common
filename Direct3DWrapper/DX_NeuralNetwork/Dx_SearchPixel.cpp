@@ -7,7 +7,7 @@
 #include "Dx_SearchPixel.h"
 #include "ShaderNN\ShaderSearchPixel.h"
 
-SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, UINT step, UINT outnum, float Threshold) {
+SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, float outscale, UINT step, UINT outnum, float Threshold) {
 	Step = step;
 	srcWidth = srcwid;
 	srcHeight = srchei;
@@ -15,12 +15,12 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, UIN
 	srcPix = new float[srcWidth * srcHeight];
 	seaWid = seawid;
 	seaHei = seahei;
-	UINT wNum = (srcWidth - seaWid + Step) / Step;
-	UINT hNum = (srcHeight - seaHei + Step) / Step;
+	UINT wNum = (srcWidth - seaWid + Step) / Step;//ブロック数w
+	UINT hNum = (srcHeight - seaHei + Step) / Step;//ブロック数h
 	searchNum = wNum * hNum;
 	outNum = outnum * searchNum;
-	outWid = wNum * seaWid;
-	outHei = hNum * seaHei;
+	outWid = wNum * seaWid * outscale;
+	outHei = hNum * seaHei * outscale;
 	outsize = outWid * outHei * sizeof(float);
 	seaPix = new float[outWid * outHei];
 
@@ -34,18 +34,28 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, UIN
 		}
 	}
 
-	outInd = new float[outWid * outHei];
-	float cnt = 0.0f;
+	outIndW = wNum * seaWid;
+	outIndH = hNum * seaHei;
+	outIndNum = outIndW * outIndH;
+	outIndSize = outIndNum * sizeof(float);
+	outInd = new float[outIndNum];
+	float fw = 0.0f;
+	float fh = 0.0f;
+	UINT uw = 0;
+	UINT uh = 0;
+	float sw = (float)seaWid * outscale;
 	for (UINT j = 0; j < hNum; j++) {
 		for (UINT i = 0; i < wNum; i++) {
 			for (UINT j1 = 0; j1 < seaHei; j1++) {
+				fw = 0.0f;
 				for (UINT i1 = 0; i1 < seaWid; i1++) {
 					UINT ox = seaWid * i + i1;
 					UINT oy = seaHei * j + j1;
-					UINT ind = outWid * oy + ox;
-					outInd[ind] = (float)cnt;
-					cnt += 1.0f;
+					UINT ind = outIndW * oy + ox;
+					outInd[ind] = sw * (float)uh + (float)uw;
+					uw = (UINT)(fw += outscale);
 				}
+				uh = (UINT)(fh += outscale);
 			}
 		}
 	}
@@ -54,7 +64,7 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, UIN
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 
 	mObjectCB = new ConstantBuffer<CBSearchPixel>(1);
-	cb.InWH_OutWH.as(srcWidth, srcHeight, outWid, outHei);
+	cb.InWH_OutWH.as(srcWidth, srcHeight, outIndW, outIndH);
 	cb.seaWH_step_PDNum.as(seaWid, seaHei, Step, searchNum);
 	cb.Threshold.x = Threshold;
 	mObjectCB->CopyData(0, cb);
@@ -134,7 +144,7 @@ void SearchPixel::ComCreate() {
 	dx->md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outsize),
+		&CD3DX12_RESOURCE_DESC::Buffer(outIndSize),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&mOutIndUpBuffer));
@@ -142,7 +152,7 @@ void SearchPixel::ComCreate() {
 	dx->md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outsize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		&CD3DX12_RESOURCE_DESC::Buffer(outIndSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
 		IID_PPV_ARGS(&mOutIndBuffer));
@@ -216,9 +226,9 @@ void SearchPixel::ComCreate() {
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	//up用gInputCol
 	dx->md3dDevice->CreateCommittedResource(
-		&HeapPropsUp, 
+		&HeapPropsUp,
 		D3D12_HEAP_FLAG_NONE,
-		&BufferDesc, 
+		&BufferDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&mInputColUpBuffer));
@@ -247,7 +257,7 @@ void SearchPixel::ComCreate() {
 
 	D3D12_SUBRESOURCE_DATA subResourceDataOI = {};
 	subResourceDataOI.pData = outInd;
-	subResourceDataOI.RowPitch = outsize;
+	subResourceDataOI.RowPitch = outIndSize;
 	subResourceDataOI.SlicePitch = subResourceDataOI.RowPitch;
 
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutIndBuffer.Get(),
@@ -368,7 +378,7 @@ void SearchPixel::SeparationTexture() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mOutputBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutIndBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(outWid, outHei, 1);
+	mCommandList->Dispatch(outIndW, outIndH, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	TextureCopy(mOutputBuffer.Get(), com_no);

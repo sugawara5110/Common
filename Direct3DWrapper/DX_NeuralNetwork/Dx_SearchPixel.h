@@ -41,21 +41,25 @@ protected:
 	UINT srcWidth;
 	UINT srcHeight;
 	float *srcPix = nullptr;
-	UINT seaWid;
-	UINT seaHei;
-	float *seaPix = nullptr;
-	UINT outWid;
-	UINT outHei;
+	UINT seaWid;//検出範囲1ブロックwidth
+	UINT seaHei;//検出範囲1ブロックheight
+	float *seaPix = nullptr;//検出ブロック分割後ピクセル配列
+	UINT outWid;//分割後全widthサイズ
+	UINT outHei;//分割後全heightサイズ
 	UINT Step;
-	UINT searchNum;
+	UINT searchNum;//検出数
 	UINT64 insize;
 	UINT64 outsize;
-	UINT outNum;
+	UINT outIndNum;
+	UINT outIndW;
+	UINT outIndH;
+	UINT64 outIndSize;//分割後配列Indexサイズ
+	UINT outNum;//検出数
 
 	SearchPixel() {}
 
 public:
-	SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, UINT step, UINT outNum, float Threshold);
+	SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, float outscale, UINT step, UINT outNum, float Threshold);//UINT outNumは現状1しか対応してない
 	~SearchPixel();
 	void SetCommandList(int no);
 	UINT GetSearchNum();

@@ -36,7 +36,7 @@ struct NNCBTexture {
 
 //SearchPixel
 struct CBSearchPixel {
-	VECTOR4 InWH_OutWH;//x:入力W, y:入力h, z:InPixCS出力w, w:h
+	VECTOR4 InWH_OutWH;//x:入力W, y:入力h, z:InPixCS出力(index配列数)w, w:h
 	VECTOR4 seaWH_step_PDNum;//x:探索ブロック1個w, y:h, z:step, w:SearchPixelData配列数
 	VECTOR4 Threshold;//x:閾値
 };

@@ -25,7 +25,7 @@ char *ShaderSearchPixel =
 "    float4 gThreshold;\n"
 "};\n"
 
-//srcPixel入力, スレッド数:out側ピクセル数と同数
+//srcPixel入力, スレッド数:out側Index配列数と同数
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
 "void InPixCS(uint2 inid : SV_DispatchThreadID)\n"
 "{\n"
@@ -56,7 +56,7 @@ char *ShaderSearchPixel =
 "      uint sty = gInPixPos[i].stH;\n"
 "      uint enx = gInPixPos[i].enW;\n"
 "      uint eny = gInPixPos[i].enH;\n"
-"      if(gNNoutput[i] > gThreshold.x && \n"
+"      if(gNNoutput[i] > gThreshold.x && \n"//分類追加する場合はiの値に計算式を加える
 "           (\n"
 "             outpy >= sty && outpy <= eny && ((outpx >= stx && outpx <= stx + 3) || (outpx <= enx && outpx >= enx - 3)) ||\n"
 "             outpx >= stx && outpx <= enx && ((outpy >= sty && outpy <= sty + 3) || (outpy <= eny && outpy >= eny - 3))"
