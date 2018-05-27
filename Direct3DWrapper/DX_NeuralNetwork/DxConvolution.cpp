@@ -500,10 +500,10 @@ float DxConvolution::GetErrorEl(UINT arrNum, UINT ElNum) {
 
 void DxConvolution::SaveData(UINT Num) {
 	FILE *fp;
-	if (Num == 0)
-		fp = fopen("save/save1.da", "wb");
-	else
-		fp = fopen("save/save2.da", "wb");
+	char pass[16];
+	sprintf_s(pass, sizeof(char) * 16, "save/save%d.da", Num + 1);
+	fp = fopen(pass, "wb");
+
 	float *tmp = new float[ElNum * FilNum];
 	for (UINT k = 0; k < FilNum; k++) {
 		for (UINT i = 0; i < ElNum; i++) {
@@ -517,10 +517,10 @@ void DxConvolution::SaveData(UINT Num) {
 
 void DxConvolution::LoadData(UINT Num) {
 	FILE *fp;
-	if (Num == 0)
-		fp = fopen("save/save1.da", "rb");
-	else
-		fp = fopen("save/save2.da", "rb");
+	char pass[16];
+	sprintf_s(pass, sizeof(char) * 16, "save/save%d.da", Num + 1);
+	fp = fopen(pass, "rb");
+
 	float *tmp = new float[ElNum * FilNum];
 	fread(tmp, sizeof(float) * ElNum * FilNum, 1, fp);
 	for (UINT k = 0; k < FilNum; k++) {
