@@ -46,42 +46,27 @@ DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT dete
 	target = new float[NumNode[Depth - 1]];
 	for (UINT i = 0; i < NumNode[Depth - 1]; i++)target[i] = 0.0f;
 
-	std::random_device seed_gen;
-	std::default_random_engine engine(seed_gen());
-	for (int i = 0; i < 5; i++) {
-		if (NumNode[i] < 1)NumNode[i] = 1;
-	}
-	//ウエイト初期値
-	// 平均0.0、標準偏差pow(NumNode[], -0.5)で分布させる
-	std::normal_distribution<> dist0(0.0, pow(NumNode[1], -0.5));
-	std::normal_distribution<> dist1(0.0, pow(NumNode[2], -0.5));
-	std::normal_distribution<> dist2(0.0, pow(NumNode[3], -0.5));
-	std::normal_distribution<> dist3(0.0, pow(NumNode[4], -0.5));
-
-	for (int k = 0; k < Depth - 1; k++) {
-		for (UINT i = 0; i < NumWeight[k]; i++) {
-			double rnd;
-			switch (k) {
-			case 0:
-				rnd = dist0(engine);
-				break;
-			case 1:
-				rnd = dist1(engine);
-				break;
-			case 2:
-				rnd = dist2(engine);
-				break;
-			case 3:
-				rnd = dist3(engine);
-				break;
-			}
-			weight[NumWeightStIndex[k] + i] = (float)rnd;
-		}
-	}
+	SetWeightInit(1.0f);
 
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
+}
+
+void DxNeuralNetwork::SetWeightInit(float rate) {
+	std::random_device seed_gen;
+	std::default_random_engine engine(seed_gen());
+	//ウエイト初期値
+	// 平均0.0、標準偏差 1/sqrt(NumNode)で分布させる
+	std::normal_distribution<> *dist = nullptr;
+	for (int k = 0; k < Depth - 1; k++) {
+		dist = new std::normal_distribution<>(0.0, 1 / sqrt(NumNode[k + 1]) * rate);
+		for (UINT i = 0; i < NumWeight[k]; i++) {
+			double rnd = dist->operator()(engine);
+			weight[NumWeightStIndex[k] + i] = (float)rnd;
+		}
+		S_DELETE(dist);
+	}
 }
 
 DxNeuralNetwork::~DxNeuralNetwork() {
@@ -105,7 +90,7 @@ void DxNeuralNetwork::SetCommandList(int no) {
 	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
 }
 
-void DxNeuralNetwork::ComCreate() {
+void DxNeuralNetwork::ComCreate(bool sigon) {
 
 	for (int i = 0; i < Depth; i++) {
 		cb.NumNode[i].as((float)NumNode[i], NumNodeStIndex[i], 0.0f, 0.0f);
@@ -208,13 +193,27 @@ void DxNeuralNetwork::ComCreate() {
 	slotRootParameter[5].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(6, slotRootParameter);
 
-	pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPCS", "cs_5_0");
+	if (sigon) {
+		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPCS", "cs_5_0");
+		pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS1", "cs_5_0");
+	}
+	else {
+		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPReLUCS", "cs_5_0");
+		pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPReLUCS1", "cs_5_0");
+	}
 	pCS[1] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "InTargetCS", "cs_5_0");
 	pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS0", "cs_5_0");
-	pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS1", "cs_5_0");
 	pCS[4] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNInverseCS", "cs_5_0");
 	for (int i = 0; i < 5; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
+}
+
+void DxNeuralNetwork::ComCreateSigmoid() {
+	ComCreate(true);
+}
+
+void DxNeuralNetwork::ComCreateReLU() {
+	ComCreate(false);
 }
 
 void DxNeuralNetwork::ForwardPropagation(UINT detectionnum) {

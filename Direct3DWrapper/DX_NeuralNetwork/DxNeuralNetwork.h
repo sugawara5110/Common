@@ -57,13 +57,16 @@ protected:
 	void CopyOutputResourse();
 	void CopyWeightResourse();
 	void CopyErrorResourse();
+	void ComCreate(bool sigon);
 
 public:
 	DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT detectionnum = 1);
 	~DxNeuralNetwork();
 	void SetCommandList(int no);
-	void ComCreate();
+	void ComCreateSigmoid();
+	void ComCreateReLU();
 	void SetLearningLate(float rate);
+	void SetWeightInit(float rate);
 	void SetTarget(float *target);
 	void SetTargetEl(float el, UINT ElNum);
 	void FirstInput(float el, UINT ElNum, UINT detectionInd = 0);

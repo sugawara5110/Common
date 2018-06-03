@@ -26,7 +26,7 @@ char *ShaderNeuralNetwork =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint その他uint3
 
-//順伝搬
+//順伝搬sigmoid
 //出力側を並列処理,入力側をループ gLear_Depth.y = 0～Depth-2まで
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
 "void NNFPCS(int3 outid : SV_DispatchThreadID)\n"
@@ -44,6 +44,28 @@ char *ShaderNeuralNetwork =
 "   }\n"
 "   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
 "   gOutNode[OutNodeNum * detecInd + x] = sig;\n"
+"}\n"
+
+//順伝搬ReLU
+//出力側を並列処理,入力側をループ gLear_Depth.y = 0～Depth-2まで
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"void NNFPReLUCS(int3 outid : SV_DispatchThreadID)\n"
+"{\n"
+"   float WeightStartInd = gNumWeight[gLear_Depth.y].x;\n"
+"   float InNodeNum = gNumNode[gLear_Depth.y].x;\n"
+"   float OutNodeNum = gNumNode[gLear_Depth.y + 1].x;\n"
+"   int detecInd = outid.z;\n"
+
+"   float tmp = 0.0f;\n"
+"   int x = outid.x;\n"
+"   for(int i = 0; i < InNodeNum; i++)\n"
+"   {\n"
+"      tmp += gInNode[InNodeNum * detecInd + i] * gWeight[WeightStartInd + InNodeNum * x + i];\n"
+"   }\n"
+"   float sigre = 0.0f;"
+"   if(gLear_Depth.y + 1 == gLear_Depth.z)sigre = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"//最下層のみsigmoid
+"   else sigre = max(0, tmp);\n"
+"   gOutNode[OutNodeNum * detecInd + x] = sigre;\n"
 "}\n"
 
 //逆伝搬前Target値入力 gLear_Depth.y = Depth-1のみ
@@ -72,7 +94,7 @@ char *ShaderNeuralNetwork =
 "   gInError[x] = tmp;\n"
 "}\n"
 
-//weight値更新
+//weight値更新sigmoid
 //gWeight並列更新 gLear_Depth.y = Depth-2～0まで
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
 "void NNBPCS1(int2 inXoutY : SV_DispatchThreadID)\n"
@@ -83,6 +105,26 @@ char *ShaderNeuralNetwork =
 "   int y = inXoutY.y;\n"//Out側
 "   float tmp = 0.0f;\n"
 "   tmp = gOutError[y] * gOutNode[y] * (1.0f - gOutNode[y]);\n"
+"   tmp = tmp * gInNode[x] * gLear_Depth.x;\n"
+"   int w = gNumNode[gLear_Depth.y].x * y + x;\n"
+"   gWeight[WeightStartInd + w] += tmp;\n"
+"}\n"
+
+//weight値更新ReLU
+//gWeight並列更新 gLear_Depth.y = Depth-2～0まで
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"void NNBPReLUCS1(int2 inXoutY : SV_DispatchThreadID)\n"
+"{\n"
+"   float WeightStartInd = gNumWeight[gLear_Depth.y].x;\n"
+
+"   int x = inXoutY.x;\n"//In側
+"   int y = inXoutY.y;\n"//Out側
+"   float tmp = 0.0f;\n"
+"   if(gLear_Depth.y + 1 == gLear_Depth.z)tmp = gOutError[y] * gOutNode[y] * (1.0f - gOutNode[y]);\n"
+"   else \n"
+"   {\n"
+"     if(gOutNode[y] > 0.0f)tmp = gOutError[y] * gOutNode[y];\n" 
+"   }\n"
 "   tmp = tmp * gInNode[x] * gLear_Depth.x;\n"
 "   int w = gNumNode[gLear_Depth.y].x * y + x;\n"
 "   gWeight[WeightStartInd + w] += tmp;\n"

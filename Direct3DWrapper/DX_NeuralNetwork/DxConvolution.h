@@ -71,6 +71,7 @@ protected:
 	void CopyOutputResourse();
 	void CopyOutputErrResourse();
 	void CopyFilterResourse();
+	void ComCreate(bool sigon);
 
 	void TestFilter();
 	void TestInput();
@@ -82,11 +83,13 @@ public:
 	DxConvolution(UINT width, UINT height, UINT filNum, UINT detectionnum = 1, UINT elnumwid = 3, UINT filstep = 1);
 	~DxConvolution();
 	void SetCommandList(int no);
-	void ComCreate();
+	void ComCreateSigmoid();
+	void ComCreateReLU();
 	void Query();
 	void Training();
 	void Detection(UINT detectionnum);
 	void SetLearningLate(float rate);
+	void SetWeightInit(float rate);
 	void FirstInput(float el, UINT ElNum, UINT detectionInd = 0);
 	void Input(float *inArr, UINT arrNum, UINT detectionInd = 0);
 	void InputEl(float el, UINT arrNum, UINT ElNum, UINT detectionInd = 0);

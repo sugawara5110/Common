@@ -45,13 +45,7 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 	for (UINT i = 0; i < FilNum * output_inerrOneNum; i++)
 		inputError[i] = 0.0f;
 
-	std::random_device seed_gen;
-	std::default_random_engine engine(seed_gen());
-	//フィルタ初期値
-	std::normal_distribution<> dist(0.0, pow(ElNum, 0.2));
-
-	for (UINT i = 0; i < FilNum * ElNum; i++)
-		fil[i] = dist(engine);
+	SetWeightInit(0.2f);
 
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
@@ -62,6 +56,15 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 	cb.filWid_filStep.x = elNumWid;
 	cb.filWid_filStep.y = filterStep;
 	mObjectCB->CopyData(0, cb);
+}
+
+void DxConvolution::SetWeightInit(float rate) {
+	std::random_device seed_gen;
+	std::default_random_engine engine(seed_gen());
+	//フィルタ初期値
+	std::normal_distribution<> dist(0.0, rate);
+	for (UINT i = 0; i < FilNum * ElNum; i++)
+		fil[i] = dist(engine);
 }
 
 DxConvolution::~DxConvolution() {
@@ -79,7 +82,7 @@ void DxConvolution::SetCommandList(int no) {
 	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
 }
 
-void DxConvolution::ComCreate() {
+void DxConvolution::ComCreate(bool sigon) {
 
 	//RWStructuredBuffer用gInput
 	dx->md3dDevice->CreateCommittedResource(
@@ -213,12 +216,27 @@ void DxConvolution::ComCreate() {
 	slotRootParameter[5].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(6, slotRootParameter);
 
-	pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPCS", "cs_5_0");
+	if (sigon) {
+		pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPCS", "cs_5_0");
+		pCS[3] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS2", "cs_5_0");
+	}
+	else {
+		pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPReLUCS", "cs_5_0");
+		pCS[3] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPReLUCS2", "cs_5_0");
+	}
 	pCS[1] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS0", "cs_5_0");
 	pCS[2] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS1", "cs_5_0");
-	pCS[3] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS2", "cs_5_0");
+
 	for (int i = 0; i < 4; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
+}
+
+void DxConvolution::ComCreateSigmoid() {
+	ComCreate(true);
+}
+
+void DxConvolution::ComCreateReLU() {
+	ComCreate(false);
 }
 
 void DxConvolution::FirstInput(float el, UINT ElNum, UINT detectionInd) {
