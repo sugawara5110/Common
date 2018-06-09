@@ -102,86 +102,35 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 
 	weight_byteSize = weightNumAll * sizeof(float);
 
+	//RWStructuredBuffer用gNode
 	for (int i = 0; i < Depth; i++) {
-		//RWStructuredBuffer用gNode
-		dx->md3dDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(detectionNum * NumNode[i] * sizeof(float), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(&mNodeBuffer[i]));
+		CreateResourceDef(mNodeBuffer[i], detectionNum * NumNode[i] * sizeof(float));
 	}
+
 	//RWStructuredBuffer用gWeight
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(weight_byteSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mWeightBuffer));
+	CreateResourceDef(mWeightBuffer, weight_byteSize);
+
+	//RWStructuredBuffer用gError
 	for (int i = 0; i < Depth; i++) {
-		//RWStructuredBuffer用gError
-		dx->md3dDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(NumNode[i] * sizeof(float), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(&mErrorBuffer[i]));
+		CreateResourceDef(mErrorBuffer[i], NumNode[i] * sizeof(float));
 	}
+
 	//up用gNode
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(detectionNum * NumNode[0] * sizeof(float)),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mNodeUpBuffer));
+	CreateResourceUp(mNodeUpBuffer, detectionNum * NumNode[0] * sizeof(float));
+
 	//up用gWeight
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(weight_byteSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mWeightUpBuffer));
+	CreateResourceUp(mWeightUpBuffer, weight_byteSize);
 
 	//read用gNode
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(detectionNum * NumNode[Depth - 1] * sizeof(float)),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&mNodeReadBuffer));
+	CreateResourceRead(mNodeReadBuffer, detectionNum * NumNode[Depth - 1] * sizeof(float));
+
 	//read用gWeight
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(weight_byteSize),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&mWeightReadBuffer));
+	CreateResourceRead(mWeightReadBuffer, weight_byteSize);
+
 	//read用gError
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(NumNode[0] * sizeof(float)),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&mErrorReadBuffer));
+	CreateResourceRead(mErrorReadBuffer, NumNode[0] * sizeof(float));
 
-	D3D12_SUBRESOURCE_DATA subResourceDataWeight = {};
-	subResourceDataWeight.pData = weight;
-	subResourceDataWeight.RowPitch = weightNumAll;
-	subResourceDataWeight.SlicePitch = subResourceDataWeight.RowPitch;
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mWeightBuffer.Get(), mWeightUpBuffer.Get(), 0, 0, 1, &subResourceDataWeight);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
 
 	//ルートシグネチャ
 	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
@@ -377,16 +326,8 @@ void DxNeuralNetwork::InputArrayEl(float el, UINT arrNum, UINT ElNum, UINT detec
 
 void DxNeuralNetwork::InputResourse() {
 	if (!firstIn)return;
-	D3D12_SUBRESOURCE_DATA subResourceDataNode = {};
-	subResourceDataNode.pData = input;
-	subResourceDataNode.RowPitch = NumNode[0] * detectionNum;
-	subResourceDataNode.SlicePitch = subResourceDataNode.RowPitch;
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer[0].Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mNodeBuffer[0].Get(), mNodeUpBuffer.Get(), 0, 0, 1, &subResourceDataNode);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer[0].Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(input, NumNode[0] * detectionNum, mNodeBuffer[0], mNodeUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	firstIn = false;
@@ -505,16 +446,8 @@ void DxNeuralNetwork::LoadData() {
 	}
 	ARR_DELETE(weightArr);
 
-	D3D12_SUBRESOURCE_DATA subResourceDataWeight = {};
-	subResourceDataWeight.pData = weight;
-	subResourceDataWeight.RowPitch = weightNumAll;
-	subResourceDataWeight.SlicePitch = subResourceDataWeight.RowPitch;
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mWeightBuffer.Get(), mWeightUpBuffer.Get(), 0, 0, 1, &subResourceDataWeight);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

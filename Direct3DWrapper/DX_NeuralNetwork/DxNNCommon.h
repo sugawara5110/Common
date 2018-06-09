@@ -28,6 +28,11 @@ protected:
 	void operator=(const DxNNCommon& obj) {}// ‘ã“ü‰‰ŽZŽq‹ÖŽ~
 
 	void TextureCopy(ID3D12Resource *texture, int comNo);
+	void CreateResourceDef(Microsoft::WRL::ComPtr<ID3D12Resource> &def, UINT64 size);
+	void CreateResourceUp(Microsoft::WRL::ComPtr<ID3D12Resource> &up, UINT64 size);
+	void CreateResourceRead(Microsoft::WRL::ComPtr<ID3D12Resource> &re, UINT64 size);
+	void SubresourcesUp(void *pData, UINT num, Microsoft::WRL::ComPtr<ID3D12Resource> &def,
+		Microsoft::WRL::ComPtr<ID3D12Resource> &up);
 
 public:
 	void CreareNNTexture(UINT width, UINT height, UINT num);

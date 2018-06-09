@@ -12,7 +12,6 @@
 class ParticleData :public Common {
 
 protected:
-	int                        com_no = 0;
 	ID3DBlob                   *gsSO;
 	ID3DBlob                   *vsSO;
 	ID3DBlob                   *gs;

@@ -318,11 +318,9 @@ void PolygonData2D::Create(bool blend, bool alpha) {
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, d2varray, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d2varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, d2varrayI, ibByteSize, Iview->IndexBufferUploader);
+	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d2varrayI, ibByteSize, Iview->IndexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(MY_VERTEX2);
 	Vview->VertexBufferByteSize = vbByteSize;

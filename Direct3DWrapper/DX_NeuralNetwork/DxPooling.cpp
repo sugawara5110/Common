@@ -56,93 +56,33 @@ void DxPooling::SetCommandList(int no) {
 }
 
 void DxPooling::ComCreate() {
-
 	//RWStructuredBuffer用gInput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(input_outerrOneSize * PoolNum * detectionNum, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mInputBuffer));
+	CreateResourceDef(mInputBuffer, input_outerrOneSize * PoolNum * detectionNum);
+
 	//RWStructuredBuffer用gOutput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(output_inerrOneSize * PoolNum * detectionNum, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mOutputBuffer));
+	CreateResourceDef(mOutputBuffer, output_inerrOneSize * PoolNum * detectionNum);
+
 	//RWStructuredBuffer用gInErr
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(output_inerrOneSize * PoolNum, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mInErrorBuffer));
+	CreateResourceDef(mInErrorBuffer, output_inerrOneSize * PoolNum);
+
 	//RWStructuredBuffer用gOutErr
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(input_outerrOneSize * PoolNum, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mOutErrorBuffer));
+	CreateResourceDef(mOutErrorBuffer, input_outerrOneSize * PoolNum);
+
 	//up用gInput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(input_outerrOneSize * PoolNum * detectionNum),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mInputUpBuffer));
+	CreateResourceUp(mInputUpBuffer, input_outerrOneSize * PoolNum * detectionNum);
+
 	//up用gInErr
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(output_inerrOneSize * PoolNum),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mInErrorUpBuffer));
+	CreateResourceUp(mInErrorUpBuffer, output_inerrOneSize * PoolNum);
+
 	//read用gOutput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(output_inerrOneSize * PoolNum * detectionNum),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&mOutputReadBuffer));
+	CreateResourceRead(mOutputReadBuffer, output_inerrOneSize * PoolNum * detectionNum);
+
 	//read用gOutErr
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(input_outerrOneSize * PoolNum),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&mOutErrorReadBuffer));
+	CreateResourceRead(mOutErrorReadBuffer, input_outerrOneSize * PoolNum);
 
-	D3D12_SUBRESOURCE_DATA subResourceDataInput = {};
-	subResourceDataInput.pData = input;
-	subResourceDataInput.RowPitch = input_outerrOneNum * PoolNum * detectionNum;
-	subResourceDataInput.SlicePitch = subResourceDataInput.RowPitch;
+	SubresourcesUp(input, input_outerrOneNum * PoolNum * detectionNum, mInputBuffer, mInputUpBuffer);
 
-	D3D12_SUBRESOURCE_DATA subResourceDataInerror = {};
-	subResourceDataInerror.pData = inerror;
-	subResourceDataInerror.RowPitch = output_inerrOneNum * PoolNum;
-	subResourceDataInerror.SlicePitch = subResourceDataInerror.RowPitch;
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInputBuffer.Get(), mInputUpBuffer.Get(), 0, 0, 1, &subResourceDataInput);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInErrorBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInErrorBuffer.Get(), mInErrorUpBuffer.Get(), 0, 0, 1, &subResourceDataInerror);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInErrorBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(inerror, output_inerrOneNum * PoolNum, mInErrorBuffer, mInErrorUpBuffer);
 
 	//ルートシグネチャ
 	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
@@ -239,32 +179,16 @@ void DxPooling::Detection(UINT detectionnum) {
 
 void DxPooling::InputResourse() {
 	if (!firstIn)return;
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = input;
-	subResourceData.RowPitch = input_outerrOneNum * PoolNum * detectionNum;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInputBuffer.Get(), mInputUpBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(input, input_outerrOneNum * PoolNum * detectionNum, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	firstIn = false;
 }
 
 void DxPooling::InputErrResourse() {
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = inerror;
-	subResourceData.RowPitch = output_inerrOneNum * PoolNum;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInErrorBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInErrorBuffer.Get(), mInErrorUpBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInErrorBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(inerror, output_inerrOneNum * PoolNum, mInErrorBuffer, mInErrorUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

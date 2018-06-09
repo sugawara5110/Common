@@ -12,7 +12,6 @@
 class MeshData :public Common {
 
 protected:
-	int                        com_no = 0;
 	ID3DBlob                   *vs = nullptr;
 	ID3DBlob                   *vsB = nullptr;
 	ID3DBlob                   *ps = nullptr;

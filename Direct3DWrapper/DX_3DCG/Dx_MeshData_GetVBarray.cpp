@@ -436,14 +436,12 @@ void MeshData::GetTexture() {
 	mSrvHeap = CreateSrvHeap(MaterialCount, texNum, te);
 
 	for (int i = 0; i < MaterialCount; i++)
-		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-			mCommandList, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
+		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
 
 	ARR_DELETE(te);
 	ARR_DELETE(piFaceBuffer);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, pvVertexBuffer, Vview->VertexBufferByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pvVertexBuffer, Vview->VertexBufferByteSize, Vview->VertexBufferUploader);
 	ARR_DELETE(pvVertexBuffer);
 }
 

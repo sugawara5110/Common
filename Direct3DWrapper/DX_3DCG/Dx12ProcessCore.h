@@ -227,10 +227,10 @@ private:
 
 	void CreateShaderByteCode();
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(ID3D12GraphicsCommandList* cmdList,
 		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(ID3D12Device* device, UINT64 byteSize);
+	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
 
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
@@ -420,6 +420,7 @@ protected:
 
 	Dx12Process                *dx;
 	ID3D12GraphicsCommandList  *mCommandList;
+	int                        com_no = 0;
 
 	//テクスチャ保持(SetTextureMPixel用)
 	ID3D12Resource *texture = NULL;
@@ -489,7 +490,6 @@ class PolygonData :public Common {
 
 protected:
 	//ポインタで受け取る
-	int                        com_no = 0;
 	ID3DBlob                   *vs = nullptr;
 	ID3DBlob                   *ps = nullptr;
 	ID3DBlob                   *hs = nullptr;
@@ -581,7 +581,6 @@ class PolygonData2D :public Common {
 protected:
 	friend DxText;
 
-	int                        com_no = 0;
 	ID3DBlob                   *vs = nullptr;
 	ID3DBlob                   *ps = nullptr;
 

@@ -12,7 +12,6 @@
 class Wave :public Common {
 
 protected:
-	int                        com_no = 0;
 	ID3DBlob                   *cs = nullptr;
 	ID3DBlob                   *vs = nullptr;
 	ID3DBlob                   *ps = nullptr;

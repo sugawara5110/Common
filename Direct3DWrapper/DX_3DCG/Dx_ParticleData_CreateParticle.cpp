@@ -142,15 +142,14 @@ void ParticleData::GetBufferBill(int v) {
 void ParticleData::CreateVbObj() {
 	const UINT vbByteSize = ver * sizeof(PartPos);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, P_pos, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, P_pos, vbByteSize, Vview->VertexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(PartPos);
 	Vview->VertexBufferByteSize = vbByteSize;
 
 	for (int i = 0; i < 2; i++) {
-		Sview1[i].StreamBufferGPU = dx->CreateStreamBuffer(dx->md3dDevice.Get(), vbByteSize);
-		Sview2[i].StreamBufferGPU = dx->CreateStreamBuffer(dx->md3dDevice.Get(), vbByteSize);
+		Sview1[i].StreamBufferGPU = dx->CreateStreamBuffer(vbByteSize);
+		Sview2[i].StreamBufferGPU = dx->CreateStreamBuffer(vbByteSize);
 
 		Sview1[i].StreamByteStride = Sview2[i].StreamByteStride = sizeof(PartPos);
 		Sview1[i].StreamBufferByteSize = Sview2[i].StreamBufferByteSize = vbByteSize;

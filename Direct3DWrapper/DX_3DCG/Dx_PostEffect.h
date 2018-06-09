@@ -12,7 +12,6 @@
 class PostEffect :public Common {
 
 protected:
-	int                        com_no = 0;
 	ID3DBlob                   *cs = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;

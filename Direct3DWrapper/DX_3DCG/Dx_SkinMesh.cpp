@@ -667,8 +667,7 @@ void SkinMesh::CreateFromFBX(bool disp) {
 	//バーテックスバッファー作成
 	const UINT vbByteSize = (UINT)IndexCount34MeAll * sizeof(MY_VERTEX_S);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, pvVB, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pvVB, vbByteSize, Vview->VertexBufferUploader);
 	Vview->VertexByteStride = sizeof(MY_VERTEX_S);
 	Vview->VertexBufferByteSize = vbByteSize;
 
@@ -789,8 +788,8 @@ void SkinMesh::CreateIndexBuffer(int cnt, int IviewInd) {
 
 void SkinMesh::CreateIndexBuffer2(int *pIndex, int IviewInd) {
 
-	Iview[IviewInd].IndexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, pIndex, Iview[IviewInd].IndexBufferByteSize, Iview[IviewInd].IndexBufferUploader);
+	Iview[IviewInd].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pIndex,
+		Iview[IviewInd].IndexBufferByteSize, Iview[IviewInd].IndexBufferUploader);
 }
 
 //ボーンを次のポーズ位置にセットする

@@ -39,7 +39,6 @@ protected:
 	static volatile bool stInitFBX_ON, stSetNewPose_ON;
 	static bool ManagerCreated;//マネージャー生成フラグ
 
-	int                        com_no = 0;
 	ID3DBlob                   *vs = nullptr;
 	ID3DBlob                   *vsB = nullptr;
 	ID3DBlob                   *hs = nullptr;

@@ -12,8 +12,6 @@
 class DxConvolution :public DxNNCommon {
 
 protected:
-	int                        com_no = 0;
-
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[4] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUpBuffer = nullptr;

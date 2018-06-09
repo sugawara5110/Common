@@ -89,91 +89,34 @@ UINT SearchPixel::GetSearchNum() {
 
 void SearchPixel::ComCreate() {
 	//up用gInput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(insize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mInputUpBuffer));
+	CreateResourceUp(mInputUpBuffer, insize);
+
 	//RWStructuredBuffer用gInput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(insize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mInputBuffer));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	CreateResourceDef(mInputBuffer, insize);
+
 	//RWStructuredBuffer用gOutput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outsize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mOutputBuffer));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	CreateResourceDef(mOutputBuffer, outsize);
+
 	//read用gOutput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outsize),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(&mOutputReadBuffer));
+	CreateResourceRead(mOutputReadBuffer, outsize);
+
 	//up用gInPixPos
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(searchNum * sizeof(SearchPixelData)),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mInPixPosUpBuffer));
+	CreateResourceUp(mInPixPosUpBuffer, searchNum * sizeof(SearchPixelData));
+
 	//RWStructuredBuffer用gInPixPos
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(searchNum * sizeof(SearchPixelData), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mInPixPosBuffer));
+	CreateResourceDef(mInPixPosBuffer, searchNum * sizeof(SearchPixelData));
+
 	//up用gOutInd
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outIndSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mOutIndUpBuffer));
+	CreateResourceUp(mOutIndUpBuffer, outIndSize);
+
 	//RWStructuredBuffer用gOutInd
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outIndSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mOutIndBuffer));
+	CreateResourceDef(mOutIndBuffer, outIndSize);
+
 	//up用gNNOutput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outNum * sizeof(float)),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mNNOutputUpBuffer));
+	CreateResourceUp(mNNOutputUpBuffer, outNum * sizeof(float));
+
 	//RWStructuredBuffer用gNNOutput
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(outNum * sizeof(float), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mNNOutputBuffer));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNNOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	CreateResourceDef(mNNOutputBuffer, outNum * sizeof(float));
 
 	D3D12_DESCRIPTOR_HEAP_DESC uavHeapDesc = {};
 	uavHeapDesc.NumDescriptors = 1;
@@ -244,27 +187,9 @@ void SearchPixel::ComCreate() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = sdata;
-	subResourceData.RowPitch = searchNum;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
+	SubresourcesUp(sdata, searchNum, mInPixPosBuffer, mInPixPosUpBuffer);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInPixPosBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInPixPosBuffer.Get(), mInPixPosUpBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInPixPosBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-
-	D3D12_SUBRESOURCE_DATA subResourceDataOI = {};
-	subResourceDataOI.pData = outInd;
-	subResourceDataOI.RowPitch = outIndSize;
-	subResourceDataOI.SlicePitch = subResourceDataOI.RowPitch;
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutIndBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mOutIndBuffer.Get(), mOutIndUpBuffer.Get(), 0, 0, 1, &subResourceDataOI);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutIndBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(outInd, outIndSize, mOutIndBuffer, mOutIndUpBuffer);
 
 	//ルートシグネチャ
 	CD3DX12_DESCRIPTOR_RANGE uavTable;
@@ -288,17 +213,8 @@ void SearchPixel::ComCreate() {
 
 void SearchPixel::SetPixel(float *pi) {
 	memcpy(srcPix, pi, insize);
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = srcPix;
-	subResourceData.RowPitch = srcWidth * srcHeight;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
-
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInputBuffer.Get(), mInputUpBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(srcPix, srcWidth * srcHeight, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }
@@ -321,33 +237,15 @@ void SearchPixel::SetPixel3ch(ID3D12Resource *pi) {
 }
 
 void SearchPixel::SetPixel3ch(BYTE *pi) {
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = pi;
-	subResourceData.RowPitch = srcWidth * 4;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
-
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInputColBuffer.Get(), mInputColUpBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(pi, srcWidth * 4, mInputColBuffer, mInputColUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }
 
 void SearchPixel::SetNNoutput(float *in) {
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = in;
-	subResourceData.RowPitch = outNum;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
-
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNNOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mNNOutputBuffer.Get(), mNNOutputUpBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNNOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	SubresourcesUp(in, outNum, mNNOutputBuffer, mNNOutputUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

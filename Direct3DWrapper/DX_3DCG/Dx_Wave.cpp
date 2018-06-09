@@ -173,11 +173,9 @@ void Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, d3varrayI, ibByteSize, Iview->IndexBufferUploader);
+	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview->IndexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(Vertex);
 	Vview->VertexBufferByteSize = vbByteSize;

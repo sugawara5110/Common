@@ -213,14 +213,11 @@ void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
 	if (tNo == -1 && !m_on)
-		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-			mCommandList, d3varrayBC, vbByteSize, Vview->VertexBufferUploader);
+		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayBC, vbByteSize, Vview->VertexBufferUploader);
 	else
-		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-			mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
+		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(dx->md3dDevice.Get(),
-		mCommandList, d3varrayI, ibByteSize, Iview->IndexBufferUploader);
+	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview->IndexBufferUploader);
 
 	Vview->VertexByteStride = VertexSize;
 	Vview->VertexBufferByteSize = vbByteSize;

@@ -753,7 +753,6 @@ void Dx12Process::Fog(float r, float g, float b, float amount, float density, bo
 }
 
 Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
-	ID3D12Device* device,
 	ID3D12GraphicsCommandList* cmdList,
 	const void* initData,
 	UINT64 byteSize,
@@ -762,7 +761,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	ComPtr<ID3D12Resource> defaultBuffer;
 
 	//デフォルトバッファ生成
-	device->CreateCommittedResource(
+	md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),
@@ -771,7 +770,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 		IID_PPV_ARGS(defaultBuffer.GetAddressOf()));
 
 	//デフォルトバッファにCPUメモリデータをコピーするための中間バッファ生成
-	device->CreateCommittedResource(
+	md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),
@@ -798,12 +797,12 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	return defaultBuffer;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(ID3D12Device* device, UINT64 byteSize)
+Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(UINT64 byteSize)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 
 	//ストリームバッファ生成
-	device->CreateCommittedResource(
+	md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),

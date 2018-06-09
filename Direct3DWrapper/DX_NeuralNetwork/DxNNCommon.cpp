@@ -91,6 +91,51 @@ void DxNNCommon::TextureCopy(ID3D12Resource *texture, int comNo) {
 	dx->WaitFenceCurrent();
 }
 
+void DxNNCommon::CreateResourceDef(Microsoft::WRL::ComPtr<ID3D12Resource> &def, UINT64 size) {
+	dx->md3dDevice->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(size, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&def));
+}
+
+void DxNNCommon::CreateResourceUp(Microsoft::WRL::ComPtr<ID3D12Resource> &up, UINT64 size) {
+	dx->md3dDevice->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(size),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&up));
+}
+
+void DxNNCommon::CreateResourceRead(Microsoft::WRL::ComPtr<ID3D12Resource> &re, UINT64 size) {
+	dx->md3dDevice->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(size),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(&re));
+}
+
+void DxNNCommon::SubresourcesUp(void *pData, UINT num, Microsoft::WRL::ComPtr<ID3D12Resource> &def,
+	Microsoft::WRL::ComPtr<ID3D12Resource> &up)
+{
+	D3D12_SUBRESOURCE_DATA subResourceData = {};
+	subResourceData.pData = pData;
+	subResourceData.RowPitch = num;
+	subResourceData.SlicePitch = subResourceData.RowPitch;
+
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(def.Get(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
+	UpdateSubresources(mCommandList, def.Get(), up.Get(), 0, 0, 1, &subResourceData);
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(def.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+}
+
 ID3D12Resource *DxNNCommon::GetNNTextureResource() {
 	return mTextureBuffer.Get();
 }
