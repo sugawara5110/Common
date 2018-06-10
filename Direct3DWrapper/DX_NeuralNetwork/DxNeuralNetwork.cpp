@@ -11,14 +11,15 @@
 
 DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT detectionnum) {
 
+	srand((unsigned)time(NULL));
 	detectionNum = detectionnum;
 	Split = split;
 	NumNode = numNode;
 	NumNode[0] *= Split;
-	if (depth > 5)Depth = 5;
+	if (depth > MAX_DEPTH_NUM)Depth = MAX_DEPTH_NUM;
 	else
 		Depth = depth;
-	if (NumNode[Depth - 1] > 10)NumNode[Depth - 1] = 10;
+	if (NumNode[Depth - 1] > MAX_OUTPUT_NUM)NumNode[Depth - 1] = MAX_OUTPUT_NUM;
 
 	NumNodeStIndex = new UINT[Depth];
 	NumWeight = new UINT[Depth - 1];
@@ -46,11 +47,46 @@ DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT dete
 	target = new float[NumNode[Depth - 1]];
 	for (UINT i = 0; i < NumNode[Depth - 1]; i++)target[i] = 0.0f;
 
+	dropThreshold = new float[Depth - 1];
+	dropout = new float*[Depth - 1];
+	for (int i = 0; i < Depth - 1; i++) {
+		dropout[i] = new float[NumNode[i]];
+		dropThreshold[i] = 0.5f;
+	}
+	for (int k = 0; k < Depth - 1; k++) {
+		for (UINT i = 0; i < NumNode[k]; i++) {
+			dropout[k][i] = 1.0f;//1.0fでニューロン有効
+		}
+	}
+
 	SetWeightInit(1.0f);
 
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
+}
+
+void DxNeuralNetwork::SetDropOut() {
+
+	dx->Bigin(com_no);
+	for (int k = 0; k < Depth - 1; k++) {
+		for (UINT i = 0; i < NumNode[k]; i++) {
+			dropout[k][i] = 1.0f;
+			int rnd = (rand() % 100) + 1;
+			if ((int)(dropThreshold[k] * 100.0f) >= rnd) {
+				dropout[k][i] = 0.0f;
+			}
+		}
+		SubresourcesUp(dropout[k], NumNode[k], mDropOutFBuffer[k], mDropOutFUpBuffer[k]);
+	}
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+}
+
+void DxNeuralNetwork::SetdropThreshold(float *ThresholdArr) {
+	for (int k = 0; k < Depth - 1; k++) {
+		dropThreshold[k] = ThresholdArr[k];
+	}
 }
 
 void DxNeuralNetwork::SetWeightInit(float rate) {
@@ -77,6 +113,9 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 	ARR_DELETE(input);
 	ARR_DELETE(error);
 	ARR_DELETE(weight);
+	for (int i = 0; i < Depth - 1; i++)ARR_DELETE(dropout[i]);
+	ARR_DELETE(dropout);
+	ARR_DELETE(dropThreshold);
 
 	ARR_DELETE(NumNodeStIndex);
 	ARR_DELETE(NumWeight);
@@ -102,17 +141,23 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 
 	weight_byteSize = weightNumAll * sizeof(float);
 
-	//RWStructuredBuffer用gNode
 	for (int i = 0; i < Depth; i++) {
+		//RWStructuredBuffer用gNode
 		CreateResourceDef(mNodeBuffer[i], detectionNum * NumNode[i] * sizeof(float));
+		//RWStructuredBuffer用gError
+		CreateResourceDef(mErrorBuffer[i], NumNode[i] * sizeof(float));
 	}
 
 	//RWStructuredBuffer用gWeight
 	CreateResourceDef(mWeightBuffer, weight_byteSize);
 
-	//RWStructuredBuffer用gError
-	for (int i = 0; i < Depth; i++) {
-		CreateResourceDef(mErrorBuffer[i], NumNode[i] * sizeof(float));
+	for (int i = 0; i < Depth - 1; i++) {
+		//RWStructuredBuffer用gDropout
+		CreateResourceDef(mDropOutFBuffer[i], NumNode[i] * sizeof(float));
+		//Up
+		CreateResourceUp(mDropOutFUpBuffer[i], NumNode[i] * sizeof(float));
+		//初期値コピー
+		SubresourcesUp(dropout[i], NumNode[i], mDropOutFBuffer[i], mDropOutFUpBuffer[i]);
 	}
 
 	//up用gNode
@@ -133,14 +178,15 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
 
 	//ルートシグネチャ
-	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
 	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
 	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
 	slotRootParameter[2].InitAsUnorderedAccessView(2);//RWStructuredBuffer(u2)
 	slotRootParameter[3].InitAsUnorderedAccessView(3);//RWStructuredBuffer(u3)
 	slotRootParameter[4].InitAsUnorderedAccessView(4);//RWStructuredBuffer(u4)
-	slotRootParameter[5].InitAsConstantBufferView(0);//mObjectCB(b0)
-	mRootSignatureCom = CreateRsCompute(6, slotRootParameter);
+	slotRootParameter[5].InitAsUnorderedAccessView(5);//RWStructuredBuffer(u5)
+	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
+	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
 
 	if (sigon) {
 		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPCS", "cs_5_0");
@@ -153,7 +199,7 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	pCS[1] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "InTargetCS", "cs_5_0");
 	pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS0", "cs_5_0");
 	pCS[4] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNInverseCS", "cs_5_0");
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < NN_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
@@ -173,12 +219,13 @@ void DxNeuralNetwork::ForwardPropagation(UINT detectionnum) {
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth.x = learningRate;
 		cb.Lear_Depth.y = i;
 		for (UINT i1 = 0; i1 < NumNode[Depth - 1]; i1++)
 			cb.Target[i1].x = target[i1];
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		//Dispatchは1回毎にGPU処理完了させる事
 		mCommandList->Dispatch(NumNode[i + 1], 1, detectionnum);
 		dx->End(com_no);
@@ -204,7 +251,7 @@ void DxNeuralNetwork::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[Depth - 1]->GetGPUVirtualAddress());
 	cb.Lear_Depth.y = Depth - 1;
 	mObjectCB->CopyData(0, cb);
-	mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(NumNode[Depth - 1], 1, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -217,9 +264,10 @@ void DxNeuralNetwork::BackPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth.y = i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i], 1, 1);
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
@@ -236,7 +284,7 @@ void DxNeuralNetwork::BackPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
 		cb.Lear_Depth.y = i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i], NumNode[i + 1], 1);
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
@@ -353,6 +401,7 @@ void DxNeuralNetwork::Query(UINT detectionnum) {
 
 void DxNeuralNetwork::Training() {
 	InputResourse();
+	SetDropOut();
 	ForwardPropagation(1);
 	CopyOutputResourse();
 
@@ -384,7 +433,7 @@ void DxNeuralNetwork::InverseQuery() {
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		cb.Lear_Depth.y = i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i - 1], 1, 1);
 		dx->End(com_no);
 		dx->WaitFenceCurrent();

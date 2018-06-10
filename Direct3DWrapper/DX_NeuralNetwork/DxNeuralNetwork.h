@@ -8,30 +8,35 @@
 #define Class_DxNeuralNetwork_Header
 
 #include "DxNNCommon.h"
+#define NN_SHADER_NUM 5
 
 class DxNeuralNetwork :public DxNNCommon {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[5] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[NN_SHADER_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeUpBuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeBuffer[5] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeBuffer[MAX_DEPTH_NUM] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFUpBuffer[MAX_DEPTH_NUM - 1] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFBuffer[MAX_DEPTH_NUM - 1] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeReadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightReadBuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mErrorBuffer[5] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12Resource> mErrorBuffer[MAX_DEPTH_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mErrorReadBuffer = nullptr;
 
 	CONSTANT_BUFFER_NeuralNetwork cb;
 	ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork> *mObjectCB = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pCS[5] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3DBlob> pCS[NN_SHADER_NUM] = { nullptr };
 
 	bool firstIn = false;
 	float *input = nullptr;
 	float *weight = nullptr;
 	float *error = nullptr;
 	float *output = nullptr;
+	float **dropout = nullptr;
+	float *dropThreshold = nullptr;//äeëwËáíl
 
 	UINT Split = 1;
 
@@ -56,6 +61,7 @@ protected:
 	void CopyWeightResourse();
 	void CopyErrorResourse();
 	void ComCreate(bool sigon);
+	void SetDropOut();
 
 public:
 	DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT detectionnum = 1);
@@ -64,6 +70,7 @@ public:
 	void ComCreateSigmoid();
 	void ComCreateReLU();
 	void SetLearningLate(float rate);
+	void SetdropThreshold(float *ThresholdArr);//åüèoéûÇÕ0.0fê›íËÇ…Ç∑ÇÈ
 	void SetWeightInit(float rate);
 	void SetTarget(float *target);
 	void SetTargetEl(float el, UINT ElNum);

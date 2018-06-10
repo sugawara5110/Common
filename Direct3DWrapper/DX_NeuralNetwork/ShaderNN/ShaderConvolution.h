@@ -8,6 +8,7 @@ char *ShaderConvolution =
 "RWStructuredBuffer<float> gInErr : register(u2);\n"
 "RWStructuredBuffer<float> gOutErr : register(u3);\n"
 "RWStructuredBuffer<float> gFilter : register(u4);\n"
+"RWStructuredBuffer<float> gDropOutF : register(u5);\n"
 
 "cbuffer global  : register(b0)\n"
 "{\n"
@@ -53,7 +54,8 @@ char *ShaderConvolution =
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
-"         tmp += gInput[InDetecInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i];\n"
+"         tmp += gInput[InDetecInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
+"                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)];\n"
 "      }\n"
 "   }\n"
 "   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
@@ -88,7 +90,8 @@ char *ShaderConvolution =
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
-"         tmp += gInput[InDetecInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i];\n"
+"         tmp += gInput[InDetecInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
+"                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)];\n"
 "      }\n"
 "   }\n"
 "   float relu = max(0, tmp);\n"
@@ -132,7 +135,7 @@ char *ShaderConvolution =
 "         tmp += gInErr[inStInd + inwid * (iy + fy) + (ix + fx)] * gFilter[filStInd + i];\n"
 "      }\n"
 "   }\n"
-"   gOutErr[outStInd + gWidHei.x * oy + ox] = tmp;\n"
+"   gOutErr[outStInd + gWidHei.x * oy + ox] = tmp * gDropOutF[outStInd + gWidHei.x * oy + ox];\n"
 "}\n"
 
 //フィルタ更新sigmoid

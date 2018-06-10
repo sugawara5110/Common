@@ -14,6 +14,7 @@ void DxConvolution::SetLearningLate(float rate) {
 
 DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectionnum, UINT elnumwid, UINT filstep) {
 
+	srand((unsigned)time(NULL));
 	detectionNum = detectionnum;
 	elNumWid = elnumwid;
 	ElNum = elNumWid * elNumWid;
@@ -45,6 +46,9 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 	for (UINT i = 0; i < FilNum * output_inerrOneNum; i++)
 		inputError[i] = 0.0f;
 
+	dropout = new float[FilNum * input_outerrOneNum];
+	for (UINT i = 0; i < FilNum * input_outerrOneNum; i++)dropout[i] = 1.0f;
+
 	SetWeightInit(0.2f);
 
 	dx = Dx12Process::GetInstance();
@@ -56,6 +60,25 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 	cb.filWid_filStep.x = elNumWid;
 	cb.filWid_filStep.y = filterStep;
 	mObjectCB->CopyData(0, cb);
+}
+
+void DxConvolution::SetDropOut() {
+
+	dx->Bigin(com_no);
+	for (UINT i = 0; i < FilNum * input_outerrOneNum; i++) {
+		dropout[i] = 1.0f;
+		int rnd = (rand() % 100) + 1;
+		if ((int)(dropThreshold * 100.0f) >= rnd) {
+			dropout[i] = 0.0f;
+		}
+	}
+	SubresourcesUp(dropout, FilNum * input_outerrOneNum, mDropOutFBuffer, mDropOutFUpBuffer);
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+}
+
+void DxConvolution::SetdropThreshold(float Threshold) {
+	dropThreshold = Threshold;
 }
 
 void DxConvolution::SetWeightInit(float rate) {
@@ -75,6 +98,7 @@ DxConvolution::~DxConvolution() {
 	ARR_DELETE(outputError);
 	ARR_DELETE(inputError);
 	S_DELETE(mObjectCB);
+	ARR_DELETE(dropout);
 }
 
 void DxConvolution::SetCommandList(int no) {
@@ -85,6 +109,13 @@ void DxConvolution::SetCommandList(int no) {
 void DxConvolution::ComCreate(bool sigon) {
 	//RWStructuredBuffer用gInput
 	CreateResourceDef(mInputBuffer, input_outerrOneSize * FilNum * detectionNum);
+
+	//RWStructuredBuffer用gDropout
+	CreateResourceDef(mDropOutFBuffer, input_outerrOneSize * FilNum);
+	//Up
+	CreateResourceUp(mDropOutFUpBuffer, input_outerrOneSize * FilNum);
+	//初期値コピー
+	SubresourcesUp(dropout, input_outerrOneNum * FilNum, mDropOutFBuffer, mDropOutFUpBuffer);
 
 	//RWStructuredBuffer用gOutput
 	CreateResourceDef(mOutputBuffer, output_inerrOneSize * FilNum * detectionNum);
@@ -123,14 +154,15 @@ void DxConvolution::ComCreate(bool sigon) {
 	SubresourcesUp(fil, ElNum * FilNum, mFilterBuffer, mFilterUpBuffer);
 
 	//ルートシグネチャ
-	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
 	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
 	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
 	slotRootParameter[2].InitAsUnorderedAccessView(2);//RWStructuredBuffer(u2)
 	slotRootParameter[3].InitAsUnorderedAccessView(3);//RWStructuredBuffer(u3)
 	slotRootParameter[4].InitAsUnorderedAccessView(4);//RWStructuredBuffer(u4)
-	slotRootParameter[5].InitAsConstantBufferView(0);//mObjectCB(b0)
-	mRootSignatureCom = CreateRsCompute(6, slotRootParameter);
+	slotRootParameter[5].InitAsUnorderedAccessView(5);//RWStructuredBuffer(u5)
+	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
+	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
 
 	if (sigon) {
 		pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPCS", "cs_5_0");
@@ -183,7 +215,8 @@ void DxConvolution::ForwardPropagation(UINT detectionnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(OutWid, OutHei * FilNum, detectionnum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -207,7 +240,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(Width, Height * FilNum, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -220,7 +253,8 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(OutWid, OutHei * FilNum, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -233,7 +267,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(5, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(elNumWid, elNumWid * FilNum, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -257,6 +291,7 @@ void DxConvolution::BackPropagation() {
 void DxConvolution::Query() {
 	//TestInput();
 	InputResourse();
+	SetDropOut();
 	ForwardPropagation(1);
 	//CopyOutputResourse();
 	TextureCopy(mFilterBuffer.Get(), com_no);

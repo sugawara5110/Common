@@ -3,18 +3,22 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderNeuralNetwork =
+"#define MAX_DEPTH_NUM 5\n"
+"#define MAX_OUTPUT_NUM 10\n"
+
 "RWStructuredBuffer<float> gInNode : register(u0);\n"
 "RWStructuredBuffer<float> gOutNode : register(u1);\n"
 "RWStructuredBuffer<float> gWeight : register(u2);\n"
 "RWStructuredBuffer<float> gInError : register(u3);\n"
 "RWStructuredBuffer<float> gOutError : register(u4);\n"
+"RWStructuredBuffer<float> gDropOutF : register(u5);\n"
 
 "cbuffer global  : register(b0)\n"
 "{\n"
 "    float4 gLear_Depth;\n"//学習率:x, 処理中深さ:y, MaxDepth:z
-"    float4 gNumNode[5];\n"//各層のNode数:x, gNode,gError各層開始インデックス:y
-"    float4 gNumWeight[4];\n"//gWeight各層開始インデックス:x
-"    float4 gTarget[10];\n"//target値:x
+"    float4 gNumNode[MAX_DEPTH_NUM];\n"//各層のNode数:x, gNode,gError各層開始インデックス:y
+"    float4 gNumWeight[MAX_DEPTH_NUM - 1];\n"//gWeight各層開始インデックス:x
+"    float4 gTarget[MAX_OUTPUT_NUM];\n"//target値:x
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -40,7 +44,8 @@ char *ShaderNeuralNetwork =
 "   int x = outid.x;\n"
 "   for(int i = 0; i < InNodeNum; i++)\n"
 "   {\n"
-"      tmp += gInNode[InNodeNum * detecInd + i] * gWeight[WeightStartInd + InNodeNum * x + i];\n"
+"      tmp += gInNode[InNodeNum * detecInd + i] * gWeight[WeightStartInd + InNodeNum * x + i] * \n"
+"             gDropOutF[i];\n"
 "   }\n"
 "   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
 "   gOutNode[OutNodeNum * detecInd + x] = sig;\n"
@@ -60,7 +65,8 @@ char *ShaderNeuralNetwork =
 "   int x = outid.x;\n"
 "   for(int i = 0; i < InNodeNum; i++)\n"
 "   {\n"
-"      tmp += gInNode[InNodeNum * detecInd + i] * gWeight[WeightStartInd + InNodeNum * x + i];\n"
+"      tmp += gInNode[InNodeNum * detecInd + i] * gWeight[WeightStartInd + InNodeNum * x + i] * \n"
+"             gDropOutF[i];\n"
 "   }\n"
 "   float sigre = 0.0f;"
 "   if(gLear_Depth.y + 1 == gLear_Depth.z)sigre = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"//最下層のみsigmoid
@@ -91,7 +97,7 @@ char *ShaderNeuralNetwork =
 "   {\n"
 "      tmp += gOutError[i] * gWeight[WeightStartInd + InNodeNum * i + x];\n"
 "   }\n"
-"   gInError[x] = tmp;\n"
+"   gInError[x] = tmp * gDropOutF[x];\n"
 "}\n"
 
 //weight値更新sigmoid

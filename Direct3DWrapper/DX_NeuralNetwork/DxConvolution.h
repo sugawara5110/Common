@@ -16,6 +16,8 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[4] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFUpBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputReadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInErrorUpBuffer = nullptr;
@@ -48,6 +50,9 @@ protected:
 	UINT64 input_outerrOneSize = 0;
 	UINT64 output_inerrOneSize = 0;
 
+	float *dropout = nullptr;
+	float dropThreshold = 0.5f;//閾値
+
 	//畳込みフィルター
 	float *fil = nullptr;
 	//畳込み前
@@ -60,7 +65,7 @@ protected:
 	float *outputError = nullptr;
 
 	float learningRate = 0.1f;
-	
+
 	DxConvolution() {}
 	void ForwardPropagation(UINT detectionnum);
 	void BackPropagation();
@@ -70,6 +75,7 @@ protected:
 	void CopyOutputErrResourse();
 	void CopyFilterResourse();
 	void ComCreate(bool sigon);
+	void SetDropOut();
 
 	void TestFilter();
 	void TestInput();
@@ -83,6 +89,7 @@ public:
 	void SetCommandList(int no);
 	void ComCreateSigmoid();
 	void ComCreateReLU();
+	void SetdropThreshold(float Threshold);//検出時は0.0f設定にする
 	void Query();
 	void Training();
 	void Detection(UINT detectionnum);

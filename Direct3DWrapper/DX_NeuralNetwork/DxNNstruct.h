@@ -9,12 +9,15 @@
 
 #include "../DX_3DCG/Dx12ProcessCore.h"
 
+#define MAX_DEPTH_NUM 5
+#define MAX_OUTPUT_NUM 10
+
 //NeuralNetwork
 struct CONSTANT_BUFFER_NeuralNetwork {
 	VECTOR4 Lear_Depth;//学習率:x, 処理中深さ:y, MaxDepth:z
-	VECTOR4 NumNode[5];//各層のNode数:x, gNode,gError各層開始インデックス:y
-	VECTOR4 NumWeight[4];//gWeight各層開始インデックス:x
-	VECTOR4 Target[10];//target値:x
+	VECTOR4 NumNode[MAX_DEPTH_NUM];//各層のNode数:x, gNode,gError各層開始インデックス:y
+	VECTOR4 NumWeight[MAX_DEPTH_NUM - 1];//gWeight各層開始インデックス:x
+	VECTOR4 Target[MAX_OUTPUT_NUM];//target値:x
 };
 
 //Pooling
