@@ -9,10 +9,10 @@
 #include <random>
 #include "ShaderNN\ShaderNeuralNetwork.h"
 
-DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT detectionnum) {
+DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT inputsetnum) {
 
 	srand((unsigned)time(NULL));
-	detectionNum = detectionnum;
+	inputSetNum = inputsetnum;
 	Split = split;
 	NumNode = numNode;
 	NumNode[0] *= Split;
@@ -39,11 +39,11 @@ DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT dete
 	}
 	weightNumAll = cnt;
 
-	input = new float[NumNode[0] * detectionNum];
-	error = new float[NumNode[0]];
+	input = new float[NumNode[0] * inputSetNum];
+	error = new float[NumNode[0] * inputSetNum];
 	weight = new float[weightNumAll];
 
-	output = new float[NumNode[Depth - 1] * detectionNum];
+	output = new float[NumNode[Depth - 1] * inputSetNum];
 	target = new float[NumNode[Depth - 1]];
 	for (UINT i = 0; i < NumNode[Depth - 1]; i++)target[i] = 0.0f;
 
@@ -137,15 +137,16 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	for (int i = 0; i < Depth - 1; i++) {
 		cb.NumWeight[i].x = NumWeightStIndex[i];
 	}
-	cb.Lear_Depth.z = (float)Depth - 1;
+	cb.Lear_Depth_inputS.z = (float)Depth - 1;
+	cb.Lear_Depth_inputS.w = (float)inputSetNum;
 
 	weight_byteSize = weightNumAll * sizeof(float);
 
 	for (int i = 0; i < Depth; i++) {
 		//RWStructuredBuffer用gNode
-		CreateResourceDef(mNodeBuffer[i], detectionNum * NumNode[i] * sizeof(float));
+		CreateResourceDef(mNodeBuffer[i], inputSetNum * NumNode[i] * sizeof(float));
 		//RWStructuredBuffer用gError
-		CreateResourceDef(mErrorBuffer[i], NumNode[i] * sizeof(float));
+		CreateResourceDef(mErrorBuffer[i], inputSetNum * NumNode[i] * sizeof(float));
 	}
 
 	//RWStructuredBuffer用gWeight
@@ -161,19 +162,19 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	}
 
 	//up用gNode
-	CreateResourceUp(mNodeUpBuffer, detectionNum * NumNode[0] * sizeof(float));
+	CreateResourceUp(mNodeUpBuffer, inputSetNum * NumNode[0] * sizeof(float));
 
 	//up用gWeight
 	CreateResourceUp(mWeightUpBuffer, weight_byteSize);
 
 	//read用gNode
-	CreateResourceRead(mNodeReadBuffer, detectionNum * NumNode[Depth - 1] * sizeof(float));
+	CreateResourceRead(mNodeReadBuffer, inputSetNum * NumNode[Depth - 1] * sizeof(float));
 
 	//read用gWeight
 	CreateResourceRead(mWeightReadBuffer, weight_byteSize);
 
 	//read用gError
-	CreateResourceRead(mErrorReadBuffer, NumNode[0] * sizeof(float));
+	CreateResourceRead(mErrorReadBuffer, inputSetNum * NumNode[0] * sizeof(float));
 
 	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
 
@@ -211,7 +212,7 @@ void DxNeuralNetwork::ComCreateReLU() {
 	ComCreate(false);
 }
 
-void DxNeuralNetwork::ForwardPropagation(UINT detectionnum) {
+void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
 	for (int i = 0; i < Depth - 1; i++) {
 		dx->Bigin(com_no);
 		mCommandList->SetPipelineState(mPSOCom[0].Get());
@@ -220,14 +221,14 @@ void DxNeuralNetwork::ForwardPropagation(UINT detectionnum) {
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
-		cb.Lear_Depth.x = learningRate;
-		cb.Lear_Depth.y = i;
+		cb.Lear_Depth_inputS.x = learningRate;
+		cb.Lear_Depth_inputS.y = i;
 		for (UINT i1 = 0; i1 < NumNode[Depth - 1]; i1++)
 			cb.Target[i1].x = target[i1];
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		//Dispatchは1回毎にGPU処理完了させる事
-		mCommandList->Dispatch(NumNode[i + 1], 1, detectionnum);
+		mCommandList->Dispatch(NumNode[i + 1], 1, inputsetnum);
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}
@@ -249,10 +250,10 @@ void DxNeuralNetwork::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[Depth - 1]->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[Depth - 1]->GetGPUVirtualAddress());
-	cb.Lear_Depth.y = Depth - 1;
+	cb.Lear_Depth_inputS.y = Depth - 1;
 	mObjectCB->CopyData(0, cb);
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(NumNode[Depth - 1], 1, 1);
+	mCommandList->Dispatch(NumNode[Depth - 1], 1, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -265,10 +266,10 @@ void DxNeuralNetwork::BackPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
-		cb.Lear_Depth.y = i;
+		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i], 1, 1);
+		mCommandList->Dispatch(NumNode[i], 1, inputSetNum);
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}
@@ -282,7 +283,7 @@ void DxNeuralNetwork::BackPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
-		cb.Lear_Depth.y = i;
+		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i], NumNode[i + 1], 1);
@@ -309,11 +310,11 @@ void DxNeuralNetwork::BackPropagation() {
 void DxNeuralNetwork::CopyOutputResourse() {
 	D3D12_RANGE range;
 	range.Begin = 0;
-	range.End = detectionNum * NumNode[Depth - 1] * sizeof(float);
+	range.End = inputSetNum * NumNode[Depth - 1] * sizeof(float);
 	D3D12_SUBRESOURCE_DATA subResource;
 	mNodeReadBuffer->Map(0, &range, reinterpret_cast<void**>(&subResource));
 	float *nod = (float*)subResource.pData;
-	for (UINT i = 0; i < detectionNum * NumNode[Depth - 1]; i++) {
+	for (UINT i = 0; i < inputSetNum * NumNode[Depth - 1]; i++) {
 		output[i] = nod[i];
 	}
 	mNodeReadBuffer->Unmap(0, nullptr);
@@ -337,11 +338,11 @@ void DxNeuralNetwork::CopyWeightResourse() {
 void DxNeuralNetwork::CopyErrorResourse() {
 	D3D12_RANGE range;
 	range.Begin = 0;
-	range.End = NumNode[0] * sizeof(float);
+	range.End = inputSetNum * NumNode[0] * sizeof(float);
 	D3D12_SUBRESOURCE_DATA subResource;
 	mErrorReadBuffer->Map(0, &range, reinterpret_cast<void**>(&subResource));
 	float *err = (float*)subResource.pData;
-	for (UINT i = 0; i < NumNode[0]; i++) {
+	for (UINT i = 0; i < inputSetNum * NumNode[0]; i++) {
 		error[i] = err[i];
 	}
 	mErrorReadBuffer->Unmap(0, nullptr);
@@ -359,41 +360,41 @@ void DxNeuralNetwork::SetTargetEl(float el, UINT ElNum) {
 	target[ElNum] = el;
 }
 
-void DxNeuralNetwork::FirstInput(float el, UINT ElNum, UINT detectionInd) {
-	for (UINT i = 0; i < Split; i++)InputArrayEl(el, i, ElNum, detectionInd);
+void DxNeuralNetwork::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
+	for (UINT i = 0; i < Split; i++)InputArrayEl(el, i, ElNum, inputsetInd);
 	firstIn = true;
 }
 
-void DxNeuralNetwork::InputArray(float *inArr, UINT arrNum, UINT detectionInd) {
-	memcpy(&input[NumNode[0] * detectionInd + (NumNode[0] / Split) * arrNum], inArr, sizeof(float) * (NumNode[0] / Split));
+void DxNeuralNetwork::InputArray(float *inArr, UINT arrNum, UINT inputsetInd) {
+	memcpy(&input[NumNode[0] * inputsetInd + (NumNode[0] / Split) * arrNum], inArr, sizeof(float) * (NumNode[0] / Split));
 }
 
-void DxNeuralNetwork::InputArrayEl(float el, UINT arrNum, UINT ElNum, UINT detectionInd) {
-	input[NumNode[0] * detectionInd + (NumNode[0] / Split) * arrNum + ElNum] = el;
+void DxNeuralNetwork::InputArrayEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	input[NumNode[0] * inputsetInd + (NumNode[0] / Split) * arrNum + ElNum] = el;
 }
 
 void DxNeuralNetwork::InputResourse() {
 	if (!firstIn)return;
 	dx->Bigin(com_no);
-	SubresourcesUp(input, NumNode[0] * detectionNum, mNodeBuffer[0], mNodeUpBuffer);
+	SubresourcesUp(input, NumNode[0] * inputSetNum, mNodeBuffer[0], mNodeUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	firstIn = false;
 }
 
-void DxNeuralNetwork::GetOutput(float *out, UINT detectionInd) {
+void DxNeuralNetwork::GetOutput(float *out, UINT inputsetInd) {
 	for (UINT i = 0; i < NumNode[Depth - 1]; i++) {
-		out[i] = output[NumNode[Depth - 1] * detectionInd + i];
+		out[i] = output[NumNode[Depth - 1] * inputsetInd + i];
 	}
 }
 
-float DxNeuralNetwork::GetOutputEl(UINT ElNum, UINT detectionInd) {
-	return output[NumNode[Depth - 1] * detectionInd + ElNum];
+float DxNeuralNetwork::GetOutputEl(UINT ElNum, UINT inputsetInd) {
+	return output[NumNode[Depth - 1] * inputsetInd + ElNum];
 }
 
-void DxNeuralNetwork::Query(UINT detectionnum) {
+void DxNeuralNetwork::Query(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(detectionnum);
+	ForwardPropagation(inputsetnum);
 	CopyOutputResourse();
 	InverseQuery();
 	TextureCopy(mNodeBuffer[0].Get(), com_no);
@@ -402,7 +403,7 @@ void DxNeuralNetwork::Query(UINT detectionnum) {
 void DxNeuralNetwork::Training() {
 	InputResourse();
 	SetDropOut();
-	ForwardPropagation(1);
+	ForwardPropagation(inputSetNum);
 	CopyOutputResourse();
 
 	BackPropagation();
@@ -414,12 +415,12 @@ void DxNeuralNetwork::Training() {
 	TextureCopy(mNodeBuffer[0].Get(), com_no);
 }
 
-float *DxNeuralNetwork::GetError(UINT arrNum) {
-	return &error[(NumNode[0] / Split) * arrNum];
+float *DxNeuralNetwork::GetError(UINT arrNum, UINT inputsetInd) {
+	return &error[(NumNode[0] / Split) * arrNum + inputsetInd * NumNode[0]];
 }
 
-float DxNeuralNetwork::GetErrorEl(UINT arrNum, UINT ElNum) {
-	return error[(NumNode[0] / Split) * arrNum + ElNum];
+float DxNeuralNetwork::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	return error[(NumNode[0] / Split) * arrNum + inputsetInd * NumNode[0] + ElNum];
 }
 
 void DxNeuralNetwork::InverseQuery() {
@@ -431,7 +432,7 @@ void DxNeuralNetwork::InverseQuery() {
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i - 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
-		cb.Lear_Depth.y = i;
+		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i - 1], 1, 1);

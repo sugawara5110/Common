@@ -46,10 +46,10 @@ protected:
 	UINT64 input_outerrOneSize = 0;
 	UINT64 output_inerrOneSize = 0;
 	UINT PoolNum = 1;
-	UINT detectionNum = 1;
+	UINT inputSetNum = 1;
 
 	DxPooling() {}
-	void ForwardPropagation(UINT detectionnum);
+	void ForwardPropagation(UINT inputsetnum);
 	void BackPropagation();
 	void InputResourse();
 	void InputErrResourse();
@@ -57,22 +57,22 @@ protected:
 	void CopyOutputErrResourse();
 
 public:
-	DxPooling(UINT width, UINT height, UINT poolNum, UINT detectionnum = 1);
+	DxPooling(UINT width, UINT height, UINT poolNum, UINT inputsetnum = 1);
 	~DxPooling();
 	void SetCommandList(int no);
 	void ComCreate();
-	void FirstInput(float el, UINT ElNum, UINT detectionInd = 0);
-	void Input(float *inArr, UINT arrNum, UINT detectionInd = 0);
-	void InputEl(float el, UINT arrNum, UINT ElNum, UINT detectionInd = 0);
-	void InputError(float *inArr, UINT arrNum);
-	void InputErrorEl(float el, UINT arrNum, UINT ElNum);
+	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);
+	void Input(float *inArr, UINT arrNum, UINT inputsetInd = 0);
+	void InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
+	void InputError(float *inArr, UINT arrNum, UINT inputsetInd = 0);
+	void InputErrorEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	void Query();
 	void Training();
-	void Detection(UINT detectionnum);
-	float *Output(UINT arrNum, UINT detectionInd = 0);
-	float OutputEl(UINT arrNum, UINT ElNum, UINT detectionInd = 0);
-	float *GetError(UINT arrNum);
-	float GetErrorEl(UINT arrNum, UINT ElNum);
+	void Detection(UINT inputsetnum);
+	float *Output(UINT arrNum, UINT inputsetInd = 0);
+	float OutputEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
+	float *GetError(UINT arrNum, UINT inputsetInd = 0);
+	float GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	void SetInputResource(ID3D12Resource *res);
 	void SetInErrorResource(ID3D12Resource *res);
 	ID3D12Resource *GetOutErrorResource();

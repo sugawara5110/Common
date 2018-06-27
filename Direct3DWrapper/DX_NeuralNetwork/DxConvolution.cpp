@@ -12,10 +12,10 @@ void DxConvolution::SetLearningLate(float rate) {
 	learningRate = rate;
 }
 
-DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectionnum, UINT elnumwid, UINT filstep) {
+DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputsetnum, UINT elnumwid, UINT filstep) {
 
 	srand((unsigned)time(NULL));
-	detectionNum = detectionnum;
+	inputSetNum = inputsetnum;
 	elNumWid = elnumwid;
 	ElNum = elNumWid * elNumWid;
 	filterStep = filstep;
@@ -37,13 +37,13 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 	output_inerrOneNum = OutWid * OutHei;
 	output_inerrOneSize = output_inerrOneNum * sizeof(float);
 	fil = new float[FilNum * ElNum];
-	input = new float[FilNum * input_outerrOneNum * detectionNum];
-	output = new float[FilNum * output_inerrOneNum * detectionNum];
-	outputError = new float[FilNum * input_outerrOneNum];
-	inputError = new float[FilNum * output_inerrOneNum];
-	for (UINT i = 0; i < FilNum * input_outerrOneNum * detectionNum; i++)
+	input = new float[FilNum * input_outerrOneNum * inputSetNum];
+	output = new float[FilNum * output_inerrOneNum * inputSetNum];
+	outputError = new float[FilNum * input_outerrOneNum * inputSetNum];
+	inputError = new float[FilNum * output_inerrOneNum * inputSetNum];
+	for (UINT i = 0; i < FilNum * input_outerrOneNum * inputSetNum; i++)
 		input[i] = 0.0f;
-	for (UINT i = 0; i < FilNum * output_inerrOneNum; i++)
+	for (UINT i = 0; i < FilNum * output_inerrOneNum * inputSetNum; i++)
 		inputError[i] = 0.0f;
 
 	dropout = new float[FilNum * input_outerrOneNum];
@@ -59,6 +59,7 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT detectio
 	cb.WidHei.z = FilNum;
 	cb.filWid_filStep.x = elNumWid;
 	cb.filWid_filStep.y = filterStep;
+	cb.Lear_inputS.y = inputSetNum;
 	mObjectCB->CopyData(0, cb);
 }
 
@@ -108,7 +109,7 @@ void DxConvolution::SetCommandList(int no) {
 
 void DxConvolution::ComCreate(bool sigon) {
 	//RWStructuredBuffer用gInput
-	CreateResourceDef(mInputBuffer, input_outerrOneSize * FilNum * detectionNum);
+	CreateResourceDef(mInputBuffer, input_outerrOneSize * FilNum * inputSetNum);
 
 	//RWStructuredBuffer用gDropout
 	CreateResourceDef(mDropOutFBuffer, input_outerrOneSize * FilNum);
@@ -118,38 +119,38 @@ void DxConvolution::ComCreate(bool sigon) {
 	SubresourcesUp(dropout, input_outerrOneNum * FilNum, mDropOutFBuffer, mDropOutFUpBuffer);
 
 	//RWStructuredBuffer用gOutput
-	CreateResourceDef(mOutputBuffer, output_inerrOneSize * FilNum * detectionNum);
+	CreateResourceDef(mOutputBuffer, output_inerrOneSize * FilNum * inputSetNum);
 
 	//RWStructuredBuffer用gInErr
-	CreateResourceDef(mInErrorBuffer, output_inerrOneSize * FilNum);
+	CreateResourceDef(mInErrorBuffer, output_inerrOneSize * FilNum * inputSetNum);
 
 	//RWStructuredBuffer用gOutErr
-	CreateResourceDef(mOutErrorBuffer, input_outerrOneSize * FilNum);
+	CreateResourceDef(mOutErrorBuffer, input_outerrOneSize * FilNum * inputSetNum);
 
 	//RWStructuredBuffer用gFilter
 	CreateResourceDef(mFilterBuffer, filSize * FilNum);
 
 	//up用gInput
-	CreateResourceUp(mInputUpBuffer, input_outerrOneSize * FilNum * detectionNum);
+	CreateResourceUp(mInputUpBuffer, input_outerrOneSize * FilNum * inputSetNum);
 
 	//up用gInErr
-	CreateResourceUp(mInErrorUpBuffer, output_inerrOneSize * FilNum);
+	CreateResourceUp(mInErrorUpBuffer, output_inerrOneSize * FilNum * inputSetNum);
 
 	//up用gFilter
 	CreateResourceUp(mFilterUpBuffer, filSize * FilNum);
 
 	//read用gOutput
-	CreateResourceRead(mOutputReadBuffer, output_inerrOneSize * FilNum * detectionNum);
+	CreateResourceRead(mOutputReadBuffer, output_inerrOneSize * FilNum * inputSetNum);
 
 	//read用gOutErr
-	CreateResourceRead(mOutErrorReadBuffer, input_outerrOneSize * FilNum);
+	CreateResourceRead(mOutErrorReadBuffer, input_outerrOneSize * FilNum * inputSetNum);
 
 	//read用gFilter
 	CreateResourceRead(mFilterReadBuffer, filSize * FilNum);
 
-	SubresourcesUp(input, input_outerrOneNum * FilNum * detectionNum, mInputBuffer, mInputUpBuffer);
+	SubresourcesUp(input, input_outerrOneNum * FilNum * inputSetNum, mInputBuffer, mInputUpBuffer);
 
-	SubresourcesUp(inputError, output_inerrOneNum * FilNum, mInErrorBuffer, mInErrorUpBuffer);
+	SubresourcesUp(inputError, output_inerrOneNum * FilNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 
 	SubresourcesUp(fil, ElNum * FilNum, mFilterBuffer, mFilterUpBuffer);
 
@@ -187,25 +188,25 @@ void DxConvolution::ComCreateReLU() {
 	ComCreate(false);
 }
 
-void DxConvolution::FirstInput(float el, UINT ElNum, UINT detectionInd) {
-	for (UINT i = 0; i < FilNum; i++)InputEl(el - 0.5f, i, ElNum, detectionInd);
+void DxConvolution::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
+	for (UINT i = 0; i < FilNum; i++)InputEl(el - 0.5f, i, ElNum, inputsetInd);
 	firstIn = true;
 }
 
-void DxConvolution::InputEl(float el, UINT arrNum, UINT ElNum, UINT detectionInd) {
-	input[input_outerrOneNum * FilNum * detectionInd + arrNum * input_outerrOneNum + ElNum] = el;
+void DxConvolution::InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	input[input_outerrOneNum * FilNum * inputsetInd + arrNum * input_outerrOneNum + ElNum] = el;
 }
 
-void DxConvolution::Input(float *inArr, UINT arrNum, UINT detectionInd) {
-	memcpy(&input[input_outerrOneNum * FilNum * detectionInd + arrNum * input_outerrOneNum], inArr, input_outerrOneSize);
+void DxConvolution::Input(float *inArr, UINT arrNum, UINT inputsetInd) {
+	memcpy(&input[input_outerrOneNum * FilNum * inputsetInd + arrNum * input_outerrOneNum], inArr, input_outerrOneSize);
 }
 
-void DxConvolution::InputError(float *inArr, UINT arrNum) {
-	memcpy(&inputError[arrNum * output_inerrOneNum], inArr, output_inerrOneSize);
+void DxConvolution::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
+	memcpy(&inputError[inputsetInd * output_inerrOneNum * FilNum + arrNum * output_inerrOneNum], inArr, output_inerrOneSize);
 }
 
-void DxConvolution::ForwardPropagation(UINT detectionnum) {
-	cb.Lear.x = learningRate;
+void DxConvolution::ForwardPropagation(UINT inputsetnum) {
+	cb.Lear_inputS.x = learningRate;
 	mObjectCB->CopyData(0, cb);
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[0].Get());
@@ -217,7 +218,7 @@ void DxConvolution::ForwardPropagation(UINT detectionnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * FilNum, detectionnum);
+	mCommandList->Dispatch(OutWid, OutHei * FilNum, inputsetnum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -241,7 +242,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width, Height * FilNum, 1);
+	mCommandList->Dispatch(Width, Height * FilNum, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -255,7 +256,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * FilNum, 1);
+	mCommandList->Dispatch(OutWid, OutHei * FilNum, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -292,7 +293,7 @@ void DxConvolution::Query() {
 	//TestInput();
 	InputResourse();
 	SetDropOut();
-	ForwardPropagation(1);
+	ForwardPropagation(inputSetNum);
 	//CopyOutputResourse();
 	TextureCopy(mFilterBuffer.Get(), com_no);
 	//TestOutput();
@@ -309,9 +310,9 @@ void DxConvolution::Training() {
 	//TestOutErr();
 }
 
-void DxConvolution::Detection(UINT detectionnum) {
+void DxConvolution::Detection(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(detectionnum);
+	ForwardPropagation(inputsetnum);
 	TextureCopy(mFilterBuffer.Get(), com_no);
 }
 
@@ -388,7 +389,7 @@ void DxConvolution::TestOutErr() {
 void DxConvolution::InputResourse() {
 	if (!firstIn)return;
 	dx->Bigin(com_no);
-	SubresourcesUp(input, input_outerrOneNum * FilNum * detectionNum, mInputBuffer, mInputUpBuffer);
+	SubresourcesUp(input, input_outerrOneNum * FilNum * inputSetNum, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	firstIn = false;
@@ -396,7 +397,7 @@ void DxConvolution::InputResourse() {
 
 void DxConvolution::InputErrResourse() {
 	dx->Bigin(com_no);
-	SubresourcesUp(inputError, output_inerrOneNum * FilNum, mInErrorBuffer, mInErrorUpBuffer);
+	SubresourcesUp(inputError, output_inerrOneNum * FilNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }
@@ -404,20 +405,20 @@ void DxConvolution::InputErrResourse() {
 void DxConvolution::CopyOutputResourse() {
 	D3D12_RANGE range;
 	range.Begin = 0;
-	range.End = output_inerrOneSize * FilNum * detectionNum;
+	range.End = output_inerrOneSize * FilNum * inputSetNum;
 	float *out = nullptr;
 	mOutputReadBuffer->Map(0, &range, reinterpret_cast<void**>(&out));
-	memcpy(output, out, output_inerrOneSize * FilNum * detectionNum);
+	memcpy(output, out, output_inerrOneSize * FilNum * inputSetNum);
 	mOutputReadBuffer->Unmap(0, nullptr);
 }
 
 void DxConvolution::CopyOutputErrResourse() {
 	D3D12_RANGE range;
 	range.Begin = 0;
-	range.End = input_outerrOneSize * FilNum;
+	range.End = input_outerrOneSize * FilNum * inputSetNum;
 	float *out = nullptr;
 	mOutErrorReadBuffer->Map(0, &range, reinterpret_cast<void**>(&out));
-	memcpy(outputError, out, input_outerrOneSize * FilNum);
+	memcpy(outputError, out, input_outerrOneSize * FilNum * inputSetNum);
 	mOutErrorReadBuffer->Unmap(0, nullptr);
 }
 
@@ -431,24 +432,24 @@ void DxConvolution::CopyFilterResourse() {
 	mFilterReadBuffer->Unmap(0, nullptr);
 }
 
-float *DxConvolution::Output(UINT arrNum, UINT detectionInd) {
-	return &output[output_inerrOneNum * FilNum * detectionNum + arrNum * output_inerrOneNum];
+float *DxConvolution::Output(UINT arrNum, UINT inputsetInd) {
+	return &output[output_inerrOneNum * FilNum * inputsetInd + arrNum * output_inerrOneNum];
 }
 
-float DxConvolution::OutputEl(UINT arrNum, UINT ElNum, UINT detectionInd) {
-	return output[output_inerrOneNum * FilNum * detectionNum + arrNum * output_inerrOneNum + ElNum];
+float DxConvolution::OutputEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	return output[output_inerrOneNum * FilNum * inputsetInd + arrNum * output_inerrOneNum + ElNum];
 }
 
 float DxConvolution::OutputFilter(UINT arrNum, UINT elNum) {
 	return fil[arrNum * ElNum + elNum];
 }
 
-float *DxConvolution::GetError(UINT arrNum) {
-	return &outputError[arrNum * input_outerrOneNum];
+float *DxConvolution::GetError(UINT arrNum, UINT inputsetInd) {
+	return &outputError[inputsetInd * input_outerrOneNum * FilNum + arrNum * input_outerrOneNum];
 }
 
-float DxConvolution::GetErrorEl(UINT arrNum, UINT ElNum) {
-	return outputError[arrNum * input_outerrOneNum + ElNum];
+float DxConvolution::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	return outputError[inputsetInd * input_outerrOneNum * FilNum + arrNum * input_outerrOneNum + ElNum];
 }
 
 void DxConvolution::SaveData(UINT Num) {

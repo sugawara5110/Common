@@ -7,9 +7,9 @@
 #include "DxPooling.h"
 #include "ShaderNN\ShaderPooling.h"
 
-DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT detectionnum) {
+DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT inputsetnum) {
 
-	detectionNum = detectionnum;
+	inputSetNum = inputsetnum;
 	PoolNum = poolNum;
 	Width = width;
 	Height = height;
@@ -21,13 +21,13 @@ DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT detectionnum) {
 	input_outerrOneSize = input_outerrOneNum * sizeof(float);
 	output_inerrOneSize = output_inerrOneNum * sizeof(float);
 
-	input = new float[input_outerrOneNum * PoolNum * detectionNum];
-	outerror = new float[input_outerrOneNum * PoolNum];
-	output = new float[output_inerrOneNum * PoolNum * detectionNum];
-	inerror = new float[output_inerrOneNum * PoolNum];
+	input = new float[input_outerrOneNum * PoolNum * inputSetNum];
+	outerror = new float[input_outerrOneNum * PoolNum * inputSetNum];
+	output = new float[output_inerrOneNum * PoolNum * inputSetNum];
+	inerror = new float[output_inerrOneNum * PoolNum * inputSetNum];
 
-	for (UINT i = 0; i < input_outerrOneNum * PoolNum * detectionNum; i++)input[i] = 0.0f;
-	for (UINT i = 0; i < output_inerrOneNum * PoolNum; i++)inerror[i] = 0.0f;
+	for (UINT i = 0; i < input_outerrOneNum * PoolNum * inputSetNum; i++)input[i] = 0.0f;
+	for (UINT i = 0; i < output_inerrOneNum * PoolNum * inputSetNum; i++)inerror[i] = 0.0f;
 
 	OutWid = Width / PONUM;
 	OutHei = Height / PONUM;
@@ -57,32 +57,32 @@ void DxPooling::SetCommandList(int no) {
 
 void DxPooling::ComCreate() {
 	//RWStructuredBuffer用gInput
-	CreateResourceDef(mInputBuffer, input_outerrOneSize * PoolNum * detectionNum);
+	CreateResourceDef(mInputBuffer, input_outerrOneSize * PoolNum * inputSetNum);
 
 	//RWStructuredBuffer用gOutput
-	CreateResourceDef(mOutputBuffer, output_inerrOneSize * PoolNum * detectionNum);
+	CreateResourceDef(mOutputBuffer, output_inerrOneSize * PoolNum * inputSetNum);
 
 	//RWStructuredBuffer用gInErr
-	CreateResourceDef(mInErrorBuffer, output_inerrOneSize * PoolNum);
+	CreateResourceDef(mInErrorBuffer, output_inerrOneSize * PoolNum * inputSetNum);
 
 	//RWStructuredBuffer用gOutErr
-	CreateResourceDef(mOutErrorBuffer, input_outerrOneSize * PoolNum);
+	CreateResourceDef(mOutErrorBuffer, input_outerrOneSize * PoolNum * inputSetNum);
 
 	//up用gInput
-	CreateResourceUp(mInputUpBuffer, input_outerrOneSize * PoolNum * detectionNum);
+	CreateResourceUp(mInputUpBuffer, input_outerrOneSize * PoolNum * inputSetNum);
 
 	//up用gInErr
-	CreateResourceUp(mInErrorUpBuffer, output_inerrOneSize * PoolNum);
+	CreateResourceUp(mInErrorUpBuffer, output_inerrOneSize * PoolNum * inputSetNum);
 
 	//read用gOutput
-	CreateResourceRead(mOutputReadBuffer, output_inerrOneSize * PoolNum * detectionNum);
+	CreateResourceRead(mOutputReadBuffer, output_inerrOneSize * PoolNum * inputSetNum);
 
 	//read用gOutErr
-	CreateResourceRead(mOutErrorReadBuffer, input_outerrOneSize * PoolNum);
+	CreateResourceRead(mOutErrorReadBuffer, input_outerrOneSize * PoolNum * inputSetNum);
 
-	SubresourcesUp(input, input_outerrOneNum * PoolNum * detectionNum, mInputBuffer, mInputUpBuffer);
+	SubresourcesUp(input, input_outerrOneNum * PoolNum * inputSetNum, mInputBuffer, mInputUpBuffer);
 
-	SubresourcesUp(inerror, output_inerrOneNum * PoolNum, mInErrorBuffer, mInErrorUpBuffer);
+	SubresourcesUp(inerror, output_inerrOneNum * PoolNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 
 	//ルートシグネチャ
 	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
@@ -99,20 +99,20 @@ void DxPooling::ComCreate() {
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
-void DxPooling::FirstInput(float el, UINT ElNum, UINT detectionInd) {
-	for (UINT i = 0; i < PoolNum; i++)InputEl(el - 0.5f, i, ElNum, detectionInd);
+void DxPooling::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
+	for (UINT i = 0; i < PoolNum; i++)InputEl(el - 0.5f, i, ElNum, inputsetInd);
 	firstIn = true;
 }
 
-void DxPooling::Input(float *inArr, UINT arrNum, UINT detectionInd) {
-	memcpy(&input[input_outerrOneNum * PoolNum * detectionInd + arrNum * input_outerrOneNum], inArr, input_outerrOneSize);
+void DxPooling::Input(float *inArr, UINT arrNum, UINT inputsetInd) {
+	memcpy(&input[input_outerrOneNum * PoolNum * inputsetInd + arrNum * input_outerrOneNum], inArr, input_outerrOneSize);
 }
 
-void DxPooling::InputEl(float el, UINT arrNum, UINT ElNum, UINT detectionInd) {
-	input[input_outerrOneNum * PoolNum * detectionInd + arrNum * input_outerrOneNum + ElNum] = el;
+void DxPooling::InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	input[input_outerrOneNum * PoolNum * inputsetInd + arrNum * input_outerrOneNum + ElNum] = el;
 }
 
-void DxPooling::ForwardPropagation(UINT detectionnum) {
+void DxPooling::ForwardPropagation(UINT inputsetnum) {
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[0].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -121,7 +121,7 @@ void DxPooling::ForwardPropagation(UINT detectionnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * PoolNum, detectionnum);
+	mCommandList->Dispatch(OutWid, OutHei * PoolNum, inputsetnum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -144,7 +144,7 @@ void DxPooling::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * PoolNum, 1);
+	mCommandList->Dispatch(OutWid, OutHei * PoolNum, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -160,7 +160,7 @@ void DxPooling::BackPropagation() {
 
 void DxPooling::Query() {
 	InputResourse();
-	ForwardPropagation(1);
+	ForwardPropagation(inputSetNum);
 	//CopyOutputResourse();
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
@@ -171,16 +171,16 @@ void DxPooling::Training() {
 	//CopyOutputErrResourse();
 }
 
-void DxPooling::Detection(UINT detectionnum) {
+void DxPooling::Detection(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(detectionnum);
+	ForwardPropagation(inputsetnum);
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
 
 void DxPooling::InputResourse() {
 	if (!firstIn)return;
 	dx->Bigin(com_no);
-	SubresourcesUp(input, input_outerrOneNum * PoolNum * detectionNum, mInputBuffer, mInputUpBuffer);
+	SubresourcesUp(input, input_outerrOneNum * PoolNum * inputSetNum, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	firstIn = false;
@@ -188,7 +188,7 @@ void DxPooling::InputResourse() {
 
 void DxPooling::InputErrResourse() {
 	dx->Bigin(com_no);
-	SubresourcesUp(inerror, output_inerrOneNum * PoolNum, mInErrorBuffer, mInErrorUpBuffer);
+	SubresourcesUp(inerror, output_inerrOneNum * PoolNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }
@@ -196,45 +196,45 @@ void DxPooling::InputErrResourse() {
 void DxPooling::CopyOutputResourse() {
 	D3D12_RANGE range;
 	range.Begin = 0;
-	range.End = detectionNum * output_inerrOneSize * PoolNum;
+	range.End = inputSetNum * output_inerrOneSize * PoolNum;
 	float *out = nullptr;
 	mOutputReadBuffer->Map(0, &range, reinterpret_cast<void**>(&out));
-	memcpy(output, out, detectionNum * output_inerrOneSize * PoolNum);
+	memcpy(output, out, inputSetNum * output_inerrOneSize * PoolNum);
 	mOutputReadBuffer->Unmap(0, nullptr);
 }
 
 void DxPooling::CopyOutputErrResourse() {
 	D3D12_RANGE range;
 	range.Begin = 0;
-	range.End = input_outerrOneSize;
+	range.End = inputSetNum * input_outerrOneSize * PoolNum;
 	float *out = nullptr;
 	mOutErrorReadBuffer->Map(0, &range, reinterpret_cast<void**>(&out));
-	memcpy(outerror, out, input_outerrOneSize * PoolNum);
+	memcpy(outerror, out, inputSetNum * input_outerrOneSize * PoolNum);
 	mOutErrorReadBuffer->Unmap(0, nullptr);
 }
 
-float *DxPooling::Output(UINT arrNum, UINT detectionInd) {
-	return &output[detectionNum * output_inerrOneNum * PoolNum + arrNum * output_inerrOneNum];
+float *DxPooling::Output(UINT arrNum, UINT inputsetInd) {
+	return &output[inputsetInd * output_inerrOneNum * PoolNum + arrNum * output_inerrOneNum];
 }
 
-float DxPooling::OutputEl(UINT arrNum, UINT ElNum, UINT detectionInd) {
-	return output[detectionNum * output_inerrOneNum * PoolNum + arrNum * output_inerrOneNum + ElNum];
+float DxPooling::OutputEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	return output[inputsetInd * output_inerrOneNum * PoolNum + arrNum * output_inerrOneNum + ElNum];
 }
 
-void DxPooling::InputError(float *inArr, UINT arrNum) {
-	memcpy(&inerror[arrNum * output_inerrOneNum], inArr, output_inerrOneSize);
+void DxPooling::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
+	memcpy(&inerror[inputsetInd * output_inerrOneNum * PoolNum + arrNum * output_inerrOneNum], inArr, output_inerrOneSize);
 }
 
-void DxPooling::InputErrorEl(float el, UINT arrNum, UINT ElNum) {
-	inerror[arrNum * output_inerrOneNum + ElNum] = el;
+void DxPooling::InputErrorEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	inerror[inputsetInd * output_inerrOneNum * PoolNum + arrNum * output_inerrOneNum + ElNum] = el;
 }
 
-float *DxPooling::GetError(UINT arrNum) {
-	return &outerror[arrNum * input_outerrOneNum];
+float *DxPooling::GetError(UINT arrNum, UINT inputsetInd) {
+	return &outerror[inputsetInd * input_outerrOneNum * PoolNum + arrNum * input_outerrOneNum];
 }
 
-float DxPooling::GetErrorEl(UINT arrNum, UINT ElNum) {
-	return outerror[arrNum * input_outerrOneNum + ElNum];
+float DxPooling::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
+	return outerror[inputsetInd * input_outerrOneNum * PoolNum + arrNum * input_outerrOneNum + ElNum];
 }
 
 void DxPooling::SetInputResource(ID3D12Resource *res) {

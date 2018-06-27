@@ -14,7 +14,7 @@ char *ShaderConvolution =
 "{\n"
 "    float4 gWidHei;\n"
 "    float4 gfilWid_filStep;\n"
-"    float4 gLear;\n"//学習率:x
+"    float4 gLear_inputS;\n"//学習率:x, inputset数:y
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -33,9 +33,9 @@ char *ShaderConvolution =
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
 "   int outhei = gWidHei.y / gfilWid_filStep.y;\n"
-"   uint detecInd = outid.z;\n"
-"   uint InDetecInd = gWidHei.x * gWidHei.y * gWidHei.z * detecInd;\n"
-"   uint OutDetecInd = outwid * outhei * gWidHei.z * detecInd;\n"
+"   uint setInd = outid.z;\n"
+"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
+"   uint OutsetInd = outwid * outhei * gWidHei.z * setInd;\n"
 "   int ox = outid.x;\n"
 "   int oy = outid.y % outhei;\n"
 "   int ix = ox * gfilWid_filStep.y;\n"
@@ -54,12 +54,12 @@ char *ShaderConvolution =
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
-"         tmp += gInput[InDetecInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
+"         tmp += gInput[InsetInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
 "                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)];\n"
 "      }\n"
 "   }\n"
 "   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
-"   gOutput[OutDetecInd + outStInd + outwid * oy + ox] = sig;\n"
+"   gOutput[OutsetInd + outStInd + outwid * oy + ox] = sig;\n"
 "}\n"
 
 //順伝搬ReLU
@@ -69,9 +69,9 @@ char *ShaderConvolution =
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
 "   int outhei = gWidHei.y / gfilWid_filStep.y;\n"
-"   uint detecInd = outid.z;\n"
-"   uint InDetecInd = gWidHei.x * gWidHei.y * gWidHei.z * detecInd;\n"
-"   uint OutDetecInd = outwid * outhei * gWidHei.z * detecInd;\n"
+"   uint setInd = outid.z;\n"
+"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
+"   uint OutsetInd = outwid * outhei * gWidHei.z * setInd;\n"
 "   int ox = outid.x;\n"
 "   int oy = outid.y % outhei;\n"
 "   int ix = ox * gfilWid_filStep.y;\n"
@@ -90,27 +90,29 @@ char *ShaderConvolution =
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
-"         tmp += gInput[InDetecInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
+"         tmp += gInput[InsetInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
 "                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)];\n"
 "      }\n"
 "   }\n"
 "   float relu = max(0, tmp);\n"
-"   gOutput[OutDetecInd + outStInd + outwid * oy + ox] = relu;\n"
+"   gOutput[OutsetInd + outStInd + outwid * oy + ox] = relu;\n"
 "}\n"
 
 //gOutErr初期化
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
-"void CNBPCS0(int2 inid : SV_DispatchThreadID)\n"
+"void CNBPCS0(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = inid.x;\n"
 "   int y = inid.y;\n"
-"   gOutErr[gWidHei.x * y + x] = 0.0f;\n"
+"   uint setInd = inid.z;\n"
+"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
+"   gOutErr[InsetInd + gWidHei.x * y + x] = 0.0f;\n"
 "}\n"
 
 //逆伝搬
 //Err出力側を並列処理,Err入力側をループ(スレッド数は入力数と同数)
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
-"void CNBPCS1(int2 inid : SV_DispatchThreadID)\n"
+"void CNBPCS1(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int inwid = gWidHei.x / gfilWid_filStep.y;\n"
 "   int inhei = gWidHei.y / gfilWid_filStep.y;\n"
@@ -124,6 +126,9 @@ char *ShaderConvolution =
 "   int filStInd = numInd * filElNum;\n"
 "   int inStInd = numInd * inwid * inhei;\n"
 "   int outStInd = numInd * gWidHei.x * gWidHei.y;\n"
+"   uint setInd = inid.z;\n"
+"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
+"   uint OutsetInd = inwid * inhei * gWidHei.z * setInd;\n"
 
 "   float tmp = 0.0f;\n"
 "   for(int i = filElNum - 1; i >= 0; i--)\n"
@@ -132,10 +137,10 @@ char *ShaderConvolution =
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
 "      if(iy + fy >= 0 && iy + fy < inhei && ix + fx >= 0 && ix + fx < inwid)\n"//Padding領域はスキップ
 "      {\n"
-"         tmp += gInErr[inStInd + inwid * (iy + fy) + (ix + fx)] * gFilter[filStInd + i];\n"
+"         tmp += gInErr[OutsetInd + inStInd + inwid * (iy + fy) + (ix + fx)] * gFilter[filStInd + i];\n"
 "      }\n"
 "   }\n"
-"   gOutErr[outStInd + gWidHei.x * oy + ox] = tmp * gDropOutF[outStInd + gWidHei.x * oy + ox];\n"
+"   gOutErr[InsetInd + outStInd + gWidHei.x * oy + ox] = tmp * gDropOutF[outStInd + gWidHei.x * oy + ox];\n"
 "}\n"
 
 //フィルタ更新sigmoid
@@ -154,21 +159,29 @@ char *ShaderConvolution =
 "   int inEStInd = numInd * inErrwid * inErrhei;\n"
 "   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
 
-"   float tmp = 0.0f;\n"
-"   for(int i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
+"   float tmpSum = 0.0f;\n"
+"   for(int k = 0; k < gLear_inputS.y; k++)\n"
 "   {\n"
-"      int Ex = i % inErrwid;\n"
-"      int Ey = i / inErrwid;\n"
-"      int Ix = Ex * gfilWid_filStep.y + (filx - padding);\n"
-"      int Iy = Ey * gfilWid_filStep.y + (fily - padding);\n"
-
-"      if(Ix >= 0 && Ix < gWidHei.x && Iy >= 0 && Iy < gWidHei.y)\n"
+"      uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * k;\n"
+"      uint OutsetInd = inErrwid * inErrhei * gWidHei.z * k;\n"
+"      float tmp = 0.0f;\n"
+"      for(int i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
 "      {\n"
-"         tmp += gInErr[inEStInd + inErrwid * Ey + Ex] * \n"
-"                gInput[inStInd + gWidHei.x * Iy + Ix];\n"
+"         int Ex = i % inErrwid;\n"
+"         int Ey = i / inErrwid;\n"
+"         int Ix = Ex * gfilWid_filStep.y + (filx - padding);\n"
+"         int Iy = Ey * gfilWid_filStep.y + (fily - padding);\n"
+
+"         if(Ix >= 0 && Ix < gWidHei.x && Iy >= 0 && Iy < gWidHei.y)\n"
+"         {\n"
+"            tmp += gInErr[OutsetInd + inEStInd + inErrwid * Ey + Ex] * \n"
+"                   gInput[InsetInd + inStInd + gWidHei.x * Iy + Ix];\n"
+"         }\n"
 "      }\n"
+"      tmpSum += tmp;\n"
 "   }\n"
-"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] += tmp * gLear.x;\n"
+"   float tmpAve = tmpSum / gLear_inputS.y;\n"
+"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] += tmpAve * gLear_inputS.x;\n"
 "}\n"
 
 //フィルタ更新ReLU
@@ -187,22 +200,30 @@ char *ShaderConvolution =
 "   int inEStInd = numInd * inErrwid * inErrhei;\n"
 "   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
 
-"   float tmp = 0.0f;\n"
-"   for(int i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
+"   float tmpSum = 0.0f;\n"
+"   for(int k = 0; k < gLear_inputS.y; k++)\n"
 "   {\n"
-"      int Ex = i % inErrwid;\n"
-"      int Ey = i / inErrwid;\n"
-"      int Ix = Ex * gfilWid_filStep.y + (filx - padding);\n"
-"      int Iy = Ey * gfilWid_filStep.y + (fily - padding);\n"
-
-"      if(Ix >= 0 && Ix < gWidHei.x && Iy >= 0 && Iy < gWidHei.y)\n"
+"      uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * k;\n"
+"      uint OutsetInd = inErrwid * inErrhei * gWidHei.z * k;\n"
+"      float tmp = 0.0f;\n"
+"      for(int i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
 "      {\n"
-"         float inE = gInErr[inEStInd + inErrwid * Ey + Ex];\n"
-"         float outEl = gOutput[inEStInd + inErrwid * Ey + Ex];\n"
-"         if(outEl > 0.0f)tmp += (inE * gInput[inStInd + gWidHei.x * Iy + Ix]);\n"
+"         int Ex = i % inErrwid;\n"
+"         int Ey = i / inErrwid;\n"
+"         int Ix = Ex * gfilWid_filStep.y + (filx - padding);\n"
+"         int Iy = Ey * gfilWid_filStep.y + (fily - padding);\n"
+
+"         if(Ix >= 0 && Ix < gWidHei.x && Iy >= 0 && Iy < gWidHei.y)\n"
+"         {\n"
+"            float inE = gInErr[OutsetInd + inEStInd + inErrwid * Ey + Ex];\n"
+"            float outEl = gOutput[OutsetInd + inEStInd + inErrwid * Ey + Ex];\n"
+"            if(outEl > 0.0f)tmp += (inE * gInput[InsetInd + inStInd + gWidHei.x * Iy + Ix]);\n"
+"         }\n"
 "      }\n"
+"      tmpSum += tmp;\n"
 "   }\n"
-"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] += tmp * gLear.x;\n"
+"   float tmpAve = tmpSum / gLear_inputS.y;\n"
+"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] += tmpAve * gLear_inputS.x;\n"
 "}\n";
 
 
