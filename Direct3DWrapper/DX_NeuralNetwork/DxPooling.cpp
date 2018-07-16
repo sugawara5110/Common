@@ -177,6 +177,11 @@ void DxPooling::Detection(UINT inputsetnum) {
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
 
+void DxPooling::Test() {
+	InputResourse();
+	ForwardPropagation(1);
+}
+
 void DxPooling::InputResourse() {
 	if (!firstIn)return;
 	dx->Bigin(com_no);

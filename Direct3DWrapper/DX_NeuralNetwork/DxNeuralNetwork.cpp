@@ -415,6 +415,13 @@ void DxNeuralNetwork::Training() {
 	TextureCopy(mNodeBuffer[0].Get(), com_no);
 }
 
+void DxNeuralNetwork::Test() {
+	InputResourse();
+	SetDropOut();
+	ForwardPropagation(1);
+	CopyOutputResourse();
+}
+
 float *DxNeuralNetwork::GetError(UINT arrNum, UINT inputsetInd) {
 	return &error[(NumNode[0] / Split) * arrNum + inputsetInd * NumNode[0]];
 }

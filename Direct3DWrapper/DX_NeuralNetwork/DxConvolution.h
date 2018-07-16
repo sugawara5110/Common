@@ -93,6 +93,7 @@ public:
 	void Query();
 	void Training();
 	void Detection(UINT inputsetnum);
+	void Test();
 	void SetLearningLate(float rate);
 	void SetWeightInit(float rate);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);

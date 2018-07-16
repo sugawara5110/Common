@@ -79,6 +79,7 @@ public:
 	void InputArrayEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	void Query(UINT inputsetnum);
 	void Training();
+	void Test();
 	void GetOutput(float *out, UINT inputsetInd = 0);
 	float GetOutputEl(UINT ElNum, UINT inputsetInd = 0);
 	float *GetError(UINT arrNum, UINT inputsetInd = 0);

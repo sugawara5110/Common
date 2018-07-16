@@ -69,6 +69,7 @@ public:
 	void Query();
 	void Training();
 	void Detection(UINT inputsetnum);
+	void Test();
 	float *Output(UINT arrNum, UINT inputsetInd = 0);
 	float OutputEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	float *GetError(UINT arrNum, UINT inputsetInd = 0);

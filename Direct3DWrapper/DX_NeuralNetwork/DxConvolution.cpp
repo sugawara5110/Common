@@ -316,6 +316,12 @@ void DxConvolution::Detection(UINT inputsetnum) {
 	TextureCopy(mFilterBuffer.Get(), com_no);
 }
 
+void DxConvolution::Test() {
+	InputResourse();
+	SetDropOut();
+	ForwardPropagation(1);
+}
+
 void DxConvolution::TestFilter() {
 	for (UINT i = 0; i < ElNum * FilNum; i++) {
 		if (fil[i] > 3000 || fil[i] < -3000) {
