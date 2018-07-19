@@ -9,12 +9,13 @@
 
 #include "DxNNCommon.h"
 #define PONUM 2
+#define PO_SHADER_NUM 2
 
 class DxPooling :public DxNNCommon {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[2] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[PO_SHADER_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
@@ -27,7 +28,7 @@ protected:
 	CONSTANT_BUFFER_Pooling cb;
 	ConstantBuffer<CONSTANT_BUFFER_Pooling> *mObjectCB = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pCS[2] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3DBlob> pCS[PO_SHADER_NUM] = { nullptr };
 
 	UINT Width;
 	UINT Height;

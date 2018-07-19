@@ -9,12 +9,13 @@ char *ShaderConvolution =
 "RWStructuredBuffer<float> gOutErr : register(u3);\n"
 "RWStructuredBuffer<float> gFilter : register(u4);\n"
 "RWStructuredBuffer<float> gDropOutF : register(u5);\n"
+"RWStructuredBuffer<float> gBias : register(u6);\n"
 
 "cbuffer global  : register(b0)\n"
 "{\n"
-"    float4 gWidHei;\n"
+"    float4 gWidHei;\n"//MaxFilNum:z
 "    float4 gfilWid_filStep;\n"
-"    float4 gLear_inputS;\n"//学習率:x, inputset数:y
+"    float4 gLear_inputS;\n"//学習率:x, inputset数:y, bias学習率:z
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -46,6 +47,7 @@ char *ShaderConvolution =
 "   int filStInd = numInd * filElNum;\n"
 "   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
 "   int outStInd = numInd * outwid * outhei;\n"
+"   int FilNumInd = filStInd / filElNum;\n"//現filterのindex
 
 "   float tmp = 0.0f;\n"
 "   for(int i = 0; i < filElNum; i++)\n"
@@ -55,7 +57,7 @@ char *ShaderConvolution =
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
 "         tmp += gInput[InsetInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
-"                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)];\n"
+"                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)] + gBias[FilNumInd];\n"
 "      }\n"
 "   }\n"
 "   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
@@ -82,6 +84,7 @@ char *ShaderConvolution =
 "   int filStInd = numInd * filElNum;\n"
 "   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
 "   int outStInd = numInd * outwid * outhei;\n"
+"   int FilNumInd = filStInd / filElNum;\n"//現filterのindex
 
 "   float tmp = 0.0f;\n"
 "   for(int i = 0; i < filElNum; i++)\n"
@@ -91,7 +94,7 @@ char *ShaderConvolution =
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
 "         tmp += gInput[InsetInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
-"                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)];\n"
+"                gDropOutF[inStInd + gWidHei.x * (iy + fy) + (ix + fx)] + gBias[FilNumInd];\n"
 "      }\n"
 "   }\n"
 "   float relu = max(0, tmp);\n"
@@ -107,6 +110,27 @@ char *ShaderConvolution =
 "   uint setInd = inid.z;\n"
 "   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
 "   gOutErr[InsetInd + gWidHei.x * y + x] = 0.0f;\n"
+"}\n"
+
+//bias更新
+//Filter毎に並列処理
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"void CNBPCSBias(int2 filid : SV_DispatchThreadID)\n"
+"{\n"
+"   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//下層からの誤差wid
+"   int inhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   int errNum = inwid * inhei;\n"
+
+"   float tmp = 0.0f;\n"
+"   for(int k = 0; k < gLear_inputS.y; k++)\n"
+"   {\n"
+"      for(int i = 0; i < errNum; i++)\n"
+"      {\n"
+"         tmp += gInErr[errNum * gWidHei.z * k + errNum * filid.x + i];\n"
+"      }\n"
+"   }\n"
+"   float ave = tmp / gLear_inputS.y;\n"
+"   gBias[filid.x] += ave * gLear_inputS.z;\n"
 "}\n"
 
 //逆伝搬

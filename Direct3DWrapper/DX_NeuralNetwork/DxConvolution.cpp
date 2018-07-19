@@ -8,8 +8,9 @@
 #include <random>
 #include "ShaderNN\ShaderConvolution.h"
 
-void DxConvolution::SetLearningLate(float rate) {
+void DxConvolution::SetLearningLate(float rate, float biasrate) {
 	learningRate = rate;
+	learningBiasRate = biasrate;
 }
 
 DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputsetnum, UINT elnumwid, UINT filstep) {
@@ -48,6 +49,9 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputset
 
 	dropout = new float[FilNum * input_outerrOneNum];
 	for (UINT i = 0; i < FilNum * input_outerrOneNum; i++)dropout[i] = 1.0f;
+
+	bias = new float[FilNum];
+	ZeroMemory(bias, sizeof(float) * FilNum);
 
 	SetWeightInit(0.2f);
 
@@ -100,6 +104,7 @@ DxConvolution::~DxConvolution() {
 	ARR_DELETE(inputError);
 	S_DELETE(mObjectCB);
 	ARR_DELETE(dropout);
+	ARR_DELETE(bias);
 }
 
 void DxConvolution::SetCommandList(int no) {
@@ -154,16 +159,26 @@ void DxConvolution::ComCreate(bool sigon) {
 
 	SubresourcesUp(fil, ElNum * FilNum, mFilterBuffer, mFilterUpBuffer);
 
+	//RWStructuredBuffer用gBias
+	CreateResourceDef(mBiasBuffer, sizeof(float) * FilNum);
+	//Up
+	CreateResourceUp(mBiasUpBuffer, sizeof(float) * FilNum);
+	//Read
+	CreateResourceRead(mBiasReadBuffer, sizeof(float) * FilNum);
+
+	SubresourcesUp(bias, FilNum, mBiasBuffer, mBiasUpBuffer);
+
 	//ルートシグネチャ
-	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[8];
 	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
 	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
 	slotRootParameter[2].InitAsUnorderedAccessView(2);//RWStructuredBuffer(u2)
 	slotRootParameter[3].InitAsUnorderedAccessView(3);//RWStructuredBuffer(u3)
 	slotRootParameter[4].InitAsUnorderedAccessView(4);//RWStructuredBuffer(u4)
 	slotRootParameter[5].InitAsUnorderedAccessView(5);//RWStructuredBuffer(u5)
-	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
-	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
+	slotRootParameter[6].InitAsUnorderedAccessView(6);//RWStructuredBuffer(u6)
+	slotRootParameter[7].InitAsConstantBufferView(0);//mObjectCB(b0)
+	mRootSignatureCom = CreateRsCompute(8, slotRootParameter);
 
 	if (sigon) {
 		pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPCS", "cs_5_0");
@@ -175,8 +190,9 @@ void DxConvolution::ComCreate(bool sigon) {
 	}
 	pCS[1] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS0", "cs_5_0");
 	pCS[2] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS1", "cs_5_0");
+	pCS[4] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCSBias", "cs_5_0");
 
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < CN_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
@@ -207,6 +223,7 @@ void DxConvolution::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
 
 void DxConvolution::ForwardPropagation(UINT inputsetnum) {
 	cb.Lear_inputS.x = learningRate;
+	cb.Lear_inputS.z = learningBiasRate;
 	mObjectCB->CopyData(0, cb);
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[0].Get());
@@ -217,7 +234,8 @@ void DxConvolution::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(OutWid, OutHei * FilNum, inputsetnum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -241,7 +259,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(Width, Height * FilNum, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -255,7 +273,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(OutWid, OutHei * FilNum, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -268,8 +286,18 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(elNumWid, elNumWid * FilNum, 1);
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+
+	dx->Bigin(com_no);
+	mCommandList->SetPipelineState(mPSOCom[4].Get());
+	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->Dispatch(FilNum, 1, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -284,6 +312,12 @@ void DxConvolution::BackPropagation() {
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
 	mCommandList->CopyResource(mFilterReadBuffer.Get(), mFilterBuffer.Get());
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mFilterBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	mCommandList->CopyResource(mBiasReadBuffer.Get(), mBiasBuffer.Get());
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
@@ -306,6 +340,7 @@ void DxConvolution::Training() {
 	BackPropagation();
 	//CopyOutputErrResourse();
 	CopyFilterResourse();
+	CopyBiasResourse();
 	//TestFilter();
 	//TestOutErr();
 }
@@ -438,6 +473,16 @@ void DxConvolution::CopyFilterResourse() {
 	mFilterReadBuffer->Unmap(0, nullptr);
 }
 
+void DxConvolution::CopyBiasResourse() {
+	D3D12_RANGE range;
+	range.Begin = 0;
+	range.End = sizeof(float) * FilNum;
+	float *bi = nullptr;
+	mBiasReadBuffer->Map(0, &range, reinterpret_cast<void**>(&bi));
+	memcpy(bias, bi, sizeof(float) * FilNum);
+	mBiasReadBuffer->Unmap(0, nullptr);
+}
+
 float *DxConvolution::Output(UINT arrNum, UINT inputsetInd) {
 	return &output[output_inerrOneNum * FilNum * inputsetInd + arrNum * output_inerrOneNum];
 }
@@ -461,38 +506,48 @@ float DxConvolution::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
 void DxConvolution::SaveData(UINT Num) {
 	FILE *fp;
 	char pass[16];
+
 	sprintf_s(pass, sizeof(char) * 16, "save/save%d.da", Num + 1);
 	fp = fopen(pass, "wb");
 
-	float *tmp = new float[ElNum * FilNum];
+	float *bifil = new float[ElNum * FilNum + FilNum];
+
+	int Ind = 0;
 	for (UINT k = 0; k < FilNum; k++) {
 		for (UINT i = 0; i < ElNum; i++) {
-			tmp[ElNum * k + i] = fil[k * ElNum + i];
+			bifil[Ind++] = fil[k * ElNum + i];
 		}
+		bifil[Ind++] = bias[k];
 	}
-	fwrite(tmp, sizeof(float) * ElNum * FilNum, 1, fp);
+	size_t size = (ElNum * FilNum + FilNum) * sizeof(float);
+	fwrite(bifil, size, 1, fp);
 	fclose(fp);
-	ARR_DELETE(tmp);
+	ARR_DELETE(bifil);
 }
 
 void DxConvolution::LoadData(UINT Num) {
 	FILE *fp;
 	char pass[16];
+
 	sprintf_s(pass, sizeof(char) * 16, "save/save%d.da", Num + 1);
 	fp = fopen(pass, "rb");
 
-	float *tmp = new float[ElNum * FilNum];
-	fread(tmp, sizeof(float) * ElNum * FilNum, 1, fp);
+	float *bifil = new float[ElNum * FilNum + FilNum];
+
+	int Ind = 0;
+	size_t size = (ElNum * FilNum + FilNum) * sizeof(float);
+	fread(bifil, size, 1, fp);
 	for (UINT k = 0; k < FilNum; k++) {
 		for (UINT i = 0; i < ElNum; i++) {
-			fil[k * ElNum + i] = tmp[ElNum * k + i];
+			fil[k * ElNum + i] = bifil[Ind++];
 		}
+		bias[k] = bifil[Ind++];
 	}
 	fclose(fp);
-	ARR_DELETE(tmp);
-
+	ARR_DELETE(bifil);
 	dx->Bigin(com_no);
 	SubresourcesUp(fil, ElNum * FilNum, mFilterBuffer, mFilterUpBuffer);
+	SubresourcesUp(bias, FilNum, mBiasBuffer, mBiasUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

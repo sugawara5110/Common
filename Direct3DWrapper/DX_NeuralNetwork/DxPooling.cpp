@@ -95,7 +95,7 @@ void DxPooling::ComCreate() {
 
 	pCS[0] = CompileShader(ShaderPooling, strlen(ShaderPooling), "POFPCS", "cs_5_0");
 	pCS[1] = CompileShader(ShaderPooling, strlen(ShaderPooling), "POBPCS", "cs_5_0");
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < PO_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 

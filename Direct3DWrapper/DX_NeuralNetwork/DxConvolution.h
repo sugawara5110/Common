@@ -8,12 +8,13 @@
 #define Class_DxConvolution_Header
 
 #include "DxNNCommon.h"
+#define CN_SHADER_NUM 5
 
 class DxConvolution :public DxNNCommon {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[4] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[CN_SHADER_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFUpBuffer = nullptr;
@@ -27,11 +28,14 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterReadBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasUpBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasReadBuffer = nullptr;
 
 	CONSTANT_BUFFER_Convolution cb;
 	ConstantBuffer<CONSTANT_BUFFER_Convolution> *mObjectCB = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pCS[4] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3DBlob> pCS[CN_SHADER_NUM] = { nullptr };
 	UINT Width; //入力画像サイズ
 	UINT Height;//入力画像サイズ
 	UINT OutWid;//出力画像サイズ
@@ -63,8 +67,11 @@ protected:
 	float *inputError = nullptr;
 	//下層からの誤差ウエイト計算後上層に送る時に使用
 	float *outputError = nullptr;
+	//バイアス  フィルターと同数
+	float *bias = nullptr;
 
 	float learningRate = 0.1f;
+	float learningBiasRate = 0.1f;
 
 	DxConvolution() {}
 	void ForwardPropagation(UINT inputsetnum);
@@ -74,6 +81,7 @@ protected:
 	void CopyOutputResourse();
 	void CopyOutputErrResourse();
 	void CopyFilterResourse();
+	void CopyBiasResourse();
 	void ComCreate(bool sigon);
 	void SetDropOut();
 
@@ -94,7 +102,7 @@ public:
 	void Training();
 	void Detection(UINT inputsetnum);
 	void Test();
-	void SetLearningLate(float rate);
+	void SetLearningLate(float rate, float biasrate);
 	void SetWeightInit(float rate);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);
 	void Input(float *inArr, UINT arrNum, UINT inputsetInd = 0);
