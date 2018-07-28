@@ -15,6 +15,22 @@ SearchFile::SearchFile(UINT directorynum) {
 	fileNum = new UINT[directoryNum];
 }
 
+bool SearchFile::StepStr(char *str, char **searchExtension, UINT searchExtensionNum, UINT *exNum) {
+	UINT cnt = 0;
+	if (wcstombs(str, fd.cFileName, 255) > 100 ||
+		!strcmp(str, ".") || !strcmp(str, ".."))return false;
+	while (cnt < 255 && str[++cnt] != '\0');//終端文字まで進める
+	if (cnt >= 255)return false;//255文字以上の場合スキップ
+	while (str[--cnt] != '.');//終端側から探索して'.'まで進める
+	cnt++;//'.'から1文字進めて拡張子1文字目に合わせる
+
+	for (UINT i = 0; i < searchExtensionNum; i++) {
+		if (!strcmp(&str[cnt], searchExtension[i]))(*exNum)++;//指定した拡張子と比較
+	}
+
+	return true;
+}
+
 void SearchFile::Search(wchar_t *pass, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
 	char str[255] = { '\0' };
 	hFile = FindFirstFile(pass, &fd);//探索場所カレントデレクトリ
@@ -30,16 +46,8 @@ void SearchFile::Search(wchar_t *pass, UINT directoryInd, char **searchExtension
 	//ファイル数カウント
 	fileNum[directoryInd] = 0;
 	do {
-		if (wcstombs(str, fd.cFileName, 255) > 100 ||
-			!strcmp(str, ".") || !strcmp(str, ".."))continue;
-
-		UINT cnt = 0;
-		while (cnt < 255 && str[cnt++] != '.');
-		if (cnt >= 255)continue;
 		UINT exNum = 0;
-		for (UINT i = 0; i < searchExtensionNum; i++) {
-			if (!strcmp(&str[cnt], searchExtension[i]))exNum++;
-		}
+		if (!StepStr(str, searchExtension, searchExtensionNum, &exNum))continue;
 		if (exNum > 0)fileNum[directoryInd]++;
 	} while (FindNextFile(hFile, &fd));
 	FindClose(hFile);
@@ -52,15 +60,8 @@ void SearchFile::Search(wchar_t *pass, UINT directoryInd, char **searchExtension
 	//ファイル読み込み
 	fileNum[directoryInd] = 0;
 	do {
-		if (wcstombs(str, fd.cFileName, 255) > 100 ||
-			!strcmp(str, ".") || !strcmp(str, ".."))continue;
-		UINT cnt = 0;
-		while (cnt < 255 && str[cnt++] != '.');
-		if (cnt >= 255)continue;
 		UINT exNum = 0;
-		for (UINT i = 0; i < searchExtensionNum; i++) {
-			if (!strcmp(&str[cnt], searchExtension[i]))exNum++;
-		}
+		if (!StepStr(str, searchExtension, searchExtensionNum, &exNum))continue;
 		if (exNum > 0) {
 			strcpy(fileName[directoryInd][fileNum[directoryInd]], fullpass);
 			strcat(fileName[directoryInd][fileNum[directoryInd]++], str);

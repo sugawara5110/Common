@@ -3,6 +3,8 @@
 //**                   Å@Å@Å@	       SearchFile                                        **//
 //**                                                                                     **//
 //*****************************************************************************************//
+#ifndef Class_SearchFile_Header
+#define Class_SearchFile_Header
 
 #include <Windows.h>
 
@@ -16,6 +18,7 @@ private:
 	UINT *fileNum = nullptr;
 
 	SearchFile() {}
+	bool StepStr(char *str, char **searchExtension, UINT searchExtensionNum, UINT *exNum);
 
 public:
 	SearchFile(UINT directoryNum);
@@ -24,3 +27,5 @@ public:
 	UINT GetFileNum(UINT directoryInd);
 	char *GetFileName(UINT directoryInd, UINT fileNum);
 };
+
+#endif
