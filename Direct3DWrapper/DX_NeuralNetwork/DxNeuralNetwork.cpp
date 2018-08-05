@@ -191,14 +191,14 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 
 	if (sigon) {
 		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPCS", "cs_5_0");
-		pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS1", "cs_5_0");
+		pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS0", "cs_5_0");
 	}
 	else {
 		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPReLUCS", "cs_5_0");
-		pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPReLUCS1", "cs_5_0");
+		pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPReLUCS0", "cs_5_0");
 	}
 	pCS[1] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "InTargetCS", "cs_5_0");
-	pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS0", "cs_5_0");
+	pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS1", "cs_5_0");
 	pCS[4] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNInverseCS", "cs_5_0");
 	for (int i = 0; i < NN_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
@@ -257,11 +257,12 @@ void DxNeuralNetwork::BackPropagation() {
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
-	//‹t“`”À
+	//‹t“`”d
 	for (int i = Depth - 2; i >= 0; i--) {
 		dx->Bigin(com_no);
 		mCommandList->SetPipelineState(mPSOCom[2].Get());
 		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());

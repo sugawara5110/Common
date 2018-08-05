@@ -24,7 +24,7 @@ char *ShaderPooling =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint ‚»‚Ì‘¼uint3
 
-//‡“`”À
+//‡“`”d
 //o—Í‘¤‚ğ•À—ñˆ—,“ü—Í‘¤‚ğƒ‹[ƒv
 "[numthreads(1, 1, 1)]\n"//Å‘åX * Y * Z = 1024
 "void POFPCS(uint3 outid : SV_DispatchThreadID)\n"
@@ -60,7 +60,7 @@ char *ShaderPooling =
 "   gOutput[OutsetInd + (gWidHei.x / POOL) * oy + ox] = tmp;\n"
 "}\n"
 
-//‹t“`”À
+//‹t“`”d
 //Err“ü—Í‘¤‚ğ•À—ñˆ—,Erro—Í‘¤‚ğƒ‹[ƒv
 "[numthreads(1, 1, 1)]\n"//Å‘åX * Y * Z = 1024
 "void POBPCS(uint3 inerrid : SV_DispatchThreadID)\n"

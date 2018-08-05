@@ -27,7 +27,7 @@ char *ShaderConvolution =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint その他uint3
 
-//順伝搬sigmoid
+//順伝播sigmoid
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
 "void CNFPCS(int3 outid : SV_DispatchThreadID)\n"
@@ -64,7 +64,7 @@ char *ShaderConvolution =
 "   gOutput[OutsetInd + outStInd + outwid * oy + ox] = sig;\n"
 "}\n"
 
-//順伝搬ReLU
+//順伝播ReLU
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
 "void CNFPReLUCS(int3 outid : SV_DispatchThreadID)\n"
@@ -130,10 +130,10 @@ char *ShaderConvolution =
 "      }\n"
 "   }\n"
 "   float ave = tmp / gLear_inputS.y;\n"
-"   gBias[filid.x] += ave * gLear_inputS.z;\n"
+"   gBias[filid.x] -= ave * gLear_inputS.z;\n"
 "}\n"
 
-//逆伝搬
+//逆伝播
 //Err出力側を並列処理,Err入力側をループ(スレッド数は入力数と同数)
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
 "void CNBPCS1(int3 inid : SV_DispatchThreadID)\n"
@@ -205,7 +205,7 @@ char *ShaderConvolution =
 "      tmpSum += tmp;\n"
 "   }\n"
 "   float tmpAve = tmpSum / gLear_inputS.y;\n"
-"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] += tmpAve * gLear_inputS.x;\n"
+"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] -= tmpAve * gLear_inputS.x;\n"
 "}\n"
 
 //フィルタ更新ReLU
@@ -247,7 +247,7 @@ char *ShaderConvolution =
 "      tmpSum += tmp;\n"
 "   }\n"
 "   float tmpAve = tmpSum / gLear_inputS.y;\n"
-"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] += tmpAve * gLear_inputS.x;\n"
+"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] -= tmpAve * gLear_inputS.x;\n"
 "}\n";
 
 
