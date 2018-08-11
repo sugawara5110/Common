@@ -4,6 +4,7 @@
 //**                                                                                     **//
 //*****************************************************************************************//
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "DxConvolution.h"
 #include <random>
 #include "ShaderNN\ShaderConvolution.h"

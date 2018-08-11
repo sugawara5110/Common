@@ -47,15 +47,15 @@ char *ShaderSearchPixel =
 "[numthreads(1, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
 "void OutPixCS(uint2 inid : SV_DispatchThreadID)\n"
 "{\n"
-"   uint outpx = inid.x;\n"
-"   uint outpy = inid.y;\n"
+"   int outpx = (int)inid.x;\n"
+"   int outpy = (int)inid.y;\n"
 
-"   for(uint i = 0; i < gseapixWH_step_PDNum.w; i++)\n"
+"   for(int i = 0; i < gseapixWH_step_PDNum.w; i++)\n"
 "   {\n"
-"      uint stx = gInPixPos[i].stW;\n"
-"      uint sty = gInPixPos[i].stH;\n"
-"      uint enx = gInPixPos[i].enW;\n"
-"      uint eny = gInPixPos[i].enH;\n"
+"      int stx = (int)gInPixPos[i].stW;\n"
+"      int sty = (int)gInPixPos[i].stH;\n"
+"      int enx = (int)gInPixPos[i].enW;\n"
+"      int eny = (int)gInPixPos[i].enH;\n"
 "      if(gNNoutput[i] > gThreshold.x && \n"//ï™óﬁí«â¡Ç∑ÇÈèÍçáÇÕiÇÃílÇ…åvéZéÆÇâ¡Ç¶ÇÈ
 "           (\n"
 "             outpy >= sty && outpy <= eny && ((outpx >= stx && outpx <= stx + 3) || (outpx <= enx && outpx >= enx - 3)) ||\n"

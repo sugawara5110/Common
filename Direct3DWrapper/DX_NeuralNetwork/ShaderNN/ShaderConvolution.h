@@ -30,7 +30,7 @@ char *ShaderConvolution =
 //順伝播sigmoid
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
 "[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
-"void CNFPCS(int3 outid : SV_DispatchThreadID)\n"
+"void CNFPCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
 "   int outhei = gWidHei.y / gfilWid_filStep.y;\n"
@@ -42,15 +42,15 @@ char *ShaderConvolution =
 "   int ix = ox * gfilWid_filStep.y;\n"
 "   int iy = oy * gfilWid_filStep.y;\n"
 "   int padding = gfilWid_filStep.x / 2;\n"
-"   int filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
-"   int numInd = outid.y * gfilWid_filStep.y / gWidHei.y;\n"
-"   int filStInd = numInd * filElNum;\n"
-"   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
-"   int outStInd = numInd * outwid * outhei;\n"
-"   int FilNumInd = filStInd / filElNum;\n"//現filterのindex
+"   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
+"   uint numInd = outid.y * gfilWid_filStep.y / gWidHei.y;\n"
+"   uint filStInd = numInd * filElNum;\n"
+"   uint inStInd = numInd * gWidHei.x * gWidHei.y;\n"
+"   uint outStInd = numInd * outwid * outhei;\n"
+"   uint FilNumInd = filStInd / filElNum;\n"//現filterのindex
 
 "   float tmp = 0.0f;\n"
-"   for(int i = 0; i < filElNum; i++)\n"
+"   for(uint i = 0; i < filElNum; i++)\n"
 "   {\n"
 "      int fx = (i % gfilWid_filStep.x) - padding;\n"
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
@@ -66,8 +66,8 @@ char *ShaderConvolution =
 
 //順伝播ReLU
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
-"void CNFPReLUCS(int3 outid : SV_DispatchThreadID)\n"
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024,  (47行)
+"void CNFPReLUCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
 "   int outhei = gWidHei.y / gfilWid_filStep.y;\n"
@@ -79,15 +79,15 @@ char *ShaderConvolution =
 "   int ix = ox * gfilWid_filStep.y;\n"
 "   int iy = oy * gfilWid_filStep.y;\n"
 "   int padding = gfilWid_filStep.x / 2;\n"
-"   int filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
-"   int numInd = outid.y * gfilWid_filStep.y / gWidHei.y;\n"
-"   int filStInd = numInd * filElNum;\n"
-"   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
-"   int outStInd = numInd * outwid * outhei;\n"
-"   int FilNumInd = filStInd / filElNum;\n"//現filterのindex
+"   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
+"   uint numInd = outid.y * gfilWid_filStep.y / gWidHei.y;\n"
+"   uint filStInd = numInd * filElNum;\n"
+"   uint inStInd = numInd * gWidHei.x * gWidHei.y;\n"
+"   uint outStInd = numInd * outwid * outhei;\n"
+"   uint FilNumInd = filStInd / filElNum;\n"//現filterのindex
 
 "   float tmp = 0.0f;\n"
-"   for(int i = 0; i < filElNum; i++)\n"
+"   for(uint i = 0; i < filElNum; i++)\n"
 "   {\n"
 "      int fx = (i % gfilWid_filStep.x) - padding;\n"
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
@@ -102,7 +102,7 @@ char *ShaderConvolution =
 "}\n"
 
 //gOutErr初期化
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024  (80行)
 "void CNBPCS0(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = inid.x;\n"
@@ -114,7 +114,7 @@ char *ShaderConvolution =
 
 //bias更新
 //Filter毎に並列処理
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024  (89行)
 "void CNBPCSBias(int2 filid : SV_DispatchThreadID)\n"
 "{\n"
 "   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//下層からの誤差wid
@@ -135,8 +135,8 @@ char *ShaderConvolution =
 
 //逆伝播
 //Err出力側を並列処理,Err入力側をループ(スレッド数は入力数と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
-"void CNBPCS1(int3 inid : SV_DispatchThreadID)\n"
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024   (106行)
+"void CNBPCS1(uint3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int inwid = gWidHei.x / gfilWid_filStep.y;\n"
 "   int inhei = gWidHei.y / gfilWid_filStep.y;\n"
@@ -169,19 +169,19 @@ char *ShaderConvolution =
 
 //フィルタ更新sigmoid
 //フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024   (136行)
 "void CNBPCS2(int2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int filx = inid.x;\n"
 "   int fily = inid.y % gfilWid_filStep.x;\n"
 "   int padding = gfilWid_filStep.x / 2;\n"
-"   int inErrwid = gWidHei.x / gfilWid_filStep.y;\n"
-"   int inErrhei = gWidHei.y / gfilWid_filStep.y;\n"
-"   int numInd = inid.y / gfilWid_filStep.x;\n"
-"   int filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
-"   int filStInd = numInd * filElNum;\n"
-"   int inEStInd = numInd * inErrwid * inErrhei;\n"
-"   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
+"   uint inErrwid = gWidHei.x / gfilWid_filStep.y;\n"
+"   uint inErrhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   uint numInd = inid.y / gfilWid_filStep.x;\n"
+"   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
+"   uint filStInd = numInd * filElNum;\n"
+"   uint inEStInd = numInd * inErrwid * inErrhei;\n"
+"   uint inStInd = numInd * gWidHei.x * gWidHei.y;\n"
 
 "   float tmpSum = 0.0f;\n"
 "   for(int k = 0; k < gLear_inputS.y; k++)\n"
@@ -189,7 +189,7 @@ char *ShaderConvolution =
 "      uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * k;\n"
 "      uint OutsetInd = inErrwid * inErrhei * gWidHei.z * k;\n"
 "      float tmp = 0.0f;\n"
-"      for(int i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
+"      for(uint i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
 "      {\n"
 "         int Ex = i % inErrwid;\n"
 "         int Ey = i / inErrwid;\n"
@@ -210,19 +210,19 @@ char *ShaderConvolution =
 
 //フィルタ更新ReLU
 //フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024   (172行)
 "void CNBPReLUCS2(int2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int filx = inid.x;\n"
 "   int fily = inid.y % gfilWid_filStep.x;\n"
 "   int padding = gfilWid_filStep.x / 2;\n"
-"   int inErrwid = gWidHei.x / gfilWid_filStep.y;\n"
-"   int inErrhei = gWidHei.y / gfilWid_filStep.y;\n"
-"   int numInd = inid.y / gfilWid_filStep.x;\n"
-"   int filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
-"   int filStInd = numInd * filElNum;\n"
-"   int inEStInd = numInd * inErrwid * inErrhei;\n"
-"   int inStInd = numInd * gWidHei.x * gWidHei.y;\n"
+"   uint inErrwid = gWidHei.x / gfilWid_filStep.y;\n"
+"   uint inErrhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   uint numInd = inid.y / gfilWid_filStep.x;\n"
+"   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
+"   uint filStInd = numInd * filElNum;\n"
+"   uint inEStInd = numInd * inErrwid * inErrhei;\n"
+"   uint inStInd = numInd * gWidHei.x * gWidHei.y;\n"
 
 "   float tmpSum = 0.0f;\n"
 "   for(int k = 0; k < gLear_inputS.y; k++)\n"
@@ -230,7 +230,7 @@ char *ShaderConvolution =
 "      uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * k;\n"
 "      uint OutsetInd = inErrwid * inErrhei * gWidHei.z * k;\n"
 "      float tmp = 0.0f;\n"
-"      for(int i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
+"      for(uint i = 0; i < inErrwid * inErrhei; i+=gfilWid_filStep.y)\n"
 "      {\n"
 "         int Ex = i % inErrwid;\n"
 "         int Ey = i / inErrwid;\n"
