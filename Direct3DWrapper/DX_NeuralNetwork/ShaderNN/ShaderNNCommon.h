@@ -12,7 +12,7 @@ char *ShaderNeuralNetworkTexture =
 "};\n"
 
 //テクスチャコピー
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024
 "void NNTexCopyCS(int2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   float tmp = gInput[gWid_Hei.x * inid.y + inid.x];\n"

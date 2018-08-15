@@ -27,9 +27,11 @@ char *ShaderConvolution =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint その他uint3
 
+"#define FP_X ?**\n"
+"#define FP_Y ?**\n"
 //順伝播sigmoid
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024
 "void CNFPCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
@@ -66,7 +68,7 @@ char *ShaderConvolution =
 
 //順伝播ReLU
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024,  (47行)
+"[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024,  (47行)
 "void CNFPReLUCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
@@ -102,7 +104,7 @@ char *ShaderConvolution =
 "}\n"
 
 //gOutErr初期化
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024  (80行)
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024  (80行)
 "void CNBPCS0(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = inid.x;\n"
@@ -112,30 +114,9 @@ char *ShaderConvolution =
 "   gOutErr[InsetInd + gWidHei.x * y + x] = 0.0f;\n"
 "}\n"
 
-//bias更新
-//Filter毎に並列処理
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024  (89行)
-"void CNBPCSBias(int2 filid : SV_DispatchThreadID)\n"
-"{\n"
-"   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//下層からの誤差wid
-"   int inhei = gWidHei.y / gfilWid_filStep.y;\n"
-"   int errNum = inwid * inhei;\n"
-
-"   float tmp = 0.0f;\n"
-"   for(int k = 0; k < gLear_inputS.y; k++)\n"
-"   {\n"
-"      for(int i = 0; i < errNum; i++)\n"
-"      {\n"
-"         tmp += gInErr[errNum * gWidHei.z * k + errNum * filid.x + i];\n"
-"      }\n"
-"   }\n"
-"   float ave = tmp / gLear_inputS.y;\n"
-"   gBias[filid.x] -= ave * gLear_inputS.z;\n"
-"}\n"
-
 //逆伝播
 //Err出力側を並列処理,Err入力側をループ(スレッド数は入力数と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024   (106行)
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024   (106行)
 "void CNBPCS1(uint3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int inwid = gWidHei.x / gfilWid_filStep.y;\n"
@@ -167,9 +148,11 @@ char *ShaderConvolution =
 "   gOutErr[InsetInd + outStInd + gWidHei.x * oy + ox] = tmp * gDropOutF[outStInd + gWidHei.x * oy + ox];\n"
 "}\n"
 
+"#define BP_X ?**\n"
+"#define BP_Y ?**\n"
 //フィルタ更新sigmoid
 //フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024   (136行)
+"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   (136行)
 "void CNBPCS2(int2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int filx = inid.x;\n"
@@ -210,7 +193,7 @@ char *ShaderConvolution =
 
 //フィルタ更新ReLU
 //フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024   (172行)
+"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   (172行)
 "void CNBPReLUCS2(int2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int filx = inid.x;\n"
@@ -248,6 +231,27 @@ char *ShaderConvolution =
 "   }\n"
 "   float tmpAve = tmpSum / gLear_inputS.y;\n"
 "   gFilter[filStInd + gfilWid_filStep.x * fily + filx] -= tmpAve * gLear_inputS.x;\n"
+"}\n"
+
+//bias更新
+//Filter毎に並列処理
+"[numthreads(?**, 1, 1)]\n"//最大X * Y * Z = 1024  (89行)
+"void CNBPCSBias(int2 filid : SV_DispatchThreadID)\n"
+"{\n"
+"   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//下層からの誤差wid
+"   int inhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   int errNum = inwid * inhei;\n"
+
+"   float tmp = 0.0f;\n"
+"   for(int k = 0; k < gLear_inputS.y; k++)\n"
+"   {\n"
+"      for(int i = 0; i < errNum; i++)\n"
+"      {\n"
+"         tmp += gInErr[errNum * gWidHei.z * k + errNum * filid.x + i];\n"
+"      }\n"
+"   }\n"
+"   float ave = tmp / gLear_inputS.y;\n"
+"   gBias[filid.x] -= ave * gLear_inputS.z;\n"
 "}\n";
 
 

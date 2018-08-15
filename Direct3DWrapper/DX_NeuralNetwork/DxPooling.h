@@ -29,6 +29,7 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER_Pooling> *mObjectCB = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[PO_SHADER_NUM] = { nullptr };
+	int *shaderThreadNum = nullptr;
 
 	UINT Width;
 	UINT Height;

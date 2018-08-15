@@ -36,6 +36,8 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER_Convolution> *mObjectCB = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[CN_SHADER_NUM] = { nullptr };
+	int *shaderThreadNum = nullptr;
+
 	UINT Width; //入力画像サイズ
 	UINT Height;//入力画像サイズ
 	UINT OutWid;//出力画像サイズ

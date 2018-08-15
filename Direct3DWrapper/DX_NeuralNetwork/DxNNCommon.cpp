@@ -61,8 +61,20 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	slotRootParameter[2].InitAsConstantBufferView(0);//mObjectCB2(b0)
 	mRootSignatureCom2 = CreateRsCompute(3, slotRootParameter);
 
-	pCS2 = CompileShader(ShaderNeuralNetworkTexture, strlen(ShaderNeuralNetworkTexture), "NNTexCopyCS", "cs_5_0");
+	UINT tmpNum[2];
+	tmpNum[0] = texWid;
+	tmpNum[1] = texHei;
+	char **replaceString = nullptr;
 
+	CreateReplaceArr(&shaderThreadNum2, &replaceString, 2, tmpNum);
+
+	char *repsh = nullptr;
+	ReplaceString(&repsh, ShaderNeuralNetworkTexture, '?', replaceString);
+	for (int i = 0; i < 2; i++)ARR_DELETE(replaceString[i]);
+	ARR_DELETE(replaceString);
+
+	pCS2 = CompileShader(repsh, strlen(repsh), "NNTexCopyCS", "cs_5_0");
+	ARR_DELETE(repsh);
 	//PSO
 	mPSOCom2 = CreatePsoCompute(pCS2.Get(), mRootSignatureCom2.Get());
 
@@ -86,7 +98,7 @@ void DxNNCommon::TextureCopy(ID3D12Resource *texture, int comNo) {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uav(mUavHeap2->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetComputeRootDescriptorTable(1, uav);
 	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB2->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(texWid, texHei, 1);
+	mCommandList->Dispatch(texWid / shaderThreadNum2[0], texHei / shaderThreadNum2[1], 1);
 	dx->End(comNo);
 	dx->WaitFenceCurrent();
 }
@@ -146,4 +158,71 @@ D3D12_RESOURCE_STATES DxNNCommon::GetNNTextureResourceStates() {
 
 DxNNCommon::~DxNNCommon() {
 	S_DELETE(mObjectCB2);
+	ARR_DELETE(shaderThreadNum2);
+}
+
+#define PLACEHOLDERNUM 3
+void DxNNCommon::CreateReplaceArr(int **shaderThreadNum, char ***replaceArr, UINT arrNum, UINT *srcNumArr) {
+
+	int *shaderthreadnum = new int[arrNum];
+	char **replacestring = new char*[arrNum];
+	for (UINT i = 0; i < arrNum; i++)replacestring[i] = new char[PLACEHOLDERNUM + 1];
+
+	for (UINT k = 0; k < arrNum; k++) {
+		for (UINT i = maxThreadNum; i > 0; i--) {
+			if (srcNumArr[k] % i == 0) {
+				snprintf(replacestring[k], PLACEHOLDERNUM + 1, "%d", i);
+				size_t len = strlen(replacestring[k]);
+				for (size_t ln = len; ln < PLACEHOLDERNUM; ln++) {
+					replacestring[k][ln] = ' ';//—]‚Á‚½—v‘f‚Í‹ó”’‚Å–„‚ß‚é
+				}
+				replacestring[k][PLACEHOLDERNUM] = '\0';
+				shaderthreadnum[k] = i;
+				break;
+			}
+		}
+	}
+	*shaderThreadNum = shaderthreadnum;
+	*replaceArr = replacestring;
+}
+
+void DxNNCommon::ReplaceString(char **destination, char *source, char placeholderStartPoint, char **replaceArr) {
+
+	bool search = false;
+	int repInd = 0;
+	int strInd = 0;
+
+	char *sou = source;
+	UINT strCnt = 0;
+	while (*sou != '\0') {
+		strCnt++;
+		sou++;
+	}
+	char *dst = new char[strCnt + 1];
+	strCnt = 0;
+
+	do {
+		if (source[strCnt] == placeholderStartPoint)search = true;
+		if (search) {
+			if (replaceArr[repInd][strInd] != '\0') {
+				dst[strCnt] = replaceArr[repInd][strInd++];
+			}
+			else {
+				search = false;
+				repInd++;
+				strInd = 0;
+				dst[strCnt] = source[strCnt];
+			}
+		}
+		else {
+			dst[strCnt] = source[strCnt];
+		}
+	} while (source[++strCnt] != '\0');
+	dst[strCnt] = '\0';
+	*destination = dst;
+}
+
+void DxNNCommon::SetMaxThreadNum(UINT num) {
+	maxThreadNum = num;
+	if (maxThreadNum > 32)maxThreadNum = 32;
 }

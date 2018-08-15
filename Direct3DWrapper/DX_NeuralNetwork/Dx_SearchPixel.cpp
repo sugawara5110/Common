@@ -76,6 +76,7 @@ SearchPixel::~SearchPixel() {
 	ARR_DELETE(sdata);
 	ARR_DELETE(outInd);
 	S_DELETE(mObjectCB);
+	ARR_DELETE(shaderThreadNum);
 }
 
 void SearchPixel::SetCommandList(int no) {
@@ -205,9 +206,24 @@ void SearchPixel::ComCreate() {
 	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
 
-	pCS[0] = CompileShader(ShaderSearchPixel, strlen(ShaderSearchPixel), "InPixCS", "cs_5_0");
-	pCS[1] = CompileShader(ShaderSearchPixel, strlen(ShaderSearchPixel), "OutPixCS", "cs_5_0");
-	for (int i = 0; i < 2; i++)
+	UINT tmpNum[SEA_SHADER_NUM * 2];
+	tmpNum[0] = outIndW;
+	tmpNum[1] = outIndH;
+	tmpNum[2] = srcWidth;
+	tmpNum[3] = srcHeight;
+	char **replaceString = nullptr;
+
+	CreateReplaceArr(&shaderThreadNum, &replaceString, SEA_SHADER_NUM * 2, tmpNum);
+
+	char *repsh = nullptr;
+	ReplaceString(&repsh, ShaderSearchPixel, '?', replaceString);
+	for (int i = 0; i < SEA_SHADER_NUM * 2; i++)ARR_DELETE(replaceString[i]);
+	ARR_DELETE(replaceString);
+
+	pCS[0] = CompileShader(repsh, strlen(repsh), "InPixCS", "cs_5_0");
+	pCS[1] = CompileShader(repsh, strlen(repsh), "OutPixCS", "cs_5_0");
+	ARR_DELETE(repsh);
+	for (int i = 0; i < SEA_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
@@ -276,7 +292,7 @@ void SearchPixel::SeparationTexture() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mOutputBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutIndBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(outIndW, outIndH, 1);
+	mCommandList->Dispatch(outIndW / shaderThreadNum[0], outIndH / shaderThreadNum[1], 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 	TextureCopy(mOutputBuffer.Get(), com_no);
@@ -313,7 +329,7 @@ void SearchPixel::TextureDraw() {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uav(mUavHeap->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetComputeRootDescriptorTable(5, uav);
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(srcWidth, srcHeight, 1);
+	mCommandList->Dispatch(srcWidth / shaderThreadNum[2], srcHeight / shaderThreadNum[3], 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

@@ -6,6 +6,7 @@
 
 #include "DxPooling.h"
 #include "ShaderNN\ShaderPooling.h"
+#define PARANUMPO 4
 
 DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT inputsetnum) {
 
@@ -48,6 +49,7 @@ DxPooling::~DxPooling() {
 	ARR_DELETE(inerror);
 	ARR_DELETE(outerror);
 	S_DELETE(mObjectCB);
+	ARR_DELETE(shaderThreadNum);
 }
 
 void DxPooling::SetCommandList(int no) {
@@ -93,8 +95,23 @@ void DxPooling::ComCreate() {
 	slotRootParameter[4].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(5, slotRootParameter);
 
-	pCS[0] = CompileShader(ShaderPooling, strlen(ShaderPooling), "POFPCS", "cs_5_0");
-	pCS[1] = CompileShader(ShaderPooling, strlen(ShaderPooling), "POBPCS", "cs_5_0");
+	UINT tmpNum[PARANUMPO];
+	tmpNum[0] = OutWid;
+	tmpNum[1] = OutHei * PoolNum;
+	tmpNum[2] = OutWid;
+	tmpNum[3] = OutHei * PoolNum;
+	char **replaceString = nullptr;
+
+	CreateReplaceArr(&shaderThreadNum, &replaceString, PARANUMPO, tmpNum);
+
+	char *repsh = nullptr;
+	ReplaceString(&repsh, ShaderPooling, '?', replaceString);
+	for (int i = 0; i < PARANUMPO; i++)ARR_DELETE(replaceString[i]);
+	ARR_DELETE(replaceString);
+
+	pCS[0] = CompileShader(repsh, strlen(repsh), "POFPCS", "cs_5_0");
+	pCS[1] = CompileShader(repsh, strlen(repsh), "POBPCS", "cs_5_0");
+	ARR_DELETE(repsh);
 	for (int i = 0; i < PO_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
@@ -121,7 +138,7 @@ void DxPooling::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * PoolNum, inputsetnum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * PoolNum / shaderThreadNum[1], inputsetnum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -144,7 +161,7 @@ void DxPooling::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * PoolNum, inputSetNum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * PoolNum / shaderThreadNum[3], inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 

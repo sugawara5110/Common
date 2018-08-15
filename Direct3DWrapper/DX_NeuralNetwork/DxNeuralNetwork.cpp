@@ -8,6 +8,7 @@
 #include "DxNeuralNetwork.h"
 #include <random>
 #include "ShaderNN\ShaderNeuralNetwork.h"
+#define PARANUM 6
 
 DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT inputsetnum) {
 
@@ -113,7 +114,10 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 	ARR_DELETE(input);
 	ARR_DELETE(error);
 	ARR_DELETE(weight);
-	for (int i = 0; i < Depth - 1; i++)ARR_DELETE(dropout[i]);
+	for (int i = 0; i < Depth - 1; i++) {
+		ARR_DELETE(shaderThreadNum[i]);
+		ARR_DELETE(dropout[i]);
+	}
 	ARR_DELETE(dropout);
 	ARR_DELETE(dropThreshold);
 
@@ -189,19 +193,46 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
 
-	if (sigon) {
-		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPCS", "cs_5_0");
-		pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS0", "cs_5_0");
+	UINT tmpNum[PARANUM];
+	UINT tmpI0 = 1;
+	UINT tmpI1 = Depth - 1;//‚±‚ê‚¾‚¯ŒÅ’è
+	UINT tmpI2 = Depth - 2;
+	UINT tmpI3 = Depth - 2;
+	UINT tmpI4 = Depth - 1;
+	UINT tmpI5 = Depth - 2;
+
+	for (int k = 0; k < Depth - 1; k++) {
+		tmpNum[0] = NumNode[tmpI0++];
+		tmpNum[1] = NumNode[tmpI1];
+		tmpNum[2] = NumNode[tmpI2--];
+		tmpNum[3] = NumNode[tmpI3--];
+		tmpNum[4] = NumNode[tmpI4--];
+		tmpNum[5] = NumNode[tmpI5--];
+		char **replaceString = nullptr;
+
+		CreateReplaceArr(&shaderThreadNum[k], &replaceString, PARANUM, tmpNum);
+
+		char *repsh = nullptr;
+		ReplaceString(&repsh, ShaderNeuralNetwork, '?', replaceString);
+		for (int i = 0; i < PARANUM; i++)ARR_DELETE(replaceString[i]);
+		ARR_DELETE(replaceString);
+
+		if (sigon) {
+			pCS[0][k] = CompileShader(repsh, strlen(repsh), "NNFPCS", "cs_5_0");
+			pCS[2][k] = CompileShader(repsh, strlen(repsh), "NNBPCS0", "cs_5_0");
+		}
+		else {
+			pCS[0][k] = CompileShader(repsh, strlen(repsh), "NNFPReLUCS", "cs_5_0");
+			pCS[2][k] = CompileShader(repsh, strlen(repsh), "NNBPReLUCS0", "cs_5_0");
+		}
+		pCS[1][k] = CompileShader(repsh, strlen(repsh), "InTargetCS", "cs_5_0");
+		pCS[3][k] = CompileShader(repsh, strlen(repsh), "NNBPCS1", "cs_5_0");
+		pCS[4][k] = CompileShader(repsh, strlen(repsh), "NNInverseCS", "cs_5_0");
+		ARR_DELETE(repsh);
+		for (int i = 0; i < NN_SHADER_NUM; i++) {
+			mPSOCom[i][k] = CreatePsoCompute(pCS[i][k].Get(), mRootSignatureCom.Get());
+		}
 	}
-	else {
-		pCS[0] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNFPReLUCS", "cs_5_0");
-		pCS[2] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPReLUCS0", "cs_5_0");
-	}
-	pCS[1] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "InTargetCS", "cs_5_0");
-	pCS[3] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNBPCS1", "cs_5_0");
-	pCS[4] = CompileShader(ShaderNeuralNetwork, strlen(ShaderNeuralNetwork), "NNInverseCS", "cs_5_0");
-	for (int i = 0; i < NN_SHADER_NUM; i++)
-		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
 void DxNeuralNetwork::ComCreateSigmoid() {
@@ -213,9 +244,10 @@ void DxNeuralNetwork::ComCreateReLU() {
 }
 
 void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
+	int repInd = 0;
 	for (int i = 0; i < Depth - 1; i++) {
 		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[0].Get());
+		mCommandList->SetPipelineState(mPSOCom[0][repInd].Get());
 		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
@@ -228,7 +260,8 @@ void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		//Dispatch‚Í1‰ñ–ˆ‚ÉGPUˆ—Š®—¹‚³‚¹‚éŽ–
-		mCommandList->Dispatch(NumNode[i + 1], 1, inputsetnum);
+		mCommandList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputsetnum);
+		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}
@@ -245,7 +278,7 @@ void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
 void DxNeuralNetwork::BackPropagation() {
 	//target“ü—Í
 	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
+	mCommandList->SetPipelineState(mPSOCom[1][0].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 	mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[Depth - 1]->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
@@ -253,14 +286,15 @@ void DxNeuralNetwork::BackPropagation() {
 	cb.Lear_Depth_inputS.y = Depth - 1;
 	mObjectCB->CopyData(0, cb);
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(NumNode[Depth - 1], 1, inputSetNum);
+	mCommandList->Dispatch(NumNode[Depth - 1] / shaderThreadNum[0][1], 1, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
+	int repInd = 0;
 	//‹t“`”d
 	for (int i = Depth - 2; i >= 0; i--) {
 		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[2].Get());
+		mCommandList->SetPipelineState(mPSOCom[2][repInd].Get());
 		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
@@ -270,15 +304,17 @@ void DxNeuralNetwork::BackPropagation() {
 		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i], 1, inputSetNum);
+		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2], 1, inputSetNum);
+		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}
 
+	repInd = 0;
 	//weight’lXV
 	for (int i = Depth - 2; i >= 0; i--) {
 		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[3].Get());
+		mCommandList->SetPipelineState(mPSOCom[3][repInd].Get());
 		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
@@ -287,7 +323,9 @@ void DxNeuralNetwork::BackPropagation() {
 		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i], NumNode[i + 1], 1);
+		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][3],
+			NumNode[i + 1] / shaderThreadNum[repInd][4], 1);
+		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}
@@ -432,10 +470,11 @@ float DxNeuralNetwork::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
 }
 
 void DxNeuralNetwork::InverseQuery() {
+	int repInd = 0;
 	//‹t“ü—Í
 	for (int i = Depth - 1; i >= 1; i--) {
 		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[4].Get());
+		mCommandList->SetPipelineState(mPSOCom[4][repInd].Get());
 		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i - 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i]->GetGPUVirtualAddress());
@@ -443,7 +482,8 @@ void DxNeuralNetwork::InverseQuery() {
 		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i - 1], 1, 1);
+		mCommandList->Dispatch(NumNode[i - 1] / shaderThreadNum[repInd][5], 1, 1);
+		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}

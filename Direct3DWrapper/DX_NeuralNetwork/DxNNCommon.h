@@ -19,6 +19,9 @@ protected:
 	NNCBTexture cb2;
 	ConstantBuffer<NNCBTexture> *mObjectCB2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS2 = nullptr;
+	int *shaderThreadNum2 = nullptr;
+	UINT maxThreadNum = 32;
+
 	UINT texWid;
 	UINT texHei;
 	bool created = false;
@@ -33,11 +36,16 @@ protected:
 	void CreateResourceRead(Microsoft::WRL::ComPtr<ID3D12Resource> &re, UINT64 size);
 	void SubresourcesUp(void *pData, UINT num, Microsoft::WRL::ComPtr<ID3D12Resource> &def,
 		Microsoft::WRL::ComPtr<ID3D12Resource> &up);
+	void CreateReplaceArr(int **shaderThreadNum, char ***replaceArr, UINT arrNum, UINT *srcNumArr);
+	//shaderThreadNum, replaceArr‚ÍŠÖ”ŠO•”‚Å‰ğ•ú
+	void ReplaceString(char **destination, char *source, char placeholderStartPoint, char **replaceArr);
+	//destination‚ÍŠÖ”ŠO•”‚Å‰ğ•ú
 
 public:
 	void CreareNNTexture(UINT width, UINT height, UINT num);
 	ID3D12Resource *GetNNTextureResource();
 	D3D12_RESOURCE_STATES GetNNTextureResourceStates();
+	void SetMaxThreadNum(UINT num);
 	~DxNNCommon();
 };
 

@@ -8,6 +8,7 @@
 #include "DxConvolution.h"
 #include <random>
 #include "ShaderNN\ShaderConvolution.h"
+#define PARANUMCN 9
 
 void DxConvolution::SetLearningLate(float rate, float biasrate) {
 	learningRate = rate;
@@ -106,6 +107,7 @@ DxConvolution::~DxConvolution() {
 	S_DELETE(mObjectCB);
 	ARR_DELETE(dropout);
 	ARR_DELETE(bias);
+	ARR_DELETE(shaderThreadNum);
 }
 
 void DxConvolution::SetCommandList(int no) {
@@ -181,18 +183,37 @@ void DxConvolution::ComCreate(bool sigon) {
 	slotRootParameter[7].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(8, slotRootParameter);
 
+	UINT tmpNum[PARANUMCN];
+	tmpNum[0] = OutWid;
+	tmpNum[1] = OutHei * FilNum;
+	tmpNum[2] = Width;
+	tmpNum[3] = Height * FilNum;
+	tmpNum[4] = OutWid;
+	tmpNum[5] = OutHei * FilNum;
+	tmpNum[6] = elNumWid;
+	tmpNum[7] = elNumWid * FilNum;
+	tmpNum[8] = FilNum;
+	char **replaceString = nullptr;
+
+	CreateReplaceArr(&shaderThreadNum, &replaceString, PARANUMCN, tmpNum);
+
+	char *repsh = nullptr;
+	ReplaceString(&repsh, ShaderConvolution, '?', replaceString);
+	for (int i = 0; i < PARANUMCN; i++)ARR_DELETE(replaceString[i]);
+	ARR_DELETE(replaceString);
+
 	if (sigon) {
-		pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPCS", "cs_5_0");
-		pCS[3] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS2", "cs_5_0");
+		pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPCS", "cs_5_0");
+		pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
 	}
 	else {
-		pCS[0] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNFPReLUCS", "cs_5_0");
-		pCS[3] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPReLUCS2", "cs_5_0");
+		pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPReLUCS", "cs_5_0");
+		pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPReLUCS2", "cs_5_0");
 	}
-	pCS[1] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS0", "cs_5_0");
-	pCS[2] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCS1", "cs_5_0");
-	pCS[4] = CompileShader(ShaderConvolution, strlen(ShaderConvolution), "CNBPCSBias", "cs_5_0");
-
+	pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPCS0", "cs_5_0");
+	pCS[2] = CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
+	pCS[4] = CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
+	ARR_DELETE(repsh);
 	for (int i = 0; i < CN_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
@@ -237,7 +258,7 @@ void DxConvolution::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * FilNum, inputsetnum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * FilNum / shaderThreadNum[1], inputsetnum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -261,7 +282,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width, Height * FilNum, inputSetNum);
+	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -275,7 +296,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid, OutHei * FilNum, inputSetNum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -288,7 +309,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(elNumWid, elNumWid * FilNum, 1);
+	mCommandList->Dispatch(elNumWid / shaderThreadNum[6], elNumWid * FilNum / shaderThreadNum[7], 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -298,7 +319,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(FilNum, 1, 1);
+	mCommandList->Dispatch(FilNum / shaderThreadNum[8], 1, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 

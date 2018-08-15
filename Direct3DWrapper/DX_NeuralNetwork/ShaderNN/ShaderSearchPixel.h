@@ -26,7 +26,7 @@ char *ShaderSearchPixel =
 "};\n"
 
 //srcPixel入力, スレッド数:out側Index配列数と同数
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024
 "void InPixCS(uint2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   uint outpx = inid.x;\n"
@@ -44,7 +44,7 @@ char *ShaderSearchPixel =
 "}\n"
 
 //srcPixelへ検出箇所枠追加, スレッド数:srcPixel同数
-"[numthreads(1, 1, 1)]\n"//最大X * Y * Z = 1024
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024
 "void OutPixCS(uint2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outpx = (int)inid.x;\n"

@@ -26,7 +26,7 @@ char *ShaderPooling =
 
 //‡“`”d
 //o—Í‘¤‚ğ•À—ñˆ—,“ü—Í‘¤‚ğƒ‹[ƒv
-"[numthreads(1, 1, 1)]\n"//Å‘åX * Y * Z = 1024
+"[numthreads(?**, ?**, 1)]\n"//Å‘åX * Y * Z = 1024
 "void POFPCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   uint setInd = outid.z;\n"
@@ -62,7 +62,7 @@ char *ShaderPooling =
 
 //‹t“`”d
 //Err“ü—Í‘¤‚ğ•À—ñˆ—,Erro—Í‘¤‚ğƒ‹[ƒv
-"[numthreads(1, 1, 1)]\n"//Å‘åX * Y * Z = 1024
+"[numthreads(?**, ?**, 1)]\n"//Å‘åX * Y * Z = 1024
 "void POBPCS(uint3 inerrid : SV_DispatchThreadID)\n"
 "{\n"
 "   uint setInd = inerrid.z;\n"

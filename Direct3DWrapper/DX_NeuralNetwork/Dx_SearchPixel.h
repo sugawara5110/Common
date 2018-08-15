@@ -8,12 +8,13 @@
 #define Class_SearchPixel_Header
 
 #include "DxNNCommon.h"
+#define SEA_SHADER_NUM 2
 
 class SearchPixel :public DxNNCommon {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[2] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[SEA_SHADER_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
@@ -29,7 +30,8 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputColUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputColBuffer = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pCS[2] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3DBlob> pCS[SEA_SHADER_NUM] = { nullptr };
+	int *shaderThreadNum = nullptr;
 
 	CBSearchPixel cb;
 	ConstantBuffer<CBSearchPixel> *mObjectCB = nullptr;
@@ -57,7 +59,8 @@ protected:
 	SearchPixel() {}
 
 public:
-	SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, float outscale, UINT step, UINT outNum, float Threshold);//UINT outNumÇÕåªèÛ1ÇµÇ©ëŒâûÇµÇƒÇ»Ç¢
+	SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, float outscale,
+		UINT step, UINT outNum, float Threshold);//UINT outNumÇÕåªèÛ1ÇµÇ©ëŒâûÇµÇƒÇ»Ç¢
 	~SearchPixel();
 	void SetCommandList(int no);
 	UINT GetSearchNum();

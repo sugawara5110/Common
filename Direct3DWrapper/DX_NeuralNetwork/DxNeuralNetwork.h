@@ -14,7 +14,7 @@ class DxNeuralNetwork :public DxNNCommon {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[NN_SHADER_NUM] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[NN_SHADER_NUM][MAX_DEPTH_NUM - 1] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeBuffer[MAX_DEPTH_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFUpBuffer[MAX_DEPTH_NUM - 1] = { nullptr };
@@ -28,7 +28,8 @@ protected:
 
 	CONSTANT_BUFFER_NeuralNetwork cb;
 	ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork> *mObjectCB = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pCS[NN_SHADER_NUM] = { nullptr };
+	Microsoft::WRL::ComPtr<ID3DBlob> pCS[NN_SHADER_NUM][MAX_DEPTH_NUM - 1] = { nullptr };
+	int *shaderThreadNum[MAX_DEPTH_NUM - 1] = { nullptr };
 
 	bool firstIn = false;
 	float *input = nullptr;
