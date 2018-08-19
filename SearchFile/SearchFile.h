@@ -11,14 +11,14 @@
 class SearchFile {
 
 private:
-	HANDLE hFile;
-	WIN32_FIND_DATA fd;
-	char ***fileName = nullptr;//directoryNum, fileNum, strNum
+	char ***filePass = nullptr;//directoryNum, fileNum, fileï∂éöêî
 	UINT directoryNum = 0;
 	UINT *fileNum = nullptr;
 
 	SearchFile() {}
-	bool StepStr(char *str, char **searchExtension, UINT searchExtensionNum, UINT *exNum);
+	bool FileCopy(char *file, char **searchExtension, UINT searchExtensionNum, UINT *exNum);
+	void FileNumCount(wchar_t *pass, UINT directoryInd, char **searchExtension, UINT searchExtensionNum);
+	void FileLoad(wchar_t *pass, UINT directoryInd, char **searchExtension, UINT searchExtensionNum);
 
 public:
 	SearchFile(UINT directoryNum);
