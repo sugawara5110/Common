@@ -30,7 +30,7 @@ void Dx12Process_sub::ListCreate() {
 		//コマンドアロケータ生成(コマンドリストに積むバッファを確保するObj)
 		if (FAILED(Dx12Process::dx->md3dDevice->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf()))))FALSE;
+			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf()))))false;
 	}
 
 	//コマンドリスト生成
@@ -39,7 +39,7 @@ void Dx12Process_sub::ListCreate() {
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		mCmdListAlloc[0].Get(),
 		nullptr,
-		IID_PPV_ARGS(mCommandList.GetAddressOf()))))FALSE;
+		IID_PPV_ARGS(mCommandList.GetAddressOf()))))false;
 
 	//最初は閉じた方が良い
 	mCommandList->Close();
@@ -61,25 +61,25 @@ void Dx12Process_sub::End() {
 	mComState = CLOSE;
 }
 
-Dx12Process *Dx12Process::dx = NULL;
+Dx12Process *Dx12Process::dx = nullptr;
 std::mutex Dx12Process::mtx;
 
 void Dx12Process::InstanceCreate() {
 
-	if (dx == NULL)dx = new Dx12Process();
+	if (dx == nullptr)dx = new Dx12Process();
 }
 
 Dx12Process *Dx12Process::GetInstance() {
 
-	if (dx != NULL)return dx;
-	return NULL;
+	if (dx != nullptr)return dx;
+	return nullptr;
 }
 
 void Dx12Process::DeleteInstance() {
 
-	if (dx != NULL) {
+	if (dx != nullptr) {
 		delete dx;
-		dx = NULL;
+		dx = nullptr;
 	}
 }
 
@@ -138,34 +138,10 @@ void Dx12Process::WaitFencePast() {
 	Unlock();
 }
 
-void Dx12Process::RequestSync() {
-	while (requestSync);
-	WaitFenceCurrent();
-	requestSync = TRUE;
-	while (!replySync);
-	replySync = FALSE;
-}
-
-void Dx12Process::ReplySync() {
-	while (!requestSync && !syncFin);
-	WaitFenceCurrent();
-	replySync = TRUE;
-	requestSync = FALSE;
-}
-
-void Dx12Process::SyncFin(bool on) {
-	syncFin = on;
-	requestSync = replySync = FALSE;
-}
-
-bool Dx12Process::SyncFin() {
-	return syncFin;
-}
-
 class addShader {
 
 public:
-	char *str = NULL;
+	char *str = nullptr;
 	size_t size;
 
 	void addStr(char *str1, size_t size1, char *str2, size_t size2) {
@@ -335,9 +311,9 @@ void Dx12Process::GetTexture(int com_no) {
 	char str[50];
 
 	for (int i = 0; i < texNum; i++) {
-		if (tex[i].texName == NULL)continue;
+		if (tex[i].texName == nullptr)continue;
 
-		if (tex[i].binary_ch != NULL) {
+		if (tex[i].binary_ch != nullptr) {
 			if (FAILED(DirectX::LoadWICTextureFromMemory(md3dDevice.Get(),
 				(uint8_t*)tex[i].binary_ch, tex[i].binary_size, &t, decodedData, subresource))) {
 				sprintf(str, "テクスチャ№%d読み込みエラー", (i));
@@ -426,18 +402,16 @@ void Dx12Process::UpTextureRelease() {
 	}
 }
 
-bool Dx12Process::Initialize(HWND hWnd, UINT width, UINT height) {
+bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
+
 	mClientWidth = width;
 	mClientHeight = height;
-	return Initialize(hWnd);
-}
 
-bool Dx12Process::Initialize(HWND hWnd) {
 #if defined(DEBUG) || defined(_DEBUG) 
 	//デバッグ中はデバッグレイヤーを有効化する
 	{
 		ComPtr<ID3D12Debug> debugController;
-		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))FALSE;
+		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))false;
 		debugController->EnableDebugLayer();
 	}
 #endif
@@ -446,7 +420,7 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	//アダプターの列挙、スワップ チェーンの作成、
 	//および全画面表示モードとの間の切り替えに使用される Alt + 
 	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
-	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory))))FALSE;
+	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory))))false;
 
 	//ハードウエア処理可能か,ハードウエア処理デバイス生成
 	HRESULT hardwareResult = D3D12CreateDevice(
@@ -458,18 +432,18 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	if (FAILED(hardwareResult))
 	{
 		ComPtr<IDXGIAdapter> pWarpAdapter;
-		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter))))FALSE;
+		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter))))false;
 
 		if (FAILED(D3D12CreateDevice(
 			pWarpAdapter.Get(),
 			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&md3dDevice))))FALSE;
+			IID_PPV_ARGS(&md3dDevice))))false;
 	}
 
 	//フェンス生成
 	//Command Queueに送信したCommand Listの完了を検知するために使用
 	if (FAILED(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mFence))))FALSE;
+		IID_PPV_ARGS(&mFence))))false;
 
 	//Descriptor のアドレス計算で使用
 	mRtvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -485,7 +459,7 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	if (FAILED(md3dDevice->CheckFeatureSupport(
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&msQualityLevels,     //機能のサポートを示すデータが格納
-		sizeof(msQualityLevels))))FALSE;
+		sizeof(msQualityLevels))))false;
 
 	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
 	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
@@ -495,14 +469,12 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT; //直接コマンドキュー
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; //GPUタイムアウトが有効
 	//コマンド待ち行列生成
-	if (FAILED(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue))))FALSE;
+	if (FAILED(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue))))false;
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
 		dx_sub[i].ListCreate();
 	}
-
-	requestSync = replySync = syncFin = FALSE;
 
 	//初期化
 	mSwapChain.Reset();
@@ -528,7 +500,7 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	if (FAILED(mdxgiFactory->CreateSwapChain(
 		mCommandQueue.Get(),
 		&sd,
-		mSwapChain.GetAddressOf())))FALSE;
+		mSwapChain.GetAddressOf())))false;
 
 	//Descriptor:何のバッファかを記述される
 	//スワップチェインをRenderTargetとして使用するためのDescriptorHeapを作成(Descriptorの記録場所)
@@ -538,7 +510,7 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; //シェーダからアクセスしないのでNONEでOK
 	rtvHeapDesc.NodeMask = 0;
 	if (FAILED(md3dDevice->CreateDescriptorHeap(
-		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf()))))FALSE;
+		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf()))))false;
 
 	//深度ステンシルビュ-DescriptorHeapを作成
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
@@ -547,13 +519,13 @@ bool Dx12Process::Initialize(HWND hWnd) {
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
 	if (FAILED(md3dDevice->CreateDescriptorHeap(
-		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf()))))FALSE;
+		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf()))))false;
 
 	//レンダーターゲットビューデスクリプターヒープの開始ハンドル取得
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		//スワップチェインバッファ取得
-		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i]))))FALSE;
+		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i]))))false;
 		//レンダーターゲットビュー(Descriptor)生成,DescriptorHeapにDescriptorが記録される
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		//ヒープ位置オフセット(2個あるので2個目記録位置にDescriptorSize分オフセット)
@@ -585,7 +557,7 @@ bool Dx12Process::Initialize(HWND hWnd) {
 		&depthStencilDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		&optClear,
-		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf()))))FALSE;
+		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf()))))false;
 
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
@@ -642,7 +614,7 @@ bool Dx12Process::Initialize(HWND hWnd) {
 
 	CreateShaderByteCode();
 
-	return TRUE;
+	return true;
 }
 
 void Dx12Process::Sclear(int com_no) {
@@ -712,18 +684,19 @@ void Dx12Process::P_ShadowBright(float val) {
 void Dx12Process::PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
 	float brightness, float attenuation, bool on_off) {
 
-	static int pcs = LIGHT_PCS_init;//個数初期値(予約済み)
+	if (Idx > LIGHT_PCS - 1 || Idx < 0) {
+		ErrorMessage("lightNumの値が範囲外です");
+		return;
+	}
 
-	if (Idx > LIGHT_PCS - 1 || Idx < 0)return;//エラー防止
-
-	if (Idx > LIGHT_PCS_init - 1 && on_off == TRUE)pcs = Idx + 1;
+	if (Idx + 1 > lightNum && on_off)lightNum = Idx + 1;
 
 	float onoff;
-	if (on_off == TRUE)onoff = 1.0f; else onoff = 0.0f;
+	if (on_off)onoff = 1.0f; else onoff = 0.0f;
 	plight.LightPos[Idx].as(x, y, z, 1.0f);
 	plight.LightColor[Idx].as(r, g, b, a);
 	plight.Lightst[Idx].as(range, brightness, attenuation, onoff);
-	plight.LightPcs = pcs;
+	plight.LightPcs = lightNum;
 }
 
 void Dx12Process::DirectionLight(float x, float y, float z, float r, float g, float b, float bright, float ShadowBright) {
@@ -736,13 +709,13 @@ void Dx12Process::DirectionLight(float x, float y, float z, float r, float g, fl
 
 void Dx12Process::SetDirectionLight(bool onoff) {
 	float f = 0.0f;
-	if (onoff == TRUE)f = 1.0f;
+	if (onoff)f = 1.0f;
 	dlight.Lightst.y = f;
 }
 
 void Dx12Process::Fog(float r, float g, float b, float amount, float density, bool onoff) {
 
-	if (onoff == FALSE) {
+	if (!onoff) {
 		fog.on_off = 0.0f;
 		return;
 	}
@@ -819,7 +792,7 @@ ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR
 
 	ComPtr<ID3DBlob> byteCode = nullptr;
 	ComPtr<ID3DBlob> errors;
-	hr = D3DCompile(szFileName, size, NULL, NULL, NULL, szFuncName, szProfileName,
+	hr = D3DCompile(szFileName, size, nullptr, nullptr, nullptr, szFuncName, szProfileName,
 		D3D10_SHADER_DEBUG | D3D10_SHADER_SKIP_OPTIMIZATION, 0, &byteCode, &errors);
 
 	if (errors != nullptr)
@@ -828,11 +801,13 @@ ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR
 	return byteCode;
 }
 
-void  Dx12Process::InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size) {
-	InstancedMapSize3(cb, x, y, z, thetaZ, thetaY, thetaX, size, size, size);
-}
+void Dx12Process::InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z,
+	float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY, float sizeZ) {
 
-void Dx12Process::InstancedMapSize3(CONSTANT_BUFFER *cb, float x, float y, float z, float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY, float sizeZ) {
+	if (sizeY <= 0.0f || sizeZ <= 0.0f) {
+		sizeY = sizeX;
+		sizeZ = sizeX;
+	}
 
 	if (ins_no > INSTANCE_PCS_3D - 1)ins_no--;
 	MATRIX mov;
@@ -863,7 +838,7 @@ void Dx12Process::InstancedMapSize3(CONSTANT_BUFFER *cb, float x, float y, float
 	ins_no++;
 }
 
-void Dx12Process::MatrixMap2(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
+void Dx12Process::MatrixMap(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
 
 	cb->C_Pos.as(posX, posY, posZ, 0.0f);
 	cb->AddObjColor.as(r, g, b, a);
@@ -879,46 +854,6 @@ void Dx12Process::MatrixMap2(CONSTANT_BUFFER *cb, float r, float g, float b, flo
 	if (disp == 0.0f)disp = 3.0f;
 	cb->DispAmount.as(disp, 0.0f, 0.0f, 0.0f);
 	cb->pXpYmXmY.as(px, py, mx, my);
-}
-
-void Dx12Process::MatrixMap(CONSTANT_BUFFER *cb, float x, float y, float z,
-	float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float px, float py, float mx, float my) {
-
-	MatrixMapSize3(cb, x, y, z, r, g, b, a, thetaZ, thetaY, thetaX,
-		size, size, size, disp, px, py, mx, my);
-}
-
-void Dx12Process::MatrixMapSize3(CONSTANT_BUFFER *cb, float x, float y, float z,
-	float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX,
-	float sizeX, float sizeY, float sizeZ, float disp, float px, float py, float mx, float my) {
-
-	if (ins_no > INSTANCE_PCS_3D - 1)ins_no--;
-	MATRIX mov;
-	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
-	MATRIX scale;
-	MATRIX scro;
-	MATRIX world;
-	MATRIX WV;
-
-	//拡大縮小
-	MatrixScaling(&scale, sizeX, sizeY, sizeZ);
-	//表示位置
-	MatrixRotationZ(&rotZ, thetaZ);
-	MatrixRotationY(&rotY, thetaY);
-	MatrixRotationX(&rotX, thetaX);
-	MatrixMultiply(&rotZY, &rotZ, &rotY);
-	MatrixMultiply(&rotZYX, &rotZY, &rotX);
-	MatrixTranslation(&mov, x, y, z);
-	MatrixMultiply(&scro, &rotZYX, &scale);
-	MatrixMultiply(&world, &scro, &mov);
-
-	cb->World[ins_no] = world;
-	MatrixMultiply(&WV, &world, &mView);
-	MatrixMultiply(&cb->WVP[ins_no], &WV, &mProj);
-	MatrixTranspose(&cb->World[ins_no]);
-	MatrixTranspose(&cb->WVP[ins_no]);
-	MatrixMap2(cb, r, g, b, a, disp, px, py, mx, my);
-	ins_no++;
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> Dx12Process::GetStaticSamplers()
@@ -999,10 +934,10 @@ char *Dx12Process::GetNameFromPass(char *pass) {
 	CHAR temp[255];
 	strcpy_s(temp, pass);
 
-	bool f = FALSE;
+	bool f = false;
 
 	for (int i = 0; temp[i] != '\0' && i < 255; i++) {
-		if (temp[i] == '\\' || temp[i] == '/') { f = TRUE; break; }
+		if (temp[i] == '\\' || temp[i] == '/') { f = true; break; }
 	}
 
 	if (f) {

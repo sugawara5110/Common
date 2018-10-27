@@ -11,8 +11,8 @@ std::mutex Wave::mtx;
 Wave::Wave() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	d3varray = NULL;
-	d3varrayI = NULL;
+	d3varray = nullptr;
+	d3varrayI = nullptr;
 	texNum = 1;
 
 	sg.vDiffuse.x = 1.0f;
@@ -25,16 +25,11 @@ Wave::Wave() {
 	sg.vSpeculer.w = 1.0f;
 }
 
-void Wave::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 Wave::~Wave() {
 	free(d3varray);
-	d3varray = NULL;
+	d3varray = nullptr;
 	free(d3varrayI);
-	d3varrayI = NULL;
+	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
 	S_DELETE(mObjectCB_WAVE);
 	RELEASE(texture);
@@ -168,7 +163,7 @@ void Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	te.diffuse = texNo;
 	te.normal = nortNo;
 	te.movie = m_on;
-	mSrvHeap = CreateSrvHeap(1, texNum, &te);
+	mSrvHeap = CreateSrvHeap(1, texNum, &te, texture);
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
@@ -201,55 +196,36 @@ void Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 	DrawCreate(texNo, nortNo, blend, alpha);
 }
 
-void Wave::InstancedMap(float x, float y, float z, float theta) {
-	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, 1.0f);
-}
-
-void Wave::InstancedMap(float x, float y, float z, float theta, float size) {
-	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, size);
-}
-
-void Wave::InstancedMapSize3(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
-	dx->InstancedMapSize3(&cb[sw], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
-}
-
-void Wave::InstanceUpdate(float r, float g, float b, float a, float disp) {
-	InstanceUpdate(r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+void Wave::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
+	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
 }
 
 void Wave::CbSwap() {
 	Lock();
 	if (!UpOn) {
 		upCount++;
-		if (upCount > 1)UpOn = TRUE;//cb,2要素初回更新終了
+		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
 	sw = 1 - sw;//cbスワップ
 	insNum = dx->ins_no;
 	dx->ins_no = 0;
 	Unlock();
-	DrawOn = TRUE;
+	DrawOn = true;
 }
 
 void Wave::InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
-	dx->MatrixMap2(&cb[sw], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, px, py, mx, my);
 	CbSwap();
 }
 
-void Wave::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp) {
-	Update(x, y, z, r, g, b, a, theta, disp, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-}
-
-void Wave::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size) {
-	Update(x, y, z, r, g, b, a, theta, disp, size, 1.0f, 1.0f, 1.0f, 1.0f);
-}
-
 void Wave::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my) {
-	dx->MatrixMap(&cb[sw], x, y, z, r, g, b, a, theta, 0, 0, size, disp, px, py, mx, my);
+	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, size);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, px, py, mx, my);
 	CbSwap();
 }
 
 void Wave::DrawOff() {
-	DrawOn = FALSE;
+	DrawOn = false;
 }
 
 void Wave::Compute() {

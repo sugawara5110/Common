@@ -79,11 +79,6 @@ SearchPixel::~SearchPixel() {
 	ARR_DELETE(shaderThreadNum);
 }
 
-void SearchPixel::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 UINT SearchPixel::GetSearchNum() {
 	return searchNum;
 }

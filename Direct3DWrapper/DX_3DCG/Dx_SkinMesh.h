@@ -15,7 +15,7 @@ class SkinMesh_sub {
 protected:
 	friend SkinMesh;
 
-	FbxScene *m_pmyScene = NULL;
+	FbxScene *m_pmyScene = nullptr;
 	float end_frame, current_frame;
 
 	bool centering, offset;
@@ -39,14 +39,14 @@ protected:
 	static volatile bool stInitFBX_ON, stSetNewPose_ON;
 	static bool ManagerCreated;//マネージャー生成フラグ
 
-	ID3DBlob                   *vs = nullptr;
-	ID3DBlob                   *vsB = nullptr;
-	ID3DBlob                   *hs = nullptr;
-	ID3DBlob                   *ds = nullptr;
-	ID3DBlob                   *ps = nullptr;
-	ID3DBlob                   *psB = nullptr;
-	bool alpha = FALSE;
-	bool blend = FALSE;
+	ID3DBlob *vs = nullptr;
+	ID3DBlob *vsB = nullptr;
+	ID3DBlob *hs = nullptr;
+	ID3DBlob *ds = nullptr;
+	ID3DBlob *ps = nullptr;
+	ID3DBlob *psB = nullptr;
+	bool alpha = false;
+	bool blend = false;
 
 	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
 
@@ -64,9 +64,9 @@ protected:
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
-	bool UpOn = FALSE;
+	bool UpOn = false;
 	//DrawOn
-	bool DrawOn = FALSE;
+	bool DrawOn = false;
 
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView[]> Iview = nullptr;
@@ -133,7 +133,6 @@ public:
 	SkinMesh();
 	~SkinMesh();
 
-	void SetCommandList(int no);
 	void SetState(bool alpha, bool blend);
 	void ObjCentering(bool f, int ind);
 	void ObjCentering(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind);

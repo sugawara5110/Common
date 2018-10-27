@@ -12,11 +12,11 @@
 class Wave :public Common {
 
 protected:
-	ID3DBlob                   *cs = nullptr;
-	ID3DBlob                   *vs = nullptr;
-	ID3DBlob                   *ps = nullptr;
-	ID3DBlob                   *hs = nullptr;
-	ID3DBlob                   *ds = nullptr;
+	ID3DBlob *cs = nullptr;
+	ID3DBlob *vs = nullptr;
+	ID3DBlob *ps = nullptr;
+	ID3DBlob *hs = nullptr;
+	ID3DBlob *ds = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;
@@ -32,9 +32,9 @@ protected:
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
-	bool UpOn = FALSE;
+	bool UpOn = false;
 	//DrawOn
-	bool DrawOn = FALSE;
+	bool DrawOn = false;
 
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView> Iview = nullptr;
@@ -70,7 +70,6 @@ protected:
 
 public:
 	Wave();
-	void SetCommandList(int no);
 	~Wave();
 	void GetVBarray(int v);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB);
@@ -81,14 +80,10 @@ public:
 		float vx, float vy, float vz,
 		float nx, float ny, float nz,
 		float u, float v);
-	void InstancedMap(float x, float y, float z, float theta);
-	void InstancedMap(float x, float y, float z, float theta, float size);
-	void InstancedMapSize3(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ);
-	void InstanceUpdate(float r, float g, float b, float a, float disp);
-	void InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my);
+	void InstancedMap(float x, float y, float z, float theta, float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
+	void InstanceUpdate(float r, float g, float b, float a, float disp, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp,
+		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
 	void Draw();
 };

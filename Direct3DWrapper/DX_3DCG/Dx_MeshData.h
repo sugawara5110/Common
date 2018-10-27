@@ -12,12 +12,12 @@
 class MeshData :public Common {
 
 protected:
-	ID3DBlob                   *vs = nullptr;
-	ID3DBlob                   *vsB = nullptr;
-	ID3DBlob                   *ps = nullptr;
-	ID3DBlob                   *psB = nullptr;
-	ID3DBlob                   *hs = nullptr;
-	ID3DBlob                   *ds = nullptr;
+	ID3DBlob * vs = nullptr;
+	ID3DBlob *vsB = nullptr;
+	ID3DBlob *ps = nullptr;
+	ID3DBlob *psB = nullptr;
+	ID3DBlob *hs = nullptr;
+	ID3DBlob *ds = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
@@ -32,9 +32,9 @@ protected:
 			   //UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
-	bool UpOn = FALSE;
+	bool UpOn = false;
 	//DrawOn
-	bool DrawOn = FALSE;
+	bool DrawOn = false;
 
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
@@ -43,11 +43,11 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
-	int              MaterialCount = 0;//マテリアル数
-	int              *piFaceBuffer;
-	VertexM          *pvVertexBuffer;
-	int              FaceCount;  //ポリゴン数カウンター
-	char             mFileName[255];
+	int        MaterialCount = 0;//マテリアル数
+	int        *piFaceBuffer;
+	VertexM    *pvVertexBuffer;
+	int        FaceCount;  //ポリゴン数カウンター
+	char       mFileName[255];
 	//一時保管
 	VECTOR3 *pvCoord;
 	VECTOR3 *pvNormal;
@@ -56,9 +56,9 @@ protected:
 
 	MY_MATERIAL* pMaterial;
 
-	bool alpha = FALSE;
-	bool blend = FALSE;
-	bool disp = FALSE;//テセレータフラグ
+	bool alpha = false;
+	bool blend = false;
+	bool disp = false;//テセレータフラグ
 	float addDiffuse;
 	float addSpecular;
 
@@ -75,15 +75,12 @@ protected:
 public:
 	MeshData();
 	~MeshData();
-	void SetCommandList(int no);
-	void SetState(bool alpha, bool blend, bool disp);
-	void SetState(bool alpha, bool blend, bool disp, float diffuse, float specu);
+	void SetState(bool alpha, bool blend, bool disp, float diffuse = 0.0f, float specu = 0.0f);
 	void GetBuffer(char *FileName);
 	void SetVertex();
 	void CreateMesh();
 	void GetTexture();
 	ID3D12PipelineState *GetPipelineState();
-	//木./dat/mesh/tree.obj
 	//複数Update
 	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);
 	void InstanceUpdate(float r, float g, float b, float a, float disp);

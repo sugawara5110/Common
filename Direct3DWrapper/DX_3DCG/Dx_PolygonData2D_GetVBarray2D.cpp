@@ -30,8 +30,8 @@ PolygonData2D::PolygonData2D() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	com_no = 0;
-	d2varray = NULL;
-	d2varrayI = NULL;
+	d2varray = nullptr;
+	d2varrayI = nullptr;
 	magX = magnificationX;
 	magY = magnificationY;
 }
@@ -41,16 +41,11 @@ void PolygonData2D::DisabledMagnification() {
 	magY = 1.0f;
 }
 
-void PolygonData2D::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 PolygonData2D::~PolygonData2D() {
 	free(d2varray);
-	d2varray = NULL;
+	d2varray = nullptr;
 	free(d2varrayI);
-	d2varrayI = NULL;
+	d2varrayI = nullptr;
 	S_DELETE(mObjectCB);
 	RELEASE(texture);
 	RELEASE(textureUp);
@@ -92,7 +87,7 @@ void PolygonData2D::SetTextParameter(int width, int height, int textCount,
 	memcpy(Allsize, *allsize, sizeof(DWORD)*Tcount);
 	Ptr = new BYTE[Allsize[Tcount - 1]]();
 	memcpy(Ptr, *ptr, sizeof(BYTE)*Allsize[Tcount - 1]);
-	CreateTextOn = TRUE;
+	CreateTextOn = true;
 }
 
 void PolygonData2D::SetText() {
@@ -234,7 +229,7 @@ void PolygonData2D::SetText() {
 	ARR_DELETE(Ptr);
 	ARR_DELETE(Allsize);
 
-	CreateTextOn = FALSE;
+	CreateTextOn = false;
 }
 
 ID3D12PipelineState *PolygonData2D::GetPipelineState() {
@@ -251,7 +246,7 @@ void PolygonData2D::GetVBarray2D(int pcs) {
 }
 
 void PolygonData2D::TexOn() {
-	tex_on = TRUE;
+	tex_on = true;
 }
 
 void PolygonData2D::GetShaderByteCode() {
@@ -336,13 +331,13 @@ void PolygonData2D::CbSwap() {
 	Lock();
 	if (!UpOn) {
 		upCount++;
-		if (upCount > 1)UpOn = TRUE;//cb,2要素初回更新終了
+		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
 	sw = 1 - sw;//cbスワップ
 	insNum = ins_no;
 	ins_no = 0;
 	Unlock();
-	DrawOn = TRUE;
+	DrawOn = true;
 }
 
 void PolygonData2D::InstanceUpdate() {
@@ -359,7 +354,7 @@ void PolygonData2D::Update(float x, float y, float z, float r, float g, float b,
 }
 
 void PolygonData2D::DrawOff() {
-	DrawOn = FALSE;
+	DrawOn = false;
 }
 
 void PolygonData2D::Draw() {

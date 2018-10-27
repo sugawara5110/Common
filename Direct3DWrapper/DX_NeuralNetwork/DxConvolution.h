@@ -96,7 +96,6 @@ protected:
 public:
 	DxConvolution(UINT width, UINT height, UINT filNum, UINT inputsetnum = 1, UINT elnumwid = 3, UINT filstep = 1);
 	~DxConvolution();
-	void SetCommandList(int no);
 	void ComCreateSigmoid();
 	void ComCreateReLU();
 	void SetdropThreshold(float Threshold);//ŒŸo‚Í0.0fİ’è‚É‚·‚é

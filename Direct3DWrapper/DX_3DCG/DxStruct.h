@@ -10,13 +10,12 @@
 #include "DxFunction.h"
 
 #define LIGHT_PCS 150
-#define LIGHT_PCS_init 8
 #define INSTANCE_PCS_3D 150
 #define INSTANCE_PCS_2D 80
 #define MAX_BONES 150
-#define RELEASE(p)    if(p){p->Release();  p=NULL;}
-#define S_DELETE(p)   if(p){delete p;      p=NULL;}
-#define ARR_DELETE(p) if(p){delete[] p;    p=NULL;}
+#define RELEASE(p)    if(p){p->Release();  p=nullptr;}
+#define S_DELETE(p)   if(p){delete p;      p=nullptr;}
+#define ARR_DELETE(p) if(p){delete[] p;    p=nullptr;}
 
 //シェーダー受け渡し用バッファ3D用
 struct CONSTANT_BUFFER {
@@ -204,10 +203,10 @@ struct SHADER_GLOBAL_BONES {
 
 //テクスチャ管理
 struct Texture {
-	char  *binary_ch = NULL; //デコード後バイナリ
+	char  *binary_ch = nullptr; //デコード後バイナリ
 	int   binary_size = 0;  //バイナリサイズ
-	char  *texName = NULL; //ファイル名
-	bool  UpKeep = FALSE; //Upload後Up用バッファを保持するか
+	char  *texName = nullptr; //ファイル名
+	bool  UpKeep = false; //Upload後Up用バッファを保持するか
 };
 
 //Wave

@@ -128,11 +128,6 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 	S_DELETE(mObjectCB);
 }
 
-void DxNeuralNetwork::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 void DxNeuralNetwork::ComCreate(bool sigon) {
 
 	for (int i = 0; i < Depth; i++) {

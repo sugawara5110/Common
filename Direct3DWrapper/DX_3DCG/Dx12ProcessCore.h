@@ -122,7 +122,6 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCommandQueue;
 	Dx12Process_sub dx_sub[COM_NO];
-	volatile bool requestSync, replySync, syncFin;
 
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
@@ -188,11 +187,11 @@ private:
 
 	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	int mClientWidth = 800;
-	int mClientHeight = 600;
+	int mClientWidth;
+	int mClientHeight;
 
 	//テクスチャ
-	Texture *tex = NULL;//外部からアドレスが渡される
+	Texture *tex = nullptr;//外部からアドレスが渡される
 	int texNum = 0;    //配列数
 	ID3D12Resource **texture = nullptr;
 	ID3D12Resource **textureUp = nullptr;
@@ -215,6 +214,7 @@ private:
 	float FarPlane;
 
 	PointLight plight;
+	int lightNum = 0;
 	DirectionLight dlight;
 	Fog fog;
 
@@ -226,25 +226,13 @@ private:
 	~Dx12Process();
 
 	void CreateShaderByteCode();
-
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(ID3D12GraphicsCommandList* cmdList,
 		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
-
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
-
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-
-	void InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);
-
-	void InstancedMapSize3(CONSTANT_BUFFER *cb, float x, float y, float z, float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY, float sizeZ);
-
-	void MatrixMap2(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
-
-	void MatrixMap(CONSTANT_BUFFER *cb, float x, float y, float z,
-		float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float px, float py, float mx, float my);
-
-	void MatrixMapSize3(CONSTANT_BUFFER *cb, float x, float y, float z,
-		float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY, float sizeZ, float disp, float px, float py, float mx, float my);
+	void InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z,
+		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
+	void MatrixMap(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
 	void WaitFence(int fence);
 
 public:
@@ -255,8 +243,7 @@ public:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
-	bool Initialize(HWND hWnd, UINT width, UINT height);
-	bool Initialize(HWND hWnd);
+	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 	char *GetNameFromPass(char *pass);//パスからファイル名を抽出
 	void SetTextureBinary(Texture *tex, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
 	int GetTexNumber(CHAR *fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
@@ -267,10 +254,6 @@ public:
 	void End(int com_no);
 	void WaitFenceCurrent();//GPU処理そのまま待つ
 	void WaitFencePast();//前回GPU処理未完の場合待つ
-	void RequestSync();//同期要求
-	void ReplySync();//同期返答
-	void SyncFin(bool on);//TRUE:同期終了
-	bool SyncFin();
 	void DrawScreen();
 	void Cameraset(float cx1, float cx2, float cy1, float cy2, float cz1, float cz2);
 	void ResetPointLight();
@@ -423,10 +406,10 @@ protected:
 	int                        com_no = 0;
 
 	//テクスチャ保持(SetTextureMPixel用)
-	ID3D12Resource *texture = NULL;
-	ID3D12Resource *textureUp = NULL;
+	ID3D12Resource *texture = nullptr;
+	ID3D12Resource *textureUp = nullptr;
 	//movie_on
-	bool   m_on = FALSE;
+	bool   m_on = false;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
@@ -479,9 +462,10 @@ protected:
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 public:
+	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource *texture, D3D12_RESOURCE_STATES res);
 	void TextureInit(int width, int height);
-	void SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a);
+	void SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold = 50);
 };
 
 //*********************************PolygonDataクラス*************************************//
@@ -490,10 +474,10 @@ class PolygonData :public Common {
 
 protected:
 	//ポインタで受け取る
-	ID3DBlob                   *vs = nullptr;
-	ID3DBlob                   *ps = nullptr;
-	ID3DBlob                   *hs = nullptr;
-	ID3DBlob                   *ds = nullptr;
+	ID3DBlob *vs = nullptr;
+	ID3DBlob *ps = nullptr;
+	ID3DBlob *hs = nullptr;
+	ID3DBlob *ds = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
@@ -507,9 +491,9 @@ protected:
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
-	bool UpOn = FALSE;
+	bool UpOn = false;
 	//DrawOn
-	bool DrawOn = FALSE;
+	bool DrawOn = false;
 
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
@@ -541,7 +525,6 @@ protected:
 
 public:
 	PolygonData();
-	void SetCommandList(int no);
 	~PolygonData();
 	ID3D12PipelineState *GetPipelineState();
 	void GetVBarray(PrimitiveType type, int v);
@@ -562,14 +545,10 @@ public:
 	void SetVertexBC(int I1, int i,
 		float vx, float vy, float vz,
 		float r, float g, float b, float a);
-	void InstancedMap(float x, float y, float z, float theta);
-	void InstancedMap(float x, float y, float z, float theta, float size);
-	void InstancedMapSize3(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ);
-	void InstanceUpdate(float r, float g, float b, float a, float disp);
-	void InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my);
+	void InstancedMap(float x, float y, float z, float theta, float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
+	void InstanceUpdate(float r, float g, float b, float a, float disp, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp,
+		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
 	void Draw();
 };
@@ -581,10 +560,10 @@ class PolygonData2D :public Common {
 protected:
 	friend DxText;
 
-	ID3DBlob                   *vs = nullptr;
-	ID3DBlob                   *ps = nullptr;
+	ID3DBlob *vs = nullptr;
+	ID3DBlob *ps = nullptr;
 
-	int                        ver;//頂点数
+	int      ver;//頂点数
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
@@ -596,9 +575,9 @@ protected:
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
-	bool UpOn = FALSE;
+	bool UpOn = false;
 	//DrawOn
-	bool DrawOn = FALSE;
+	bool DrawOn = false;
 
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
@@ -607,7 +586,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
 	//テクスチャ保持,DxText classでしか使わない
-	bool tex_on = FALSE;
+	bool tex_on = false;
 	//SetTextParameter
 	int Twidth;
 	int Theight;
@@ -616,7 +595,7 @@ protected:
 	GLYPHMETRICS *Gm;
 	BYTE *Ptr;
 	DWORD *Allsize;
-	bool CreateTextOn = FALSE;
+	bool CreateTextOn = false;
 
 	int  ins_no = 0;
 	int  insNum = 0;//Drawで読み込み用
@@ -638,7 +617,7 @@ protected:
 
 public:
 	MY_VERTEX2 * d2varray;  //頂点配列
-	std::uint16_t      *d2varrayI;//頂点インデックス
+	std::uint16_t *d2varrayI;//頂点インデックス
 
 	static void Pos2DCompute(VECTOR3 *p);//3D座標→2D座標変換(magnificationX, magnificationYは無視される)
 	static void SetMagnification(float x, float y);//表示倍率
@@ -646,7 +625,6 @@ public:
 	PolygonData2D();
 	~PolygonData2D();
 	void DisabledMagnification();
-	void SetCommandList(int no);
 	ID3D12PipelineState *GetPipelineState();
 	void GetVBarray2D(int pcs);
 	void TexOn();

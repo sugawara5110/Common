@@ -16,11 +16,6 @@ PostEffect::~PostEffect() {
 	S_DELETE(mObjectCB);
 }
 
-void PostEffect::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 void PostEffect::ComCreateMosaic() {
 	ComCreate(0);
 }

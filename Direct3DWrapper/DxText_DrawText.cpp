@@ -9,23 +9,23 @@
 #include <string.h>
 #include <tchar.h>
 
-DxText *DxText::textobj = NULL;
+DxText *DxText::textobj = nullptr;
 
 void DxText::InstanceCreate() {
-	if (textobj == NULL)textobj = new DxText();
+	if (textobj == nullptr)textobj = new DxText();
 }
 
 DxText *DxText::GetInstance(){
 
-	if (textobj != NULL)return textobj;
-	return NULL;
+	if (textobj != nullptr)return textobj;
+	return nullptr;
 }
 
 void DxText::DeleteInstance(){
 
-	if (textobj != NULL){
+	if (textobj != nullptr){
 		delete textobj;
-		textobj = NULL;
+		textobj = nullptr;
 	}
 }
 
@@ -42,7 +42,7 @@ DxText::DxText() {
 		text[i].SetCommandList(0);
 		text[i].GetVBarray2D(1);
 		text[i].TexOn();
-		text[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, TRUE, TRUE);
+		text[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
 		_tcscpy_s(str[i], STR_MAX_LENGTH * sizeof(TCHAR), _T("***************************************"));//直接代入
 		f_size[i] = 0;
 	}
@@ -52,7 +52,7 @@ DxText::DxText() {
 		value[i].SetCommandList(0);
 		value[i].GetVBarray2D(1);
 		value[i].TexOn();
-		value[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, TRUE, TRUE);
+		value[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
 		TCHAR *va = CreateTextValue(i);
 		CreateText(value, va, i, 15.0f);
 		value[i].SetText();
@@ -75,7 +75,7 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 	hFont = CreateFontIndirect(&lf);
 
 	//デバイスコンテキスト取得。GetGlyphOutline関数がエラーになる為
-	hdc = GetDC(NULL);
+	hdc = GetDC(nullptr);
 	oldFont = (HFONT)SelectObject(hdc, hFont);
 	int count = 0;//文字数カウント
 	UINT code = 0;//文字コード
@@ -96,7 +96,7 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 	count--;
 	if (count == 0)return 0;
 
-	ptr = NULL;
+	ptr = nullptr;
 	TM = new TEXTMETRIC[count]();
 	GM = new GLYPHMETRICS[count]();
 	allsize = new DWORD[count]();//各要素までの合計サイズ
@@ -117,7 +117,7 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 #endif
 		// フォントビットマップ取得
 		GetTextMetrics(hdc, &TM[cnt]);
-		DWORD size = GetGlyphOutline(hdc, code, GGO_GRAY4_BITMAP, &GM[cnt], 0, NULL, &Mat);
+		DWORD size = GetGlyphOutline(hdc, code, GGO_GRAY4_BITMAP, &GM[cnt], 0, nullptr, &Mat);
 
 		//各要素までの合計サイズ格納
 		if (cnt == 0)allsize[0] = size; else {
@@ -161,18 +161,18 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 	p2[texNo].SetTextParameter((int)(w * 1.3f), TM[0].tmHeight, count, &TM, &GM, &ptr, &allsize);//1.3は表示範囲幅補正
 
 	delete TM;
-	TM = NULL;
+	TM = nullptr;
 	delete GM;
-	GM = NULL;
+	GM = nullptr;
 	delete allsize;
-	allsize = NULL;
+	allsize = nullptr;
 	delete[] ptr;
-	ptr = NULL;
+	ptr = nullptr;
 
 	// デバイスコンテキストとフォントハンドルの開放
 	SelectObject(hdc, oldFont);
 	DeleteObject(hFont);
-	ReleaseDC(NULL, hdc);
+	ReleaseDC(nullptr, hdc);
 
 	return count;
 }
@@ -232,13 +232,13 @@ TCHAR *DxText::CreateTextValue(int val){
 }
 
 void DxText::UpDateText(TCHAR *c, float x, float y, float fontsize, VECTOR4 cl) {
-	bool match = FALSE;
+	bool match = false;
 	int texNo = -1;
 
 	//登録済みテキスト検索
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		if (_tcscmp(c, str[i]) == 0 && f_size[i] == fontsize) {
-			match = TRUE;
+			match = true;
 			texNo = i;
 		}
 	}
@@ -248,7 +248,7 @@ void DxText::UpDateText(TCHAR *c, float x, float y, float fontsize, VECTOR4 cl) 
 		texNo = CreateTextNo++;
 	}
 
-	if (match == FALSE) {
+	if (match == false) {
 		strcnt[texNo] = CreateText(text, c, texNo, fontsize);
 		_tcscpy_s(str[texNo], c);//テキスト登録
 		f_size[texNo] = fontsize;//フォントサイズ登録
@@ -264,7 +264,7 @@ void DxText::UpDateText(TCHAR *c, float x, float y, float fontsize, VECTOR4 cl) 
 	textInsData[texNo].s[textInsData[texNo].pcs].sizeX = f_size[texNo] * strcnt[texNo];
 	textInsData[texNo].s[textInsData[texNo].pcs].sizeY = f_size[texNo];
 	textInsData[texNo].pcs++;
-	draw_f = TRUE;
+	draw_f = true;
 }
 
 void DxText::UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl) {
@@ -295,7 +295,7 @@ void DxText::UpDateValue(int val, float x, float y, float fontsize, int pcs, VEC
 		val = val - (int)pow(10.0, i) * s;
 		xx += fontsize;
 	}
-	draw_f = TRUE;
+	draw_f = true;
 }
 
 void DxText::UpDate() {

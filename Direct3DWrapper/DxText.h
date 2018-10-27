@@ -28,7 +28,7 @@ private:
 	TEXTMETRIC *TM;    //文字レイアウト
 	GLYPHMETRICS *GM; //文字レイアウト
 	DWORD *allsize;   //各要素までの合計サイズ
-	bool draw_f = FALSE;
+	bool draw_f = false;
 
 	struct InsDataSub {
 		float x, y;

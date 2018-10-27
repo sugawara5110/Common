@@ -12,14 +12,14 @@
 class ParticleData :public Common {
 
 protected:
-	ID3DBlob                   *gsSO;
-	ID3DBlob                   *vsSO;
-	ID3DBlob                   *gs;
-	ID3DBlob                   *vs;
-	ID3DBlob                   *ps;
-	int                        ver;//頂点数
+	ID3DBlob * gsSO;
+	ID3DBlob *vsSO;
+	ID3DBlob *gs;
+	ID3DBlob *vs;
+	ID3DBlob *ps;
+	int      ver;//頂点数
 
-	PartPos                    *P_pos;//パーティクルデータ配列
+	PartPos  *P_pos;//パーティクルデータ配列
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_com = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_draw = nullptr;
@@ -32,10 +32,10 @@ protected:
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
-	bool UpOn = FALSE;
+	bool UpOn = false;
 	//DrawOn
-	bool DrawOn = FALSE;
-	bool texpar_on = FALSE;
+	bool DrawOn = false;
+	bool texpar_on = false;
 
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
@@ -43,9 +43,9 @@ protected:
 	std::unique_ptr<StreamView[]> Sview1 = nullptr;
 	std::unique_ptr<StreamView[]> Sview2 = nullptr;//BufferFilledSizeLocationの送り先
 	int svInd = 0;
-	bool firstDraw = FALSE;
+	bool firstDraw = false;
 	int  streamInitcount = 0;
-	bool parInit = FALSE;
+	bool parInit = false;
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_com = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
@@ -69,7 +69,6 @@ protected:
 public:
 	ParticleData();
 	~ParticleData();
-	void SetCommandList(int no);
 	void GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
 	void GetBufferBill(int v);
 	void SetVertex(int i,

@@ -12,7 +12,7 @@
 class PostEffect :public Common {
 
 protected:
-	ID3DBlob                   *cs = nullptr;
+	ID3DBlob *cs = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
@@ -28,7 +28,6 @@ protected:
 public:
 	PostEffect();
 	~PostEffect();
-	void SetCommandList(int no);
 	void ComCreateMosaic();
 	void ComCreateBlur();
 	void ComputeMosaic(bool On, int size);

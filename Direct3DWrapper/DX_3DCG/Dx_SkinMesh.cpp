@@ -10,7 +10,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #define FBX_PCS 5
-#define WAIT(str) do{stInitFBX_ON = TRUE;while (stSetNewPose_ON);str;stInitFBX_ON = FALSE;}while(0)
+#define WAIT(str) do{stInitFBX_ON = true;while (stSetNewPose_ON);str;stInitFBX_ON = false;}while(0)
 #include "Dx_SkinMesh.h"
 #include <string.h>
 
@@ -18,17 +18,17 @@ using namespace std;
 
 mutex SkinMesh::mtx;
 
-volatile bool SkinMesh::stInitFBX_ON = FALSE;
-volatile bool SkinMesh::stSetNewPose_ON = FALSE;
+volatile bool SkinMesh::stInitFBX_ON = false;
+volatile bool SkinMesh::stSetNewPose_ON = false;
 
-FbxManager *SkinMesh::m_pSdkManager = NULL;
-FbxImporter *SkinMesh::m_pImporter = NULL;
+FbxManager *SkinMesh::m_pSdkManager = nullptr;
+FbxImporter *SkinMesh::m_pImporter = nullptr;
 bool SkinMesh::ManagerCreated = false;
 
 SkinMesh_sub::SkinMesh_sub() {
 	current_frame = 0.0f;
-	centering = TRUE;
-	offset = FALSE;
+	centering = true;
+	offset = false;
 	cx = cy = cz = 0.0f;
 	connect_step = 3000.0f;
 }
@@ -64,12 +64,12 @@ SkinMesh::SkinMesh() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	fbx = new SkinMesh_sub[FBX_PCS];
-	m_ppSubAnimationBone = NULL;
-	m_pClusterName = NULL;
+	m_ppSubAnimationBone = nullptr;
+	m_pClusterName = nullptr;
 	AnimLastInd = -1;
 	BoneConnect = -1.0f;
-	pvVB_delete_f = TRUE;
-	pvVB = NULL;
+	pvVB_delete_f = true;
+	pvVB = nullptr;
 	texNum = 0;
 }
 
@@ -93,11 +93,6 @@ SkinMesh::~SkinMesh() {
 	DestroyFBX();
 }
 
-void SkinMesh::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 void SkinMesh::SetState(bool al, bool bl) {
 	alpha = al;
 	blend = bl;
@@ -105,7 +100,7 @@ void SkinMesh::SetState(bool al, bool bl) {
 
 void SkinMesh::ObjCentering(bool f, int ind) {
 	fbx[ind].centering = f;
-	fbx[ind].offset = FALSE;
+	fbx[ind].offset = false;
 	fbx[ind].cx = fbx[ind].cy = fbx[ind].cz = 0.0f;
 }
 
@@ -120,8 +115,8 @@ void SkinMesh::CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind
 }
 
 void SkinMesh::ObjCentering(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind) {
-	fbx[ind].centering = TRUE;
-	fbx[ind].offset = FALSE;
+	fbx[ind].centering = true;
+	fbx[ind].offset = false;
 	fbx[ind].cx = x;
 	fbx[ind].cy = y;
 	fbx[ind].cz = z;
@@ -129,8 +124,8 @@ void SkinMesh::ObjCentering(float x, float y, float z, float thetaZ, float theta
 }
 
 void SkinMesh::ObjOffset(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind) {
-	fbx[ind].centering = TRUE;
-	fbx[ind].offset = TRUE;
+	fbx[ind].centering = true;
+	fbx[ind].offset = true;
 	fbx[ind].cx = x;
 	fbx[ind].cy = y;
 	fbx[ind].cz = z;
@@ -140,9 +135,9 @@ void SkinMesh::ObjOffset(float x, float y, float z, float thetaZ, float thetaY, 
 int SkinMesh::SearchNodeCount(FbxNode *pnode, FbxNodeAttribute::EType SearchType) {
 	static int matchNodeCount = 0;//スレッドセーフにする場合はクラス変数に変更する
 
-	if (!pnode) { matchNodeCount = 0; return 0; }//pNodeにNULLを与えるとリセット
+	if (!pnode) { matchNodeCount = 0; return 0; }//pNodeにnullptrを与えるとリセット
 
-	FbxNodeAttribute* pAttr = pnode->GetNodeAttribute();//ノードタイプ取得(rootNodeの場合NULLになる)
+	FbxNodeAttribute* pAttr = pnode->GetNodeAttribute();//ノードタイプ取得(rootNodeの場合nullptrになる)
 	if (pAttr && pAttr->GetAttributeType() == SearchType && strncmp("GZM_", pnode->GetName(), 4) != 0) matchNodeCount++;//タイプ一致の場合カウント
 
 	int childNodeCount = pnode->GetChildCount();
@@ -159,9 +154,9 @@ int SkinMesh::SearchNodeCount(FbxNode *pnode, FbxNodeAttribute::EType SearchType
 FbxNode *SkinMesh::SearchNode(FbxNode *pnode, FbxNodeAttribute::EType SearchType, int Ind) {
 	static int matchNodeCount = 0;
 
-	if (!pnode) { matchNodeCount = 0; return NULL; }//リセット
+	if (!pnode) { matchNodeCount = 0; return nullptr; }//リセット
 
-	FbxNodeAttribute* pAttr = pnode->GetNodeAttribute();//ノードタイプ取得(rootNodeの場合NULLになる)
+	FbxNodeAttribute* pAttr = pnode->GetNodeAttribute();//ノードタイプ取得(rootNodeの場合nullptrになる)
 	if (pAttr && pAttr->GetAttributeType() == SearchType && strncmp("GZM_", pnode->GetName(), 4) != 0) { //探索Nodeタイプが一致したか
 		if (matchNodeCount == Ind) {//探索Nodeが一致したか
 			return pnode;//探索完了
@@ -169,25 +164,25 @@ FbxNode *SkinMesh::SearchNode(FbxNode *pnode, FbxNodeAttribute::EType SearchType
 		matchNodeCount++;//一致しない場合カウント
 	}
 
-	//rootNodeまたは探索未完の場合子ノード確認, 無い場合NULLを返す
+	//rootNodeまたは探索未完の場合子ノード確認, 無い場合nullptrを返す
 	int childNodeCount = pnode->GetChildCount();
-	if (childNodeCount == 0)return NULL;
+	if (childNodeCount == 0)return nullptr;
 
 	//子Node探索
 	for (int i = 0; i < childNodeCount; i++) {
 		FbxNode *pChild = pnode->GetChild(i);  //子Nodeを取得
 		FbxNode *returnNode = SearchNode(pChild, SearchType, Ind);
-		if (returnNode)return returnNode;//NULL以外が返った場合探索完了になるのでNodeを返す
-		//NULLの場合子Node探索を継続
+		if (returnNode)return returnNode;//nullptr以外が返った場合探索完了になるのでNodeを返す
+		//nullptrの場合子Node探索を継続
 	}
 
-	//子ノード全てNULLの場合
-	return NULL;
+	//子ノード全てnullptrの場合
+	return nullptr;
 }
 
 HRESULT SkinMesh::InitFBX(CHAR *szFileName, int p) {
 
-	bool f = FALSE;
+	bool f = false;
 	WAIT(f = fbx[p].Create(szFileName));//WAIT()FBX_SDK全関数にやるかは様子見
 	if (f)return S_OK;
 	return E_FAIL;
@@ -275,14 +270,14 @@ void SkinMesh::SetConnectStep(int ind, float step) {
 }
 
 void SkinMesh::Vertex_hold() {
-	pvVB_delete_f = FALSE;
+	pvVB_delete_f = false;
 }
 
 HRESULT SkinMesh::GetFbx(CHAR* szFileName) {
 	//FBXローダーを初期化
 	if (FAILED(InitFBX(szFileName, 0)))
 	{
-		MessageBox(0, L"FBXローダー初期化失敗", NULL, MB_OK);
+		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
 		return E_FAIL;
 	}
 	return S_OK;
@@ -298,14 +293,14 @@ void SkinMesh::GetBuffer(float end_frame) {
 	FbxNode *pNodeRoot = pScene->GetRootNode();//ルートノード取得
 
 	WAIT(NodeArraypcs = SearchNodeCount(pNodeRoot, FbxNodeAttribute::eMesh));//eMesh数カウント
-	SearchNodeCount(NULL, FbxNodeAttribute::eMesh);//リセット
+	SearchNodeCount(nullptr, FbxNodeAttribute::eMesh);//リセット
 
 	//各メッシュへのポインタ配列取得
 	m_ppNodeArray = new FbxNode*[NodeArraypcs];
 	WAIT(
 		for (int i = 0; i < NodeArraypcs; i++) {
 			m_ppNodeArray[i] = SearchNode(pNodeRoot, FbxNodeAttribute::eMesh, i);
-			SearchNode(NULL, FbxNodeAttribute::eMesh, 0);//リセット
+			SearchNode(nullptr, FbxNodeAttribute::eMesh, 0);//リセット
 		}
 	);
 
@@ -439,8 +434,8 @@ void SkinMesh::SetVertex() {
 		pUV = pFbxMesh->GetLayer(0)->GetUVs();
 		const char *uvname = pUV->GetName();
 		FbxLayerElement::EMappingMode mappingMode = pUV->GetMappingMode();
-		bool UnMap = TRUE;
-		if (mappingMode == FbxLayerElement::eByPolygonVertex)UnMap = FALSE;
+		bool UnMap = true;
+		if (mappingMode == FbxLayerElement::eByPolygonVertex)UnMap = false;
 		FbxVector4 Normal;
 
 		int IndCount = 0;
@@ -522,13 +517,13 @@ void SkinMesh::SetVertex() {
 			m_pMaterial[mInd].Kd.x = (float)d3Diffuse[0];
 			m_pMaterial[mInd].Kd.y = (float)d3Diffuse[1];
 			m_pMaterial[mInd].Kd.z = (float)d3Diffuse[2];
-			m_pMaterial[mInd].Kd.w = 1.0f;//透けさせたい場合ここをどうにかする
+			m_pMaterial[mInd].Kd.w = 0.0f;//使用してない
 			//スペキュラー
 			FbxDouble3 d3Specular = pPhong->sSpecularDefault;
 			m_pMaterial[mInd].Ks.x = (float)d3Specular[0];
 			m_pMaterial[mInd].Ks.y = (float)d3Specular[1];
 			m_pMaterial[mInd].Ks.z = (float)d3Specular[2];
-			m_pMaterial[mInd].Ks.w = 0.0f;
+			m_pMaterial[mInd].Ks.w = 0.0f;//使用してない
 
 			//テクスチャー
 			FbxProperty lPropertyDif;
@@ -712,17 +707,17 @@ void SkinMesh::CreateFromFBX(bool disp) {
 }
 
 void SkinMesh::CreateFromFBX() {
-	CreateFromFBX(FALSE);
+	CreateFromFBX(false);
 }
 
 HRESULT SkinMesh::GetFbxSub(CHAR* szFileName, int ind) {
 	if (ind <= 0) {
-		MessageBox(0, L"FBXローダー初期化失敗", NULL, MB_OK);
+		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
 		return E_FAIL;
 	}
 
 	if (FAILED(InitFBX(szFileName, ind))) {
-		MessageBox(0, L"FBXローダー初期化失敗", NULL, MB_OK);
+		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
 		return E_FAIL;
 	}
 	return S_OK;
@@ -737,10 +732,10 @@ HRESULT SkinMesh::GetBuffer_Sub(int ind, float end_frame) {
 	int BoneNum;
 	WAIT(BoneNum = SearchNodeCount(pNodeRoot, FbxNodeAttribute::eSkeleton));
 	if (BoneNum == 0) {
-		MessageBox(0, L"FBXローダー初期化失敗", NULL, MB_OK);
+		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
 		return E_FAIL;
 	}
-	WAIT(SearchNodeCount(NULL, FbxNodeAttribute::eSkeleton));//リセット
+	WAIT(SearchNodeCount(nullptr, FbxNodeAttribute::eSkeleton));//リセット
 
 	if (!m_ppSubAnimationBone) {
 		m_ppSubAnimationBone = new FbxNode*[(FBX_PCS - 1) * m_iNumBone];
@@ -760,7 +755,7 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 		int sa_ind = (ind - 1) * m_iNumBone + loopind;
 		WAIT(m_ppSubAnimationBone[sa_ind] = SearchNode(pNodeRoot, FbxNodeAttribute::eSkeleton, searchCount));
 		searchCount++;
-		SearchNode(NULL, FbxNodeAttribute::eSkeleton, 0);//リセット
+		SearchNode(nullptr, FbxNodeAttribute::eSkeleton, 0);//リセット
 		const char *name = m_ppSubAnimationBone[sa_ind]->GetName();
 		if (!strncmp("Skeleton", name, 8))continue;
 		char *name2 = &m_pClusterName[loopind * 255];//各Bone名の先頭アドレスを渡す
@@ -795,17 +790,17 @@ void SkinMesh::CreateIndexBuffer2(int *pIndex, int IviewInd) {
 //ボーンを次のポーズ位置にセットする
 bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 
-	stSetNewPose_ON = TRUE;
-	if (stInitFBX_ON) { stSetNewPose_ON = FALSE; return FALSE; }//FBX初期化中はアニメーションしない
+	stSetNewPose_ON = true;
+	if (stInitFBX_ON) { stSetNewPose_ON = false; return false; }//FBX初期化中はアニメーションしない
 	if (AnimLastInd == -1)AnimLastInd = ind;//最初に描画するアニメーション番号で初期化
-	bool ind_change = FALSE;
+	bool ind_change = false;
 	if (AnimLastInd != ind) {//アニメーションが切り替わった
-		ind_change = TRUE; AnimLastInd = ind;
+		ind_change = true; AnimLastInd = ind;
 		fbx[ind].current_frame = 0.0f;//アニメーションが切り替わってるのでMatrix更新前にフレームを0に初期化
 	}
-	bool frame_end = FALSE;
+	bool frame_end = false;
 	fbx[ind].current_frame += ti;
-	if (fbx[ind].end_frame <= fbx[ind].current_frame) frame_end = TRUE;
+	if (fbx[ind].end_frame <= fbx[ind].current_frame) frame_end = true;
 
 	if (frame_end || ind_change) {
 		for (int i = 0; i < m_iNumBone; i++) {
@@ -824,8 +819,8 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	FbxTime time;
 	time.SetTime(0, 0, 0, frame / 10, 0, FbxTime::eFrames60);
 
-	bool subanm = TRUE;
-	if (ind <= 0 || ind > FBX_PCS - 1)subanm = FALSE;
+	bool subanm = true;
+	if (ind <= 0 || ind > FBX_PCS - 1)subanm = false;
 
 	FbxMatrix matf0;
 	if (!subanm) {
@@ -886,7 +881,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 			}
 		}
 	}
-	stSetNewPose_ON = FALSE;
+	stSetNewPose_ON = false;
 	return frame_end;
 }
 
@@ -951,7 +946,7 @@ void SkinMesh::GetTexture() {
 		te[i].normal = m_pMaterial[i].nortex_no;
 		te[i].movie = m_on;
 	}
-	mSrvHeap = CreateSrvHeap(MateAllpcs, texNum, te);
+	mSrvHeap = CreateSrvHeap(MateAllpcs, texNum, te, texture);
 
 	ARR_DELETE(te);
 }
@@ -960,12 +955,12 @@ void SkinMesh::CbSwap() {
 	Lock();
 	if (!UpOn) {
 		upCount++;
-		if (upCount > 1)UpOn = TRUE;//cb,2要素初回更新終了
+		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
 	sw = 1 - sw;//cbスワップ
 	dx->ins_no = 0;
 	Unlock();
-	DrawOn = TRUE;
+	DrawOn = true;
 }
 
 bool SkinMesh::Update(float time, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size) {
@@ -974,8 +969,9 @@ bool SkinMesh::Update(float time, float x, float y, float z, float r, float g, f
 
 bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp) {
 
-	bool frame_end = FALSE;
-	dx->MatrixMap(&cb[sw], x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	bool frame_end = false;
+	dx->InstancedMap(&cb[sw], x, y, z, thetaZ, thetaY, thetaX, size);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
 	MatrixMap_Bone(&sgb[sw]);
 	CbSwap();
@@ -983,7 +979,7 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 }
 
 void SkinMesh::DrawOff() {
-	DrawOn = FALSE;
+	DrawOn = false;
 }
 
 void SkinMesh::Draw() {

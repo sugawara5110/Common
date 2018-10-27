@@ -110,11 +110,6 @@ DxConvolution::~DxConvolution() {
 	ARR_DELETE(shaderThreadNum);
 }
 
-void DxConvolution::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 void DxConvolution::ComCreate(bool sigon) {
 	//RWStructuredBuffer—pgInput
 	CreateResourceDef(mInputBuffer, input_outerrOneSize * FilNum * inputSetNum);

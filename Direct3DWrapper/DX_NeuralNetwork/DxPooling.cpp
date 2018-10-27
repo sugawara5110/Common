@@ -52,11 +52,6 @@ DxPooling::~DxPooling() {
 	ARR_DELETE(shaderThreadNum);
 }
 
-void DxPooling::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 void DxPooling::ComCreate() {
 	//RWStructuredBuffer—pgInput
 	CreateResourceDef(mInputBuffer, input_outerrOneSize * PoolNum * inputSetNum);

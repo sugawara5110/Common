@@ -12,9 +12,9 @@ std::mutex PolygonData::mtx;
 PolygonData::PolygonData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	d3varray = NULL;
-	d3varrayBC = NULL;
-	d3varrayI = NULL;
+	d3varray = nullptr;
+	d3varrayBC = nullptr;
+	d3varrayI = nullptr;
 
 	sg.vDiffuse.x = 1.0f;
 	sg.vDiffuse.y = 1.0f;
@@ -26,18 +26,13 @@ PolygonData::PolygonData() {
 	sg.vSpeculer.w = 1.0f;
 }
 
-void PolygonData::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 PolygonData::~PolygonData() {
 	free(d3varray);
-	d3varray = NULL;
+	d3varray = nullptr;
 	free(d3varrayBC);
-	d3varrayBC = NULL;
+	d3varrayBC = nullptr;
 	free(d3varrayI);
-	d3varrayI = NULL;
+	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
 	RELEASE(texture);
 	RELEASE(textureUp);
@@ -125,9 +120,9 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 
 void PolygonData::GetShaderByteCode(bool light, int tNo, int nortNo) {
 	t_no = tNo;
-	bool disp = FALSE;
-	if (primType_create == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH)disp = TRUE;
-	if (tNo == -1 && m_on == FALSE) {
+	bool disp = false;
+	if (primType_create == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH)disp = true;
+	if (tNo == -1 && m_on == false) {
 		vs = dx->pVertexShader_BC.Get();
 		ps = dx->pPixelShader_BC.Get();
 		return;
@@ -232,55 +227,36 @@ void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3D, alpha, blend, primType_create);
 }
 
-void PolygonData::InstancedMap(float x, float y, float z, float theta) {
-	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, 1.0f);
-}
-
-void PolygonData::InstancedMap(float x, float y, float z, float theta, float size) {
-	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, size);
-}
-
-void PolygonData::InstancedMapSize3(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
-	dx->InstancedMapSize3(&cb[sw], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
-}
-
-void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp) {
-	InstanceUpdate(r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+void PolygonData::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
+	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
 }
 
 void PolygonData::CbSwap() {
 	Lock();
 	if (!UpOn) {
 		upCount++;
-		if (upCount > 1)UpOn = TRUE;//cb,2要素初回更新終了
+		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
 	sw = 1 - sw;//cbスワップ
 	insNum = dx->ins_no;
 	dx->ins_no = 0;
 	Unlock();
-	DrawOn = TRUE;
+	DrawOn = true;
 }
 
 void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
-	dx->MatrixMap2(&cb[sw], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, px, py, mx, my);
 	CbSwap();
 }
 
-void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp) {
-	Update(x, y, z, r, g, b, a, theta, disp, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-}
-
-void  PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size) {
-	Update(x, y, z, r, g, b, a, theta, disp, size, 1.0f, 1.0f, 1.0f, 1.0f);
-}
-
 void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my) {
-	dx->MatrixMap(&cb[sw], x, y, z, r, g, b, a, theta, 0, 0, size, disp, px, py, mx, my);
+	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, size);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, px, py, mx, my);
 	CbSwap();
 }
 
 void PolygonData::DrawOff() {
-	DrawOn = FALSE;
+	DrawOn = false;
 }
 
 void PolygonData::Draw() {

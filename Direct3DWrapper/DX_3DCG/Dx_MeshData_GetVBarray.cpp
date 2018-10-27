@@ -23,11 +23,6 @@ MeshData::~MeshData() {
 	RELEASE(textureUp);
 }
 
-void MeshData::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
-}
-
 ID3D12PipelineState *MeshData::GetPipelineState() {
 	return mPSO.Get();
 }
@@ -52,7 +47,7 @@ void MeshData::GetShaderByteCode(bool disp) {
 void MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 
 	//マテリアルファイルを開いて内容を読み込む
-	FILE* fp = NULL;
+	FILE* fp = nullptr;
 	fopen_s(&fp, FileName, "rt");
 	char line[200] = { 0 };//1行読み込み用
 	char key[110] = { 0 };//1単語読み込み用
@@ -123,10 +118,6 @@ void MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 	*ppMaterial = pMaterial;
 }
 
-void MeshData::SetState(bool al, bool bl, bool di) {
-	SetState(al, bl, di, 0.0f, 0.0f);
-}
-
 void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu) {
 	alpha = al;
 	blend = bl;
@@ -158,7 +149,7 @@ void MeshData::GetBuffer(char *FileName) {
 	char line[200] = { 0 };
 	char key[200] = { 0 };
 	//OBJファイルを開いて内容を読み込む
-	FILE* fp = NULL;
+	FILE* fp = nullptr;
 	fopen_s(&fp, mFileName, "rt");
 
 	//事前に頂点数、ポリゴン数を調べる
@@ -222,7 +213,7 @@ void MeshData::SetVertex() {
 	char line[200] = { 0 };
 	char key[200] = { 0 };
 	//OBJファイルを開いて内容を読み込む
-	FILE* fp = NULL;
+	FILE* fp = nullptr;
 	fopen_s(&fp, mFileName, "rt");
 
 	//本読み込み	
@@ -433,7 +424,7 @@ void MeshData::GetTexture() {
 		te[i].movie = m_on;
 	}
 
-	mSrvHeap = CreateSrvHeap(MaterialCount, texNum, te);
+	mSrvHeap = CreateSrvHeap(MaterialCount, texNum, te, texture);
 
 	for (int i = 0; i < MaterialCount; i++)
 		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
@@ -453,27 +444,28 @@ void MeshData::CbSwap() {
 	Lock();
 	if (!UpOn) {
 		upCount++;
-		if (upCount > 1)UpOn = TRUE;//cb,2要素初回更新終了
+		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
 	sw = 1 - sw;//cbスワップ
 	insNum = dx->ins_no;
 	dx->ins_no = 0;
 	Unlock();
-	DrawOn = TRUE;
+	DrawOn = true;
 }
 
 void MeshData::InstanceUpdate(float r, float g, float b, float a, float disp) {
-	dx->MatrixMap2(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
 	CbSwap();
 }
 
 void MeshData::Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp) {
-	dx->MatrixMap(&cb[sw], x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->InstancedMap(&cb[sw], x, y, z, thetaZ, thetaY, thetaX, size);
+	dx->MatrixMap(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
 	CbSwap();
 }
 
 void MeshData::DrawOff() {
-	DrawOn = FALSE;
+	DrawOn = false;
 }
 
 void MeshData::Draw() {

@@ -61,7 +61,6 @@ protected:
 public:
 	DxPooling(UINT width, UINT height, UINT poolNum, UINT inputsetnum = 1);
 	~DxPooling();
-	void SetCommandList(int no);
 	void ComCreate();
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);
 	void Input(float *inArr, UINT arrNum, UINT inputsetInd = 0);

@@ -12,19 +12,14 @@ ParticleData::ParticleData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	ver = 0;
-	P_pos = NULL;
-}
-
-void ParticleData::SetCommandList(int no) {
-	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
+	P_pos = nullptr;
 }
 
 ParticleData::~ParticleData() {
 	S_DELETE(mObjectCB);
-	if (P_pos != NULL) {
+	if (P_pos != nullptr) {
 		free(P_pos);
-		P_pos = NULL;
+		P_pos = nullptr;
 	}
 	RELEASE(texture);
 	RELEASE(textureUp);
@@ -171,7 +166,7 @@ void ParticleData::CreatePartsCom() {
 
 void ParticleData::CreatePartsDraw(int texpar) {
 
-	if (texpar != -1)texpar_on = TRUE;
+	if (texpar != -1)texpar_on = true;
 
 	CD3DX12_DESCRIPTOR_RANGE texTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
@@ -189,7 +184,7 @@ void ParticleData::CreatePartsDraw(int texpar) {
 	mSrvHeap = CreateSrvHeap(1, 1, &te, texture);
 
 	//パイプラインステートオブジェクト生成(Draw)
-	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, TRUE, TRUE);
+	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, true, true);
 }
 
 void ParticleData::CreateParticle(int texpar) {
@@ -259,11 +254,11 @@ void ParticleData::CbSwap(bool init) {
 	if (!parInit)parInit = init;//parInit==TRUEの場合まだ初期化終了していない為フラグを書き換えない
 	if (!UpOn) {
 		upCount++;
-		if (upCount > 1)UpOn = TRUE;//cb,2要素初回更新終了
+		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
 	sw = 1 - sw;//cbスワップ
 	Unlock();
-	DrawOn = TRUE;
+	DrawOn = true;
 }
 
 void ParticleData::Update(float x, float y, float z, float theta, float size, bool init, float speed) {
@@ -282,10 +277,10 @@ void ParticleData::Draw() {
 	Lock();
 	bool init = parInit;
 	//一回のinit == TRUE で二つのstreamOutを初期化
-	if (init == TRUE) { streamInitcount = 1; }
+	if (init) { streamInitcount = 1; }
 	else {
 		if (streamInitcount > 2) { streamInitcount = 0; }
-		if (streamInitcount != 0) { init = TRUE; streamInitcount++; }
+		if (streamInitcount != 0) { init = true; streamInitcount++; }
 	}
 	MatrixMap2(&cbP[1 - sw], init);
 	mObjectCB->CopyData(0, cbP[1 - sw]);
@@ -297,13 +292,13 @@ void ParticleData::Draw() {
 	//mSwapChainBuffer RENDER_TARGET→PRESENT
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-	firstDraw = TRUE;
-	parInit = FALSE;//parInit==TRUEの場合ここに来た時点で初期化終了
+	firstDraw = true;
+	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
 }
 
 void ParticleData::Update(float size) {
 	MatrixMap(&cbP[sw], 0, 0, 0, 0, size, 1.0f, texpar_on | m_on);
-	CbSwap(TRUE);
+	CbSwap(true);
 }
 
 void ParticleData::DrawBillboard() {
@@ -311,7 +306,7 @@ void ParticleData::DrawBillboard() {
 	if (!UpOn | !DrawOn)return;
 
 	Lock();
-	MatrixMap2(&cbP[1 - sw], TRUE);
+	MatrixMap2(&cbP[1 - sw], true);
 	mObjectCB->CopyData(0, cbP[1 - sw]);
 	Unlock();
 

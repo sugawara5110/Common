@@ -67,7 +67,6 @@ protected:
 public:
 	DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT inputsetnum = 1);
 	~DxNeuralNetwork();
-	void SetCommandList(int no);
 	void ComCreateSigmoid();
 	void ComCreateReLU();
 	void SetLearningLate(float rate);

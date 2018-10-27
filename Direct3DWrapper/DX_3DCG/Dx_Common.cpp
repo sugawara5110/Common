@@ -6,6 +6,11 @@
 
 #include "Dx12ProcessCore.h"
 
+void Common::SetCommandList(int no) {
+	com_no = no;
+	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
+}
+
 void Common::CopyResource(ID3D12Resource *Intexture, D3D12_RESOURCE_STATES res) {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture,
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
@@ -83,10 +88,10 @@ void Common::TextureInit(int width, int height) {
 	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 	src.PlacedFootprint = footprint;
 
-	m_on = TRUE;
+	m_on = true;
 }
 
-void Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a) {
+void Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold) {
 
 	D3D12_RESOURCE_DESC texdesc;
 	texdesc = texture->GetDesc();
@@ -119,7 +124,7 @@ void Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a) {
 			ptex[ptexI + 1] = m_pix[j][i] >> 8 & g;
 			ptex[ptexI + 0] = m_pix[j][i] & b;
 
-			if ((m_pix[j][i] >> 16 & b) < 50 && (m_pix[j][i] >> 8 & g) < 50 && (m_pix[j][i] & r) < 50) {
+			if ((m_pix[j][i] >> 16 & b) < Threshold && (m_pix[j][i] >> 8 & g) < Threshold && (m_pix[j][i] & r) < Threshold) {
 				ptex[ptexI + 3] = 0;
 			}
 			else {
@@ -293,7 +298,7 @@ ID3D12PipelineState *Common::CreatePSO(ID3DBlob *vs, ID3DBlob *hs,
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	//psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.BlendState.IndependentBlendEnable = FALSE;
+	psoDesc.BlendState.IndependentBlendEnable = false;
 	psoDesc.BlendState.AlphaToCoverageEnable = alpha;//アルファテストon/off
 	psoDesc.BlendState.RenderTarget[0].BlendEnable = blend;//ブレンドon/off
 	psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;

@@ -62,7 +62,6 @@ public:
 	SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, float outscale,
 		UINT step, UINT outNum, float Threshold);//UINT outNum‚ÍŒ»ó1‚µ‚©‘Î‰‚µ‚Ä‚È‚¢
 	~SearchPixel();
-	void SetCommandList(int no);
 	UINT GetSearchNum();
 	void ComCreate();
 	void SetPixel(float *pi);
