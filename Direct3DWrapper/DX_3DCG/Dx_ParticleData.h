@@ -57,10 +57,10 @@ protected:
 	void GetShaderByteCode();
 	void MatrixMap(CONSTANT_BUFFER_P *cb_p, float x, float y, float z, float theta, float size, float speed, bool tex);
 	void MatrixMap2(CONSTANT_BUFFER_P *cb_p, bool init);
-	void GetVbColarray(int texture_no, float size, float density);
+	HRESULT GetVbColarray(int texture_no, float size, float density);
 	void CreateVbObj();
-	void CreatePartsCom();
-	void CreatePartsDraw(int texpar);
+	bool CreatePartsCom();
+	bool CreatePartsDraw(int texpar);
 	void DrawParts0();
 	void DrawParts1();
 	void DrawParts2();
@@ -69,13 +69,13 @@ protected:
 public:
 	ParticleData();
 	~ParticleData();
-	void GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
+	HRESULT GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
 	void GetBufferBill(int v);
 	void SetVertex(int i,
 		float vx, float vy, float vz,
 		float r, float g, float b, float a);
-	void CreateParticle(int texpar);//パーティクル1個のテクスチャナンバー
-	void CreateBillboard();//ver個の四角形を生成
+	bool CreateParticle(int texpar);//パーティクル1個のテクスチャナンバー
+	bool CreateBillboard();//ver個の四角形を生成
 	void Update(float x, float y, float z, float theta, float size, bool init, float speed);//sizeパーティクル1個のサイズ
 	void DrawOff();
 	void Draw();

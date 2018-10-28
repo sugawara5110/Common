@@ -85,7 +85,7 @@ private:
 	int mAloc_Num = 0;
 	volatile ComListState mComState;
 
-	void ListCreate();
+	bool ListCreate();
 	void Bigin();
 	void End();
 };
@@ -175,6 +175,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
 
+	bool CreateShaderByteCodeBool = true;
+
 	//サンプラ
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
@@ -225,7 +227,7 @@ private:
 	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
 	~Dx12Process();
 
-	void CreateShaderByteCode();
+	bool CreateShaderByteCode();
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(ID3D12GraphicsCommandList* cmdList,
 		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
@@ -247,7 +249,7 @@ public:
 	char *GetNameFromPass(char *pass);//パスからファイル名を抽出
 	void SetTextureBinary(Texture *tex, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
 	int GetTexNumber(CHAR *fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
-	void GetTexture(int com_no);//デコード済みのバイナリからリソースの生成
+	bool GetTexture(int com_no);//デコード済みのバイナリからリソースの生成
 	void UpTextureRelease();
 	void Sclear(int com_no);
 	void Bigin(int com_no);
@@ -258,7 +260,7 @@ public:
 	void Cameraset(float cx1, float cx2, float cy1, float cy2, float cz1, float cz2);
 	void ResetPointLight();
 	void P_ShadowBright(float val);
-	void PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
+	bool PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
 		float brightness, float attenuation, bool on_off);
 	void DirectionLight(float x, float y, float z, float r, float g, float b, float bright, float ShadowBright);
 	void SetDirectionLight(bool onoff);
@@ -464,8 +466,8 @@ protected:
 public:
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource *texture, D3D12_RESOURCE_STATES res);
-	void TextureInit(int width, int height);
-	void SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold = 50);
+	HRESULT TextureInit(int width, int height);
+	HRESULT SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold = 50);
 };
 
 //*********************************PolygonDataクラス*************************************//
@@ -529,8 +531,8 @@ public:
 	ID3D12PipelineState *GetPipelineState();
 	void GetVBarray(PrimitiveType type, int v);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB);
-	void Create(bool light, int tNo, bool blend, bool alpha);
-	void Create(bool light, int tNo, int nortNo, bool blend, bool alpha);
+	bool Create(bool light, int tNo, bool blend, bool alpha);
+	bool Create(bool light, int tNo, int nortNo, bool blend, bool alpha);
 	void SetVertex(int I1, int I2, int i,
 		float vx, float vy, float vz,
 		float nx, float ny, float nz,
@@ -628,8 +630,8 @@ public:
 	ID3D12PipelineState *GetPipelineState();
 	void GetVBarray2D(int pcs);
 	void TexOn();
-	void CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha);
-	void Create(bool blend, bool alpha);
+	bool CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha);
+	bool Create(bool blend, bool alpha);
 	void InstancedSetConstBf(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
 	void InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void InstanceUpdate();

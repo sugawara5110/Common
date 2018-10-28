@@ -22,14 +22,14 @@ protected:
 
 	ConstantBuffer<CONSTANT_BUFFER_PostMosaic> *mObjectCB = nullptr;
 
-	void ComCreate(int no);
+	bool ComCreate(int no);
 	void Compute(bool On, int size, float blurX, float blurY, float blurLevel);
 
 public:
 	PostEffect();
 	~PostEffect();
-	void ComCreateMosaic();
-	void ComCreateBlur();
+	bool ComCreateMosaic();
+	bool ComCreateBlur();
 	void ComputeMosaic(bool On, int size);
 	void ComputeBlur(bool On, float blurX, float blurY, float blurLevel);
 };

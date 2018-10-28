@@ -196,7 +196,7 @@ void SkinMesh::DestroyFBX() {
 	WAIT(ARR_DELETE(fbx));
 }
 
-HRESULT SkinMesh::ReadSkinInfo(MY_VERTEX_S *pvVB) {
+void SkinMesh::ReadSkinInfo(MY_VERTEX_S *pvVB) {
 
 	FbxMesh *pmesh = m_ppNodeArray[0]->GetMesh();
 	FbxDeformer *pDeformer = pmesh->GetDeformer(0);
@@ -261,8 +261,6 @@ HRESULT SkinMesh::ReadSkinInfo(MY_VERTEX_S *pvVB) {
 			}
 		}
 	}
-
-	return S_OK;
 }
 
 void SkinMesh::SetConnectStep(int ind, float step) {
@@ -650,7 +648,7 @@ void SkinMesh::SetNormalTextureName(char *textureName, int materialIndex) {
 	texNum++;
 }
 
-void SkinMesh::CreateFromFBX(bool disp) {
+bool SkinMesh::CreateFromFBX(bool disp) {
 
 	//インデックスバッファ生成2段回目, 一時格納配列解放
 	for (int i = 0; i < MateAllpcs; i++) {
@@ -698,16 +696,19 @@ void SkinMesh::CreateFromFBX(bool disp) {
 	slotRootParameter[4].InitAsConstantBufferView(2);
 
 	mRootSignature = CreateRs(5, slotRootParameter);
+	if (mRootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
 	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend);
+	if (mPSO == nullptr)return false;
 	mPSO_B = CreatePsoVsHsDsPs(vsB, hs, ds, psB, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend);
+	if (mPSO_B == nullptr)return false;
 
-	GetTexture();
+	return GetTexture();
 }
 
-void SkinMesh::CreateFromFBX() {
-	CreateFromFBX(false);
+bool SkinMesh::CreateFromFBX() {
+	return CreateFromFBX(false);
 }
 
 HRESULT SkinMesh::GetFbxSub(CHAR* szFileName, int ind) {
@@ -938,7 +939,7 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES *sgb) {
 	}
 }
 
-void SkinMesh::GetTexture() {
+bool SkinMesh::GetTexture() {
 
 	TextureNo *te = new TextureNo[MateAllpcs];
 	for (int i = 0; i < MateAllpcs; i++) {
@@ -949,6 +950,9 @@ void SkinMesh::GetTexture() {
 	mSrvHeap = CreateSrvHeap(MateAllpcs, texNum, te, texture);
 
 	ARR_DELETE(te);
+	if (mSrvHeap == nullptr)return false;
+
+	return true;
 }
 
 void SkinMesh::CbSwap() {

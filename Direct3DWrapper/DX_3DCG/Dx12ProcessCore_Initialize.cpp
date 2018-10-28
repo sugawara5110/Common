@@ -25,12 +25,15 @@
 
 using Microsoft::WRL::ComPtr;
 
-void Dx12Process_sub::ListCreate() {
+bool Dx12Process_sub::ListCreate() {
 	for (int i = 0; i < 2; i++) {
 		//コマンドアロケータ生成(コマンドリストに積むバッファを確保するObj)
 		if (FAILED(Dx12Process::dx->md3dDevice->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf()))))false;
+			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf())))) {
+			ErrorMessage("CreateCommandAllocator Error");
+			return false;
+		}
 	}
 
 	//コマンドリスト生成
@@ -39,13 +42,18 @@ void Dx12Process_sub::ListCreate() {
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		mCmdListAlloc[0].Get(),
 		nullptr,
-		IID_PPV_ARGS(mCommandList.GetAddressOf()))))false;
+		IID_PPV_ARGS(mCommandList.GetAddressOf())))) {
+		ErrorMessage("CreateCommandList Error");
+		return false;
+	}
 
 	//最初は閉じた方が良い
 	mCommandList->Close();
 	mCommandList->Reset(mCmdListAlloc[0].Get(), nullptr);
 	mCommandList->Close();
 	mComState = USED;
+
+	return true;
 }
 
 void Dx12Process_sub::Bigin() {
@@ -156,7 +164,7 @@ public:
 	}
 };
 
-void Dx12Process::CreateShaderByteCode() {
+bool Dx12Process::CreateShaderByteCode() {
 
 	addShader D3, Disp, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS;
 	D3.addStr(ShaderFunction, strlen(ShaderFunction), Shader3D, strlen(Shader3D));
@@ -274,6 +282,8 @@ void Dx12Process::CreateShaderByteCode() {
 	//2D
 	pVertexShader_2D = CompileShader(Shader2D, strlen(Shader2D), "VSBaseColor", "vs_5_0");
 	pPixelShader_2D = CompileShader(Shader2D, strlen(Shader2D), "PSBaseColor", "ps_5_0");
+
+	return CreateShaderByteCodeBool;
 }
 
 void Dx12Process::SetTextureBinary(Texture *texture, int size) {
@@ -299,7 +309,7 @@ int Dx12Process::GetTexNumber(CHAR *fileName) {
 	return -1;
 }
 
-void Dx12Process::GetTexture(int com_no) {
+bool Dx12Process::GetTexture(int com_no) {
 
 	texture = new ID3D12Resource*[texNum];
 	textureUp = new ID3D12Resource*[texNum];
@@ -317,7 +327,8 @@ void Dx12Process::GetTexture(int com_no) {
 			if (FAILED(DirectX::LoadWICTextureFromMemory(md3dDevice.Get(),
 				(uint8_t*)tex[i].binary_ch, tex[i].binary_size, &t, decodedData, subresource))) {
 				sprintf(str, "テクスチャ№%d読み込みエラー", (i));
-				throw str;
+				ErrorMessage(str);
+				return false;
 			}
 		}
 		else {
@@ -329,7 +340,8 @@ void Dx12Process::GetTexture(int com_no) {
 			if (FAILED(DirectX::LoadWICTextureFromFile(md3dDevice.Get(),
 				ws, &t, decodedData, subresource))) {
 				sprintf(str, "テクスチャ№%d読み込みエラー", (i));
-				throw str;
+				ErrorMessage(str);
+				return false;
 			}
 		}
 
@@ -346,7 +358,8 @@ void Dx12Process::GetTexture(int com_no) {
 		if (FAILED(md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
 			D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&texture[i])))) {
 			sprintf(str, "texture[%d]読み込みエラー", (i));
-			throw str;
+			ErrorMessage(str);
+			return false;
 		}
 
 		//upload
@@ -375,7 +388,8 @@ void Dx12Process::GetTexture(int com_no) {
 			&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr, IID_PPV_ARGS(&textureUp[i])))) {
 			sprintf(str, "textureUp[%d]読み込みエラー", (i));
-			throw str;
+			ErrorMessage(str);
+			return false;
 		}
 
 		D3D12_RESOURCE_BARRIER BarrierDesc;
@@ -393,6 +407,8 @@ void Dx12Process::GetTexture(int com_no) {
 		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
 		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
 	}
+
+	return true;
 }
 
 void Dx12Process::UpTextureRelease() {
@@ -411,7 +427,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//デバッグ中はデバッグレイヤーを有効化する
 	{
 		ComPtr<ID3D12Debug> debugController;
-		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))false;
+		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
+			ErrorMessage("D3D12GetDebugInterface Error");
+			return false;
+		}
 		debugController->EnableDebugLayer();
 	}
 #endif
@@ -420,7 +439,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//アダプターの列挙、スワップ チェーンの作成、
 	//および全画面表示モードとの間の切り替えに使用される Alt + 
 	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
-	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory))))false;
+	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory)))) {
+		ErrorMessage("CreateDXGIFactory1 Error");
+		return false;
+	}
 
 	//ハードウエア処理可能か,ハードウエア処理デバイス生成
 	HRESULT hardwareResult = D3D12CreateDevice(
@@ -432,18 +454,27 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	if (FAILED(hardwareResult))
 	{
 		ComPtr<IDXGIAdapter> pWarpAdapter;
-		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter))))false;
+		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter)))) {
+			ErrorMessage("EnumWarpAdapter Error");
+			return false;
+		}
 
 		if (FAILED(D3D12CreateDevice(
 			pWarpAdapter.Get(),
 			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&md3dDevice))))false;
+			IID_PPV_ARGS(&md3dDevice)))) {
+			ErrorMessage("D3D12CreateDevice Error");
+			return false;
+		}
 	}
 
 	//フェンス生成
 	//Command Queueに送信したCommand Listの完了を検知するために使用
 	if (FAILED(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mFence))))false;
+		IID_PPV_ARGS(&mFence)))) {
+		ErrorMessage("CreateFence Error");
+		return false;
+	}
 
 	//Descriptor のアドレス計算で使用
 	mRtvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -459,7 +490,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	if (FAILED(md3dDevice->CheckFeatureSupport(
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&msQualityLevels,     //機能のサポートを示すデータが格納
-		sizeof(msQualityLevels))))false;
+		sizeof(msQualityLevels)))) {
+		ErrorMessage("CheckFeatureSupport Error");
+		return false;
+	}
 
 	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
 	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
@@ -469,11 +503,14 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT; //直接コマンドキュー
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; //GPUタイムアウトが有効
 	//コマンド待ち行列生成
-	if (FAILED(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue))))false;
+	if (FAILED(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)))) {
+		ErrorMessage("CreateCommandQueue Error");
+		return false;
+	}
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
-		dx_sub[i].ListCreate();
+		if (!dx_sub[i].ListCreate())return false;
 	}
 
 	//初期化
@@ -500,7 +537,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	if (FAILED(mdxgiFactory->CreateSwapChain(
 		mCommandQueue.Get(),
 		&sd,
-		mSwapChain.GetAddressOf())))false;
+		mSwapChain.GetAddressOf()))) {
+		ErrorMessage("CreateSwapChain Error");
+		return false;
+	}
 
 	//Descriptor:何のバッファかを記述される
 	//スワップチェインをRenderTargetとして使用するためのDescriptorHeapを作成(Descriptorの記録場所)
@@ -510,7 +550,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; //シェーダからアクセスしないのでNONEでOK
 	rtvHeapDesc.NodeMask = 0;
 	if (FAILED(md3dDevice->CreateDescriptorHeap(
-		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf()))))false;
+		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())))) {
+		ErrorMessage("CreateDescriptorHeap Error");
+		return false;
+	}
 
 	//深度ステンシルビュ-DescriptorHeapを作成
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
@@ -519,13 +562,19 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
 	if (FAILED(md3dDevice->CreateDescriptorHeap(
-		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf()))))false;
+		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())))) {
+		ErrorMessage("CreateDescriptorHeap Error");
+		return false;
+	}
 
 	//レンダーターゲットビューデスクリプターヒープの開始ハンドル取得
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		//スワップチェインバッファ取得
-		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i]))))false;
+		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])))) {
+			ErrorMessage("GetSwapChainBuffer Error");
+			return false;
+		}
 		//レンダーターゲットビュー(Descriptor)生成,DescriptorHeapにDescriptorが記録される
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		//ヒープ位置オフセット(2個あるので2個目記録位置にDescriptorSize分オフセット)
@@ -557,7 +606,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		&depthStencilDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		&optClear,
-		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf()))))false;
+		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())))) {
+		ErrorMessage("CreateCommittedResource DepthStencil Error");
+		return false;
+	}
 
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
@@ -612,9 +664,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	fog.Density = 0.0f;
 	fog.on_off = 0.0f;
 
-	CreateShaderByteCode();
-
-	return true;
+	return CreateShaderByteCode();
 }
 
 void Dx12Process::Sclear(int com_no) {
@@ -675,18 +725,19 @@ void Dx12Process::ResetPointLight() {
 		plight.Lightst[i].as(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 	plight.ShadowLow_val = 0.0f;
+	lightNum = 0;
 }
 
 void Dx12Process::P_ShadowBright(float val) {
 	plight.ShadowLow_val = val;
 }
 
-void Dx12Process::PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
+bool Dx12Process::PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
 	float brightness, float attenuation, bool on_off) {
 
 	if (Idx > LIGHT_PCS - 1 || Idx < 0) {
 		ErrorMessage("lightNumの値が範囲外です");
-		return;
+		return false;
 	}
 
 	if (Idx + 1 > lightNum && on_off)lightNum = Idx + 1;
@@ -697,6 +748,8 @@ void Dx12Process::PointLightPosSet(int Idx, float x, float y, float z, float r, 
 	plight.LightColor[Idx].as(r, g, b, a);
 	plight.Lightst[Idx].as(range, brightness, attenuation, onoff);
 	plight.LightPcs = lightNum;
+
+	return true;
 }
 
 void Dx12Process::DirectionLight(float x, float y, float z, float r, float g, float b, float bright, float ShadowBright) {
@@ -788,12 +841,14 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(UINT64 by
 
 ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
 
-	HRESULT hr = S_OK;
-
+	HRESULT hr;
 	ComPtr<ID3DBlob> byteCode = nullptr;
-	ComPtr<ID3DBlob> errors;
+	ComPtr<ID3DBlob> errors = nullptr;
 	hr = D3DCompile(szFileName, size, nullptr, nullptr, nullptr, szFuncName, szProfileName,
 		D3D10_SHADER_DEBUG | D3D10_SHADER_SKIP_OPTIMIZATION, 0, &byteCode, &errors);
+	if (FAILED(hr)) {
+		CreateShaderByteCodeBool = false;
+	}
 
 	if (errors != nullptr)
 		OutputDebugStringA((char*)errors->GetBufferPointer());

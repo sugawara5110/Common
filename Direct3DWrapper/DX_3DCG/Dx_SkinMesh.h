@@ -117,10 +117,10 @@ protected:
 	HRESULT InitFBX(CHAR* szFileName, int p);
 	void CreateIndexBuffer(int cnt, int IviewInd);
 	void CreateIndexBuffer2(int *pIndex, int IviewInd);
-	HRESULT ReadSkinInfo(MY_VERTEX_S *pvVB);
+	void ReadSkinInfo(MY_VERTEX_S *pvVB);
 	MATRIX GetCurrentPoseMatrix(int index);
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES *sbB);
-	void GetTexture();
+	bool GetTexture();
 	bool SetNewPoseMatrices(float time, int ind);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
 	void CbSwap();
@@ -144,8 +144,8 @@ public:
 	void SetVertex();
 	void SetDiffuseTextureName(char *textureName, int materialIndex);
 	void SetNormalTextureName(char *textureName, int materialIndex);
-	void CreateFromFBX(bool disp);
-	void CreateFromFBX();
+	bool CreateFromFBX(bool disp);
+	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
 	void CreateFromFBX_SubAnimation(int ind);

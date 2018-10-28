@@ -44,11 +44,16 @@ void MeshData::GetShaderByteCode(bool disp) {
 	psB = dx->pPixelShader_Bump.Get();
 }
 
-void MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
+bool MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 
 	//マテリアルファイルを開いて内容を読み込む
+	errno_t error;
 	FILE* fp = nullptr;
-	fopen_s(&fp, FileName, "rt");
+	error = fopen_s(&fp, FileName, "rt");
+	if (error != 0) {
+		ErrorMessage("MeshData::LoadMaterialFromFile fopen_s Error");
+		return false;
+	}
 	char line[200] = { 0 };//1行読み込み用
 	char key[110] = { 0 };//1単語読み込み用
 	VECTOR4 v = { 0, 0, 0, 1 };
@@ -116,6 +121,8 @@ void MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 	fclose(fp);
 
 	*ppMaterial = pMaterial;
+
+	return true;
 }
 
 void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu) {
@@ -135,9 +142,12 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu) {
 	}
 }
 
-void MeshData::GetBuffer(char *FileName) {
+bool MeshData::GetBuffer(char *FileName) {
 
-	strcpy_s(mFileName, FileName);
+	if (0 != strcpy_s(mFileName, FileName)) {
+		ErrorMessage("MeshData::GetBuffer strcpy_s Error");
+		return false;
+	}
 
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 
@@ -149,8 +159,13 @@ void MeshData::GetBuffer(char *FileName) {
 	char line[200] = { 0 };
 	char key[200] = { 0 };
 	//OBJファイルを開いて内容を読み込む
+	errno_t error;
 	FILE* fp = nullptr;
-	fopen_s(&fp, mFileName, "rt");
+	error = fopen_s(&fp, mFileName, "rt");
+	if (error != 0) {
+		ErrorMessage("MeshData::GetBuffer fopen_s Error");
+		return false;
+	}
 
 	//事前に頂点数、ポリゴン数を調べる
 	while (!feof(fp))
@@ -162,7 +177,7 @@ void MeshData::GetBuffer(char *FileName) {
 		if (strcmp(key, "mtllib") == 0)
 		{
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-			LoadMaterialFromFile(key, &pMaterial);
+			if (!LoadMaterialFromFile(key, &pMaterial))return false;
 		}
 		//頂点
 		if (strcmp(key, "v") == 0)
@@ -198,9 +213,11 @@ void MeshData::GetBuffer(char *FileName) {
 
 	piFaceBuffer = new int[MaterialCount * FaceCount * 3]();//3頂点なので3インデックス * Material個数
 	pvVertexBuffer = new VertexM[FaceCount * 3]();
+
+	return true;
 }
 
-void MeshData::SetVertex() {
+bool MeshData::SetVertex() {
 
 	float x, y, z;
 	int v1 = 0, v2 = 0, v3 = 0;
@@ -213,9 +230,13 @@ void MeshData::SetVertex() {
 	char line[200] = { 0 };
 	char key[200] = { 0 };
 	//OBJファイルを開いて内容を読み込む
+	errno_t error;
 	FILE* fp = nullptr;
-	fopen_s(&fp, mFileName, "rt");
-
+	error = fopen_s(&fp, mFileName, "rt");
+	if (error != 0) {
+		ErrorMessage("MeshData::SetVertex fopen_s Error");
+		return false;
+	}
 	//本読み込み	
 	while (!feof(fp))
 	{
@@ -392,9 +413,11 @@ void MeshData::SetVertex() {
 	ARR_DELETE(pvNormal);
 	ARR_DELETE(pvTexture);
 	ARR_DELETE(svList);
+
+	return true;
 }
 
-void MeshData::CreateMesh() {
+bool MeshData::CreateMesh() {
 
 	GetShaderByteCode(disp);
 
@@ -409,13 +432,18 @@ void MeshData::CreateMesh() {
 	slotRootParameter[3].InitAsConstantBufferView(1);
 
 	mRootSignature = CreateRs(4, slotRootParameter);
+	if (mRootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
 	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend);
+	if (mPSO == nullptr)return false;
 	mPSO_B = CreatePsoVsHsDsPs(vsB, hs, ds, psB, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend);
+	if (mPSO_B == nullptr)return false;
+
+	return true;
 }
 
-void MeshData::GetTexture() {
+bool MeshData::GetTexture() {
 
 	TextureNo *te = new TextureNo[MaterialCount];
 	for (int i = 0; i < MaterialCount; i++) {
@@ -425,6 +453,7 @@ void MeshData::GetTexture() {
 	}
 
 	mSrvHeap = CreateSrvHeap(MaterialCount, texNum, te, texture);
+	if (mSrvHeap == nullptr)return false;
 
 	for (int i = 0; i < MaterialCount; i++)
 		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
@@ -434,6 +463,8 @@ void MeshData::GetTexture() {
 
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pvVertexBuffer, Vview->VertexBufferByteSize, Vview->VertexBufferUploader);
 	ARR_DELETE(pvVertexBuffer);
+
+	return true;
 }
 
 void MeshData::InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size) {

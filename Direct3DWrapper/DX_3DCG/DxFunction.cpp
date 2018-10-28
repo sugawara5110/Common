@@ -246,10 +246,10 @@ bool MatrixInverse(MATRIX *invm, MATRIX *m) {
 }
 
 void MatrixViewPort(MATRIX *mat, int width, int height) {
-	mat->_11 = width / 2; mat->_12 = 0.0f; mat->_13 = 0.0f; mat->_14 = 0.0f;
-	mat->_21 = 0.0f; mat->_22 = -height / 2; mat->_23 = 0.0f; mat->_24 = 0.0f;
+	mat->_11 = width / 2.0f; mat->_12 = 0.0f; mat->_13 = 0.0f; mat->_14 = 0.0f;
+	mat->_21 = 0.0f; mat->_22 = -height / 2.0f; mat->_23 = 0.0f; mat->_24 = 0.0f;
 	mat->_31 = 0.0f; mat->_32 = 0.0f; mat->_33 = 1.0f; mat->_34 = 0.0f;
-	mat->_41 = width / 2; mat->_42 = height / 2; mat->_43 = 0.0f; mat->_44 = 1.0f;
+	mat->_41 = width / 2.0f; mat->_42 = height / 2.0f; mat->_43 = 0.0f; mat->_44 = 1.0f;
 }
 
 void Normalize(float *x, float *y, float *z, float *w) {

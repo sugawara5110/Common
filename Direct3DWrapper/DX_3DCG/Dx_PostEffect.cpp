@@ -16,21 +16,23 @@ PostEffect::~PostEffect() {
 	S_DELETE(mObjectCB);
 }
 
-void PostEffect::ComCreateMosaic() {
-	ComCreate(0);
+bool PostEffect::ComCreateMosaic() {
+	return ComCreate(0);
 }
 
-void PostEffect::ComCreateBlur() {
-	ComCreate(1);
+bool PostEffect::ComCreateBlur() {
+	return ComCreate(1);
 }
 
-void PostEffect::ComCreate(int no) {
+bool PostEffect::ComCreate(int no) {
 
 	D3D12_DESCRIPTOR_HEAP_DESC uavHeapDesc = {};
 	uavHeapDesc.NumDescriptors = 2;
 	uavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	uavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	dx->md3dDevice->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
+	if (FAILED(dx->md3dDevice->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap)))) {
+		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+	}
 
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -47,21 +49,25 @@ void PostEffect::ComCreate(int no) {
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	//RWTexture2D—p
-	dx->md3dDevice->CreateCommittedResource(
+	if (FAILED(dx->md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
-		IID_PPV_ARGS(&mOutputBuffer));
+		IID_PPV_ARGS(&mOutputBuffer)))) {
+		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+	}
 
-	dx->md3dDevice->CreateCommittedResource(
+	if (FAILED(dx->md3dDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
-		IID_PPV_ARGS(&mInputBuffer));
+		IID_PPV_ARGS(&mInputBuffer)))) {
+		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+	}
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -90,11 +96,15 @@ void PostEffect::ComCreate(int no) {
 	slotRootParameter[2].InitAsConstantBufferView(0);//mObjectCB(b0)
 
 	mRootSignatureCom = CreateRsCompute(3, slotRootParameter);
+	if (mRootSignatureCom == nullptr)return false;
 
 	cs = dx->pComputeShader_Post[no].Get();
 
 	//PSO
 	mPSOCom = CreatePsoCompute(cs, mRootSignatureCom.Get());
+	if (mPSOCom == nullptr)return false;
+
+	return true;
 }
 
 void PostEffect::ComputeMosaic(bool On, int size) {

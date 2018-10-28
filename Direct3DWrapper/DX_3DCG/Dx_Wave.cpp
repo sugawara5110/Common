@@ -68,7 +68,7 @@ void Wave::GetShaderByteCode(int texNum) {
 	ds = dx->pDomainShader_Wave.Get();
 }
 
-void Wave::ComCreate() {
+bool Wave::ComCreate() {
 
 	//CSからDSへの受け渡し用
 	int divide = (int)(cbw.wHei_divide.y * cbw.wHei_divide.y);
@@ -76,7 +76,7 @@ void Wave::ComCreate() {
 	std::vector<WaveData> wdata(divide);
 	for (int i = 0; i < divide; ++i)
 	{
-		wdata[i].sinWave = 0;
+		wdata[i].sinWave = 0.0f;
 		wdata[i].theta = (float)(i % 360);
 	}
 
@@ -127,9 +127,13 @@ void Wave::ComCreate() {
 	slotRootParameter[2].InitAsConstantBufferView(0);//mObjectCB_WAVE
 
 	mRootSignatureCom = CreateRsCompute(3, slotRootParameter);
+	if (mRootSignatureCom == nullptr)return false;
 
 	//PSO
 	mPSOCom = CreatePsoCompute(cs, mRootSignatureCom.Get());
+	if (mPSOCom == nullptr)return false;
+
+	return true;
 }
 
 void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, float speB) {
@@ -141,7 +145,7 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 	sg.vSpeculer.z = speB;
 }
 
-void Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
+bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	mObjectCB1->CopyData(0, sg);
 
@@ -158,12 +162,14 @@ void Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	slotRootParameter[5].InitAsShaderResourceView(2);//StructuredBuffer(t2)
 
 	mRootSignatureDraw = CreateRs(6, slotRootParameter);
+	if (mRootSignatureDraw == nullptr)return false;
 
 	TextureNo te;
 	te.diffuse = texNo;
 	te.normal = nortNo;
 	te.movie = m_on;
 	mSrvHeap = CreateSrvHeap(1, texNum, &te, texture);
+	if (mSrvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
@@ -180,20 +186,23 @@ void Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	//パイプラインステートオブジェクト生成
 	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend);
+	if (mPSODraw == nullptr)return false;
+
+	return true;
 }
 
-void Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float divide) {
-	Create(texNo, -1, blend, alpha, waveHeight, divide);
+bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float divide) {
+	return Create(texNo, -1, blend, alpha, waveHeight, divide);
 }
 
-void Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide) {
+bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide) {
 	cbw.wHei_divide.as(waveHeight, divide, 0.0f, 0.0f);
 	mObjectCB_WAVE->CopyData(0, cbw);
 	t_no = texNo;
 	if (nortNo != -1)texNum = 2;
 	GetShaderByteCode(texNum);
-	ComCreate();
-	DrawCreate(texNo, nortNo, blend, alpha);
+	if (!ComCreate())return false;
+	return DrawCreate(texNo, nortNo, blend, alpha);
 }
 
 void Wave::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {

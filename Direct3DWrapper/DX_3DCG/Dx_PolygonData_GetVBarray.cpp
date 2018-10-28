@@ -165,11 +165,11 @@ void PolygonData::SetCol(float difR, float difG, float difB, float speR, float s
 	sg.vSpeculer.z = speB;
 }
 
-void PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
-	Create(light, tNo, -1, blend, alpha);
+bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
+	return Create(light, tNo, -1, blend, alpha);
 }
 
-void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha) {
+bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha) {
 
 	GetShaderByteCode(light, tNo, nortNo);
 
@@ -188,6 +188,7 @@ void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	slotRootParameter[3].InitAsConstantBufferView(1);
 
 	mRootSignature = CreateRs(4, slotRootParameter);
+	if (mRootSignature == nullptr)return false;
 
 	//SRVのデスクリプターヒープ生成
 	texNum = 1;
@@ -197,6 +198,7 @@ void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	te.normal = nortNo;
 	te.movie = m_on;
 	mSrvHeap = CreateSrvHeap(1, texNum, &te, texture);
+	if (mSrvHeap == nullptr)return false;
 
 	UINT VertexSize;
 	if (tNo == -1 && !m_on)
@@ -225,6 +227,10 @@ void PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
 	else
 		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3D, alpha, blend, primType_create);
+
+	if (mPSO == nullptr)return false;
+
+	return true;
 }
 
 void PolygonData::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {

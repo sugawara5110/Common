@@ -62,8 +62,8 @@ protected:
 	static void Unlock() { mtx.unlock(); }
 
 	void GetShaderByteCode(int texNum);
-	void ComCreate();
-	void DrawCreate(int texNo, int nortNo, bool blend, bool alpha);
+	bool ComCreate();
+	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha);
 	void CbSwap();
 	void Compute();
 	void DrawSub();
@@ -73,8 +73,8 @@ public:
 	~Wave();
 	void GetVBarray(int v);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB);
-	void Create(int texNo, bool blend, bool alpha, float waveHeight, float divide);
-	void Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide);
+	bool Create(int texNo, bool blend, bool alpha, float waveHeight, float divide);
+	bool Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide);
 	//èáî‘:ç∂è„ç∂â∫âEâ∫âEè„
 	void SetVertex(int i,
 		float vx, float vy, float vz,

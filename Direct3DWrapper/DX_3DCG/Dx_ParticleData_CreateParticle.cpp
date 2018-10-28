@@ -54,7 +54,7 @@ void ParticleData::MatrixMap2(CONSTANT_BUFFER_P *cb, bool init) {
 	if (init)cb->size.y = 1.0f; else cb->size.y = 0.0f;
 }
 
-void ParticleData::GetVbColarray(int texture_no, float size, float density) {
+HRESULT ParticleData::GetVbColarray(int texture_no, float size, float density) {
 	UINT64  total_bytes = 0;
 	dx->md3dDevice->GetCopyableFootprints(&dx->texture[texture_no]->GetDesc(), 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
 
@@ -70,7 +70,11 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 
 	//頂点個数カウント
 	D3D12_SUBRESOURCE_DATA texResource;
-	dx->textureUp[texture_no]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	HRESULT hr;
+	hr = dx->textureUp[texture_no]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	if (FAILED(hr)) {
+		ErrorMessage("ParticleData::GetVbColarray Error!!"); return hr;
+	}
 
 	texResource.RowPitch = footprint.Footprint.RowPitch;
 	UCHAR *ptex = (UCHAR*)texResource.pData;
@@ -88,7 +92,10 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
 
 	//ピクセルデータ読み込み
-	dx->textureUp[texture_no]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	hr = dx->textureUp[texture_no]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	if (FAILED(hr)) {
+		ErrorMessage("ParticleData::GetVbColarray Error!!"); return hr;
+	}
 
 	texResource.RowPitch = footprint.Footprint.RowPitch;
 	ptex = (UCHAR*)texResource.pData;
@@ -115,14 +122,16 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 	}
 
 	dx->textureUp[texture_no]->Unmap(0, nullptr);
+
+	return S_OK;
 }
 
-void ParticleData::GetBufferParticle(int texture_no, float size, float density) {
+HRESULT ParticleData::GetBufferParticle(int texture_no, float size, float density) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
 	Sview1 = std::make_unique<StreamView[]>(2);
 	Sview2 = std::make_unique<StreamView[]>(2);
-	GetVbColarray(texture_no, size, density);
+	return GetVbColarray(texture_no, size, density);
 }
 
 void ParticleData::GetBufferBill(int v) {
@@ -152,19 +161,23 @@ void ParticleData::CreateVbObj() {
 	}
 }
 
-void ParticleData::CreatePartsCom() {
+bool ParticleData::CreatePartsCom() {
 
 	CD3DX12_ROOT_PARAMETER slotRootParameter_com[1];
 	slotRootParameter_com[0].InitAsConstantBufferView(0);
 
 	mRootSignature_com = CreateRsStreamOutput(1, slotRootParameter_com);
+	if (mRootSignature_com == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(STREAM_OUTPUT)
 	mPSO_com = CreatePsoStreamOutput(vsSO, gsSO, mRootSignature_com.Get(),
 		dx->pVertexLayout_P, dx->pDeclaration_PSO, Sview1[0].StreamByteStride);
+	if (mPSO_com == nullptr)return false;
+
+	return true;
 }
 
-void ParticleData::CreatePartsDraw(int texpar) {
+bool ParticleData::CreatePartsDraw(int texpar) {
 
 	if (texpar != -1)texpar_on = true;
 
@@ -176,28 +189,33 @@ void ParticleData::CreatePartsDraw(int texpar) {
 	slotRootParameter_draw[1].InitAsConstantBufferView(0);
 
 	mRootSignature_draw = CreateRs(2, slotRootParameter_draw);
+	if (mRootSignature_draw == nullptr)return false;
 
 	TextureNo te;
 	te.diffuse = texpar;
 	te.normal = -1;
 	te.movie = m_on;
 	mSrvHeap = CreateSrvHeap(1, 1, &te, texture);
+	if (mSrvHeap == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(Draw)
 	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, true, true);
+	if (mPSO_draw == nullptr)return false;
+
+	return true;
 }
 
-void ParticleData::CreateParticle(int texpar) {
+bool ParticleData::CreateParticle(int texpar) {
 	GetShaderByteCode();
 	CreateVbObj();
-	CreatePartsCom();
-	CreatePartsDraw(texpar);
+	if (!CreatePartsCom())return false;
+	return CreatePartsDraw(texpar);
 }
 
-void ParticleData::CreateBillboard() {
+bool ParticleData::CreateBillboard() {
 	GetShaderByteCode();
 	CreateVbObj();
-	CreatePartsDraw(-1);
+	return CreatePartsDraw(-1);
 }
 
 void ParticleData::DrawParts0() {

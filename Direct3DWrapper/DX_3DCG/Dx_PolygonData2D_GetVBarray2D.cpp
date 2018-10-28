@@ -60,7 +60,7 @@ void PolygonData2D::InstancedSetConstBf(float x, float y, float z, float r, floa
 	cb2[sw].Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
 	cb2[sw].Color[ins_no].as(r, g, b, a);
 	cb2[sw].sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
-	cb2[sw].WidHei.as(dx->mClientWidth, dx->mClientHeight, 0.0f, 0.0f);
+	cb2[sw].WidHei.as((float)dx->mClientWidth, (float)dx->mClientHeight, 0.0f, 0.0f);
 	ins_no++;
 }
 
@@ -69,7 +69,7 @@ void PolygonData2D::SetConstBf(CONSTANT_BUFFER2D *cb, float x, float y, float z,
 	cb->Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
 	cb->Color[ins_no].as(r, g, b, a);
 	cb->sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
-	cb->WidHei.as(dx->mClientWidth, dx->mClientHeight, 0.0f, 0.0f);
+	cb->WidHei.as((float)dx->mClientWidth, (float)dx->mClientHeight, 0.0f, 0.0f);
 	ins_no++;
 }
 
@@ -115,8 +115,8 @@ void PolygonData2D::SetText() {
 	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 	HeapProps.CreationNodeMask = 1;
 	HeapProps.VisibleNodeMask = 1;
-	HRESULT hr;
-	hr = dx->md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
+
+	dx->md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
 		D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&texture));
 
 	//upload
@@ -261,10 +261,10 @@ void PolygonData2D::GetShaderByteCode() {
 	}
 }
 
-void PolygonData2D::CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha) {
+bool PolygonData2D::CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha) {
 
 	//verが4の時のみ実行可
-	if (ver != 4)return;
+	if (ver != 4)return false;
 	d2varray[0].Pos.as(x * magX, y * magY, z);
 	d2varray[0].color.as(r, g, b, a);
 	d2varray[0].tex.as(0.0f, 0.0f);
@@ -288,10 +288,10 @@ void PolygonData2D::CreateBox(float x, float y, float z, float sizex, float size
 	d2varrayI[4] = 3;
 	d2varrayI[5] = 2;
 
-	Create(blend, alpha);
+	return Create(blend, alpha);
 }
 
-void PolygonData2D::Create(bool blend, bool alpha) {
+bool PolygonData2D::Create(bool blend, bool alpha) {
 
 	GetShaderByteCode();
 
@@ -303,12 +303,14 @@ void PolygonData2D::Create(bool blend, bool alpha) {
 	slotRootParameter[1].InitAsConstantBufferView(0);
 
 	mRootSignature = CreateRs(2, slotRootParameter);
+	if (mRootSignature == nullptr)return false;
 
 	TextureNo te;
 	te.diffuse = -1;
 	te.normal = -1;
 	te.movie = m_on;
 	mSrvHeap = CreateSrvHeap(1, 1, &te, texture);
+	if (mSrvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
@@ -325,6 +327,9 @@ void PolygonData2D::Create(bool blend, bool alpha) {
 
 	//パイプラインステートオブジェクト生成
 	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_2D, alpha, blend);
+	if (mPSO == nullptr)return false;
+
+	return true;
 }
 
 void PolygonData2D::CbSwap() {

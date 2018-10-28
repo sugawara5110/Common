@@ -25,7 +25,7 @@ void Common::CopyResource(ID3D12Resource *Intexture, D3D12_RESOURCE_STATES res) 
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void Common::TextureInit(int width, int height) {
+HRESULT Common::TextureInit(int width, int height) {
 
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -45,9 +45,13 @@ void Common::TextureInit(int width, int height) {
 	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 	HeapProps.CreationNodeMask = 1;
 	HeapProps.VisibleNodeMask = 1;
+
 	HRESULT hr;
 	hr = dx->md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&texture));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::TextureInit Error!!"); return hr;
+	}
 
 	//upload
 	UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture, 0, 1);
@@ -71,9 +75,12 @@ void Common::TextureInit(int width, int height) {
 	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	dx->md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
+	hr = dx->md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
 		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr, IID_PPV_ARGS(&textureUp));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::TextureInit Error!!"); return hr;
+	}
 
 	UINT64  total_bytes = 0;
 	dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
@@ -89,9 +96,11 @@ void Common::TextureInit(int width, int height) {
 	src.PlacedFootprint = footprint;
 
 	m_on = true;
+
+	return S_OK;
 }
 
-void Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold) {
+HRESULT Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold) {
 
 	D3D12_RESOURCE_DESC texdesc;
 	texdesc = texture->GetDesc();
@@ -111,7 +120,11 @@ void Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE
 	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 	mCommandList->ResourceBarrier(1, &BarrierDesc);
 
-	textureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	HRESULT hr;
+	hr = textureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::SetTextureMPixel Error!!"); return hr;
+	}
 
 	UCHAR *ptex = (UCHAR*)texResource.pData;
 	texResource.RowPitch = footprint.Footprint.RowPitch;
@@ -139,6 +152,8 @@ void Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE
 	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
 	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
 	mCommandList->ResourceBarrier(1, &BarrierDesc);
+
+	return S_OK;
 }
 
 ID3D12DescriptorHeap *Common::CreateSrvHeap(int MaterialNum, int texNum, TextureNo *to, ID3D12Resource *movietex)
@@ -150,7 +165,12 @@ ID3D12DescriptorHeap *Common::CreateSrvHeap(int MaterialNum, int texNum, Texture
 	srvHeapDesc.NumDescriptors = texNum;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	dx->md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv));
+
+	HRESULT hr;
+	hr = dx->md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::CreateSrvHeap Error!!"); return nullptr;
+	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(srv->GetCPUDescriptorHandleForHeapStart());
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -191,19 +211,29 @@ ID3D12RootSignature *Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC *rootSig
 
 	Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
-	D3D12SerializeRootSignature(rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+
+	HRESULT hr;
+	hr = D3D12SerializeRootSignature(rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
 		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
 		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
+	if (FAILED(hr)) {
+		ErrorMessage("Common::CreateRsCommon Error!!"); return nullptr;
+	}
+
 	//RootSignature¶¬
-	dx->md3dDevice->CreateRootSignature(
+	hr = dx->md3dDevice->CreateRootSignature(
 		0,
 		serializedRootSig->GetBufferPointer(),
 		serializedRootSig->GetBufferSize(),
 		IID_PPV_ARGS(&rs));
+
+	if (FAILED(hr)) {
+		ErrorMessage("Common::CreateRsCommon Error!!"); return nullptr;
+	}
 
 	return rs;
 }
@@ -333,7 +363,12 @@ ID3D12PipelineState *Common::CreatePSO(ID3DBlob *vs, ID3DBlob *hs,
 	psoDesc.SampleDesc.Count = dx->m4xMsaaState ? 4 : 1;
 	psoDesc.SampleDesc.Quality = dx->m4xMsaaState ? (dx->m4xMsaaQuality - 1) : 0;
 	psoDesc.DSVFormat = dx->mDepthStencilFormat;
-	dx->md3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+
+	HRESULT hr;
+	hr = dx->md3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::CreatePSO Error!!"); return nullptr;
+	}
 
 	return pso;
 }
@@ -385,7 +420,12 @@ ID3D12PipelineState *Common::CreatePsoCompute(ID3DBlob *cs,
 		cs->GetBufferSize()
 	};
 	PsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-	dx->md3dDevice->CreateComputePipelineState(&PsoDesc, IID_PPV_ARGS(&pso));
+
+	HRESULT hr;
+	hr = dx->md3dDevice->CreateComputePipelineState(&PsoDesc, IID_PPV_ARGS(&pso));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::CreatePsoCompute Error!!"); return nullptr;
+	}
 
 	return pso;
 }

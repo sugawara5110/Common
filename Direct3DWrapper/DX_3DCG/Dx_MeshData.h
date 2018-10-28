@@ -68,7 +68,7 @@ protected:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
-	void LoadMaterialFromFile(char *FileName, MY_MATERIAL **ppMaterial);
+	bool LoadMaterialFromFile(char *FileName, MY_MATERIAL **ppMaterial);
 	void GetShaderByteCode(bool disp);
 	void CbSwap();
 
@@ -76,10 +76,10 @@ public:
 	MeshData();
 	~MeshData();
 	void SetState(bool alpha, bool blend, bool disp, float diffuse = 0.0f, float specu = 0.0f);
-	void GetBuffer(char *FileName);
-	void SetVertex();
-	void CreateMesh();
-	void GetTexture();
+	bool GetBuffer(char *FileName);
+	bool SetVertex();
+	bool CreateMesh();
+	bool GetTexture();
 	ID3D12PipelineState *GetPipelineState();
 	//ï°êîUpdate
 	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);
