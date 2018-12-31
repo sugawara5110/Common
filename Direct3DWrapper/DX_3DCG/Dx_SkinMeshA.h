@@ -1,36 +1,44 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　        SkinMeshクラス(FbxLoader)                           **//
+//**                   　　　      SkinMeshAクラス(FBX_SDK)                              **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
-#ifndef Class_SkinMesh_Header
-#define Class_SkinMesh_Header
+#ifndef Class_SkinMeshA_Header
+#define Class_SkinMeshA_Header
 
 #include "Dx12ProcessCore.h"
-#include "../../../FbxLoader/FbxLoader.h"
+#include <fbxsdk.h>
 
-class SkinMesh_sub {
+class SkinMeshA_sub {
 
 protected:
-	friend SkinMesh;
-	FbxLoader *fbxL = nullptr;
+	friend SkinMeshA;
+
+	FbxScene *m_pmyScene = nullptr;
 	float end_frame, current_frame;
+
 	bool centering, offset;
 	float cx, cy, cz;
 	MATRIX rotZYX;
 	float connect_step;
 
-	SkinMesh_sub();
-	~SkinMesh_sub();
+	SkinMeshA_sub();
+	~SkinMeshA_sub();
 	bool Create(CHAR *szFileName);
 };
 
-class SkinMesh :public Common {
+class SkinMeshA :public Common {
 
 protected:
-	friend SkinMesh_sub;
+	friend SkinMeshA_sub;
 	friend Dx12Process;
+	static FbxManager *m_pSdkManager;
+	static FbxImporter *m_pImporter;
+	//InitFBX排他処理用
+	static volatile bool stInitFBX_ON, stSetNewPose_ON;
+	static bool ManagerCreated;//マネージャー生成フラグ
+
 	ID3DBlob *vs = nullptr;
 	ID3DBlob *vsB = nullptr;
 	ID3DBlob *hs = nullptr;
@@ -88,11 +96,12 @@ protected:
 	BONE *m_BoneArray;
 
 	//FBX
-	SkinMesh_sub *fbx;
-	Deformer **m_ppCluster;//ボーン情報
+	SkinMeshA_sub *fbx;
+	FbxCluster **m_ppCluster;//ボーン情報
 	char *m_pClusterName;
+	FbxNode **m_ppNodeArray;//各Nodeへのポインタ配列
 	int NodeArraypcs;
-	Deformer **m_ppSubAnimationBone;//その他アニメーションボーンポインタ配列
+	FbxNode **m_ppSubAnimationBone;//その他アニメーションボーンポインタ配列
 	MATRIX *m_pLastBoneMatrix;
 	int AnimLastInd;
 	float BoneConnect;
@@ -102,6 +111,9 @@ protected:
 	static void Unlock() { mtx.unlock(); }
 
 	void DestroyFBX();
+	FbxScene* GetScene(int p);
+	int SearchNodeCount(FbxNode *pnode, FbxNodeAttribute::EType SearchType);
+	FbxNode *SearchNode(FbxNode *pnode, FbxNodeAttribute::EType SearchType, int Ind);
 	HRESULT InitFBX(CHAR* szFileName, int p);
 	void CreateIndexBuffer(int cnt, int IviewInd);
 	void CreateIndexBuffer2(int *pIndex, int IviewInd);
@@ -118,8 +130,8 @@ public:
 	static void CreateManager();
 	static void DeleteManager();
 
-	SkinMesh();
-	~SkinMesh();
+	SkinMeshA();
+	~SkinMeshA();
 
 	void SetState(bool alpha, bool blend);
 	void ObjCentering(bool f, int ind);

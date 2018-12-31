@@ -51,6 +51,7 @@ class PolygonData;
 class PolygonData2D;
 class ParticleData;
 class SkinMesh;
+class SkinMeshA;
 class DxText;
 class Wave;
 class PostEffect;
@@ -71,6 +72,7 @@ private:
 	friend PolygonData2D;
 	friend ParticleData;
 	friend SkinMesh;
+	friend SkinMeshA;
 	friend Wave;
 	friend PostEffect;
 	friend Common;
@@ -100,6 +102,7 @@ private:
 	friend PolygonData2D;
 	friend ParticleData;
 	friend SkinMesh;
+	friend SkinMeshA;
 	friend Dx12Process_sub;
 	friend Wave;
 	friend PostEffect;
@@ -397,6 +400,7 @@ protected:
 	friend PolygonData2D;
 	friend ParticleData;
 	friend SkinMesh;
+	friend SkinMeshA;
 	friend Wave;
 	friend PostEffect;
 	Common() {}//外部からのオブジェクト生成禁止
