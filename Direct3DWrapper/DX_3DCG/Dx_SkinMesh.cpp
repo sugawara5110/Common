@@ -111,7 +111,7 @@ void SkinMesh::ObjOffset(float x, float y, float z, float thetaZ, float thetaY, 
 
 HRESULT SkinMesh::InitFBX(CHAR *szFileName, int p) {
 	bool f = false;
-	f = fbx[p].Create(szFileName);//WAIT()FBX_SDK全関数にやるかは様子見
+	f = fbx[p].Create(szFileName);
 	if (f)return S_OK;
 	return E_FAIL;
 }
@@ -120,26 +120,26 @@ void SkinMesh::DestroyFBX() {
 	ARR_DELETE(fbx);
 }
 
-void SkinMesh::ReadSkinInfo(MY_VERTEX_S *pvVB) {
-	FbxLoader *fbl = fbx[0].fbxL;
-	FbxMeshNode *mesh = fbl->getFbxMeshNode(0);//行列関係はどのメッシュからでも同じ物を得られる
+void SkinMesh::ReadSkinInfo(MY_VERTEX_S* pvVB) {
+	FbxLoader* fbl = fbx[0].fbxL;
+	FbxMeshNode* mesh = fbl->getFbxMeshNode(0);//行列関係はどのメッシュからでも同じ物を得られる
 
 	for (int i = 0; i < m_iNumBone; i++) {
 		m_ppCluster[i] = mesh->getDeformer(i);
-		const char *name = m_ppCluster[i]->getName();
+		const char* name = m_ppCluster[i]->getName();
 		strcpy(&m_pClusterName[i * 255], name);//ボーンの名前保持
 	}
 
 	int VertexStart = 0;
 	for (int m = 0; m < NodeArraypcs; m++) {
-		FbxMeshNode *meshBone = fbl->getFbxMeshNode(m);
+		FbxMeshNode* meshBone = fbl->getFbxMeshNode(m);
 
 		//各Boneのウエイト,インデックスを調べ頂点配列に加える
 		for (int i = 0; i < m_iNumBone; i++) {
-			Deformer *defo = meshBone->getDeformer(i);
+			Deformer* defo = meshBone->getDeformer(i);
 			int iNumIndex = defo->getIndicesCount();//このボーンに影響を受ける頂点インデックス数
-			int *piIndex = defo->getIndices();     //このボーンに影響を受ける頂点のインデックス配列
-			double *pdWeight = defo->getWeights();//このボーンに影響を受ける頂点のウエイト配列
+			int* piIndex = defo->getIndices();     //このボーンに影響を受ける頂点のインデックス配列
+			double* pdWeight = defo->getWeights();//このボーンに影響を受ける頂点のウエイト配列
 
 			for (int k = 0; k < iNumIndex; k++) {
 				int index = piIndex[k];      //影響を受ける頂点
