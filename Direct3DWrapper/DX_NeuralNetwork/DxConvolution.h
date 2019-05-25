@@ -8,7 +8,7 @@
 #define Class_DxConvolution_Header
 
 #include "DxNNCommon.h"
-#define CN_SHADER_NUM 5
+#define CN_SHADER_NUM 6
 
 class DxConvolution :public DxNNCommon {
 
@@ -28,15 +28,16 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterReadBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mGradientBuffer = nullptr;//勾配
 	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasReadBuffer = nullptr;
 
 	CONSTANT_BUFFER_Convolution cb;
-	ConstantBuffer<CONSTANT_BUFFER_Convolution> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_Convolution>* mObjectCB = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[CN_SHADER_NUM] = { nullptr };
-	int *shaderThreadNum = nullptr;
+	int* shaderThreadNum = nullptr;
 
 	UINT Width; //入力画像サイズ
 	UINT Height;//入力画像サイズ
@@ -56,21 +57,21 @@ protected:
 	UINT64 input_outerrOneSize = 0;
 	UINT64 output_inerrOneSize = 0;
 
-	float *dropout = nullptr;
+	float* dropout = nullptr;
 	float dropThreshold = 0.5f;//閾値
 
 	//畳込みフィルター
-	float *fil = nullptr;
+	float* fil = nullptr;
 	//畳込み前
-	float *input = nullptr;
+	float* input = nullptr;
 	//畳込み後
-	float *output = nullptr;
+	float* output = nullptr;
 	//下層からの誤差
-	float *inputError = nullptr;
+	float* inputError = nullptr;
 	//下層からの誤差ウエイト計算後上層に送る時に使用
-	float *outputError = nullptr;
+	float* outputError = nullptr;
 	//バイアス  フィルターと同数
-	float *bias = nullptr;
+	float* bias = nullptr;
 
 	float learningRate = 0.1f;
 	float learningBiasRate = 0.1f;
@@ -100,25 +101,27 @@ public:
 	void ComCreateReLU();
 	void SetdropThreshold(float Threshold);//検出時は0.0f設定にする
 	void Query();
+	void BackPropagationNoWeightUpdate();
 	void Training();
 	void Detection(UINT inputsetnum);
 	void Test();
 	void SetLearningLate(float rate, float biasrate);
 	void SetWeightInit(float rate);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);
-	void Input(float *inArr, UINT arrNum, UINT inputsetInd = 0);
+	void Input(float* inArr, UINT arrNum, UINT inputsetInd = 0);
 	void InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
-	void InputError(float *inArr, UINT arrNum, UINT inputsetInd = 0);
-	float *Output(UINT arrNum, UINT inputsetInd = 0);
+	void InputError(float* inArr, UINT arrNum, UINT inputsetInd = 0);
+	float* Output(UINT arrNum, UINT inputsetInd = 0);
 	float OutputEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	float OutputFilter(UINT arrNum, UINT ElNum);
-	float *GetError(UINT arrNum, UINT inputsetInd = 0);
+	float* GetError(UINT arrNum, UINT inputsetInd = 0);
 	float GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
-	void SetInputResource(ID3D12Resource *res);
-	void SetInErrorResource(ID3D12Resource *res);
-	ID3D12Resource *GetOutErrorResource();
-	ID3D12Resource *GetOutputResource();
-	ID3D12Resource *GetFilter();
+	void SetInputResource(ID3D12Resource* res);
+	void SetInErrorResource(ID3D12Resource* res);
+	ID3D12Resource* GetOutErrorResource();
+	ID3D12Resource* GetOutputResource();
+	ID3D12Resource* GetFilter();
+	ID3D12Resource* GetGradient();
 	UINT GetOutWidth();
 	UINT GetOutHeight();
 	void SaveData(UINT Nnm);

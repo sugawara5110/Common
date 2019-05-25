@@ -226,3 +226,20 @@ void DxNNCommon::SetMaxThreadNum(UINT num) {
 	maxThreadNum = num;
 	if (maxThreadNum > 32)maxThreadNum = 32;
 }
+
+void DxNNCommon::CopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
+	dx->Bigin(com_no);
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
+
+	mCommandList->CopyResource(dest, src);
+
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+}

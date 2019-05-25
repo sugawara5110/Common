@@ -61,9 +61,10 @@ class DxNeuralNetwork;
 class DxPooling;
 class DxConvolution;
 class SearchPixel;
+class DxGradCAM;
 //前方宣言
 
-class Dx12Process_sub final{
+class Dx12Process_sub final {
 
 private:
 	friend Dx12Process;
@@ -81,6 +82,7 @@ private:
 	friend DxPooling;
 	friend DxConvolution;
 	friend SearchPixel;
+	friend DxGradCAM;
 
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList;
@@ -112,6 +114,7 @@ private:
 	friend DxPooling;
 	friend DxConvolution;
 	friend SearchPixel;
+	friend DxGradCAM;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;
@@ -196,12 +199,12 @@ private:
 	int mClientHeight;
 
 	//テクスチャ
-	Texture *tex = nullptr;//外部からアドレスが渡される
+	Texture* tex = nullptr;//外部からアドレスが渡される
 	int texNum = 0;    //配列数
-	ID3D12Resource **texture = nullptr;
-	ID3D12Resource **textureUp = nullptr;
+	ID3D12Resource** texture = nullptr;
+	ID3D12Resource** textureUp = nullptr;
 
-	static Dx12Process *dx;//クラス内でオブジェクト生成し使いまわす
+	static Dx12Process* dx;//クラス内でオブジェクト生成し使いまわす
 	static std::mutex mtx;
 
 	MATRIX      mProj;
@@ -226,7 +229,7 @@ private:
 	int  ins_no = 0;
 
 	Dx12Process() {}//外部からのオブジェクト生成禁止
-	Dx12Process(const Dx12Process &obj) {}   // コピーコンストラクタ禁止
+	Dx12Process(const Dx12Process& obj) {}   // コピーコンストラクタ禁止
 	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
 	~Dx12Process();
 
@@ -235,23 +238,23 @@ private:
 		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-	void InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z,
+	void InstancedMap(CONSTANT_BUFFER* cb, float x, float y, float z,
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
-	void MatrixMap(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
+	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
 	void WaitFence(int fence);
 
 public:
 	static void InstanceCreate();
-	static Dx12Process *GetInstance();
+	static Dx12Process* GetInstance();
 	static void DeleteInstance();
 
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
-	char *GetNameFromPass(char *pass);//パスからファイル名を抽出
-	void SetTextureBinary(Texture *tex, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
-	int GetTexNumber(CHAR *fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
+	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
+	void SetTextureBinary(Texture* tex, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
+	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 	bool GetTexture(int com_no);//デコード済みのバイナリからリソースの生成
 	void UpTextureRelease();
 	void Sclear(int com_no);

@@ -51,4 +51,19 @@ struct SearchPixelData {
 	UINT enH;
 };
 
+struct CBGradCAM {
+	UINT NumFil;
+	UINT SizeFeatureMapW;
+	UINT SizeFeatureMapH;
+	UINT NumConvFilElement;
+	UINT NumFeatureMapW;
+	UINT NumFeatureMapH;
+	UINT srcWid;
+	UINT srcHei;
+	UINT srcConvMapW;
+	UINT srcConvMapH;
+	UINT MapSlide;
+	float SignalStrength;
+};
+
 #endif

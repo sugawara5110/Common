@@ -10,6 +10,7 @@ char *ShaderConvolution =
 "RWStructuredBuffer<float> gFilter : register(u4);\n"
 "RWStructuredBuffer<float> gDropOutF : register(u5);\n"
 "RWStructuredBuffer<float> gBias : register(u6);\n"
+"RWStructuredBuffer<float> gGradient : register(u7);\n"//勾配
 
 "cbuffer global  : register(b0)\n"
 "{\n"
@@ -68,7 +69,7 @@ char *ShaderConvolution =
 
 //順伝播ReLU
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
-"[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024,  (47行)
+"[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024,  
 "void CNFPReLUCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
@@ -104,7 +105,7 @@ char *ShaderConvolution =
 "}\n"
 
 //gOutErr初期化
-"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024  (80行)
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024  
 "void CNBPCS0(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = inid.x;\n"
@@ -116,7 +117,7 @@ char *ShaderConvolution =
 
 //逆伝播
 //Err出力側を並列処理,Err入力側をループ(スレッド数は入力数と同数)
-"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024   (106行)
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024   
 "void CNBPCS1(uint3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int inwid = gWidHei.x / gfilWid_filStep.y;\n"
@@ -150,10 +151,7 @@ char *ShaderConvolution =
 
 "#define BP_X ?**\n"
 "#define BP_Y ?**\n"
-//フィルタ更新sigmoid
-//フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   (136行)
-"void CNBPCS2(int2 inid : SV_DispatchThreadID)\n"
+"uint CNBPCS2sub(int2 inid)\n"
 "{\n"
 "   int filx = inid.x;\n"
 "   int fily = inid.y % gfilWid_filStep.x;\n"
@@ -187,14 +185,27 @@ char *ShaderConvolution =
 "      }\n"
 "      tmpSum += tmp;\n"
 "   }\n"
-"   float tmpAve = tmpSum / gLear_inputS.y;\n"
-"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] -= tmpAve * gLear_inputS.x;\n"
+"   float tmpAve = tmpSum / gLear_inputS.y;\n"//ミニバッチ学習の為ここで平均を求める
+"   uint grInd = filStInd + gfilWid_filStep.x * fily + filx;\n"
+"   gGradient[grInd] = tmpAve;\n"//勾配を記録
+"   return grInd;\n"
+"}\n"
+//フィルタ更新sigmoid
+//フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
+"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   
+"void CNBPCS2(int2 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint ind = CNBPCS2sub(inid);\n"
+"   gFilter[ind] -= gGradient[ind] * gLear_inputS.x;\n"
+"}\n"
+//フィルター更新無し
+"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   
+"void CNBPCS2NoFilterUpdate(int2 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   CNBPCS2sub(inid);\n"
 "}\n"
 
-//フィルタ更新ReLU
-//フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   (172行)
-"void CNBPReLUCS2(int2 inid : SV_DispatchThreadID)\n"
+"uint CNBPReLUCS2sub(int2 inid)\n"
 "{\n"
 "   int filx = inid.x;\n"
 "   int fily = inid.y % gfilWid_filStep.x;\n"
@@ -230,12 +241,28 @@ char *ShaderConvolution =
 "      tmpSum += tmp;\n"
 "   }\n"
 "   float tmpAve = tmpSum / gLear_inputS.y;\n"
-"   gFilter[filStInd + gfilWid_filStep.x * fily + filx] -= tmpAve * gLear_inputS.x;\n"
+"   uint grInd = filStInd + gfilWid_filStep.x * fily + filx;\n"
+"   gGradient[grInd] = tmpAve;\n"
+"   return grInd;\n"
+"}\n"
+//フィルタ更新ReLU
+//フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
+"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   
+"void CNBPReLUCS2(int2 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint ind = CNBPReLUCS2sub(inid);\n"
+"   gFilter[ind] -= gGradient[ind] * gLear_inputS.x;\n"
+"}\n"
+//フィルタ更新無し
+"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   
+"void CNBPReLUCS2NoFilterUpdate(int2 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   CNBPReLUCS2sub(inid);\n"
 "}\n"
 
 //bias更新
 //Filter毎に並列処理
-"[numthreads(?**, 1, 1)]\n"//最大X * Y * Z = 1024  (89行)
+"[numthreads(?**, 1, 1)]\n"//最大X * Y * Z = 1024  
 "void CNBPCSBias(int2 filid : SV_DispatchThreadID)\n"
 "{\n"
 "   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//下層からの誤差wid

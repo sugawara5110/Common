@@ -11,5 +11,6 @@
 #include "DX_NeuralNetwork\DxPooling.h"
 #include "DX_NeuralNetwork\DxConvolution.h"
 #include "DX_NeuralNetwork\Dx_SearchPixel.h"
+#include "DX_NeuralNetwork\DxGradCAM.h"
 
 #endif

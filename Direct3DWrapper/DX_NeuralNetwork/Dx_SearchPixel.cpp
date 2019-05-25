@@ -230,7 +230,7 @@ void SearchPixel::SetPixel(float *pi) {
 	dx->WaitFenceCurrent();
 }
 
-void SearchPixel::SetPixel3ch(ID3D12Resource *pi) {
+void SearchPixel::SetPixel3ch(ID3D12Resource* pi) {
 	dx->Bigin(com_no);
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
@@ -261,21 +261,8 @@ void SearchPixel::SetNNoutput(float *in) {
 	dx->WaitFenceCurrent();
 }
 
-void SearchPixel::SetNNoutput(ID3D12Resource *in) {
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNNOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(in,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-
-	mCommandList->CopyResource(mNNOutputBuffer.Get(), in);
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(in,
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNNOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->WaitFenceCurrent();
+void SearchPixel::SetNNoutput(ID3D12Resource* in) {
+	CopyResource(mNNOutputBuffer.Get(), in);
 }
 
 void SearchPixel::SeparationTexture() {

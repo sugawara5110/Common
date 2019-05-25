@@ -270,7 +270,7 @@ void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
 	dx->WaitFenceCurrent();
 }
 
-void DxNeuralNetwork::BackPropagation() {
+void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 	//target入力
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[1][0].Get());
@@ -305,7 +305,20 @@ void DxNeuralNetwork::BackPropagation() {
 		dx->WaitFenceCurrent();
 	}
 
-	repInd = 0;
+	dx->Bigin(com_no);
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	mCommandList->CopyResource(mErrorReadBuffer.Get(), mErrorBuffer[0].Get());
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+}
+
+void DxNeuralNetwork::BackPropagation() {
+	BackPropagationNoWeightUpdate();
+
+	int repInd = 0;
 	//weight値更新
 	for (int i = Depth - 2; i >= 0; i--) {
 		dx->Bigin(com_no);
@@ -326,12 +339,6 @@ void DxNeuralNetwork::BackPropagation() {
 	}
 
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mErrorReadBuffer.Get(), mErrorBuffer[0].Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
 	mCommandList->CopyResource(mWeightReadBuffer.Get(), mWeightBuffer.Get());
@@ -430,8 +437,13 @@ void DxNeuralNetwork::Query(UINT inputsetnum) {
 	InputResourse();
 	ForwardPropagation(inputsetnum);
 	CopyOutputResourse();
-	InverseQuery();
-	TextureCopy(mNodeBuffer[0].Get(), com_no);
+}
+
+void DxNeuralNetwork::QueryAndBackPropagation(UINT inputsetnum) {
+	InputResourse();
+	ForwardPropagation(inputsetnum);
+	CopyOutputResourse();
+	BackPropagationNoWeightUpdate();
 }
 
 void DxNeuralNetwork::Training() {
@@ -444,7 +456,7 @@ void DxNeuralNetwork::Training() {
 	CopyWeightResourse();
 	//CopyErrorResourse();
 
-	//↓BackPropagation()の直前に実行しない事
+	//↓ForwardPropagation()とBackPropagation()の間に実行しない事
 	InverseQuery();
 	TextureCopy(mNodeBuffer[0].Get(), com_no);
 }
@@ -484,21 +496,8 @@ void DxNeuralNetwork::InverseQuery() {
 	}
 }
 
-void DxNeuralNetwork::SetInputResource(ID3D12Resource *res) {
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer[0].Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(res,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-
-	mCommandList->CopyResource(mNodeBuffer[0].Get(), res);
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(res,
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer[0].Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->WaitFenceCurrent();
+void DxNeuralNetwork::SetInputResource(ID3D12Resource* res) {
+	CopyResource(mNodeBuffer[0].Get(), res);
 }
 
 ID3D12Resource *DxNeuralNetwork::GetOutErrorResource() {
