@@ -35,7 +35,7 @@ char* ShaderGradCAM =
 "   float tmp = 0.0f;\n"
 "   for(uint i = 0; i < NumConvFilElement; i++)\n"
 "   {\n"
-"      tmp += gInputGradientBuffer[NumFil * filInd + i];\n"
+"      tmp += gInputGradientBuffer[NumConvFilElement * filInd + i];\n"
 "   }\n"
 "   gGlobalAveragePoolingBuffer[filInd] = tmp / (float)NumConvFilElement;\n"
 "}\n"

@@ -49,7 +49,6 @@ protected:
 	UINT ElNum = 9;  //elNumWid * elNumWid
 	UINT FilNum = 1;
 	UINT filterStep = 1;//2ÇÃó›èÊÇÃÇ›,Max8Ç‹Ç≈
-	UINT inputSetNum = 1;
 
 	UINT filSize = 0;
 	UINT input_outerrOneNum = 0;
@@ -77,7 +76,7 @@ protected:
 	float learningBiasRate = 0.1f;
 
 	DxConvolution() {}
-	void ForwardPropagation(UINT inputsetnum);
+	void ForwardPropagation();
 	void BackPropagation();
 	void InputResourse();
 	void InputErrResourse();

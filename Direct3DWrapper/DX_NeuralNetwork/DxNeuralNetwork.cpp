@@ -10,10 +10,11 @@
 #include "ShaderNN\ShaderNeuralNetwork.h"
 #define PARANUM 6
 
-DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT inputsetnum) {
+DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum) {
 
 	srand((unsigned)time(NULL));
 	inputSetNum = inputsetnum;
+	inputSetNumCur = inputSetNum;
 	Split = split;
 	NumNode = numNode;
 	NumNode[0] *= Split;
@@ -49,7 +50,7 @@ DxNeuralNetwork::DxNeuralNetwork(UINT *numNode, int depth, UINT split, UINT inpu
 	for (UINT i = 0; i < NumNode[Depth - 1]; i++)target[i] = 0.0f;
 
 	dropThreshold = new float[Depth - 1];
-	dropout = new float*[Depth - 1];
+	dropout = new float* [Depth - 1];
 	for (int i = 0; i < Depth - 1; i++) {
 		dropout[i] = new float[NumNode[i]];
 		dropThreshold[i] = 0.5f;
@@ -238,7 +239,7 @@ void DxNeuralNetwork::ComCreateReLU() {
 	ComCreate(false);
 }
 
-void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
+void DxNeuralNetwork::ForwardPropagation() {
 	int repInd = 0;
 	for (int i = 0; i < Depth - 1; i++) {
 		dx->Bigin(com_no);
@@ -250,12 +251,13 @@ void DxNeuralNetwork::ForwardPropagation(UINT inputsetnum) {
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.x = learningRate;
 		cb.Lear_Depth_inputS.y = i;
+		cb.Lear_Depth_inputS.w = (float)inputSetNumCur;
 		for (UINT i1 = 0; i1 < NumNode[Depth - 1]; i1++)
 			cb.Target[i1].x = target[i1];
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		//Dispatch‚Í1‰ñ–ˆ‚ÉGPUˆ—Š®—¹‚³‚¹‚éŽ–
-		mCommandList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputsetnum);
+		mCommandList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputSetNumCur);
 		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
@@ -281,7 +283,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 	cb.Lear_Depth_inputS.y = Depth - 1;
 	mObjectCB->CopyData(0, cb);
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(NumNode[Depth - 1] / shaderThreadNum[0][1], 1, inputSetNum);
+	mCommandList->Dispatch(NumNode[Depth - 1] / shaderThreadNum[0][1], 1, inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -299,7 +301,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 		cb.Lear_Depth_inputS.y = i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2], 1, inputSetNum);
+		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2], 1, inputSetNumCur);
 		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
@@ -435,13 +437,15 @@ float DxNeuralNetwork::GetOutputEl(UINT ElNum, UINT inputsetInd) {
 
 void DxNeuralNetwork::Query(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(inputsetnum);
+	inputSetNumCur = inputsetnum;
+	ForwardPropagation();
 	CopyOutputResourse();
 }
 
 void DxNeuralNetwork::QueryAndBackPropagation(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(inputsetnum);
+	inputSetNumCur = inputsetnum;
+	ForwardPropagation();
 	CopyOutputResourse();
 	BackPropagationNoWeightUpdate();
 }
@@ -449,7 +453,8 @@ void DxNeuralNetwork::QueryAndBackPropagation(UINT inputsetnum) {
 void DxNeuralNetwork::Training() {
 	InputResourse();
 	SetDropOut();
-	ForwardPropagation(inputSetNum);
+	inputSetNumCur = inputSetNum;
+	ForwardPropagation();
 	CopyOutputResourse();
 
 	BackPropagation();
@@ -464,7 +469,8 @@ void DxNeuralNetwork::Training() {
 void DxNeuralNetwork::Test() {
 	InputResourse();
 	SetDropOut();
-	ForwardPropagation(1);
+	inputSetNumCur = 1;
+	ForwardPropagation();
 	CopyOutputResourse();
 }
 

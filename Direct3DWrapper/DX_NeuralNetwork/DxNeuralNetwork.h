@@ -51,11 +51,10 @@ protected:
 	UINT weightNumAll = 0;//ëSêî
 	UINT64 weight_byteSize = 0;
 	int Depth;
-	UINT inputSetNum = 1;
 
 	DxNeuralNetwork() {}
 	void InputResourse();
-	void ForwardPropagation(UINT inputsetnum);
+	void ForwardPropagation();
 	void InverseQuery();
 	void BackPropagationNoWeightUpdate();
 	void BackPropagation();

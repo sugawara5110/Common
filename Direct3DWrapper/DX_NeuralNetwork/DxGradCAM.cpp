@@ -7,14 +7,15 @@
 #include "DxGradCAM.h"
 #include "ShaderNN\ShaderGradCAM.h"
 
-DxGradCAM::DxGradCAM(UINT SizeFeatureMapW, UINT SizeFeatureMapH, UINT NumGradientEl, UINT NumFil, UINT Inputsetnum) {
+DxGradCAM::DxGradCAM(UINT SizeFeatureMapW, UINT SizeFeatureMapH, UINT NumGradientEl, UINT NumFil, UINT inputsetnum) {
 	dx = Dx12Process::GetInstance();
 
 	cb.NumFil = NumFil;
 	cb.SizeFeatureMapW = SizeFeatureMapW;
 	cb.SizeFeatureMapH = SizeFeatureMapH;
 	cb.NumConvFilElement = NumGradientEl;
-	inputsetnum = Inputsetnum;
+	inputSetNum = inputsetnum;
+	inputSetNumCur = inputSetNum;
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CBGradCAM>(1);
 	mObjectCB->CopyData(0, cb);
@@ -31,7 +32,7 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	mObjectCB->CopyData(0, cb);
 
 	//RWStructuredBuffer用gInputFeatureMapBuffer
-	CreateResourceDef(mInputFeatureMapBuffer, cb.SizeFeatureMapW * cb.SizeFeatureMapH * cb.NumFil * inputsetnum * sizeof(float));
+	CreateResourceDef(mInputFeatureMapBuffer, cb.SizeFeatureMapW * cb.SizeFeatureMapH * cb.NumFil * inputSetNum * sizeof(float));
 
 	//RWStructuredBuffer用gInputGradientBuffer
 	CreateResourceDef(mInputGradientBuffer, cb.NumConvFilElement * cb.NumFil * sizeof(float));
@@ -40,7 +41,7 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	CreateResourceDef(mGlobalAveragePoolingBuffer, cb.NumFil * sizeof(float));
 
 	//RWStructuredBuffer用gOutGradCAMBuffer
-	CreateResourceDef(mOutGradCAMBuffer, cb.SizeFeatureMapW * cb.SizeFeatureMapH * inputsetnum * sizeof(float));
+	CreateResourceDef(mOutGradCAMBuffer, cb.SizeFeatureMapW * cb.SizeFeatureMapH * inputSetNum * sizeof(float));
 
 	//RWStructuredBuffer用gOutGradCAMSynthesisBuffer(OutGradCAMBuffer合成)
 	CreateResourceDef(mOutGradCAMSynthesisBuffer, cb.srcWid * cb.srcHei * sizeof(float));
@@ -158,6 +159,7 @@ void DxGradCAM::ComGAP() {
 }
 
 void DxGradCAM::ComGradCAM(UINT inputsetnum) {
+	inputSetNumCur = inputsetnum;
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[1].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -165,7 +167,7 @@ void DxGradCAM::ComGradCAM(UINT inputsetnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mGlobalAveragePoolingBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutGradCAMBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.SizeFeatureMapW * cb.SizeFeatureMapH, 1, inputsetnum);
+	mCommandList->Dispatch(cb.SizeFeatureMapW * cb.SizeFeatureMapH, 1, inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

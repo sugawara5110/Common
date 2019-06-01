@@ -21,6 +21,8 @@ protected:
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS2 = nullptr;
 	int* shaderThreadNum2 = nullptr;
 	UINT maxThreadNum = 32;
+	UINT inputSetNum;
+	UINT inputSetNumCur;
 
 	UINT texWid;
 	UINT texHei;

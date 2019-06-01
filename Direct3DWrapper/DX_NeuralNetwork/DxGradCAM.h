@@ -28,7 +28,6 @@ protected:
 
 	CBGradCAM cb;
 	ConstantBuffer<CBGradCAM>* mObjectCB = nullptr;
-	UINT inputsetnum = 0;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[GC_SHADER_NUM] = { nullptr };
 

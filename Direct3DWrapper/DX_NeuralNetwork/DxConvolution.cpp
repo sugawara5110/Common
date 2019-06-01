@@ -19,6 +19,7 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputset
 
 	srand((unsigned)time(NULL));
 	inputSetNum = inputsetnum;
+	inputSetNumCur = inputSetNum;
 	elNumWid = elnumwid;
 	ElNum = elNumWid * elNumWid;
 	filterStep = filstep;
@@ -244,8 +245,9 @@ void DxConvolution::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
 	memcpy(&inputError[inputsetInd * output_inerrOneNum * FilNum + arrNum * output_inerrOneNum], inArr, output_inerrOneSize);
 }
 
-void DxConvolution::ForwardPropagation(UINT inputsetnum) {
+void DxConvolution::ForwardPropagation() {
 	cb.Lear_inputS.x = learningRate;
+	cb.Lear_inputS.y = inputSetNumCur;
 	cb.Lear_inputS.z = learningBiasRate;
 	mObjectCB->CopyData(0, cb);
 	dx->Bigin(com_no);
@@ -259,7 +261,7 @@ void DxConvolution::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * FilNum / shaderThreadNum[1], inputsetnum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * FilNum / shaderThreadNum[1], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -283,7 +285,7 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNum);
+	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -297,7 +299,7 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -325,7 +327,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNum);
+	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -339,7 +341,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -393,7 +395,8 @@ void DxConvolution::Query() {
 	//TestInput();
 	InputResourse();
 	SetDropOut();
-	ForwardPropagation(inputSetNum);
+	inputSetNumCur = inputSetNum;
+	ForwardPropagation();
 	//CopyOutputResourse();
 	TextureCopy(mFilterBuffer.Get(), com_no);
 	//TestOutput();
@@ -413,14 +416,16 @@ void DxConvolution::Training() {
 
 void DxConvolution::Detection(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(inputsetnum);
+	inputSetNumCur = inputsetnum;
+	ForwardPropagation();
 	TextureCopy(mFilterBuffer.Get(), com_no);
 }
 
 void DxConvolution::Test() {
 	InputResourse();
 	SetDropOut();
-	ForwardPropagation(1);
+	inputSetNumCur = 1;
+	ForwardPropagation();
 }
 
 void DxConvolution::TestFilter() {

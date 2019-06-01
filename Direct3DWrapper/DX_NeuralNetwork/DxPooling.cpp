@@ -11,6 +11,7 @@
 DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT inputsetnum) {
 
 	inputSetNum = inputsetnum;
+	inputSetNumCur = inputSetNum;
 	PoolNum = poolNum;
 	Width = width;
 	Height = height;
@@ -124,7 +125,7 @@ void DxPooling::InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
 	input[input_outerrOneNum * PoolNum * inputsetInd + arrNum * input_outerrOneNum + ElNum] = el;
 }
 
-void DxPooling::ForwardPropagation(UINT inputsetnum) {
+void DxPooling::ForwardPropagation() {
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[0].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -133,7 +134,7 @@ void DxPooling::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * PoolNum / shaderThreadNum[1], inputsetnum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * PoolNum / shaderThreadNum[1], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -156,7 +157,7 @@ void DxPooling::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * PoolNum / shaderThreadNum[3], inputSetNum);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * PoolNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -172,7 +173,8 @@ void DxPooling::BackPropagation() {
 
 void DxPooling::Query() {
 	InputResourse();
-	ForwardPropagation(inputSetNum);
+	inputSetNumCur = inputSetNum;
+	ForwardPropagation();
 	//CopyOutputResourse();
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
@@ -185,13 +187,15 @@ void DxPooling::Training() {
 
 void DxPooling::Detection(UINT inputsetnum) {
 	InputResourse();
-	ForwardPropagation(inputsetnum);
+	inputSetNumCur = inputsetnum;
+	ForwardPropagation();
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
 
 void DxPooling::Test() {
 	InputResourse();
-	ForwardPropagation(1);
+	inputSetNumCur = 1;
+	ForwardPropagation();
 }
 
 void DxPooling::InputResourse() {
