@@ -39,7 +39,7 @@ char *ShaderPooling =
 "   float tmp = gInput[InsetInd + gWidHei.x * iy + ix];\n"
 "   uint errx = 0;\n"
 "   uint erry = 0;\n"
-"   for(uint i = 1; i < POOL * POOL; i++)\n"
+"   for(uint i = 0; i < POOL * POOL; i++)\n"
 "   {\n"
 "      uint px = i % POOL;\n"
 "      uint py = i / POOL;\n"
