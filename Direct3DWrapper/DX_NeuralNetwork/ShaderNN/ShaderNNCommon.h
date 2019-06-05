@@ -17,9 +17,9 @@ char *ShaderNeuralNetworkTexture =
 "{\n"
 "   float tmp = gInput[gWid_Hei.x * inid.y + inid.x];\n"
 "   float4 tmp4;\n"
-"   tmp4.x = tmp;\n"
-"   tmp4.y = tmp;\n"
-"   tmp4.z = tmp;\n"
+"   tmp4.x = max(0, tmp);\n"
+"   tmp4.y = 0.0f;\n"
+"   tmp4.z = max(0, -tmp);\n"
 "   tmp4.w = 1.0f;\n"
 "   gOutput[inid] = tmp4;\n"
 "}\n";

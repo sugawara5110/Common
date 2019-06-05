@@ -299,7 +299,7 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
+	mCommandList->Dispatch(Width / shaderThreadNum[4], Height * FilNum / shaderThreadNum[5], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -341,7 +341,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
+	mCommandList->Dispatch(Width / shaderThreadNum[4], Height * FilNum / shaderThreadNum[5], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
