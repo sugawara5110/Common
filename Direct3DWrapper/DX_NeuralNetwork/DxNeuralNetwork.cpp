@@ -277,9 +277,9 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[1][0].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[Depth - 1]->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[Depth - 1]->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[Depth - 1]->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[Depth - 1]->GetGPUVirtualAddress());
 	cb.Lear_Depth_inputS.y = Depth - 1;
 	mObjectCB->CopyData(0, cb);
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
@@ -294,6 +294,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 		mCommandList->SetPipelineState(mPSOCom[2][repInd].Get());
 		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());

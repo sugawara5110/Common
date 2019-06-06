@@ -35,28 +35,28 @@ char *ShaderConvolution =
 "[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024
 "void CNFPCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
-"   int outwid = gWidHei.x / gfilWid_filStep.y;\n"
-"   int outhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   int outwid = gWidHei.x / gfilWid_filStep.y;\n"//出力wid数
+"   int outhei = gWidHei.y / gfilWid_filStep.y;\n"//出力hei数
 "   uint setInd = outid.z;\n"
 "   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
 "   uint OutsetInd = outwid * outhei * gWidHei.z * setInd;\n"
-"   int ox = outid.x;\n"
-"   int oy = outid.y % outhei;\n"
-"   int ix = ox * gfilWid_filStep.y;\n"
-"   int iy = oy * gfilWid_filStep.y;\n"
-"   int padding = gfilWid_filStep.x / 2;\n"
-"   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
-"   uint numInd = outid.y * gfilWid_filStep.y / gWidHei.y;\n"
-"   uint filStInd = numInd * filElNum;\n"
-"   uint inStInd = numInd * gWidHei.x * gWidHei.y;\n"
-"   uint outStInd = numInd * outwid * outhei;\n"
-"   uint FilNumInd = filStInd / filElNum;\n"//現filterのindex
+"   int ox = outid.x;\n"//出力widIndex
+"   int oy = outid.y % outhei;\n"//出力heiIndex(fil除き)
+"   int ix = ox * gfilWid_filStep.y;\n"//入力widIndex
+"   int iy = oy * gfilWid_filStep.y;\n"//入力heiIndex
+"   int padding = gfilWid_filStep.x / 2;\n"//フィルターwid/2の値をpadding数とする
+"   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"//Filter要素数
+"   uint numInd = outid.y / outhei;\n"//スレッドY側のFilter個数単位のindex
+"   uint filStInd = numInd * filElNum;\n"//Filter配列のFilter個数単位のindex * 要素数
+"   uint inStInd = numInd * gWidHei.x * gWidHei.y;\n"//Input配列のFilter個数単位のindex * 要素数
+"   uint outStInd = numInd * outwid * outhei;\n"//Output配列のFilter個数単位のindex * 要素数
+"   uint FilNumInd = filStInd / filElNum;\n"//現Filterのindex(要素indexではない)
 
 "   float tmp = 0.0f;\n"
 "   for(uint i = 0; i < filElNum; i++)\n"
 "   {\n"
-"      int fx = (i % gfilWid_filStep.x) - padding;\n"
-"      int fy = (i / gfilWid_filStep.x) - padding;\n"
+"      int fx = (i % gfilWid_filStep.x) - padding;\n"//Filter座標X - padding
+"      int fy = (i / gfilWid_filStep.x) - padding;\n"//Filter座標Y - padding
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
 "         tmp += gInput[InsetInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
@@ -143,7 +143,8 @@ char *ShaderConvolution =
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
 "      if(iy + fy >= 0 && iy + fy < inhei && ix + fx >= 0 && ix + fx < inwid)\n"//Padding領域はスキップ
 "      {\n"
-"         tmp += gInErr[OutsetInd + inStInd + inwid * (iy + fy) + (ix + fx)] * gFilter[filStInd + i];\n"
+"         uint inErrInd = OutsetInd + inStInd + inwid * (iy + fy) + (ix + fx);\n"
+"         if(gOutput[inErrInd] > 0.0f)tmp += gInErr[inErrInd] * gFilter[filStInd + i];\n"
 "      }\n"
 "   }\n"
 "   gOutErr[InsetInd + outStInd + gWidHei.x * oy + ox] = tmp * gDropOutF[outStInd + gWidHei.x * oy + ox];\n"
