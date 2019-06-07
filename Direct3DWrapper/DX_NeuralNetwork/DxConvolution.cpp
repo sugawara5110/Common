@@ -61,12 +61,12 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputset
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Convolution>(1);
-	cb.WidHei.x = Width;
-	cb.WidHei.y = Height;
-	cb.WidHei.z = FilNum;
-	cb.filWid_filStep.x = elNumWid;
-	cb.filWid_filStep.y = filterStep;
-	cb.Lear_inputS.y = inputSetNum;
+	cb.WidHei.x = (float)Width;
+	cb.WidHei.y = (float)Height;
+	cb.WidHei.z = (float)FilNum;
+	cb.filWid_filStep.x = (float)elNumWid;
+	cb.filWid_filStep.y = (float)filterStep;
+	cb.Lear_inputS.y = (float)inputSetNum;
 	mObjectCB->CopyData(0, cb);
 }
 
@@ -247,7 +247,7 @@ void DxConvolution::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
 
 void DxConvolution::ForwardPropagation() {
 	cb.Lear_inputS.x = learningRate;
-	cb.Lear_inputS.y = inputSetNumCur;
+	cb.Lear_inputS.y = (float)inputSetNumCur;
 	cb.Lear_inputS.z = learningBiasRate;
 	mObjectCB->CopyData(0, cb);
 	dx->Bigin(com_no);

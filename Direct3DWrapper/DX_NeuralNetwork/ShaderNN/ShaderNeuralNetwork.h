@@ -30,11 +30,7 @@ char *ShaderNeuralNetwork =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint ‚»‚Ì‘¼uint3
 
-"#define FP_X ?**\n"
-//‡“`”dsigmoid
-//o—Í‘¤‚ğ•À—ñˆ—,“ü—Í‘¤‚ğƒ‹[ƒv gLear_Depth_inputS.y = 0`Depth-2‚Ü‚Å
-"[numthreads(FP_X, 1, 1)]\n"//Å‘åX * Y * Z = 1024
-"void NNFPCS(int3 outid : SV_DispatchThreadID)\n"
+"uint NNFPCSsub(int3 outid)\n"
 "{\n"
 "   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y].x;\n"
 "   float InNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
@@ -48,8 +44,20 @@ char *ShaderNeuralNetwork =
 "      tmp += gInNode[InNodeNum * inputsetInd + i] * gWeight[WeightStartInd + InNodeNum * x + i] * \n"
 "             gDropOutF[i];\n"
 "   }\n"
+"   gOutNode[OutNodeNum * inputsetInd + x] = tmp;\n"
+"   return OutNodeNum * inputsetInd + x;\n"
+"}\n"
+
+"#define FP_X ?**\n"
+//‡“`”dsigmoid
+//o—Í‘¤‚ğ•À—ñˆ—,“ü—Í‘¤‚ğƒ‹[ƒv gLear_Depth_inputS.y = 0`Depth-2‚Ü‚Å
+"[numthreads(FP_X, 1, 1)]\n"//Å‘åX * Y * Z = 1024
+"void NNFPCS(int3 outid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint index = NNFPCSsub(outid);\n"
+"   float tmp = gOutNode[index];\n"
 "   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
-"   gOutNode[OutNodeNum * inputsetInd + x] = sig;\n"
+"   gOutNode[index] = sig;\n"
 "}\n"
 
 //‡“`”dReLU
@@ -57,22 +65,12 @@ char *ShaderNeuralNetwork =
 "[numthreads(FP_X, 1, 1)]\n"//Å‘åX * Y * Z = 1024
 "void NNFPReLUCS(int3 outid : SV_DispatchThreadID)\n"
 "{\n"
-"   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y].x;\n"
-"   float InNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
-"   float OutNodeNum = gNumNode[gLear_Depth_inputS.y + 1].x;\n"
-"   int inputsetInd = outid.z;\n"
-
-"   float tmp = 0.0f;\n"
-"   int x = outid.x;\n"
-"   for(int i = 0; i < InNodeNum; i++)\n"
-"   {\n"
-"      tmp += gInNode[InNodeNum * inputsetInd + i] * gWeight[WeightStartInd + InNodeNum * x + i] * \n"
-"             gDropOutF[i];\n"
-"   }\n"
+"   uint index = NNFPCSsub(outid);\n"
+"   float tmp = gOutNode[index];\n"
 "   float sigre = 0.0f;"
 "   if(gLear_Depth_inputS.y + 1 == gLear_Depth_inputS.z)sigre = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"//Å‰º‘w‚Ì‚İsigmoid
 "   else sigre = max(0, tmp);\n"
-"   gOutNode[OutNodeNum * inputsetInd + x] = sigre;\n"
+"   gOutNode[index] = sigre;\n"
 "}\n"
 
 //‹t“`”d‘OTarget’l“ü—Í gLear_Depth_inputS.y = Depth-1‚Ì‚İ
@@ -86,11 +84,7 @@ char *ShaderNeuralNetwork =
 "   gOutError[outInd] = gOutNode[outInd] - gTarget[x].x;\n"
 "}\n"
 
-"#define BP_X ?**\n"
-//‹t“`”dSigmoid
-//“ü—Í‘¤‚ğ•À—ñˆ—,o—Í‘¤‚ğƒ‹[ƒv gLear_Depth_inputS.y = Depth-2`0‚Ü‚Å
-"[numthreads(BP_X, 1, 1)]\n"//Å‘åX * Y * Z = 1024
-"void NNBPCS0(int3 inid : SV_DispatchThreadID)\n"
+"uint NNBPCS0sub(int3 inid)\n"
 "{\n"
 "   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y].x;\n"
 "   float InNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
@@ -104,6 +98,19 @@ char *ShaderNeuralNetwork =
 "   {\n"
 "      tmp += gOutError[OutNodeNum * inputsetInd + i] * gWeight[WeightStartInd + InNodeNum * i + x];\n"
 "   }\n"
+"   gInError[inInd] = tmp;\n"
+"   return inInd;\n"
+"}\n"
+
+"#define BP_X ?**\n"
+//‹t“`”dSigmoid
+//“ü—Í‘¤‚ğ•À—ñˆ—,o—Í‘¤‚ğƒ‹[ƒv gLear_Depth_inputS.y = Depth-2`0‚Ü‚Å
+"[numthreads(BP_X, 1, 1)]\n"//Å‘åX * Y * Z = 1024
+"void NNBPCS0(int3 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint inInd = NNBPCS0sub(inid);\n"
+"   int x = inid.x;\n"
+"   float tmp = gInError[inInd];\n"
 "   float difSig = 1.0f;\n"
 "   if(gLear_Depth_inputS.y != 0.0f)difSig = gInNode[inInd] * (1.0f - gInNode[inInd]);\n"
 "   gInError[inInd] = difSig * tmp * gDropOutF[x];\n"
@@ -114,22 +121,12 @@ char *ShaderNeuralNetwork =
 "[numthreads(BP_X, 1, 1)]\n"//Å‘åX * Y * Z = 1024
 "void NNBPReLUCS0(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
-"   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y].x;\n"
-"   float InNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
-"   float OutNodeNum = gNumNode[gLear_Depth_inputS.y + 1].x;\n"
-"   int inputsetInd = inid.z;\n"
-
-"   float tmp = 0.0f;\n"
+"   uint inInd = NNBPCS0sub(inid);\n"
 "   int x = inid.x;\n"
-"   int inInd = InNodeNum * inputsetInd + x;\n"
-"   if(gInNode[inInd] > 0.0f || gLear_Depth_inputS.y == 0.0f)\n"
-"   {\n"
-"      for(int i = 0; i < OutNodeNum; i++)\n"
-"      {\n"
-"         tmp += gOutError[OutNodeNum * inputsetInd + i] * gWeight[WeightStartInd + InNodeNum * i + x];\n"
-"      }\n"
-"   }\n"
-"   gInError[inInd] = tmp * gDropOutF[x];\n"
+"   float tmp = gInError[inInd];\n"
+"   float relu = 0.0f;\n"
+"   if(gInNode[inInd] > 0.0f || gLear_Depth_inputS.y == 0.0f)relu = tmp;\n"
+"   gInError[inInd] = relu * gDropOutF[x];\n"
 "}\n"
 
 //weight’lXV
@@ -155,30 +152,5 @@ char *ShaderNeuralNetwork =
 
 "   int w = gNumNode[gLear_Depth_inputS.y].x * y + x;\n"
 "   gWeight[WeightStartInd + w] -= tmpAve;\n"
-"}\n"
-
-//‹t“ü—Í
-//“ü—Í‘¤‚ğ•À—ñˆ—,o—Í‘¤‚ğƒ‹[ƒv gLear_Depth_inputS.y = Depth-1`1‚Ü‚Å
-"[numthreads(?**, 1, 1)]\n"//Å‘åX * Y * Z = 1024
-"void NNInverseCS(int2 inid : SV_DispatchThreadID)\n"
-"{\n"
-"   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y - 1].x;\n"
-"   float InNodeNum = gNumNode[gLear_Depth_inputS.y - 1].x;\n"
-"   float OutNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
-
-"   float tmp = 0.0f;\n"
-"   int x = inid.x;\n"
-"   for(int i = 0; i < OutNodeNum; i++)\n"
-"   {\n"
-"      float logit;\n"
-"      if(gLear_Depth_inputS.y == gLear_Depth_inputS.z)logit = gTarget[i].x;\n"
-"      else logit = gOutNode[i];\n"
-
-"      if (logit < 0.01f)logit = 0.01f;\n"
-"      if (logit > 0.99f)logit = 0.99f;\n"
-"      logit = log(logit / (1.0f - logit));\n"
-"      tmp += logit * gWeight[WeightStartInd + InNodeNum * i + x];\n"
-"   }\n"
-"   gInNode[x] = tmp;\n"
 "}\n";
 

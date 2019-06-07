@@ -64,11 +64,11 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	UINT tmpNum[2];
 	tmpNum[0] = texWid;
 	tmpNum[1] = texHei;
-	char **replaceString = nullptr;
+	char** replaceString = nullptr;
 
 	CreateReplaceArr(&shaderThreadNum2, &replaceString, 2, tmpNum);
 
-	char *repsh = nullptr;
+	char* repsh = nullptr;
 	ReplaceString(&repsh, ShaderNeuralNetworkTexture, '?', replaceString);
 	for (int i = 0; i < 2; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);
@@ -79,7 +79,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	mPSOCom2 = CreatePsoCompute(pCS2.Get(), mRootSignatureCom2.Get());
 
 	mObjectCB2 = new ConstantBuffer<NNCBTexture>(1);
-	cb2.Wid_Hei.as(texWid, texHei, 0.0f, 0.0f);
+	cb2.Wid_Hei.as((float)texWid, (float)texHei, 0.0f, 0.0f);
 	mObjectCB2->CopyData(0, cb2);
 	created = true;
 }

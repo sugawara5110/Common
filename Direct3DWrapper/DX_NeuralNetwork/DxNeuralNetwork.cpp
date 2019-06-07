@@ -8,7 +8,7 @@
 #include "DxNeuralNetwork.h"
 #include <random>
 #include "ShaderNN\ShaderNeuralNetwork.h"
-#define PARANUM 6
+#define PARANUM 5
 
 DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum) {
 
@@ -132,10 +132,10 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 void DxNeuralNetwork::ComCreate(bool sigon) {
 
 	for (int i = 0; i < Depth; i++) {
-		cb.NumNode[i].as((float)NumNode[i], NumNodeStIndex[i], 0.0f, 0.0f);
+		cb.NumNode[i].as((float)NumNode[i], (float)NumNodeStIndex[i], 0.0f, 0.0f);
 	}
 	for (int i = 0; i < Depth - 1; i++) {
-		cb.NumWeight[i].x = NumWeightStIndex[i];
+		cb.NumWeight[i].x = (float)NumWeightStIndex[i];
 	}
 	cb.Lear_Depth_inputS.z = (float)Depth - 1;
 	cb.Lear_Depth_inputS.w = (float)inputSetNum;
@@ -195,7 +195,6 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	UINT tmpI2 = Depth - 2;
 	UINT tmpI3 = Depth - 2;
 	UINT tmpI4 = Depth - 1;
-	UINT tmpI5 = Depth - 2;
 
 	for (int k = 0; k < Depth - 1; k++) {
 		tmpNum[0] = NumNode[tmpI0++];
@@ -203,12 +202,11 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 		tmpNum[2] = NumNode[tmpI2--];
 		tmpNum[3] = NumNode[tmpI3--];
 		tmpNum[4] = NumNode[tmpI4--];
-		tmpNum[5] = NumNode[tmpI5--];
-		char **replaceString = nullptr;
+		char** replaceString = nullptr;
 
 		CreateReplaceArr(&shaderThreadNum[k], &replaceString, PARANUM, tmpNum);
 
-		char *repsh = nullptr;
+		char* repsh = nullptr;
 		ReplaceString(&repsh, ShaderNeuralNetwork, '?', replaceString);
 		for (int i = 0; i < PARANUM; i++)ARR_DELETE(replaceString[i]);
 		ARR_DELETE(replaceString);
@@ -223,7 +221,6 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 		}
 		pCS[1][k] = CompileShader(repsh, strlen(repsh), "InTargetCS", "cs_5_0");
 		pCS[3][k] = CompileShader(repsh, strlen(repsh), "NNBPCS1", "cs_5_0");
-		pCS[4][k] = CompileShader(repsh, strlen(repsh), "NNInverseCS", "cs_5_0");
 		ARR_DELETE(repsh);
 		for (int i = 0; i < NN_SHADER_NUM; i++) {
 			mPSOCom[i][k] = CreatePsoCompute(pCS[i][k].Get(), mRootSignatureCom.Get());
@@ -250,7 +247,7 @@ void DxNeuralNetwork::ForwardPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.x = learningRate;
-		cb.Lear_Depth_inputS.y = i;
+		cb.Lear_Depth_inputS.y = (float)i;
 		cb.Lear_Depth_inputS.w = (float)inputSetNumCur;
 		for (UINT i1 = 0; i1 < NumNode[Depth - 1]; i1++)
 			cb.Target[i1].x = target[i1];
@@ -280,7 +277,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 	mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[Depth - 1]->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[Depth - 1]->GetGPUVirtualAddress());
-	cb.Lear_Depth_inputS.y = Depth - 1;
+	cb.Lear_Depth_inputS.y = (float)(Depth - 1);
 	mObjectCB->CopyData(0, cb);
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(NumNode[Depth - 1] / shaderThreadNum[0][1], 1, inputSetNumCur);
@@ -299,7 +296,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 		mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
-		cb.Lear_Depth_inputS.y = i;
+		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2], 1, inputSetNumCur);
@@ -331,7 +328,7 @@ void DxNeuralNetwork::BackPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
-		cb.Lear_Depth_inputS.y = i;
+		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
 		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][3],
@@ -461,10 +458,7 @@ void DxNeuralNetwork::Training() {
 	BackPropagation();
 	CopyWeightResourse();
 	//CopyErrorResourse();
-
-	//«ForwardPropagation()‚ÆBackPropagation()‚ÌŠÔ‚ÉŽÀs‚µ‚È‚¢Ž–
-	InverseQuery();
-	TextureCopy(mNodeBuffer[0].Get(), com_no);
+	TextureCopy(mErrorBuffer[0].Get(), com_no);
 }
 
 void DxNeuralNetwork::Test() {
@@ -481,26 +475,6 @@ float *DxNeuralNetwork::GetError(UINT arrNum, UINT inputsetInd) {
 
 float DxNeuralNetwork::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
 	return error[(NumNode[0] / Split) * arrNum + inputsetInd * NumNode[0] + ElNum];
-}
-
-void DxNeuralNetwork::InverseQuery() {
-	int repInd = 0;
-	//‹t“ü—Í
-	for (int i = Depth - 1; i >= 1; i--) {
-		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[4][repInd].Get());
-		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i - 1]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
-		cb.Lear_Depth_inputS.y = i;
-		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i - 1] / shaderThreadNum[repInd][5], 1, 1);
-		repInd++;
-		dx->End(com_no);
-		dx->WaitFenceCurrent();
-	}
 }
 
 void DxNeuralNetwork::SetInputResource(ID3D12Resource* res) {

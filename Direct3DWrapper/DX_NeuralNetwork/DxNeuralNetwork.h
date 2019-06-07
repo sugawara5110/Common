@@ -8,7 +8,7 @@
 #define Class_DxNeuralNetwork_Header
 
 #include "DxNNCommon.h"
-#define NN_SHADER_NUM 5
+#define NN_SHADER_NUM 4
 
 class DxNeuralNetwork :public DxNNCommon {
 
@@ -55,7 +55,6 @@ protected:
 	DxNeuralNetwork() {}
 	void InputResourse();
 	void ForwardPropagation();
-	void InverseQuery();
 	void BackPropagationNoWeightUpdate();
 	void BackPropagation();
 	void CopyOutputResourse();
