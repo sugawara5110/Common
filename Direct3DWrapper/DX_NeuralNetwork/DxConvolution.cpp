@@ -95,7 +95,7 @@ void DxConvolution::SetWeightInit(float rate) {
 	//フィルタ初期値
 	std::normal_distribution<> dist(0.0, rate);
 	for (UINT i = 0; i < FilNum * ElNum; i++)
-		fil[i] = dist(engine);
+		fil[i] = (float)dist(engine);
 }
 
 DxConvolution::~DxConvolution() {
@@ -186,8 +186,8 @@ void DxConvolution::ComCreate(bool sigon) {
 	UINT tmpNum[PARANUMCN];
 	tmpNum[0] = OutWid;
 	tmpNum[1] = OutHei * FilNum;
-	tmpNum[2] = Width;
-	tmpNum[3] = Height * FilNum;
+	tmpNum[2] = OutWid;
+	tmpNum[3] = OutHei * FilNum;
 	tmpNum[4] = OutWid;
 	tmpNum[5] = OutHei * FilNum;
 	tmpNum[6] = elNumWid;
@@ -204,16 +204,15 @@ void DxConvolution::ComCreate(bool sigon) {
 
 	if (sigon) {
 		pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPCS", "cs_5_0");
-		pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
-		pCS[5] = CompileShader(repsh, strlen(repsh), "CNBPCS2NoFilterUpdate", "cs_5_0");
+		pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPCS0", "cs_5_0");
 	}
 	else {
 		pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPReLUCS", "cs_5_0");
-		pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPReLUCS2", "cs_5_0");
-		pCS[5] = CompileShader(repsh, strlen(repsh), "CNBPReLUCS2NoFilterUpdate", "cs_5_0");
+		pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPReLUCS0", "cs_5_0");
 	}
-	pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPCS0", "cs_5_0");
 	pCS[2] = CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
+	pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
+	pCS[5] = CompileShader(repsh, strlen(repsh), "CNBPCS2NoFilterUpdate", "cs_5_0");
 	pCS[4] = CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
 	ARR_DELETE(repsh);
 	for (int i = 0; i < CN_SHADER_NUM; i++)
@@ -275,7 +274,7 @@ void DxConvolution::ForwardPropagation() {
 	dx->WaitFenceCurrent();
 }
 
-void DxConvolution::BackPropagationNoWeightUpdate() {
+void DxConvolution::BackPropagation0() {
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[1].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -285,7 +284,7 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNumCur);
+	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * FilNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -302,6 +301,10 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 	mCommandList->Dispatch(Width / shaderThreadNum[4], Height * FilNum / shaderThreadNum[5], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
+}
+
+void DxConvolution::BackPropagationNoWeightUpdate() {
+	BackPropagation0();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[5].Get());
@@ -318,32 +321,7 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 }
 
 void DxConvolution::BackPropagation() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNumCur);
-	dx->End(com_no);
-	dx->WaitFenceCurrent();
-
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[2].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width / shaderThreadNum[4], Height * FilNum / shaderThreadNum[5], inputSetNumCur);
-	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	BackPropagation0();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[3].Get());

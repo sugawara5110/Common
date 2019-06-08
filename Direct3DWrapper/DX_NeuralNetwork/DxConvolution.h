@@ -77,6 +77,7 @@ protected:
 
 	DxConvolution() {}
 	void ForwardPropagation();
+	void BackPropagation0();
 	void BackPropagation();
 	void InputResourse();
 	void InputErrResourse();
