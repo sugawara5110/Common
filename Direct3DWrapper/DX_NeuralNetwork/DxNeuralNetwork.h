@@ -68,9 +68,11 @@ public:
 	~DxNeuralNetwork();
 	void ComCreateSigmoid();
 	void ComCreateReLU();
+	void SetLeakyReLUAlpha(float alpha);
 	void SetLearningLate(float rate);
 	void SetdropThreshold(float* ThresholdArr);//ŒŸo‚Í0.0fİ’è‚É‚·‚é
-	void SetWeightInit(float rate);
+	void SetWeightInitXavier(float rate);
+	void SetWeightInitHe(float rate);
 	void SetTarget(float* target);
 	void SetTargetEl(float el, UINT ElNum);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);

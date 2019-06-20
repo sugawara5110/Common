@@ -16,11 +16,16 @@ DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inpu
 	inputSetNum = inputsetnum;
 	inputSetNumCur = inputSetNum;
 	Split = split;
-	NumNode = numNode;
-	NumNode[0] *= Split;
+
 	if (depth > MAX_DEPTH_NUM)Depth = MAX_DEPTH_NUM;
 	else
 		Depth = depth;
+
+	NumNode = new UINT[Depth];
+	for (int i = 0; i < Depth; i++)NumNode[i] = numNode[i];
+
+	NumNode[0] *= Split;
+
 	if (NumNode[Depth - 1] > MAX_OUTPUT_NUM)NumNode[Depth - 1] = MAX_OUTPUT_NUM;
 
 	NumNodeStIndex = new UINT[Depth];
@@ -61,8 +66,6 @@ DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inpu
 		}
 	}
 
-	SetWeightInit(1.0f);
-
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
@@ -91,14 +94,30 @@ void DxNeuralNetwork::SetdropThreshold(float *ThresholdArr) {
 	}
 }
 
-void DxNeuralNetwork::SetWeightInit(float rate) {
+void DxNeuralNetwork::SetWeightInitXavier(float rate) {
 	std::random_device seed_gen;
 	std::default_random_engine engine(seed_gen());
 	//ウエイト初期値
 	// 平均0.0、標準偏差 1/sqrt(NumNode)で分布させる
-	std::normal_distribution<> *dist = nullptr;
+	std::normal_distribution<>* dist = nullptr;
 	for (int k = 0; k < Depth - 1; k++) {
-		dist = new std::normal_distribution<>(0.0, 1 / sqrt(NumNode[k + 1]) * rate);
+		dist = new std::normal_distribution<>(0.0, 1 / sqrt(NumNode[k]) * rate);
+		for (UINT i = 0; i < NumWeight[k]; i++) {
+			double rnd = dist->operator()(engine);
+			weight[NumWeightStIndex[k] + i] = (float)rnd;
+		}
+		S_DELETE(dist);
+	}
+}
+
+void DxNeuralNetwork::SetWeightInitHe(float rate) {
+	std::random_device seed_gen;
+	std::default_random_engine engine(seed_gen());
+	//ウエイト初期値
+	// 平均0.0、標準偏差 1/sqrt(NumNode)で分布させる
+	std::normal_distribution<>* dist = nullptr;
+	for (int k = 0; k < Depth - 1; k++) {
+		dist = new std::normal_distribution<>(0.0, 2 / sqrt(NumNode[k]) * rate);
 		for (UINT i = 0; i < NumWeight[k]; i++) {
 			double rnd = dist->operator()(engine);
 			weight[NumWeightStIndex[k] + i] = (float)rnd;
@@ -127,6 +146,7 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 	ARR_DELETE(NumWeightStIndex);
 
 	S_DELETE(mObjectCB);
+	ARR_DELETE(NumNode);
 }
 
 void DxNeuralNetwork::ComCreate(bool sigon) {
@@ -139,6 +159,7 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 	}
 	cb.Lear_Depth_inputS.z = (float)Depth - 1;
 	cb.Lear_Depth_inputS.w = (float)inputSetNum;
+	cb.LeakyReLUAlpha = 0.0f;//初期値のままだと通常ReLU(ReLU使用時)
 
 	weight_byteSize = weightNumAll * sizeof(float);
 
@@ -229,11 +250,17 @@ void DxNeuralNetwork::ComCreate(bool sigon) {
 }
 
 void DxNeuralNetwork::ComCreateSigmoid() {
+	SetWeightInitXavier(1.0f);
 	ComCreate(true);
 }
 
 void DxNeuralNetwork::ComCreateReLU() {
+	SetWeightInitHe(1.0f);
 	ComCreate(false);
+}
+
+void DxNeuralNetwork::SetLeakyReLUAlpha(float alpha) {
+	cb.LeakyReLUAlpha = alpha;
 }
 
 void DxNeuralNetwork::ForwardPropagation() {

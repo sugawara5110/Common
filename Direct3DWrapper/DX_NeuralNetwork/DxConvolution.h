@@ -99,6 +99,7 @@ public:
 	~DxConvolution();
 	void ComCreateSigmoid();
 	void ComCreateReLU();
+	void SetLeakyReLUAlpha(float alpha);
 	void SetdropThreshold(float Threshold);//åüèoéûÇÕ0.0fê›íËÇ…Ç∑ÇÈ
 	void Query();
 	void BackPropagationNoWeightUpdate();
@@ -106,7 +107,8 @@ public:
 	void Detection(UINT inputsetnum);
 	void Test();
 	void SetLearningLate(float rate, float biasrate);
-	void SetWeightInit(float rate);
+	void SetWeightInitXavier(float rate);
+	void SetWeightInitHe(float rate);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);
 	void Input(float* inArr, UINT arrNum, UINT inputsetInd = 0);
 	void InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd = 0);

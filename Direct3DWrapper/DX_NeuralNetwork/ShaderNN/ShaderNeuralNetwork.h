@@ -19,6 +19,7 @@ char *ShaderNeuralNetwork =
 "    float4 gNumNode[MAX_DEPTH_NUM];\n"//各層のNode数:x, gNode,gError各層開始インデックス:y
 "    float4 gNumWeight[MAX_DEPTH_NUM - 1];\n"//gWeight各層開始インデックス:x
 "    float4 gTarget[MAX_OUTPUT_NUM];\n"//target値:x
+"    float gLeakyReLUAlpha;\n"
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -69,7 +70,7 @@ char *ShaderNeuralNetwork =
 "   float tmp = gOutNode[index];\n"
 "   float sigre = 0.0f;"
 "   if(gLear_Depth_inputS.y + 1 == gLear_Depth_inputS.z)sigre = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"//最下層のみsigmoid
-"   else sigre = max(0, tmp);\n"
+"   else sigre = max(tmp * gLeakyReLUAlpha, tmp);\n"
 "   gOutNode[index] = sigre;\n"
 "}\n"
 
@@ -124,7 +125,7 @@ char *ShaderNeuralNetwork =
 "   uint inInd = NNBPCS0sub(inid);\n"
 "   int x = inid.x;\n"
 "   float tmp = gInError[inInd];\n"
-"   float relu = 0.0f;\n"
+"   float relu = tmp * gLeakyReLUAlpha;\n"
 "   if(gInNode[inInd] > 0.0f || gLear_Depth_inputS.y == 0.0f)relu = tmp;\n"
 "   gInError[inInd] = relu * gDropOutF[x];\n"
 "}\n"

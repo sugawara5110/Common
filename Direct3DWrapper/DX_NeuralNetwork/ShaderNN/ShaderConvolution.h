@@ -17,6 +17,7 @@ char *ShaderConvolution =
 "    float4 gWidHei;\n"//“ü—Íw:x, “ü—Íh:y ,FilNum:z
 "    float4 gfilWid_filStep;\n"//Filwid”:x, Filstep”:y
 "    float4 gLear_inputS;\n"//ŠwK—¦:x, inputset”:y, biasŠwK—¦:z
+"    float gLeakyReLUAlpha;\n"
 "};\n"
 
 //Dispatch(APP‘¤)(X1, Y1, Z1)numthreads(CS‘¤)(X, Y, Z)
@@ -82,7 +83,7 @@ char *ShaderConvolution =
 "{\n"
 "   uint index = CNFPCSsub(outid);\n"
 "   float tmp = gOutput[index];\n"
-"   float relu = max(0, tmp);\n"
+"   float relu = max(tmp * gLeakyReLUAlpha, tmp);\n"
 "   gOutput[index] = relu;\n"
 "}\n"
 
@@ -115,7 +116,7 @@ char *ShaderConvolution =
 "void CNBPReLUCS0(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   uint index = CNBPCS0sub(outid);\n"
-"   if(gOutput[index] <= 0.0f)gInErr[index] = 0.0f;\n"//output‚ª0ˆÈ‰º‚Ìê‡inErr‚ğ0‚É‘‚«Š·‚¦,‚»‚êˆÈŠO‚Í‘‚«Š·‚¦–³‚µ
+"   if(gOutput[index] <= 0.0f)gInErr[index] = gInErr[index] * gLeakyReLUAlpha;\n"
 "}\n"
 
 //‹t“`”d

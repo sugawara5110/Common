@@ -56,8 +56,6 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputset
 	bias = new float[FilNum];
 	ZeroMemory(bias, sizeof(float) * FilNum);
 
-	SetWeightInit(0.2f);
-
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Convolution>(1);
@@ -67,6 +65,7 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputset
 	cb.filWid_filStep.x = (float)elNumWid;
 	cb.filWid_filStep.y = (float)filterStep;
 	cb.Lear_inputS.y = (float)inputSetNum;
+	cb.LeakyReLUAlpha = 0.0f;
 	mObjectCB->CopyData(0, cb);
 }
 
@@ -89,11 +88,20 @@ void DxConvolution::SetdropThreshold(float Threshold) {
 	dropThreshold = Threshold;
 }
 
-void DxConvolution::SetWeightInit(float rate) {
+void DxConvolution::SetWeightInitXavier(float rate) {
 	std::random_device seed_gen;
 	std::default_random_engine engine(seed_gen());
 	//フィルタ初期値
-	std::normal_distribution<> dist(0.0, rate);
+	std::normal_distribution<> dist(0.0, 1 / sqrt(FilNum * ElNum) * rate);
+	for (UINT i = 0; i < FilNum * ElNum; i++)
+		fil[i] = (float)dist(engine);
+}
+
+void DxConvolution::SetWeightInitHe(float rate) {
+	std::random_device seed_gen;
+	std::default_random_engine engine(seed_gen());
+	//フィルタ初期値
+	std::normal_distribution<> dist(0.0, 2 / sqrt(FilNum * ElNum) * rate);
 	for (UINT i = 0; i < FilNum * ElNum; i++)
 		fil[i] = (float)dist(engine);
 }
@@ -220,11 +228,17 @@ void DxConvolution::ComCreate(bool sigon) {
 }
 
 void DxConvolution::ComCreateSigmoid() {
+	SetWeightInitXavier(1.0f);
 	ComCreate(true);
 }
 
 void DxConvolution::ComCreateReLU() {
+	SetWeightInitHe(1.0f);
 	ComCreate(false);
+}
+
+void DxConvolution::SetLeakyReLUAlpha(float alpha) {
+	cb.LeakyReLUAlpha = alpha;
 }
 
 void DxConvolution::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
