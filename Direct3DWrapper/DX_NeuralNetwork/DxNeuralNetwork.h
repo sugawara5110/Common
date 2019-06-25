@@ -38,6 +38,8 @@ protected:
 	float* output = nullptr;
 	float** dropout = nullptr;
 	float* dropThreshold = nullptr;//Še‘wè‡’l
+	float crossEntropyError = 0.0f;
+	float crossEntropyErrorTest = 0.0f;
 
 	UINT Split = 1;
 
@@ -62,6 +64,7 @@ protected:
 	void CopyErrorResourse();
 	void ComCreate(bool sigon);
 	void SetDropOut();
+	void comCrossEntropyError(bool f);
 
 public:
 	DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum = 1);
@@ -81,6 +84,8 @@ public:
 	void Query(UINT inputsetnum);
 	void QueryAndBackPropagation(UINT inputsetnum);
 	void Training();
+	float GetcrossEntropyError();
+	float GetcrossEntropyErrorTest();
 	void Test();
 	void GetOutput(float* out, UINT inputsetInd = 0);
 	float GetOutputEl(UINT ElNum, UINT inputsetInd = 0);

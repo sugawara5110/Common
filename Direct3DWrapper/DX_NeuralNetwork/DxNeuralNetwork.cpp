@@ -481,11 +481,32 @@ void DxNeuralNetwork::Training() {
 	inputSetNumCur = inputSetNum;
 	ForwardPropagation();
 	CopyOutputResourse();
-
+	comCrossEntropyError(true);
 	BackPropagation();
 	CopyWeightResourse();
 	//CopyErrorResourse();
 	TextureCopy(mErrorBuffer[0].Get(), com_no);
+}
+
+void DxNeuralNetwork::comCrossEntropyError(bool f) {
+	float err = 0.0f;
+	for (UINT j = 0; j < inputSetNumCur; j++) {
+		for (UINT i = 0; i < NumNode[Depth - 1]; i++) {
+			UINT outInd = NumNode[Depth - 1] * j + i;
+			err += -target[i] * log2(output[outInd] + 0.0000001f) - (1.0f - target[i]) *
+				log2(1.0f - output[outInd] + 0.0000001f);
+		}
+	}
+	if (f)crossEntropyError = err / (float)inputSetNumCur;
+	else crossEntropyErrorTest = err / (float)inputSetNumCur;
+}
+
+float DxNeuralNetwork::GetcrossEntropyError() {
+	return crossEntropyError;
+}
+
+float DxNeuralNetwork::GetcrossEntropyErrorTest() {
+	return crossEntropyErrorTest;
 }
 
 void DxNeuralNetwork::Test() {
@@ -494,6 +515,7 @@ void DxNeuralNetwork::Test() {
 	inputSetNumCur = 1;
 	ForwardPropagation();
 	CopyOutputResourse();
+	comCrossEntropyError(false);
 }
 
 float *DxNeuralNetwork::GetError(UINT arrNum, UINT inputsetInd) {
