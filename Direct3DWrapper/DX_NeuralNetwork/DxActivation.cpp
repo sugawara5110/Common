@@ -20,7 +20,7 @@ DxActivation::DxActivation(UINT numNode, UINT inputsetnum) {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Activation>(1);
-	cb.LeakyReLUAlpha = 0.0f;
+	cb.ActivationAlpha = 0.0f;
 	cb.NumNode = NumNode;
 	mObjectCB->CopyData(0, cb);
 }
@@ -71,14 +71,18 @@ void DxActivation::ComCreate(ActivationName name) {
 		pCS[0] = CompileShader(repsh, strlen(repsh), "FPReLUCS", "cs_5_0");
 		pCS[1] = CompileShader(repsh, strlen(repsh), "BPReLUCS", "cs_5_0");
 		break;
+	case ELU:
+		pCS[0] = CompileShader(repsh, strlen(repsh), "FPELUCS", "cs_5_0");
+		pCS[1] = CompileShader(repsh, strlen(repsh), "BPELUCS", "cs_5_0");
+		break;
 	}
 	ARR_DELETE(repsh);
 	for (int i = 0; i < AC_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
-void DxActivation::SetLeakyReLUAlpha(float alpha) {
-	cb.LeakyReLUAlpha = alpha;
+void DxActivation::SetActivationAlpha(float alpha) {
+	cb.ActivationAlpha = alpha;
 	mObjectCB->CopyData(0, cb);
 }
 

@@ -126,6 +126,7 @@ void DxConvolution::ComCreate(ActivationName node) {
 		SetWeightInitXavier(1.0f);
 		break;
 	case ReLU:
+	case ELU:
 		SetWeightInitHe(1.0f);
 		break;
 	}
@@ -231,8 +232,8 @@ void DxConvolution::ComCreate(ActivationName node) {
 	ac->ComCreate(node);
 }
 
-void DxConvolution::SetLeakyReLUAlpha(float alpha) {
-	ac->SetLeakyReLUAlpha(alpha);
+void DxConvolution::SetActivationAlpha(float alpha) {
+	ac->SetActivationAlpha(alpha);
 }
 
 void DxConvolution::FirstInput(float el, UINT ElNum, UINT inputsetInd) {

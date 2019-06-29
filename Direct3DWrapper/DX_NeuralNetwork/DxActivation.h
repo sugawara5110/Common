@@ -13,7 +13,8 @@
 enum ActivationName {
 	CrossEntropySigmoid,
 	Sigmoid,
-	ReLU
+	ReLU,
+	ELU
 };
 
 class DxActivation :public DxNNCommon {
@@ -44,7 +45,7 @@ public:
 	DxActivation(UINT numNode, UINT inputsetnum = 1);
 	~DxActivation();
 	void ComCreate(ActivationName name);
-	void SetLeakyReLUAlpha(float alpha);
+	void SetActivationAlpha(float alpha);
 	void SetTarget(float* target);
 	void SetTargetEl(float el, UINT ElNum);
 	void ForwardPropagation(UINT inputsetnum);

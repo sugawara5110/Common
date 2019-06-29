@@ -66,7 +66,7 @@ public:
 	DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum = 1);
 	~DxNeuralNetwork();
 	void ComCreate(ActivationName node, ActivationName topNode = CrossEntropySigmoid);
-	void SetLeakyReLUAlpha(float alpha);
+	void SetActivationAlpha(float alpha);
 	void SetLearningLate(float rate);
 	void SetdropThreshold(float* ThresholdArr);//åüèoéûÇÕ0.0fê›íËÇ…Ç∑ÇÈ
 	void SetWeightInitXavier(float rate);

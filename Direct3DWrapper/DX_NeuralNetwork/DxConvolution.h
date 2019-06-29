@@ -99,7 +99,7 @@ public:
 	DxConvolution(UINT width, UINT height, UINT filNum, UINT inputsetnum = 1, UINT elnumwid = 3, UINT filstep = 1);
 	~DxConvolution();
 	void ComCreate(ActivationName node);
-	void SetLeakyReLUAlpha(float alpha);
+	void SetActivationAlpha(float alpha);
 	void SetdropThreshold(float Threshold);//åüèoéûÇÕ0.0fê›íËÇ…Ç∑ÇÈ
 	void Query();
 	void BackPropagationNoWeightUpdate();

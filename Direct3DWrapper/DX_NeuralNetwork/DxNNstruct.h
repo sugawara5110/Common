@@ -15,7 +15,7 @@
 //Activation
 struct CONSTANT_BUFFER_Activation {
 	VECTOR4 Target[MAX_OUTPUT_NUM];//.x‚Ì‚Ý
-	float LeakyReLUAlpha;
+	float ActivationAlpha;
 	UINT NumNode;
 };
 

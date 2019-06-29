@@ -151,6 +151,7 @@ void DxNeuralNetwork::ComCreate(ActivationName node, ActivationName topNode) {
 		SetWeightInitXavier(1.0f);
 		break;
 	case ReLU:
+	case ELU:
 		SetWeightInitHe(1.0f);
 		break;
 	}
@@ -248,8 +249,8 @@ void DxNeuralNetwork::ComCreate(ActivationName node, ActivationName topNode) {
 	topAc->ComCreate(topNode);
 }
 
-void DxNeuralNetwork::SetLeakyReLUAlpha(float alpha) {
-	for (int i = 0; i < Depth - 2; i++)ac[i]->SetLeakyReLUAlpha(alpha);
+void DxNeuralNetwork::SetActivationAlpha(float alpha) {
+	for (int i = 0; i < Depth - 2; i++)ac[i]->SetActivationAlpha(alpha);
 }
 
 void DxNeuralNetwork::ForwardPropagation() {
