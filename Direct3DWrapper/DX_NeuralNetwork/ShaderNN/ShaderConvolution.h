@@ -17,7 +17,6 @@ char *ShaderConvolution =
 "    float4 gWidHei;\n"//入力w:x, 入力h:y ,FilNum:z
 "    float4 gfilWid_filStep;\n"//Filwid数:x, Filstep数:y
 "    float4 gLear_inputS;\n"//学習率:x, inputset数:y, bias学習率:z
-"    float gLeakyReLUAlpha;\n"
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -29,7 +28,10 @@ char *ShaderConvolution =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint その他uint3
 
-"uint CNFPCSsub(uint3 outid)\n"
+//順伝播
+//出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024
+"void CNFPCS(uint3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"//出力wid数
 "   int outhei = gWidHei.y / gfilWid_filStep.y;\n"//出力hei数
@@ -60,63 +62,6 @@ char *ShaderConvolution =
 "      }\n"
 "   }\n"
 "   gOutput[OutsetInd + outStInd + outwid * oy + ox] = tmp;\n"
-"   return OutsetInd + outStInd + outwid * oy + ox;\n"
-"}\n"
-
-"#define FP_X ?**\n"
-"#define FP_Y ?**\n"
-//順伝播sigmoid
-//出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
-"[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024
-"void CNFPCS(uint3 outid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint index = CNFPCSsub(outid);\n"
-"   float tmp = gOutput[index];\n"
-"   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
-"   gOutput[index] = sig;\n"
-"}\n"
-
-//順伝播ReLU
-//出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
-"[numthreads(FP_X, FP_Y, 1)]\n"//最大X * Y * Z = 1024,  
-"void CNFPReLUCS(uint3 outid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint index = CNFPCSsub(outid);\n"
-"   float tmp = gOutput[index];\n"
-"   float relu = max(tmp * gLeakyReLUAlpha, tmp);\n"
-"   gOutput[index] = relu;\n"
-"}\n"
-
-"uint CNBPCS0sub(int3 outid)\n"
-"{\n"
-"   uint outwid = gWidHei.x / gfilWid_filStep.y;\n"//出力wid数
-"   uint outhei = gWidHei.y / gfilWid_filStep.y;\n"//出力hei数
-"   uint setInd = outid.z;\n"
-"   uint OutsetInd = outwid * outhei * gWidHei.z * setInd;\n"
-"   uint ox = outid.x;\n"//出力widIndex
-"   uint oy = outid.y % outhei;\n"//出力heiIndex(fil除き)
-"   uint numInd = outid.y / outhei;\n"//スレッドY側のFilter個数単位のindex
-"   uint outStInd = numInd * outwid * outhei;\n"//Output配列のFilter個数単位のindex * 要素数
-"   return OutsetInd + outStInd + outwid * oy + ox;\n"
-"}\n"
-
-"#define BP0_X ?**\n"
-"#define BP0_Y ?**\n"
-//誤差入力sigmoid, 出力側並列処理
-"[numthreads(BP0_X, BP0_Y, 1)]\n"//最大X * Y * Z = 1024  
-"void CNBPCS0(uint3 outid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint index = CNBPCS0sub(outid);\n"
-"   float sig = gOutput[index] * (1.0f - gOutput[index]);\n"
-"   gInErr[index] = gInErr[index] * sig;\n"
-"}\n"
-
-//誤差入力ReLU, 出力側並列処理
-"[numthreads(BP0_X, BP0_Y, 1)]\n"//最大X * Y * Z = 1024  
-"void CNBPReLUCS0(uint3 outid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint index = CNBPCS0sub(outid);\n"
-"   if(gOutput[index] <= 0.0f)gInErr[index] = gInErr[index] * gLeakyReLUAlpha;\n"
 "}\n"
 
 //逆伝播

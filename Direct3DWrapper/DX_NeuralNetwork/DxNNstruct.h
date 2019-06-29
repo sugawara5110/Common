@@ -12,13 +12,18 @@
 #define MAX_DEPTH_NUM 5
 #define MAX_OUTPUT_NUM 10
 
+//Activation
+struct CONSTANT_BUFFER_Activation {
+	VECTOR4 Target[MAX_OUTPUT_NUM];//.xのみ
+	float LeakyReLUAlpha;
+	UINT NumNode;
+};
+
 //NeuralNetwork
 struct CONSTANT_BUFFER_NeuralNetwork {
 	VECTOR4 Lear_Depth_inputS;//学習率:x, 処理中深さ:y, MaxDepth:z, inputSet数:w
 	VECTOR4 NumNode[MAX_DEPTH_NUM];//各層のNode数:x, gNode,gError各層開始インデックス:y
 	VECTOR4 NumWeight[MAX_DEPTH_NUM - 1];//gWeight各層開始インデックス:x
-	VECTOR4 Target[MAX_OUTPUT_NUM];//target値:x
-	float LeakyReLUAlpha;
 };
 
 //Pooling
@@ -31,7 +36,6 @@ struct CONSTANT_BUFFER_Convolution {
 	VECTOR4 WidHei;//MaxFilNum:z
 	VECTOR4 filWid_filStep;
 	VECTOR4 Lear_inputS;//学習率:x, inputSet数:y, bias学習率:z
-	float LeakyReLUAlpha;
 };
 
 //NN用textureコピー

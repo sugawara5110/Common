@@ -8,7 +8,8 @@
 #define Class_DxNeuralNetwork_Header
 
 #include "DxNNCommon.h"
-#define NN_SHADER_NUM 4
+#include "DxActivation.h"
+#define NN_SHADER_NUM 3
 
 class DxNeuralNetwork :public DxNNCommon {
 
@@ -19,7 +20,6 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeBuffer[MAX_DEPTH_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFUpBuffer[MAX_DEPTH_NUM - 1] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFBuffer[MAX_DEPTH_NUM - 1] = { nullptr };
-	Microsoft::WRL::ComPtr<ID3D12Resource> mNodeReadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightReadBuffer = nullptr;
@@ -35,15 +35,12 @@ protected:
 	float* input = nullptr;
 	float* weight = nullptr;
 	float* error = nullptr;
-	float* output = nullptr;
 	float** dropout = nullptr;
 	float* dropThreshold = nullptr;//各層閾値
 	float crossEntropyError = 0.0f;
 	float crossEntropyErrorTest = 0.0f;
 
 	UINT Split = 1;
-
-	float* target;
 	float learningRate = 0.1f;
 
 	UINT* NumNode = nullptr;//各層のノードの数
@@ -53,24 +50,22 @@ protected:
 	UINT weightNumAll = 0;//全数
 	UINT64 weight_byteSize = 0;
 	int Depth;
+	DxActivation* topAc = nullptr;
+	DxActivation** ac = nullptr;
 
 	DxNeuralNetwork() {}
 	void InputResourse();
 	void ForwardPropagation();
 	void BackPropagationNoWeightUpdate();
 	void BackPropagation();
-	void CopyOutputResourse();
 	void CopyWeightResourse();
 	void CopyErrorResourse();
-	void ComCreate(bool sigon);
 	void SetDropOut();
-	void comCrossEntropyError(bool f);
 
 public:
 	DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum = 1);
 	~DxNeuralNetwork();
-	void ComCreateSigmoid();
-	void ComCreateReLU();
+	void ComCreate(ActivationName node, ActivationName topNode = CrossEntropySigmoid);
 	void SetLeakyReLUAlpha(float alpha);
 	void SetLearningLate(float rate);
 	void SetdropThreshold(float* ThresholdArr);//検出時は0.0f設定にする
@@ -94,8 +89,8 @@ public:
 	void SetInputResource(ID3D12Resource* res);
 	ID3D12Resource* GetOutErrorResource();
 	ID3D12Resource* GetOutputResource();
-	void SaveData();
-	void LoadData();
+	void SaveData(char* pass = "save/save.da");
+	void LoadData(char* pass = "save/save.da");
 };
 
 #endif

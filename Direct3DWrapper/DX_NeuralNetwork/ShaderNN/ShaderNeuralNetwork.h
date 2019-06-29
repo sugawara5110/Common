@@ -4,7 +4,6 @@
 
 char *ShaderNeuralNetwork =
 "#define MAX_DEPTH_NUM 5\n"
-"#define MAX_OUTPUT_NUM 10\n"
 
 "RWStructuredBuffer<float> gInNode : register(u0);\n"
 "RWStructuredBuffer<float> gOutNode : register(u1);\n"
@@ -18,8 +17,6 @@ char *ShaderNeuralNetwork =
 "    float4 gLear_Depth_inputS;\n"//äwèKó¶:x, èàóùíÜê[Ç≥:y, MaxDepth:z, inputSetêî:w
 "    float4 gNumNode[MAX_DEPTH_NUM];\n"//äeëwÇÃNodeêî:x, gNode,gErroräeëwäJénÉCÉìÉfÉbÉNÉX:y
 "    float4 gNumWeight[MAX_DEPTH_NUM - 1];\n"//gWeightäeëwäJénÉCÉìÉfÉbÉNÉX:x
-"    float4 gTarget[MAX_OUTPUT_NUM];\n"//targetíl:x
-"    float gLeakyReLUAlpha;\n"
 "};\n"
 
 //Dispatch(APPë§)(X1, Y1, Z1)numthreads(CSë§)(X, Y, Z)
@@ -31,7 +28,10 @@ char *ShaderNeuralNetwork =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint ÇªÇÃëºuint3
 
-"uint NNFPCSsub(int3 outid)\n"
+//èáì`îd
+//èoóÕë§Çï¿óÒèàóù,ì¸óÕë§ÇÉãÅ[Év gLear_Depth_inputS.y = 0Å`Depth-2Ç‹Ç≈
+"[numthreads(?**, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
+"void NNFPCS(int3 outid : SV_DispatchThreadID)\n"
 "{\n"
 "   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y].x;\n"
 "   float InNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
@@ -46,46 +46,12 @@ char *ShaderNeuralNetwork =
 "             gDropOutF[i];\n"
 "   }\n"
 "   gOutNode[OutNodeNum * inputsetInd + x] = tmp;\n"
-"   return OutNodeNum * inputsetInd + x;\n"
 "}\n"
 
-"#define FP_X ?**\n"
-//èáì`îdsigmoid
-//èoóÕë§Çï¿óÒèàóù,ì¸óÕë§ÇÉãÅ[Év gLear_Depth_inputS.y = 0Å`Depth-2Ç‹Ç≈
-"[numthreads(FP_X, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
-"void NNFPCS(int3 outid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint index = NNFPCSsub(outid);\n"
-"   float tmp = gOutNode[index];\n"
-"   float sig = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"
-"   gOutNode[index] = sig;\n"
-"}\n"
-
-//èáì`îdReLU
-//èoóÕë§Çï¿óÒèàóù,ì¸óÕë§ÇÉãÅ[Év gLear_Depth_inputS.y = 0Å`Depth-2Ç‹Ç≈
-"[numthreads(FP_X, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
-"void NNFPReLUCS(int3 outid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint index = NNFPCSsub(outid);\n"
-"   float tmp = gOutNode[index];\n"
-"   float sigre = 0.0f;"
-"   if(gLear_Depth_inputS.y + 1 == gLear_Depth_inputS.z)sigre = 1.0f / (1.0f + pow(2.71828182846, -tmp));\n"//ç≈â∫ëwÇÃÇ›sigmoid
-"   else sigre = max(tmp * gLeakyReLUAlpha, tmp);\n"
-"   gOutNode[index] = sigre;\n"
-"}\n"
-
-//ãtì`îdëOTargetílì¸óÕ gLear_Depth_inputS.y = Depth-1ÇÃÇ›
+//ãtì`îd
+//ì¸óÕë§Çï¿óÒèàóù,èoóÕë§ÇÉãÅ[Év gLear_Depth_inputS.y = Depth-2Å`0Ç‹Ç≈
 "[numthreads(?**, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
-"void InTargetCS(int3 inid : SV_DispatchThreadID)\n"
-"{\n"
-"   float OutNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
-"   int x = inid.x;\n"
-"   int inputsetInd = inid.z;\n"
-"   int outInd = OutNodeNum * inputsetInd + x;\n"
-"   gOutError[outInd] = gOutNode[outInd] - gTarget[x].x;\n"
-"}\n"
-
-"uint NNBPCS0sub(int3 inid)\n"
+"void NNBPCS0(int3 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   float WeightStartInd = gNumWeight[gLear_Depth_inputS.y].x;\n"
 "   float InNodeNum = gNumNode[gLear_Depth_inputS.y].x;\n"
@@ -99,35 +65,7 @@ char *ShaderNeuralNetwork =
 "   {\n"
 "      tmp += gOutError[OutNodeNum * inputsetInd + i] * gWeight[WeightStartInd + InNodeNum * i + x];\n"
 "   }\n"
-"   gInError[inInd] = tmp;\n"
-"   return inInd;\n"
-"}\n"
-
-"#define BP_X ?**\n"
-//ãtì`îdSigmoid
-//ì¸óÕë§Çï¿óÒèàóù,èoóÕë§ÇÉãÅ[Év gLear_Depth_inputS.y = Depth-2Å`0Ç‹Ç≈
-"[numthreads(BP_X, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
-"void NNBPCS0(int3 inid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint inInd = NNBPCS0sub(inid);\n"
-"   int x = inid.x;\n"
-"   float tmp = gInError[inInd];\n"
-"   float difSig = 1.0f;\n"
-"   if(gLear_Depth_inputS.y != 0.0f)difSig = gInNode[inInd] * (1.0f - gInNode[inInd]);\n"
-"   gInError[inInd] = difSig * tmp * gDropOutF[x];\n"
-"}\n"
-
-//ãtì`îdReLU
-//ì¸óÕë§Çï¿óÒèàóù,èoóÕë§ÇÉãÅ[Év gLear_Depth_inputS.y = Depth-2Å`0Ç‹Ç≈
-"[numthreads(BP_X, 1, 1)]\n"//ç≈ëÂX * Y * Z = 1024
-"void NNBPReLUCS0(int3 inid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint inInd = NNBPCS0sub(inid);\n"
-"   int x = inid.x;\n"
-"   float tmp = gInError[inInd];\n"
-"   float relu = tmp * gLeakyReLUAlpha;\n"
-"   if(gInNode[inInd] > 0.0f || gLear_Depth_inputS.y == 0.0f)relu = tmp;\n"
-"   gInError[inInd] = relu * gDropOutF[x];\n"
+"   gInError[inInd] = tmp * gDropOutF[x];\n"
 "}\n"
 
 //weightílçXêV

@@ -8,7 +8,7 @@
 #include "DxConvolution.h"
 #include <random>
 #include "ShaderNN\ShaderConvolution.h"
-#define PARANUMCN 9
+#define PARANUMCN 7
 
 void DxConvolution::SetLearningLate(float rate, float biasrate) {
 	learningRate = rate;
@@ -65,7 +65,6 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, UINT inputset
 	cb.filWid_filStep.x = (float)elNumWid;
 	cb.filWid_filStep.y = (float)filterStep;
 	cb.Lear_inputS.y = (float)inputSetNum;
-	cb.LeakyReLUAlpha = 0.0f;
 	mObjectCB->CopyData(0, cb);
 }
 
@@ -117,9 +116,20 @@ DxConvolution::~DxConvolution() {
 	ARR_DELETE(dropout);
 	ARR_DELETE(bias);
 	ARR_DELETE(shaderThreadNum);
+	S_DELETE(ac);
 }
 
-void DxConvolution::ComCreate(bool sigon) {
+void DxConvolution::ComCreate(ActivationName node) {
+
+	switch (node) {
+	case Sigmoid:
+		SetWeightInitXavier(1.0f);
+		break;
+	case ReLU:
+		SetWeightInitHe(1.0f);
+		break;
+	}
+
 	//RWStructuredBuffer—pgInput
 	CreateResourceDef(mInputBuffer, input_outerrOneSize * FilNum * inputSetNum);
 
@@ -196,11 +206,9 @@ void DxConvolution::ComCreate(bool sigon) {
 	tmpNum[1] = OutHei * FilNum;
 	tmpNum[2] = OutWid;
 	tmpNum[3] = OutHei * FilNum;
-	tmpNum[4] = OutWid;
-	tmpNum[5] = OutHei * FilNum;
-	tmpNum[6] = elNumWid;
-	tmpNum[7] = elNumWid * FilNum;
-	tmpNum[8] = FilNum;
+	tmpNum[4] = elNumWid;
+	tmpNum[5] = elNumWid * FilNum;
+	tmpNum[6] = FilNum;
 	char** replaceString = nullptr;
 
 	CreateReplaceArr(&shaderThreadNum, &replaceString, PARANUMCN, tmpNum);
@@ -210,35 +218,21 @@ void DxConvolution::ComCreate(bool sigon) {
 	for (int i = 0; i < PARANUMCN; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);
 
-	if (sigon) {
-		pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPCS0", "cs_5_0");
-	}
-	else {
-		pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPReLUCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPReLUCS0", "cs_5_0");
-	}
-	pCS[2] = CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
-	pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
-	pCS[5] = CompileShader(repsh, strlen(repsh), "CNBPCS2NoFilterUpdate", "cs_5_0");
-	pCS[4] = CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
+	pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPCS", "cs_5_0");
+	pCS[1] = CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
+	pCS[2] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
+	pCS[4] = CompileShader(repsh, strlen(repsh), "CNBPCS2NoFilterUpdate", "cs_5_0");
+	pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
 	ARR_DELETE(repsh);
 	for (int i = 0; i < CN_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
-}
 
-void DxConvolution::ComCreateSigmoid() {
-	SetWeightInitXavier(1.0f);
-	ComCreate(true);
-}
-
-void DxConvolution::ComCreateReLU() {
-	SetWeightInitHe(1.0f);
-	ComCreate(false);
+	ac = new DxActivation(FilNum * output_inerrOneNum, inputSetNum);
+	ac->ComCreate(node);
 }
 
 void DxConvolution::SetLeakyReLUAlpha(float alpha) {
-	cb.LeakyReLUAlpha = alpha;
+	ac->SetLeakyReLUAlpha(alpha);
 }
 
 void DxConvolution::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
@@ -278,6 +272,10 @@ void DxConvolution::ForwardPropagation() {
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
+	ac->SetInputResource(mOutputBuffer.Get());
+	ac->ForwardPropagation(inputSetNumCur);
+	CopyResource(mOutputBuffer.Get(), ac->GetOutputResource());
+
 	dx->Bigin(com_no);
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
@@ -289,6 +287,10 @@ void DxConvolution::ForwardPropagation() {
 }
 
 void DxConvolution::BackPropagation0() {
+	ac->SetInErrorResource(mInErrorBuffer.Get());
+	ac->BackPropagation();
+	CopyResource(mInErrorBuffer.Get(), ac->GetOutErrorResource());
+
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[1].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -297,10 +299,32 @@ void DxConvolution::BackPropagation0() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * FilNum / shaderThreadNum[3], inputSetNumCur);
+	mCommandList->Dispatch(Width / shaderThreadNum[2], Height * FilNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
+}
+
+void DxConvolution::BackPropagationNoWeightUpdate() {
+	BackPropagation0();
+
+	dx->Bigin(com_no);
+	mCommandList->SetPipelineState(mPSOCom[4].Get());
+	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(7, mGradientBuffer->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->Dispatch(elNumWid / shaderThreadNum[4], elNumWid * FilNum / shaderThreadNum[5], 1);
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+}
+
+void DxConvolution::BackPropagation() {
+	BackPropagation0();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[2].Get());
@@ -310,54 +334,19 @@ void DxConvolution::BackPropagation0() {
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(Width / shaderThreadNum[4], Height * FilNum / shaderThreadNum[5], inputSetNumCur);
-	dx->End(com_no);
-	dx->WaitFenceCurrent();
-}
-
-void DxConvolution::BackPropagationNoWeightUpdate() {
-	BackPropagation0();
-
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[5].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(7, mGradientBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(elNumWid / shaderThreadNum[6], elNumWid * FilNum / shaderThreadNum[7], 1);
+	mCommandList->Dispatch(elNumWid / shaderThreadNum[4], elNumWid * FilNum / shaderThreadNum[5], 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
-}
-
-void DxConvolution::BackPropagation() {
-	BackPropagation0();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[3].Get());
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(7, mGradientBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(elNumWid / shaderThreadNum[6], elNumWid * FilNum / shaderThreadNum[7], 1);
-	dx->End(com_no);
-	dx->WaitFenceCurrent();
-
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[4].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(8, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(FilNum / shaderThreadNum[8], 1, 1);
+	mCommandList->Dispatch(FilNum / shaderThreadNum[6], 1, 1);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -566,14 +555,22 @@ float DxConvolution::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
 	return outputError[inputsetInd * input_outerrOneNum * FilNum + arrNum * input_outerrOneNum + ElNum];
 }
 
-void DxConvolution::SaveData(UINT Num) {
-	FILE *fp;
-	char pass[16];
+void DxConvolution::SaveData(UINT Num, char* pass) {
+	char pass1[16];
+	sprintf_s(pass1, sizeof(char) * 16, pass, Num + 1);
+	SaveData(pass1);
+}
 
-	sprintf_s(pass, sizeof(char) * 16, "save/save%d.da", Num + 1);
+void DxConvolution::LoadData(UINT Num, char* pass) {
+	char pass1[16];
+	sprintf_s(pass1, sizeof(char) * 16, pass, Num + 1);
+	LoadData(pass1);
+}
+
+void DxConvolution::SaveData(char* pass) {
+	FILE* fp;
 	fp = fopen(pass, "wb");
-
-	float *bifil = new float[ElNum * FilNum + FilNum];
+	float* bifil = new float[ElNum * FilNum + FilNum];
 
 	int Ind = 0;
 	for (UINT k = 0; k < FilNum; k++) {
@@ -588,14 +585,10 @@ void DxConvolution::SaveData(UINT Num) {
 	ARR_DELETE(bifil);
 }
 
-void DxConvolution::LoadData(UINT Num) {
-	FILE *fp;
-	char pass[16];
-
-	sprintf_s(pass, sizeof(char) * 16, "save/save%d.da", Num + 1);
+void DxConvolution::LoadData(char* pass) {
+	FILE* fp;
 	fp = fopen(pass, "rb");
-
-	float *bifil = new float[ElNum * FilNum + FilNum];
+	float* bifil = new float[ElNum * FilNum + FilNum];
 
 	int Ind = 0;
 	size_t size = (ElNum * FilNum + FilNum) * sizeof(float);

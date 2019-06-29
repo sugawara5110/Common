@@ -19,8 +19,8 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, flo
 	UINT hNum = (srcHeight - seaHei + Step) / Step;//ƒuƒƒbƒN”h
 	searchNum = wNum * hNum;
 	outNum = outnum * searchNum;
-	outWid = wNum * seaWid * outscale;
-	outHei = hNum * seaHei * outscale;
+	outWid = (UINT)(wNum * seaWid * outscale);
+	outHei = (UINT)(hNum * seaHei * outscale);
 	outsize = outWid * outHei * sizeof(float);
 	seaPix = new float[outWid * outHei];
 
@@ -64,8 +64,8 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, flo
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 
 	mObjectCB = new ConstantBuffer<CBSearchPixel>(1);
-	cb.InWH_OutWH.as(srcWidth, srcHeight, outIndW, outIndH);
-	cb.seaWH_step_PDNum.as(seaWid, seaHei, Step, searchNum);
+	cb.InWH_OutWH.as((float)srcWidth, (float)srcHeight, (float)outIndW, (float)outIndH);
+	cb.seaWH_step_PDNum.as((float)seaWid, (float)seaHei, (float)Step, (float)searchNum);
 	cb.Threshold.x = Threshold;
 	mObjectCB->CopyData(0, cb);
 }

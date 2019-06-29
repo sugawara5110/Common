@@ -8,7 +8,8 @@
 #define Class_DxConvolution_Header
 
 #include "DxNNCommon.h"
-#define CN_SHADER_NUM 6
+#include "DxActivation.h"
+#define CN_SHADER_NUM 5
 
 class DxConvolution :public DxNNCommon {
 
@@ -74,6 +75,7 @@ protected:
 
 	float learningRate = 0.1f;
 	float learningBiasRate = 0.1f;
+	DxActivation* ac = nullptr;
 
 	DxConvolution() {}
 	void ForwardPropagation();
@@ -85,7 +87,6 @@ protected:
 	void CopyOutputErrResourse();
 	void CopyFilterResourse();
 	void CopyBiasResourse();
-	void ComCreate(bool sigon);
 	void SetDropOut();
 
 	void TestFilter();
@@ -97,8 +98,7 @@ protected:
 public:
 	DxConvolution(UINT width, UINT height, UINT filNum, UINT inputsetnum = 1, UINT elnumwid = 3, UINT filstep = 1);
 	~DxConvolution();
-	void ComCreateSigmoid();
-	void ComCreateReLU();
+	void ComCreate(ActivationName node);
 	void SetLeakyReLUAlpha(float alpha);
 	void SetdropThreshold(float Threshold);//åüèoéûÇÕ0.0fê›íËÇ…Ç∑ÇÈ
 	void Query();
@@ -126,8 +126,10 @@ public:
 	ID3D12Resource* GetGradient();
 	UINT GetOutWidth();
 	UINT GetOutHeight();
-	void SaveData(UINT Nnm);
-	void LoadData(UINT Num);
+	void SaveData(UINT Num, char* pass = "save/save%d.da");
+	void LoadData(UINT Num, char* pass = "save/save%d.da");
+	void SaveData(char* pass);
+	void LoadData(char* pass);
 };
 
 #endif
