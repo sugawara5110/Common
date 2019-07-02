@@ -6,6 +6,26 @@
 
 #include "DxNNCommon.h"
 #include "ShaderNN\ShaderNNCommon.h"
+#include "ShaderNN\ShaderNNCommonCopy.h"
+
+DxNNCommon::DxNNCommon() {
+	dx = Dx12Process::GetInstance();
+	mCommandList = dx->dx_sub[0].mCommandList.Get();
+
+	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
+	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
+	slotRootParameter[2].InitAsConstantBufferView(0);//mObjectCB(b0)
+	mRootSignatureCom2Copy = CreateRsCompute(3, slotRootParameter);
+
+	pCS2Copy[0] = CompileShader(ShaderNNCommonCopy, strlen(ShaderNNCommonCopy), "ResourceExpansionCS", "cs_5_0");
+	pCS2Copy[1] = CompileShader(ShaderNNCommonCopy, strlen(ShaderNNCommonCopy), "ResourceReductionCS", "cs_5_0");
+
+	for (int i = 0; i < Copy_SHADER_NUM; i++)
+		mPSOCom2Copy[i] = CreatePsoCompute(pCS2Copy[i].Get(), mRootSignatureCom2Copy.Get());
+
+	mObjectCB2Copy = new ConstantBuffer<CBResourceCopy>(1);
+}
 
 void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	texWid = width;
@@ -158,6 +178,7 @@ D3D12_RESOURCE_STATES DxNNCommon::GetNNTextureResourceStates() {
 
 DxNNCommon::~DxNNCommon() {
 	S_DELETE(mObjectCB2);
+	S_DELETE(mObjectCB2Copy);
 	ARR_DELETE(shaderThreadNum2);
 }
 
@@ -228,18 +249,46 @@ void DxNNCommon::SetMaxThreadNum(UINT num) {
 }
 
 void DxNNCommon::CopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
+
+	UINT destNumNode = (UINT)(dest->GetDesc().Width * dest->GetDesc().Height / sizeof(float));
+	UINT srcNumNode = (UINT)(src->GetDesc().Width * src->GetDesc().Height / sizeof(float));
+
+	if (destNumNode == srcNumNode) {
+		dx->Bigin(com_no);
+		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
+		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
+
+		mCommandList->CopyResource(dest, src);
+
+		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+		dx->End(com_no);
+		dx->WaitFenceCurrent();
+		return;
+	}
+
+	UINT index = 0;
+	if (destNumNode > srcNumNode) {
+		index = 0;
+		cb2Copy.NumNode = srcNumNode / inputSetNum;
+	}
+	else {
+		index = 1;
+		cb2Copy.NumNode = destNumNode / inputSetNum;
+	}
+	mObjectCB2Copy->CopyData(0, cb2Copy);
+
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-
-	mCommandList->CopyResource(dest, src);
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	mCommandList->SetPipelineState(mPSOCom2Copy[index].Get());
+	mCommandList->SetComputeRootSignature(mRootSignatureCom2Copy.Get());
+	mCommandList->SetComputeRootUnorderedAccessView(0, src->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootUnorderedAccessView(1, dest->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB2Copy->Resource()->GetGPUVirtualAddress());
+	mCommandList->Dispatch(cb2Copy.NumNode, 1, inputSetNum);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }

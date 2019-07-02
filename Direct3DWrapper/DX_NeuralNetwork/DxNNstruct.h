@@ -43,6 +43,11 @@ struct NNCBTexture {
 	VECTOR4 Wid_Hei;
 };
 
+//リソース拡大縮小
+struct CBResourceCopy {
+	UINT NumNode;
+};
+
 //SearchPixel
 struct CBSearchPixel {
 	VECTOR4 InWH_OutWH;//x:入力W, y:入力h, z:InPixCS出力(index配列数)w, w:h

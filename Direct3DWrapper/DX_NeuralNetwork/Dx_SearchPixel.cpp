@@ -185,7 +185,7 @@ void SearchPixel::ComCreate() {
 
 	SubresourcesUp(sdata, searchNum, mInPixPosBuffer, mInPixPosUpBuffer);
 
-	SubresourcesUp(outInd, outIndSize, mOutIndBuffer, mOutIndUpBuffer);
+	SubresourcesUp(outInd, (UINT)outIndSize, mOutIndBuffer, mOutIndUpBuffer);
 
 	//ルートシグネチャ
 	CD3DX12_DESCRIPTOR_RANGE uavTable;
@@ -206,11 +206,11 @@ void SearchPixel::ComCreate() {
 	tmpNum[1] = outIndH;
 	tmpNum[2] = srcWidth;
 	tmpNum[3] = srcHeight;
-	char **replaceString = nullptr;
+	char** replaceString = nullptr;
 
 	CreateReplaceArr(&shaderThreadNum, &replaceString, SEA_SHADER_NUM * 2, tmpNum);
 
-	char *repsh = nullptr;
+	char* repsh = nullptr;
 	ReplaceString(&repsh, ShaderSearchPixel, '?', replaceString);
 	for (int i = 0; i < SEA_SHADER_NUM * 2; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);

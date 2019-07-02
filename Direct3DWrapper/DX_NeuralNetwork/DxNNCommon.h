@@ -8,19 +8,20 @@
 #define Class_DxNNCommon_Header
 
 #include "DxNNstruct.h"
+#define Copy_SHADER_NUM 2
 
 class DxNNCommon :public Common {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom2 = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom2 = { nullptr };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mUavHeap2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mTextureBuffer = nullptr;
 	NNCBTexture cb2;
 	ConstantBuffer<NNCBTexture>* mObjectCB2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS2 = nullptr;
 	int* shaderThreadNum2 = nullptr;
-	UINT maxThreadNum = 32;
+	UINT maxThreadNum = 32;//シェーダーの設定スレッド数
 	UINT inputSetNum;
 	UINT inputSetNumCur;
 
@@ -28,7 +29,14 @@ protected:
 	UINT texHei;
 	bool created = false;
 
-	DxNNCommon() {}//外部からのオブジェクト生成禁止
+	//リソース拡大縮小
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom2Copy = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom2Copy[Copy_SHADER_NUM] = { nullptr };
+	CBResourceCopy cb2Copy;
+	ConstantBuffer<CBResourceCopy>* mObjectCB2Copy = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> pCS2Copy[Copy_SHADER_NUM] = { nullptr };
+
+	DxNNCommon();//外部からのオブジェクト生成禁止
 	DxNNCommon(const DxNNCommon& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const DxNNCommon& obj) {}// 代入演算子禁止
 
