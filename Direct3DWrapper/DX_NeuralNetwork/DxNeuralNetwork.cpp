@@ -446,12 +446,20 @@ void DxNeuralNetwork::QueryAndBackPropagation(UINT inputsetnum) {
 }
 
 void DxNeuralNetwork::Training() {
+	TrainingFp();
+	TrainingBp();
+}
+
+void DxNeuralNetwork::TrainingFp() {
 	InputResourse();
 	SetDropOut();
 	inputSetNumCur = inputSetNum;
 	ForwardPropagation();
 	topAc->comCrossEntropyError();
 	crossEntropyError = topAc->GetcrossEntropyError();
+}
+
+void DxNeuralNetwork::TrainingBp() {
 	BackPropagation();
 	CopyWeightResourse();
 	CopyErrorResourse();
@@ -485,6 +493,10 @@ float DxNeuralNetwork::GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd) {
 
 void DxNeuralNetwork::SetInputResource(ID3D12Resource* res) {
 	CopyResource(mNodeBuffer[0].Get(), res);
+}
+
+void DxNeuralNetwork::SetInErrorResource(ID3D12Resource* res) {
+	topAc->SetInErrorResource(res);
 }
 
 ID3D12Resource *DxNeuralNetwork::GetOutErrorResource() {

@@ -79,6 +79,8 @@ public:
 	void Query(UINT inputsetnum);
 	void QueryAndBackPropagation(UINT inputsetnum);
 	void Training();
+	void TrainingFp();
+	void TrainingBp();
 	float GetcrossEntropyError();
 	float GetcrossEntropyErrorTest();
 	void Test();
@@ -87,6 +89,7 @@ public:
 	float* GetError(UINT arrNum, UINT inputsetInd = 0);
 	float GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	void SetInputResource(ID3D12Resource* res);
+	void SetInErrorResource(ID3D12Resource* res);
 	ID3D12Resource* GetOutErrorResource();
 	ID3D12Resource* GetOutputResource();
 	void SaveData(char* pass = "save/save.da");
