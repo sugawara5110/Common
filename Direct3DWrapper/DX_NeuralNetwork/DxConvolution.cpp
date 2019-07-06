@@ -238,15 +238,16 @@ void DxConvolution::SetActivationAlpha(float alpha) {
 
 void DxConvolution::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
 	for (UINT i = 0; i < FilNum; i++)InputEl(el - 0.5f, i, ElNum, inputsetInd);
-	firstIn = true;
 }
 
 void DxConvolution::InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
 	input[input_outerrOneNum * FilNum * inputsetInd + arrNum * input_outerrOneNum + ElNum] = el;
+	firstIn = true;
 }
 
-void DxConvolution::Input(float *inArr, UINT arrNum, UINT inputsetInd) {
+void DxConvolution::Input(float* inArr, UINT arrNum, UINT inputsetInd) {
 	memcpy(&input[input_outerrOneNum * FilNum * inputsetInd + arrNum * input_outerrOneNum], inArr, input_outerrOneSize);
+	firstIn = true;
 }
 
 void DxConvolution::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
@@ -379,7 +380,7 @@ void DxConvolution::Query() {
 	SetDropOut();
 	inputSetNumCur = inputSetNum;
 	ForwardPropagation();
-	//CopyOutputResourse();
+	CopyOutputResourse();
 	TextureCopy(mFilterBuffer.Get(), com_no);
 	//TestOutput();
 }
@@ -400,6 +401,7 @@ void DxConvolution::Detection(UINT inputsetnum) {
 	InputResourse();
 	inputSetNumCur = inputsetnum;
 	ForwardPropagation();
+	CopyOutputResourse();
 	TextureCopy(mFilterBuffer.Get(), com_no);
 }
 
@@ -408,6 +410,7 @@ void DxConvolution::Test() {
 	SetDropOut();
 	inputSetNumCur = 1;
 	ForwardPropagation();
+	CopyOutputResourse();
 }
 
 void DxConvolution::TestFilter() {

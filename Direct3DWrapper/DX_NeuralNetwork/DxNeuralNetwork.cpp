@@ -404,15 +404,16 @@ void DxNeuralNetwork::SetTargetEl(float el, UINT ElNum) {
 
 void DxNeuralNetwork::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
 	for (UINT i = 0; i < Split; i++)InputArrayEl(el, i, ElNum, inputsetInd);
-	firstIn = true;
 }
 
-void DxNeuralNetwork::InputArray(float *inArr, UINT arrNum, UINT inputsetInd) {
+void DxNeuralNetwork::InputArray(float* inArr, UINT arrNum, UINT inputsetInd) {
 	memcpy(&input[NumNode[0] * inputsetInd + (NumNode[0] / Split) * arrNum], inArr, sizeof(float) * (NumNode[0] / Split));
+	firstIn = true;
 }
 
 void DxNeuralNetwork::InputArrayEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
 	input[NumNode[0] * inputsetInd + (NumNode[0] / Split) * arrNum + ElNum] = el;
+	firstIn = true;
 }
 
 void DxNeuralNetwork::InputResourse() {
@@ -461,6 +462,13 @@ void DxNeuralNetwork::TrainingFp() {
 
 void DxNeuralNetwork::TrainingBp() {
 	BackPropagation();
+	CopyWeightResourse();
+	CopyErrorResourse();
+	TextureCopy(mErrorBuffer[0].Get(), com_no);
+}
+
+void DxNeuralNetwork::TrainingBpNoWeightUpdate() {
+	BackPropagationNoWeightUpdate();
 	CopyWeightResourse();
 	CopyErrorResourse();
 	TextureCopy(mErrorBuffer[0].Get(), com_no);

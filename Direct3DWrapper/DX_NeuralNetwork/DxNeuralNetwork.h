@@ -81,6 +81,7 @@ public:
 	void Training();
 	void TrainingFp();
 	void TrainingBp();
+	void TrainingBpNoWeightUpdate();
 	float GetcrossEntropyError();
 	float GetcrossEntropyErrorTest();
 	void Test();

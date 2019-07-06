@@ -114,15 +114,16 @@ void DxPooling::ComCreate() {
 
 void DxPooling::FirstInput(float el, UINT ElNum, UINT inputsetInd) {
 	for (UINT i = 0; i < PoolNum; i++)InputEl(el - 0.5f, i, ElNum, inputsetInd);
-	firstIn = true;
 }
 
-void DxPooling::Input(float *inArr, UINT arrNum, UINT inputsetInd) {
+void DxPooling::Input(float* inArr, UINT arrNum, UINT inputsetInd) {
 	memcpy(&input[input_outerrOneNum * PoolNum * inputsetInd + arrNum * input_outerrOneNum], inArr, input_outerrOneSize);
+	firstIn = true;
 }
 
 void DxPooling::InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
 	input[input_outerrOneNum * PoolNum * inputsetInd + arrNum * input_outerrOneNum + ElNum] = el;
+	firstIn = true;
 }
 
 void DxPooling::ForwardPropagation() {
@@ -175,7 +176,7 @@ void DxPooling::Query() {
 	InputResourse();
 	inputSetNumCur = inputSetNum;
 	ForwardPropagation();
-	//CopyOutputResourse();
+	CopyOutputResourse();
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
 
@@ -189,6 +190,7 @@ void DxPooling::Detection(UINT inputsetnum) {
 	InputResourse();
 	inputSetNumCur = inputsetnum;
 	ForwardPropagation();
+	CopyOutputResourse();
 	TextureCopy(mOutputBuffer.Get(), com_no);
 }
 
@@ -196,6 +198,7 @@ void DxPooling::Test() {
 	InputResourse();
 	inputSetNumCur = 1;
 	ForwardPropagation();
+	CopyOutputResourse();
 }
 
 void DxPooling::InputResourse() {
