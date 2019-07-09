@@ -87,6 +87,7 @@ void DxActivation::SetActivationAlpha(float alpha) {
 }
 
 void DxActivation::SetTarget(float* tar) {
+	if (NumNode > MAX_OUTPUT_NUM)return;
 	for (UINT i = 0; i < NumNode; i++)cb.Target[i].x = tar[i];
 	mObjectCB->CopyData(0, cb);
 }
@@ -120,6 +121,7 @@ void DxActivation::ForwardPropagation(UINT inputsetnum) {
 }
 
 void DxActivation::comCrossEntropyError() {
+	if (NumNode > MAX_OUTPUT_NUM)return;
 	float err = 0.0f;
 	for (UINT j = 0; j < inputSetNumCur; j++) {
 		for (UINT i = 0; i < NumNode; i++) {
