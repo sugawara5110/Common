@@ -3,7 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderNeuralNetwork =
-"#define MAX_DEPTH_NUM 5\n"
+"#define MAX_DEPTH_NUM 32\n"
 
 "RWStructuredBuffer<float> gInNode : register(u0);\n"
 "RWStructuredBuffer<float> gOutNode : register(u1);\n"

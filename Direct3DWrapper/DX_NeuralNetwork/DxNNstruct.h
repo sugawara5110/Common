@@ -9,8 +9,8 @@
 
 #include "../DX_3DCG/Dx12ProcessCore.h"
 
-#define MAX_DEPTH_NUM 5
-#define MAX_OUTPUT_NUM 10
+#define MAX_DEPTH_NUM 32
+#define MAX_OUTPUT_NUM 255
 
 //Activation
 struct CONSTANT_BUFFER_Activation {

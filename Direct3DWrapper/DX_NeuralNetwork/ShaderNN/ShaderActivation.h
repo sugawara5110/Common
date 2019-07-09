@@ -6,7 +6,7 @@ char* ShaderActivation =
 "RWStructuredBuffer<float> gNode : register(u0);\n"
 "RWStructuredBuffer<float> gErr : register(u1);\n"
 
-"#define MAX_OUTPUT_NUM 10\n"
+"#define MAX_OUTPUT_NUM 255\n"
 
 "cbuffer global  : register(b0)\n"
 "{\n"

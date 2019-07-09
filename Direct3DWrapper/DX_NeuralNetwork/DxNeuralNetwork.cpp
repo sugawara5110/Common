@@ -12,6 +12,10 @@
 
 DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum) {
 
+	dx = Dx12Process::GetInstance();
+	mCommandList = dx->dx_sub[0].mCommandList.Get();
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
+
 	srand((unsigned)time(NULL));
 	inputSetNum = inputsetnum;
 	inputSetNumCur = inputSetNum;
@@ -23,47 +27,6 @@ DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inpu
 
 	NumNode = new UINT[Depth];
 	for (int i = 0; i < Depth; i++)NumNode[i] = numNode[i];
-
-	NumNode[0] *= Split;
-
-	if (NumNode[Depth - 1] > MAX_OUTPUT_NUM)NumNode[Depth - 1] = MAX_OUTPUT_NUM;
-
-	NumNodeStIndex = new UINT[Depth];
-	NumWeight = new UINT[Depth - 1];
-	NumWeightStIndex = new UINT[Depth - 1];
-
-	UINT cnt = 0;
-	for (int i = 0; i < Depth; i++) {
-		NumNodeStIndex[i] = cnt;
-		cnt += NumNode[i];
-	}
-
-	cnt = 0;
-	for (int i = 0; i < Depth - 1; i++) {
-		NumWeightStIndex[i] = cnt;
-		cnt += NumNode[i] * NumNode[i + 1];
-		NumWeight[i] = NumNode[i] * NumNode[i + 1];
-	}
-	weightNumAll = cnt;
-
-	input = new float[NumNode[0] * inputSetNum];
-	error = new float[NumNode[0] * inputSetNum];
-	weight = new float[weightNumAll];
-	dropThreshold = new float[Depth - 1];
-	dropout = new float* [Depth - 1];
-	for (int i = 0; i < Depth - 1; i++) {
-		dropout[i] = new float[NumNode[i]];
-		dropThreshold[i] = 0.5f;
-	}
-	for (int k = 0; k < Depth - 1; k++) {
-		for (UINT i = 0; i < NumNode[k]; i++) {
-			dropout[k][i] = 1.0f;//1.0fでニューロン有効
-		}
-	}
-
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
 }
 
 void DxNeuralNetwork::SetDropOut() {
@@ -145,6 +108,50 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 }
 
 void DxNeuralNetwork::ComCreate(ActivationName node, ActivationName topNode) {
+
+	NumNode[0] *= Split;
+
+	if (topNode == CrossEntropySigmoid) {
+		if (NumNode[Depth - 1] > MAX_OUTPUT_NUM)NumNode[Depth - 1] = MAX_OUTPUT_NUM;
+	}
+	else {
+		for (int i = 1; i < Depth; i++) {
+			NumNode[i] *= Split;
+		}
+	}
+
+	NumNodeStIndex = new UINT[Depth];
+	NumWeight = new UINT[Depth - 1];
+	NumWeightStIndex = new UINT[Depth - 1];
+
+	UINT cnt = 0;
+	for (int i = 0; i < Depth; i++) {
+		NumNodeStIndex[i] = cnt;
+		cnt += NumNode[i];
+	}
+
+	cnt = 0;
+	for (int i = 0; i < Depth - 1; i++) {
+		NumWeightStIndex[i] = cnt;
+		cnt += NumNode[i] * NumNode[i + 1];
+		NumWeight[i] = NumNode[i] * NumNode[i + 1];
+	}
+	weightNumAll = cnt;
+
+	input = new float[NumNode[0] * inputSetNum];
+	error = new float[NumNode[0] * inputSetNum];
+	weight = new float[weightNumAll];
+	dropThreshold = new float[Depth - 1];
+	dropout = new float* [Depth - 1];
+	for (int i = 0; i < Depth - 1; i++) {
+		dropout[i] = new float[NumNode[i]];
+		dropThreshold[i] = 0.5f;
+	}
+	for (int k = 0; k < Depth - 1; k++) {
+		for (UINT i = 0; i < NumNode[k]; i++) {
+			dropout[k][i] = 1.0f;//1.0fでニューロン有効
+		}
+	}
 
 	switch (node) {
 	case Sigmoid:
