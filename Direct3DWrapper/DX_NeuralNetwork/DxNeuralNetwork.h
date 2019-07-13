@@ -9,6 +9,7 @@
 
 #include "DxNNCommon.h"
 #include "DxActivation.h"
+#include "DxOptimizer.h"
 #define NN_SHADER_NUM 3
 
 class DxNeuralNetwork :public DxNNCommon {
@@ -23,6 +24,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mWeightReadBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mGradientBuffer = nullptr;//勾配
 	Microsoft::WRL::ComPtr<ID3D12Resource> mErrorBuffer[MAX_DEPTH_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mErrorReadBuffer = nullptr;
 
@@ -41,8 +43,6 @@ protected:
 	float crossEntropyErrorTest = 0.0f;
 
 	UINT Split = 1;
-	float learningRate = 0.1f;
-
 	UINT* NumNode = nullptr;//各層のノードの数
 	UINT* NumNodeStIndex = nullptr;//各層のスタートindex
 	UINT* NumWeight;//各層のweight数
@@ -52,6 +52,7 @@ protected:
 	int Depth;
 	DxActivation* topAc = nullptr;
 	DxActivation** ac = nullptr;
+	DxOptimizer* opt = nullptr;
 
 	DxNeuralNetwork() {}
 	void InputResourse();
@@ -65,9 +66,10 @@ protected:
 public:
 	DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum = 1);
 	~DxNeuralNetwork();
-	void ComCreate(ActivationName node, ActivationName topNode = CrossEntropySigmoid);
+	void ComCreate(ActivationName node, OptimizerName optName = SGD, ActivationName topNode = CrossEntropySigmoid);
 	void SetActivationAlpha(float alpha);
-	void SetLearningLate(float rate);
+	void setOptimizerParameter(float LearningRate = 0.001f, float AttenuationRate1 = 0.9f,
+		float AttenuationRate2 = 0.999f, float DivergencePrevention = 0.00000001f);
 	void SetdropThreshold(float* ThresholdArr);//検出時は0.0f設定にする
 	void SetWeightInitXavier(float rate);
 	void SetWeightInitHe(float rate);

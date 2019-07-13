@@ -11,6 +11,7 @@ char *ShaderConvolution =
 "RWStructuredBuffer<float> gDropOutF : register(u5);\n"
 "RWStructuredBuffer<float> gBias : register(u6);\n"
 "RWStructuredBuffer<float> gGradient : register(u7);\n"//Œù”z
+"RWStructuredBuffer<float> gGradBias : register(u8);\n"//biasŒù”z
 
 "cbuffer global  : register(b0)\n"
 "{\n"
@@ -173,8 +174,8 @@ char *ShaderConvolution =
 "         tmp += gInErr[errNum * gWidHei.z * k + errNum * filid.x + i];\n"
 "      }\n"
 "   }\n"
-"   float ave = tmp / gLear_inputS.y;\n"
-"   gBias[filid.x] -= ave * gLear_inputS.z;\n"
+"   gGradBias[filid.x] = tmp / gLear_inputS.y;\n"
+"   gBias[filid.x] -= gGradBias[filid.x] * gLear_inputS.z;\n"
 "}\n";
 
 

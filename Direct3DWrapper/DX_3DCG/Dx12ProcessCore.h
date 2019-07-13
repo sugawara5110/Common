@@ -63,6 +63,7 @@ class DxConvolution;
 class SearchPixel;
 class DxGradCAM;
 class DxActivation;
+class DxOptimizer;
 //ëOï˚êÈåæ
 
 class Dx12Process_sub final {
@@ -85,6 +86,7 @@ private:
 	friend SearchPixel;
 	friend DxGradCAM;
 	friend DxActivation;
+	friend DxOptimizer;
 
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList;
@@ -118,6 +120,7 @@ private:
 	friend SearchPixel;
 	friend DxGradCAM;
 	friend DxActivation;
+	friend DxOptimizer;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;

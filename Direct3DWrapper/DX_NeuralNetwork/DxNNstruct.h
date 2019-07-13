@@ -12,6 +12,11 @@
 #define MAX_DEPTH_NUM 32
 #define MAX_OUTPUT_NUM 255
 
+//Optimizer
+struct CONSTANT_BUFFER_Optimizer {
+	VECTOR4 Lear_b1_b2_eps;//x:学習率, y:減衰率b1. z:減衰率b2, w:発散防止パラeps
+};
+
 //Activation
 struct CONSTANT_BUFFER_Activation {
 	VECTOR4 Target[MAX_OUTPUT_NUM];//.xのみ
@@ -21,7 +26,7 @@ struct CONSTANT_BUFFER_Activation {
 
 //NeuralNetwork
 struct CONSTANT_BUFFER_NeuralNetwork {
-	VECTOR4 Lear_Depth_inputS;//学習率:x, 処理中深さ:y, MaxDepth:z, inputSet数:w
+	VECTOR4 Lear_Depth_inputS;//未使用:x, 処理中深さ:y, MaxDepth:z, inputSet数:w
 	VECTOR4 NumNode[MAX_DEPTH_NUM];//各層のNode数:x, gNode,gError各層開始インデックス:y
 	VECTOR4 NumWeight[MAX_DEPTH_NUM - 1];//gWeight各層開始インデックス:x
 };

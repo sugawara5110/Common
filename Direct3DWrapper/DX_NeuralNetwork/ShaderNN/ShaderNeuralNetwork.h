@@ -11,10 +11,11 @@ char *ShaderNeuralNetwork =
 "RWStructuredBuffer<float> gInError : register(u3);\n"
 "RWStructuredBuffer<float> gOutError : register(u4);\n"
 "RWStructuredBuffer<float> gDropOutF : register(u5);\n"
+"RWStructuredBuffer<float> gGradient : register(u6);\n"//勾配
 
 "cbuffer global  : register(b0)\n"
 "{\n"
-"    float4 gLear_Depth_inputS;\n"//学習率:x, 処理中深さ:y, MaxDepth:z, inputSet数:w
+"    float4 gLear_Depth_inputS;\n"//未使用:x, 処理中深さ:y, MaxDepth:z, inputSet数:w
 "    float4 gNumNode[MAX_DEPTH_NUM];\n"//各層のNode数:x, gNode,gError各層開始インデックス:y
 "    float4 gNumWeight[MAX_DEPTH_NUM - 1];\n"//gWeight各層開始インデックス:x
 "};\n"
@@ -68,8 +69,8 @@ char *ShaderNeuralNetwork =
 "   gInError[inInd] = tmp * gDropOutF[x];\n"
 "}\n"
 
-//weight値更新
-//gWeight並列更新 gLear_Depth_inputS.y = Depth-2～0まで
+//勾配値更新
+//gGradient並列更新 gLear_Depth_inputS.y = Depth-2～0まで
 "[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024
 "void NNBPCS1(int2 inXoutY : SV_DispatchThreadID)\n"
 "{\n"
@@ -85,11 +86,9 @@ char *ShaderNeuralNetwork =
 "   {\n"
 "      int oind = OutNodeNum * i + y;\n"
 "      int iind = InNodeNum * i + x;\n"
-"      tmpSum += gOutError[oind] * gInNode[iind] * gLear_Depth_inputS.x;\n"
+"      tmpSum += gOutError[oind] * gInNode[iind];\n"
 "   }\n"
-"   float tmpAve = tmpSum / gLear_Depth_inputS.w;\n"
-
 "   int w = gNumNode[gLear_Depth_inputS.y].x * y + x;\n"
-"   gWeight[WeightStartInd + w] -= tmpAve;\n"
+"   gGradient[WeightStartInd + w] = tmpSum / gLear_Depth_inputS.w;\n"
 "}\n";
 

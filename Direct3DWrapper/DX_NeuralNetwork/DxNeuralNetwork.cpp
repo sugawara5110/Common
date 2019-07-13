@@ -105,9 +105,10 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 
 	S_DELETE(mObjectCB);
 	ARR_DELETE(NumNode);
+	S_DELETE(opt);
 }
 
-void DxNeuralNetwork::ComCreate(ActivationName node, ActivationName topNode) {
+void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, ActivationName topNode) {
 
 	NumNode[0] *= Split;
 
@@ -183,6 +184,12 @@ void DxNeuralNetwork::ComCreate(ActivationName node, ActivationName topNode) {
 
 	//RWStructuredBuffer用gWeight
 	CreateResourceDef(mWeightBuffer, weight_byteSize);
+	//オプティマイザー
+	opt = new DxOptimizer(weightNumAll);
+	opt->ComCreate(optName);
+
+	//RWStructuredBuffer用gGradient
+	CreateResourceDef(mGradientBuffer, weight_byteSize);
 
 	for (int i = 0; i < Depth - 1; i++) {
 		//RWStructuredBuffer用gDropout
@@ -208,15 +215,11 @@ void DxNeuralNetwork::ComCreate(ActivationName node, ActivationName topNode) {
 	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
 
 	//ルートシグネチャ
-	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
-	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
-	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
-	slotRootParameter[2].InitAsUnorderedAccessView(2);//RWStructuredBuffer(u2)
-	slotRootParameter[3].InitAsUnorderedAccessView(3);//RWStructuredBuffer(u3)
-	slotRootParameter[4].InitAsUnorderedAccessView(4);//RWStructuredBuffer(u4)
-	slotRootParameter[5].InitAsUnorderedAccessView(5);//RWStructuredBuffer(u5)
-	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
-	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
+	CD3DX12_ROOT_PARAMETER slotRootParameter[8];
+	for (int i = 0; i < 7; i++)
+		slotRootParameter[i].InitAsUnorderedAccessView(i);//RWStructuredBuffer(ui)
+	slotRootParameter[7].InitAsConstantBufferView(0);//mObjectCB(b0)
+	mRootSignatureCom = CreateRsCompute(8, slotRootParameter);
 
 	UINT tmpNum[PARANUM];
 	UINT tmpI0 = 1;
@@ -262,7 +265,6 @@ void DxNeuralNetwork::SetActivationAlpha(float alpha) {
 
 void DxNeuralNetwork::ForwardPropagation() {
 	int repInd = 0;
-	cb.Lear_Depth_inputS.x = learningRate;
 	cb.Lear_Depth_inputS.w = (float)inputSetNumCur;
 	for (int i = 0; i < Depth - 1; i++) {
 		dx->Bigin(com_no);
@@ -274,7 +276,7 @@ void DxNeuralNetwork::ForwardPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 		//Dispatchは1回毎にGPU処理完了させる事
 		mCommandList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputSetNumCur);
 		repInd++;
@@ -319,7 +321,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][1], 1, inputSetNumCur);
 		repInd++;
 		dx->End(com_no);
@@ -340,7 +342,7 @@ void DxNeuralNetwork::BackPropagation() {
 	BackPropagationNoWeightUpdate();
 
 	int repInd = 0;
-	//weight値更新
+	//勾配値更新
 	for (int i = Depth - 2; i >= 0; i--) {
 		dx->Bigin(com_no);
 		mCommandList->SetPipelineState(mPSOCom[2][repInd].Get());
@@ -349,15 +351,21 @@ void DxNeuralNetwork::BackPropagation() {
 		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
 		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootUnorderedAccessView(6, mGradientBuffer->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+		mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2],
 			NumNode[i + 1] / shaderThreadNum[repInd][3], 1);
 		repInd++;
 		dx->End(com_no);
 		dx->WaitFenceCurrent();
 	}
+	//オプティマイザー
+	opt->SetInputGradientBuffer(mGradientBuffer.Get());
+	opt->SetInputWeightBuffer(mWeightBuffer.Get());
+	opt->comOptimizer();
+	CopyResource(mWeightBuffer.Get(), opt->GetOutputWeightBuffer());
 
 	dx->Bigin(com_no);
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
@@ -397,8 +405,10 @@ void DxNeuralNetwork::CopyErrorResourse() {
 	mErrorReadBuffer->Unmap(0, nullptr);
 }
 
-void DxNeuralNetwork::SetLearningLate(float rate) {
-	learningRate = rate;
+void DxNeuralNetwork::setOptimizerParameter(float LearningRate, float AttenuationRate1,
+	float AttenuationRate2, float DivergencePrevention) {
+	opt->setOptimizerParameter(LearningRate, AttenuationRate1,
+		AttenuationRate2, DivergencePrevention);
 }
 
 void DxNeuralNetwork::SetTarget(float* tar) {

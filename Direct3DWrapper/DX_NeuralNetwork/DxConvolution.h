@@ -33,6 +33,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mBiasReadBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mGradBiasBuffer = nullptr;//biasŒù”z
 
 	CONSTANT_BUFFER_Convolution cb;
 	ConstantBuffer<CONSTANT_BUFFER_Convolution>* mObjectCB = nullptr;
@@ -78,6 +79,7 @@ protected:
 	DxActivation* ac = nullptr;
 
 	DxConvolution() {}
+	void SetGPUVirtualAddress();
 	void ForwardPropagation();
 	void BackPropagation0();
 	void BackPropagation();
