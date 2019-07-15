@@ -108,7 +108,7 @@ DxNeuralNetwork::~DxNeuralNetwork() {
 	S_DELETE(opt);
 }
 
-void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, ActivationName topNode) {
+void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, ActivationName topNode, float wInit) {
 
 	NumNode[0] *= Split;
 
@@ -146,7 +146,7 @@ void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, Acti
 	dropout = new float* [Depth - 1];
 	for (int i = 0; i < Depth - 1; i++) {
 		dropout[i] = new float[NumNode[i]];
-		dropThreshold[i] = 0.5f;
+		dropThreshold[i] = 0.0f;
 	}
 	for (int k = 0; k < Depth - 1; k++) {
 		for (UINT i = 0; i < NumNode[k]; i++) {
@@ -156,11 +156,11 @@ void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, Acti
 
 	switch (node) {
 	case Sigmoid:
-		SetWeightInitXavier(1.0f);
+		SetWeightInitXavier(wInit);
 		break;
 	case ReLU:
 	case ELU:
-		SetWeightInitHe(1.0f);
+		SetWeightInitHe(wInit);
 		break;
 	}
 

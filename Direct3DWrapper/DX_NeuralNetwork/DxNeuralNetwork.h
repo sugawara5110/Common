@@ -62,17 +62,18 @@ protected:
 	void CopyWeightResourse();
 	void CopyErrorResourse();
 	void SetDropOut();
+	void SetWeightInitXavier(float rate);
+	void SetWeightInitHe(float rate);
 
 public:
 	DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum = 1);
 	~DxNeuralNetwork();
-	void ComCreate(ActivationName node, OptimizerName optName = SGD, ActivationName topNode = CrossEntropySigmoid);
+	void ComCreate(ActivationName node, OptimizerName optName = SGD,
+		ActivationName topNode = CrossEntropySigmoid, float wInit = 1.0f);
 	void SetActivationAlpha(float alpha);
 	void setOptimizerParameter(float LearningRate = 0.001f, float AttenuationRate1 = 0.9f,
 		float AttenuationRate2 = 0.999f, float DivergencePrevention = 0.00000001f);
 	void SetdropThreshold(float* ThresholdArr);//åüèoéûÇÕ0.0fê›íËÇ…Ç∑ÇÈ
-	void SetWeightInitXavier(float rate);
-	void SetWeightInitHe(float rate);
 	void SetTarget(float* target);
 	void SetTargetEl(float el, UINT ElNum);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);

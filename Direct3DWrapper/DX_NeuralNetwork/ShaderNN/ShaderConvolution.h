@@ -17,7 +17,7 @@ char *ShaderConvolution =
 "{\n"
 "    float4 gWidHei;\n"//入力w:x, 入力h:y ,FilNum:z
 "    float4 gfilWid_filStep;\n"//Filwid数:x, Filstep数:y
-"    float4 gLear_inputS;\n"//学習率:x, inputset数:y, bias学習率:z
+"    float4 gLear_inputS;\n"//未使用:x, inputset数:y, 未使用:z
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -29,6 +29,27 @@ char *ShaderConvolution =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint その他uint3
 
+//input拡大
+//input側並列
+"[numthreads(?**, ?**, 1)]\n"
+"void CNFPCS0(uint3 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint inwid = gWidHei.x;\n"//input側wid数
+"   uint inhei = gWidHei.y;\n"//input側hei数
+"   uint ix = inid.x;\n"//input, widIndex
+"   uint iy = inid.y % inhei;\n"//input, heiIndex(filter含まない)
+"   uint numInd = inid.y / inhei;\n"
+"   uint inStInd = numInd * inwid * inhei;\n"//input, Filter個数単位のindex * 要素数
+"   uint InsetInd = inwid * inhei * gWidHei.z * inid.z;\n"
+
+"   uint inInd = InsetInd + inStInd + inwid * iy + ix;\n"
+"   gOutput[inInd * gfilWid_filStep.y] = gInput[inInd];\n"
+"   for(int i = 1; i < gfilWid_filStep.y; i++)\n"
+"   {\n"
+"      gOutput[inInd * gfilWid_filStep.y + i] = 0.0f;\n"//残りは0.0fで埋める
+"   }\n"
+"}\n"
+
 //順伝播
 //出力側を並列処理,入力側をループ(スレッド数は出力側と同数)
 "[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024
@@ -36,9 +57,9 @@ char *ShaderConvolution =
 "{\n"
 "   int outwid = gWidHei.x / gfilWid_filStep.y;\n"//出力wid数
 "   int outhei = gWidHei.y / gfilWid_filStep.y;\n"//出力hei数
-"   uint setInd = outid.z;\n"
-"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
-"   uint OutsetInd = outwid * outhei * gWidHei.z * setInd;\n"
+"   uint setInd = outid.z;\n"//現スレッド
+"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"//入力側現スレッドST位置
+"   uint OutsetInd = outwid * outhei * gWidHei.z * setInd;\n"//出力側現スレッドST位置
 "   int ox = outid.x;\n"//出力widIndex
 "   int oy = outid.y % outhei;\n"//出力heiIndex(fil除き)
 "   int ix = ox * gfilWid_filStep.y;\n"//入力widIndex
@@ -65,48 +86,72 @@ char *ShaderConvolution =
 "   gOutput[OutsetInd + outStInd + outwid * oy + ox] = tmp;\n"
 "}\n"
 
+//inErr拡大
+//inErr側並列
+"[numthreads(?**, ?**, 1)]\n"
+"void CNBPCS0(uint3 inEid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint inEwid = gWidHei.x / gfilWid_filStep.y;\n"//inErr側wid数
+"   uint inEhei = gWidHei.y / gfilWid_filStep.y;\n"//inErr側hei数
+"   uint iEx = inEid.x;\n"//inErr, widIndex
+"   uint iEy = inEid.y % inEhei;\n"//inErr, heiIndex(filter含まない)
+"   uint numInd = inEid.y / inEhei;\n"
+"   uint inEStInd = numInd * inEwid * inEhei;\n"//inErr, Filter個数単位のindex * 要素数
+"   uint InEsetInd = inEwid * inEhei * gWidHei.z * inEid.z;\n"
+
+"   uint inErrInd = InEsetInd + inEStInd + inEwid * iEy + iEx;\n"
+"   gOutErr[inErrInd * gfilWid_filStep.y] = gInErr[inErrInd];\n"
+"   for(int i = 1; i < gfilWid_filStep.y; i++)\n"
+"   {\n"
+"      gOutErr[inErrInd * gfilWid_filStep.y + i] = 0.0f;\n"//残りは0.0fで埋める
+"   }\n"
+"}\n"
+
 //逆伝播
 //Err出力側を並列処理,Err入力側をループ(スレッド数は入力数と同数)
 "[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024   
-"void CNBPCS1(uint3 inid : SV_DispatchThreadID)\n"
+"void CNBPCS1(uint3 outEid : SV_DispatchThreadID)\n"
 "{\n"
-"   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//output,inerr側wid数
-"   int inhei = gWidHei.y / gfilWid_filStep.y;\n"//output,inerr側hei数
-"   int ix = inid.x / gfilWid_filStep.y;\n"//output,inerr, widIndex
-"   int iy = (inid.y  / gfilWid_filStep.y) % inhei;\n"//output,inerr, heiIndex(filter含まない)
-"   int ox = ix * gfilWid_filStep.y;\n"//input, outerr, widIndex
-"   int oy = iy * gfilWid_filStep.y;\n"//input, outerr, heiIndex(filter含まない)
+"   int inEwid = gWidHei.x * gfilWid_filStep.y;\n"//inErr側wid数
+"   int inEhei = gWidHei.y * gfilWid_filStep.y;\n"//inErr側hei数
+"   int iEx = outEid.x * gfilWid_filStep.y;\n"//inErr, widIndex
+"   int iEy = (outEid.y  * gfilWid_filStep.y) % inEhei;\n"//inErr, heiIndex(filter含まない)
+"   int oEx = iEx / gfilWid_filStep.y;\n"//outErr, widIndex
+"   int oEy = iEy / gfilWid_filStep.y;\n"//outErr, heiIndex(filter含まない)
 "   int padding = gfilWid_filStep.x / 2;\n"
 "   int filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"//filter要素数
-"   int numInd = inid.y / gWidHei.y;\n"
+"   int numInd = outEid.y / gWidHei.y;\n"
 "   int filStInd = numInd * filElNum;\n"
-"   int inStInd = numInd * inwid * inhei;\n"//inerr, Filter個数単位のindex * 要素数
-"   int outStInd = numInd * gWidHei.x * gWidHei.y;\n"//outerr, Filter個数単位のindex * 要素数
-"   uint setInd = inid.z;\n"
-"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
-"   uint OutsetInd = inwid * inhei * gWidHei.z * setInd;\n"
+"   int inEStInd = numInd * inEwid * inEhei;\n"//inErr, Filter個数単位のindex * 要素数
+"   int outEStInd = numInd * gWidHei.x * gWidHei.y;\n"//outErr, Filter個数単位のindex * 要素数
+"   uint setInd = outEid.z;\n"
+"   uint OutEsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
+"   uint InEsetInd = inEwid * inEhei * gWidHei.z * setInd;\n"
 
 "   float tmp = 0.0f;\n"
 "   for(int i = filElNum - 1; i >= 0; i--)\n"
 "   {\n"
 "      int fx = (i % gfilWid_filStep.x) - padding;\n"
 "      int fy = (i / gfilWid_filStep.x) - padding;\n"
-"      if(iy + fy >= 0 && iy + fy < inhei && ix + fx >= 0 && ix + fx < inwid)\n"//Padding領域はスキップ
+"      if(iEy + fy >= 0 && iEy + fy < inEhei && iEx + fx >= 0 && iEx + fx < inEwid)\n"//Padding領域はスキップ
 "      {\n"
-"         uint inErrInd = OutsetInd + inStInd + inwid * (iy + fy) + (ix + fx);\n"
-"         tmp += gInErr[inErrInd] * gFilter[filStInd + i];\n"
+"         uint inErrInd = InEsetInd + inEStInd + inEwid * (iEy + fy) + (iEx + fx);\n"
+"         tmp += gInErr[inErrInd] * gFilter[filStInd + i] * gDropOutF[inEStInd + inEwid * (iEy + fy) + (iEx + fx)];\n"
 "      }\n"
 "   }\n"
-"   gOutErr[InsetInd + outStInd + gWidHei.x * oy + ox] = tmp * gDropOutF[outStInd + gWidHei.x * oy + ox];\n"
+"   gOutErr[OutEsetInd + outEStInd + gWidHei.x * oEy + oEx] = tmp;\n"
 "}\n"
 
-"uint CNBPCS2sub(int2 inid)\n"
+//フィルタ勾配更新
+//フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
+"[numthreads(?**, ?**, 1)]\n"//最大X * Y * Z = 1024   
+"void CNBPCS2(int2 inid : SV_DispatchThreadID)\n"
 "{\n"
 "   int filx = inid.x;\n"//Filter要素XIndex
 "   int fily = inid.y % gfilWid_filStep.x;\n"//Filter要素YIndex(Filter個数含まない)
 "   int padding = gfilWid_filStep.x / 2;\n"
-"   uint inErrwid = gWidHei.x / gfilWid_filStep.y;\n"
-"   uint inErrhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   uint inErrwid = gWidHei.x * gfilWid_filStep.y;\n"
+"   uint inErrhei = gWidHei.y * gfilWid_filStep.y;\n"
 "   uint numInd = inid.y / gfilWid_filStep.x;\n"
 "   uint filElNum = gfilWid_filStep.x * gfilWid_filStep.x;\n"
 "   uint filStInd = numInd * filElNum;\n"
@@ -123,8 +168,8 @@ char *ShaderConvolution =
 "      {\n"
 "         int Ex = i % inErrwid;\n"//inerrX
 "         int Ey = i / inErrwid;\n"//inerrY
-"         int Ix = Ex * gfilWid_filStep.y + (filx - padding);\n"//inputX
-"         int Iy = Ey * gfilWid_filStep.y + (fily - padding);\n"//inputY
+"         int Ix = Ex / gfilWid_filStep.y + (filx - padding);\n"//inputX
+"         int Iy = Ey / gfilWid_filStep.y + (fily - padding);\n"//inputY
 
 "         if(Ix >= 0 && Ix < gWidHei.x && Iy >= 0 && Iy < gWidHei.y)\n"
 "         {\n"
@@ -134,36 +179,18 @@ char *ShaderConvolution =
 "      }\n"
 "      tmpSum += tmp;\n"
 "   }\n"
-"   float tmpAve = tmpSum / gLear_inputS.y;\n"
+
 "   uint grInd = filStInd + gfilWid_filStep.x * fily + filx;\n"
-"   gGradient[grInd] = tmpAve;\n"
-"   return grInd;\n"
+"   gGradient[grInd] = tmpSum / gLear_inputS.y;\n"
 "}\n"
 
-"#define BP_X ?**\n"
-"#define BP_Y ?**\n"
-//フィルタ更新
-//フィルタを並列処理(スレッド数はフィルター要素数 * フィルター数と同数)
-"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   
-"void CNBPCS2(int2 inid : SV_DispatchThreadID)\n"
-"{\n"
-"   uint ind = CNBPCS2sub(inid);\n"
-"   gFilter[ind] -= gGradient[ind] * gLear_inputS.x;\n"
-"}\n"
-//フィルタ更新無し
-"[numthreads(BP_X, BP_Y, 1)]\n"//最大X * Y * Z = 1024   
-"void CNBPCS2NoFilterUpdate(int2 inid : SV_DispatchThreadID)\n"
-"{\n"
-"   CNBPCS2sub(inid);\n"
-"}\n"
-
-//bias更新
+//bias勾配更新
 //Filter毎に並列処理
 "[numthreads(?**, 1, 1)]\n"//最大X * Y * Z = 1024  
 "void CNBPCSBias(int2 filid : SV_DispatchThreadID)\n"
 "{\n"
-"   int inwid = gWidHei.x / gfilWid_filStep.y;\n"//下層からの誤差wid
-"   int inhei = gWidHei.y / gfilWid_filStep.y;\n"
+"   int inwid = gWidHei.x * gfilWid_filStep.y;\n"//下層からの誤差wid
+"   int inhei = gWidHei.y * gfilWid_filStep.y;\n"
 "   int errNum = inwid * inhei;\n"
 
 "   float tmp = 0.0f;\n"
@@ -175,7 +202,6 @@ char *ShaderConvolution =
 "      }\n"
 "   }\n"
 "   gGradBias[filid.x] = tmp / gLear_inputS.y;\n"
-"   gBias[filid.x] -= gGradBias[filid.x] * gLear_inputS.z;\n"
 "}\n";
 
 

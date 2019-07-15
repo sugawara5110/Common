@@ -9,7 +9,8 @@
 
 #include "DxNNCommon.h"
 #include "DxActivation.h"
-#define CN_SHADER_NUM 5
+#include "DxOptimizer.h"
+#define CN_SHADER_NUM 6
 
 class DxConvolution :public DxNNCommon {
 
@@ -18,12 +19,14 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom[CN_SHADER_NUM] = { nullptr };
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mDropOutFBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputReadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInErrorUpBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInErrorBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> mInErrorBuffer2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutErrorBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutErrorReadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mFilterUpBuffer = nullptr;
@@ -40,6 +43,13 @@ protected:
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[CN_SHADER_NUM] = { nullptr };
 	int* shaderThreadNum = nullptr;
+	bool DeconvolutionMode = false;
+	struct shaderStep {
+		UINT step = 1;
+		UINT width = 0;
+		UINT height = 0;
+	};
+	shaderStep sstep[CN_SHADER_NUM];
 
 	UINT Width; //入力画像サイズ
 	UINT Height;//入力画像サイズ
@@ -57,9 +67,9 @@ protected:
 	UINT output_inerrOneNum = 0;
 	UINT64 input_outerrOneSize = 0;
 	UINT64 output_inerrOneSize = 0;
-
+	UINT Numdrop = 0;
 	float* dropout = nullptr;
-	float dropThreshold = 0.5f;//閾値
+	float dropThreshold = 0.0f;//閾値
 
 	//畳込みフィルター
 	float* fil = nullptr;
@@ -74,11 +84,14 @@ protected:
 	//バイアス  フィルターと同数
 	float* bias = nullptr;
 
-	float learningRate = 0.1f;
-	float learningBiasRate = 0.1f;
 	DxActivation* ac = nullptr;
+	DxOptimizer* optFil = nullptr;
+	DxOptimizer* optBias = nullptr;
 
 	DxConvolution() {}
+	void setshaderStep(UINT index);
+	void SetGPUVirtualAddressExpIn();
+	void SetGPUVirtualAddressExpErr();
 	void SetGPUVirtualAddress();
 	void ForwardPropagation();
 	void BackPropagation0();
@@ -90,6 +103,8 @@ protected:
 	void CopyFilterResourse();
 	void CopyBiasResourse();
 	void SetDropOut();
+	void SetWeightInitXavier(float rate);
+	void SetWeightInitHe(float rate);
 
 	void TestFilter();
 	void TestInput();
@@ -98,9 +113,9 @@ protected:
 	void TestOutErr();
 
 public:
-	DxConvolution(UINT width, UINT height, UINT filNum, UINT inputsetnum = 1, UINT elnumwid = 3, UINT filstep = 1);
+	DxConvolution(UINT width, UINT height, UINT filNum, bool DeconvolutionMode = false, UINT inputsetnum = 1, UINT elnumwid = 3, UINT filstep = 1);
 	~DxConvolution();
-	void ComCreate(ActivationName node);
+	void ComCreate(ActivationName node, OptimizerName optName = SGD, float wInit = 1.0f);
 	void SetActivationAlpha(float alpha);
 	void SetdropThreshold(float Threshold);//検出時は0.0f設定にする
 	void Query();
@@ -108,9 +123,10 @@ public:
 	void Training();
 	void Detection(UINT inputsetnum);
 	void Test();
-	void SetLearningLate(float rate, float biasrate);
-	void SetWeightInitXavier(float rate);
-	void SetWeightInitHe(float rate);
+	void setOptimizerParameterFil(float LearningRate = 0.001f, float AttenuationRate1 = 0.9f,
+		float AttenuationRate2 = 0.999f, float DivergencePrevention = 0.00000001f);
+	void setOptimizerParameterBias(float LearningRate = 0.001f, float AttenuationRate1 = 0.9f,
+		float AttenuationRate2 = 0.999f, float DivergencePrevention = 0.00000001f);
 	void FirstInput(float el, UINT ElNum, UINT inputsetInd = 0);
 	void Input(float* inArr, UINT arrNum, UINT inputsetInd = 0);
 	void InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
