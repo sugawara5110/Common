@@ -144,6 +144,7 @@ void DxConvolution::ComCreate(ActivationName node, OptimizerName optName, float 
 
 	switch (node) {
 	case Sigmoid:
+	case Tanh:
 		SetWeightInitXavier(wInit);
 		break;
 	case ReLU:

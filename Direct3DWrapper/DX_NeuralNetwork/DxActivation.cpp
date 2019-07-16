@@ -75,6 +75,10 @@ void DxActivation::ComCreate(ActivationName name) {
 		pCS[0] = CompileShader(repsh, strlen(repsh), "FPELUCS", "cs_5_0");
 		pCS[1] = CompileShader(repsh, strlen(repsh), "BPELUCS", "cs_5_0");
 		break;
+	case Tanh:
+		pCS[0] = CompileShader(repsh, strlen(repsh), "FPtanhCS", "cs_5_0");
+		pCS[1] = CompileShader(repsh, strlen(repsh), "BPtanhCS", "cs_5_0");
+		break;
 	}
 	ARR_DELETE(repsh);
 	for (int i = 0; i < AC_SHADER_NUM; i++)

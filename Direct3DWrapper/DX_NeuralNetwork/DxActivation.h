@@ -14,7 +14,8 @@ enum ActivationName {
 	CrossEntropySigmoid,
 	Sigmoid,
 	ReLU,
-	ELU
+	ELU,
+	Tanh
 };
 
 class DxActivation :public DxNNCommon {

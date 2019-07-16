@@ -86,4 +86,23 @@ char* ShaderActivation =
 "   {\n"
 "      gErr[index] = gErr[index] * (gNode[index] + gActivationAlpha);\n"
 "   }\n"
+"}\n"
+
+//èáì`îdtanh
+"[numthreads(FBP_X, 1, 1)]\n"
+"void FPtanhCS(uint3 outid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint index = IndexCS(outid);\n"
+"   float tmp = gNode[index];\n"
+"   float ex2 = exp(-2.0f * tmp);\n"
+"   gNode[index] = (1.0f - ex2) / (1.0f + ex2);\n"
+"}\n"
+
+//ãtì`îdtanh
+"[numthreads(FBP_X, 1, 1)]\n"
+"void BPtanhCS(uint3 outid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint index = IndexCS(outid);\n"
+"   float tan = 1.0f - gNode[index] * gNode[index];\n"
+"   gErr[index] = gErr[index] * tan;\n"
 "}\n";

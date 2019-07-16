@@ -156,6 +156,7 @@ void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, Acti
 
 	switch (node) {
 	case Sigmoid:
+	case Tanh:
 		SetWeightInitXavier(wInit);
 		break;
 	case ReLU:
