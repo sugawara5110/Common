@@ -10,7 +10,7 @@
 #include "DxNNCommon.h"
 #include "DxActivation.h"
 #include "DxOptimizer.h"
-#define CN_SHADER_NUM 6
+#define CN_SHADER_NUM 7
 
 class DxConvolution :public DxNNCommon {
 
@@ -49,7 +49,7 @@ protected:
 		UINT width = 0;
 		UINT height = 0;
 	};
-	shaderStep sstep[CN_SHADER_NUM];
+	shaderStep sstep[CN_SHADER_NUM + 1];
 
 	UINT Width; //入力画像サイズ
 	UINT Height;//入力画像サイズ

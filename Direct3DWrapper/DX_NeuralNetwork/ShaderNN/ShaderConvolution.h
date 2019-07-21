@@ -29,6 +29,14 @@ char *ShaderConvolution =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint ‚»‚Ì‘¼uint3
 
+//zero‰Šú‰»
+"[numthreads(1, 1, 1)]\n"
+"void CNInitCS(uint3 inid : SV_DispatchThreadID)\n"
+"{\n"
+"   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * inid.z;\n"
+"   gInput[InsetInd + gWidHei.x * inid.y + inid.x] = 0.0f;\n"
+"}\n"
+
 //inputŠg‘å
 //input‘¤•À—ñ
 "[numthreads(?**, ?**, 1)]\n"
@@ -42,12 +50,17 @@ char *ShaderConvolution =
 "   uint inStInd = numInd * inwid * inhei;\n"//input, FilterŒÂ”’PˆÊ‚Ìindex * —v‘f”
 "   uint InsetInd = inwid * inhei * gWidHei.z * inid.z;\n"
 
+"   uint outwid = gWidHei.x * gfilWid_filStep.y;\n"//output‘¤wid”
+"   uint outhei = gWidHei.y * gfilWid_filStep.y;\n"//output‘¤hei”
+"   uint ox = ix * gfilWid_filStep.y;\n"
+"   uint oy = iy * gfilWid_filStep.y;\n"
+"   uint outStInd = numInd * outwid * outhei;\n"//output, FilterŒÂ”’PˆÊ‚Ìindex * —v‘f”
+"   uint OutsetInd = outwid * outhei * gWidHei.z * inid.z;\n"
+
 "   uint inInd = InsetInd + inStInd + inwid * iy + ix;\n"
-"   gOutput[inInd * gfilWid_filStep.y] = gInput[inInd];\n"
-"   for(int i = 1; i < gfilWid_filStep.y; i++)\n"
-"   {\n"
-"      gOutput[inInd * gfilWid_filStep.y + i] = 0.0f;\n"//c‚è‚Í0.0f‚Å–„‚ß‚é
-"   }\n"
+"   uint outInd = OutsetInd + outStInd + outwid * oy + ox;\n"
+
+"   gOutput[outInd] = gInput[inInd];\n"
 "}\n"
 
 //‡“`”d
@@ -99,12 +112,17 @@ char *ShaderConvolution =
 "   uint inEStInd = numInd * inEwid * inEhei;\n"//inErr, FilterŒÂ”’PˆÊ‚Ìindex * —v‘f”
 "   uint InEsetInd = inEwid * inEhei * gWidHei.z * inEid.z;\n"
 
+"   uint outEwid = gWidHei.x;\n"//outErr‘¤wid”
+"   uint outEhei = gWidHei.y;\n"//outErr‘¤hei”
+"   uint oEx = iEx * gfilWid_filStep.y;\n"//outErr, widIndex
+"   uint oEy = iEy * gfilWid_filStep.y;\n"//outErr, heiIndex(filterŠÜ‚Ü‚È‚¢)
+"   uint outEStInd = numInd * outEwid * outEhei;\n"//outErr, FilterŒÂ”’PˆÊ‚Ìindex * —v‘f”
+"   uint OutEsetInd = outEwid * outEhei * gWidHei.z * inEid.z;\n"
+
 "   uint inErrInd = InEsetInd + inEStInd + inEwid * iEy + iEx;\n"
-"   gOutErr[inErrInd * gfilWid_filStep.y] = gInErr[inErrInd];\n"
-"   for(int i = 1; i < gfilWid_filStep.y; i++)\n"
-"   {\n"
-"      gOutErr[inErrInd * gfilWid_filStep.y + i] = 0.0f;\n"//c‚è‚Í0.0f‚Å–„‚ß‚é
-"   }\n"
+"   uint outErrInd = OutEsetInd + outEStInd + outEwid * oEy + oEx;\n"
+
+"   gOutErr[outErrInd] = gInErr[inErrInd];\n"
 "}\n"
 
 //‹t“`”d

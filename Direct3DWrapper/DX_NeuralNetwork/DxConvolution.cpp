@@ -269,6 +269,7 @@ void DxConvolution::ComCreate(ActivationName node, OptimizerName optName, float 
 	pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
 	pCS[4] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
 	pCS[5] = CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
+	pCS[6] = CompileShader(repsh, strlen(repsh), "CNInitCS", "cs_5_0");
 
 	ARR_DELETE(repsh);
 	for (int i = 0; i < CN_SHADER_NUM; i++)
@@ -303,6 +304,14 @@ void DxConvolution::ComCreate(ActivationName node, OptimizerName optName, float 
 		sstep[5].step = 1;
 		sstep[5].width = Width;
 		sstep[5].height = Height;
+		//CNInitCS, Fp
+		sstep[6].step = 1;
+		sstep[6].width = Width;
+		sstep[6].height = Height;
+		//CNInitCS, Bp
+		sstep[7].step = 1;
+		sstep[7].width = Width;
+		sstep[7].height = Height;
 	}
 	else {
 		//CNFPCS0
@@ -329,6 +338,14 @@ void DxConvolution::ComCreate(ActivationName node, OptimizerName optName, float 
 		sstep[5].step = filterStep;
 		sstep[5].width = Width;
 		sstep[5].height = Height;
+		//CNInitCS, Fp
+		sstep[6].step = 1;
+		sstep[6].width = OutWid;
+		sstep[6].height = OutHei;
+		//CNInitCS, Bp
+		sstep[7].step = 1;
+		sstep[7].width = OutWid;
+		sstep[7].height = OutHei;
 	}
 }
 
@@ -393,6 +410,17 @@ void DxConvolution::ForwardPropagation() {
 	cb.Lear_inputS.y = (float)inputSetNumCur;
 	mObjectCB->CopyData(0, cb);
 
+	//zero‰Šú‰»
+	setshaderStep(6);
+	dx->Bigin(com_no);
+	mCommandList->SetPipelineState(mPSOCom[6].Get());
+	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer2->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->Dispatch(cb.WidHei.x, cb.WidHei.y * FilNum, inputSetNumCur);
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+
 	//inputŠg‘å
 	setshaderStep(0);
 	dx->Bigin(com_no);
@@ -428,6 +456,17 @@ void DxConvolution::BackPropagation0() {
 	ac->SetInErrorResource(mInErrorBuffer.Get());
 	ac->BackPropagation();
 	CopyResource(mInErrorBuffer.Get(), ac->GetOutErrorResource());
+
+	//zero‰Šú‰»
+	setshaderStep(7);
+	dx->Bigin(com_no);
+	mCommandList->SetPipelineState(mPSOCom[6].Get());
+	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+	mCommandList->SetComputeRootUnorderedAccessView(0, mInErrorBuffer2->GetGPUVirtualAddress());
+	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCommandList->Dispatch(cb.WidHei.x, cb.WidHei.y * FilNum, inputSetNumCur);
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
 
 	//inErrŠg‘å
 	setshaderStep(2);
