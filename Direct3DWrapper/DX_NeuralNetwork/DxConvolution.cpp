@@ -367,8 +367,9 @@ void DxConvolution::Input(float* inArr, UINT arrNum, UINT inputsetInd) {
 	firstIn = true;
 }
 
-void DxConvolution::InputError(float *inArr, UINT arrNum, UINT inputsetInd) {
+void DxConvolution::InputError(float* inArr, UINT arrNum, UINT inputsetInd) {
 	memcpy(&inputError[inputsetInd * output_inerrOneNum * FilNum + arrNum * output_inerrOneNum], inArr, output_inerrOneSize);
+	firstInErr = true;
 }
 
 void DxConvolution::SetGPUVirtualAddressExpIn() {
@@ -417,7 +418,7 @@ void DxConvolution::ForwardPropagation() {
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer2->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.WidHei.x, cb.WidHei.y * FilNum, inputSetNumCur);
+	mCommandList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -464,7 +465,7 @@ void DxConvolution::BackPropagation0() {
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
 	mCommandList->SetComputeRootUnorderedAccessView(0, mInErrorBuffer2->GetGPUVirtualAddress());
 	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.WidHei.x, cb.WidHei.y * FilNum, inputSetNumCur);
+	mCommandList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 
@@ -482,6 +483,15 @@ void DxConvolution::BackPropagation0() {
 	mCommandList->SetPipelineState(mPSOCom[3].Get());
 	SetGPUVirtualAddress();
 	mCommandList->Dispatch(Width / shaderThreadNum[6], Height * FilNum / shaderThreadNum[7], inputSetNumCur);
+	dx->End(com_no);
+	dx->WaitFenceCurrent();
+
+	dx->Bigin(com_no);
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	mCommandList->CopyResource(mOutErrorReadBuffer.Get(), mOutErrorBuffer.Get());
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
 }
@@ -528,12 +538,6 @@ void DxConvolution::BackPropagation() {
 	CopyResource(mBiasBuffer.Get(), optBias->GetOutputWeightBuffer());
 
 	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mOutErrorReadBuffer.Get(), mOutErrorBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mFilterBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
 	mCommandList->CopyResource(mFilterReadBuffer.Get(), mFilterBuffer.Get());
@@ -563,9 +567,9 @@ void DxConvolution::Query() {
 void DxConvolution::Training() {
 	//TestInErr();
 	//TestFilter();
-	//InputErrResourse();//直接リソースをコピーの場合使用しない(カラの配列がコピーされてしまう)
+	InputErrResourse();
 	BackPropagation();
-	//CopyOutputErrResourse();
+	CopyOutputErrResourse();
 	CopyFilterResourse();
 	CopyBiasResourse();
 	//TestFilter();
@@ -668,10 +672,12 @@ void DxConvolution::InputResourse() {
 }
 
 void DxConvolution::InputErrResourse() {
+	if (!firstInErr)return;
 	dx->Bigin(com_no);
 	SubresourcesUp(inputError, output_inerrOneNum * FilNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 	dx->End(com_no);
 	dx->WaitFenceCurrent();
+	firstInErr = false;
 }
 
 void DxConvolution::CopyOutputResourse() {

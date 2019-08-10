@@ -56,6 +56,7 @@ protected:
 	UINT OutWid;//出力画像サイズ
 	UINT OutHei;//出力画像サイズ
 	bool firstIn = false;
+	bool firstInErr = false;
 
 	UINT elNumWid = 3;//奇数のみMax7
 	UINT ElNum = 9;  //elNumWid * elNumWid

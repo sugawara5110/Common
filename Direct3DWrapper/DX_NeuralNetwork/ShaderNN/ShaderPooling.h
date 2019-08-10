@@ -31,7 +31,7 @@ char *ShaderPooling =
 "{\n"
 "   uint setInd = outid.z;\n"
 "   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
-"   uint OutsetInd = (gWidHei.x / POOL) * (gWidHei.y / POOL) * gWidHei.z * setInd;\n"
+"   uint OutsetInd = ((uint)gWidHei.x / POOL) * ((uint)gWidHei.y / POOL) * (uint)gWidHei.z * setInd;\n"
 "   uint ox = outid.x;\n"//出力x座標
 "   uint oy = outid.y;\n"//出力y座標
 "   uint ix = ox * POOL;\n"//pooling対象左上要素x座標
@@ -60,7 +60,7 @@ char *ShaderPooling =
 "         gOutErr[InsetInd + gWidHei.x * (iy + py) + (ix + px)] = 0.0f;\n"//新しい値を0.0f
 "      }\n"
 "   }\n"
-"   gOutput[OutsetInd + (gWidHei.x / POOL) * oy + ox] = tmp;\n"//一番高い値を出力
+"   gOutput[OutsetInd + ((uint)gWidHei.x / POOL) * oy + ox] = tmp;\n"//一番高い値を出力
 "}\n"
 
 //逆伝播
@@ -70,7 +70,7 @@ char *ShaderPooling =
 "{\n"
 "   uint setInd = inerrid.z;\n"
 "   uint InsetInd = gWidHei.x * gWidHei.y * gWidHei.z * setInd;\n"
-"   uint OutsetInd = (gWidHei.x / POOL) * (gWidHei.y / POOL) * gWidHei.z * setInd;\n"
+"   uint OutsetInd = ((uint)gWidHei.x / POOL) * ((uint)gWidHei.y / POOL) * gWidHei.z * setInd;\n"
 "   uint ix = inerrid.x;\n"//inErrX
 "   uint iy = inerrid.y;\n"//inErrY
 "   uint ox = ix * POOL;\n"//outErrX

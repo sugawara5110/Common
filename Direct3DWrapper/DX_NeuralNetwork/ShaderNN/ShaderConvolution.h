@@ -88,8 +88,8 @@ char *ShaderConvolution =
 "   float tmp = 0.0f;\n"
 "   for(uint i = 0; i < filElNum; i++)\n"
 "   {\n"
-"      int fx = (i % gfilWid_filStep.x) - padding;\n"//Filter座標X - padding
-"      int fy = (i / gfilWid_filStep.x) - padding;\n"//Filter座標Y - padding
+"      int fx = (i % (int)gfilWid_filStep.x) - padding;\n"//Filter座標X - padding
+"      int fy = (i / (int)gfilWid_filStep.x) - padding;\n"//Filter座標Y - padding
 "      if(iy + fy >= 0 && iy + fy < gWidHei.y && ix + fx >= 0 && ix + fx < gWidHei.x)\n"//Padding領域はスキップ
 "      {\n"
 "         tmp += gInput[InsetInd + inStInd + gWidHei.x * (iy + fy) + (ix + fx)] * gFilter[filStInd + i] * \n"
@@ -133,7 +133,7 @@ char *ShaderConvolution =
 "   int inEwid = gWidHei.x * gfilWid_filStep.y;\n"//inErr側wid数
 "   int inEhei = gWidHei.y * gfilWid_filStep.y;\n"//inErr側hei数
 "   int iEx = outEid.x * gfilWid_filStep.y;\n"//inErr, widIndex
-"   int iEy = (outEid.y  * gfilWid_filStep.y) % inEhei;\n"//inErr, heiIndex(filter含まない)
+"   int iEy = (outEid.y * (int)gfilWid_filStep.y) % inEhei;\n"//inErr, heiIndex(filter含まない)
 "   int oEx = iEx / gfilWid_filStep.y;\n"//outErr, widIndex
 "   int oEy = iEy / gfilWid_filStep.y;\n"//outErr, heiIndex(filter含まない)
 "   int padding = gfilWid_filStep.x / 2;\n"
@@ -149,8 +149,8 @@ char *ShaderConvolution =
 "   float tmp = 0.0f;\n"
 "   for(int i = filElNum - 1; i >= 0; i--)\n"
 "   {\n"
-"      int fx = (i % gfilWid_filStep.x) - padding;\n"
-"      int fy = (i / gfilWid_filStep.x) - padding;\n"
+"      int fx = (i % (uint)gfilWid_filStep.x) - padding;\n"
+"      int fy = (i / (uint)gfilWid_filStep.x) - padding;\n"
 "      if(iEy + fy >= 0 && iEy + fy < inEhei && iEx + fx >= 0 && iEx + fx < inEwid)\n"//Padding領域はスキップ
 "      {\n"
 "         uint inErrInd = InEsetInd + inEStInd + inEwid * (iEy + fy) + (iEx + fx);\n"
@@ -186,8 +186,8 @@ char *ShaderConvolution =
 "      {\n"
 "         int Ex = i % inErrwid;\n"//inerrX
 "         int Ey = i / inErrwid;\n"//inerrY
-"         int Ix = Ex / gfilWid_filStep.y + (filx - padding);\n"//inputX
-"         int Iy = Ey / gfilWid_filStep.y + (fily - padding);\n"//inputY
+"         int Ix = Ex / (uint)gfilWid_filStep.y + (filx - padding);\n"//inputX
+"         int Iy = Ey / (uint)gfilWid_filStep.y + (fily - padding);\n"//inputY
 
 "         if(Ix >= 0 && Ix < gWidHei.x && Iy >= 0 && Iy < gWidHei.y)\n"
 "         {\n"
