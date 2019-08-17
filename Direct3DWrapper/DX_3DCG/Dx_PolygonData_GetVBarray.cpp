@@ -20,10 +20,16 @@ PolygonData::PolygonData() {
 	sg.vDiffuse.y = 1.0f;
 	sg.vDiffuse.z = 1.0f;
 	sg.vDiffuse.w = 1.0f;
+
 	sg.vSpeculer.x = 1.0f;
 	sg.vSpeculer.y = 1.0f;
 	sg.vSpeculer.z = 1.0f;
 	sg.vSpeculer.w = 1.0f;
+
+	sg.vAmbient.x = 0.0f;
+	sg.vAmbient.y = 0.0f;
+	sg.vAmbient.z = 0.0f;
+	sg.vAmbient.w = 0.0f;
 }
 
 PolygonData::~PolygonData() {
@@ -156,13 +162,19 @@ void PolygonData::GetShaderByteCode(bool light, int tNo, int nortNo) {
 	}
 }
 
-void PolygonData::SetCol(float difR, float difG, float difB, float speR, float speG, float speB) {
+void PolygonData::SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
+	float amR, float amG, float amB) {
 	sg.vDiffuse.x = difR;
 	sg.vDiffuse.y = difG;
 	sg.vDiffuse.z = difB;
+
 	sg.vSpeculer.x = speR;
 	sg.vSpeculer.y = speG;
 	sg.vSpeculer.z = speB;
+
+	sg.vAmbient.x = amR;
+	sg.vAmbient.y = amG;
+	sg.vAmbient.z = amB;
 }
 
 bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {

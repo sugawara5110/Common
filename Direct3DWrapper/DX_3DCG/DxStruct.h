@@ -50,6 +50,7 @@ struct CONSTANT_BUFFER {
 struct CONSTANT_BUFFER2 {
 	VECTOR4 vDiffuse;//ディフューズ色
 	VECTOR4 vSpeculer;//スぺキュラ色
+	VECTOR4 vAmbient;//アンビエント
 };
 
 //コンスタントバッファ2D用
@@ -145,6 +146,7 @@ struct MY_MATERIAL_S {
 	CHAR szName[255];
 	VECTOR4 Kd;//ディフューズ
 	VECTOR4 Ks;//スペキュラー
+	VECTOR4 Ka;//アンビエント
 	CHAR szTextureName[255];//テクスチャーファイル名
 	CHAR norTextureName[255];//ノーマルマップ
 	DWORD dwNumFace;//マテリアル毎のポリゴン数

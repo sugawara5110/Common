@@ -13,6 +13,7 @@ MeshData::MeshData() {
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	addDiffuse = 0.0f;
 	addSpecular = 0.0f;
+	addAmbient = 0.0f;
 }
 
 MeshData::~MeshData() {
@@ -103,6 +104,12 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
 			pMaterial[iMCount].Ks = v;
 		}
+		//Ka　アンビエント
+		if (strcmp(key, "Ka") == 0)
+		{
+			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
+			pMaterial[iMCount].Ka = v;
+		}
 		//map_Kd　テクスチャー
 		if (strcmp(key, "map_Kd") == 0)
 		{
@@ -125,12 +132,13 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 	return true;
 }
 
-void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu) {
+void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, float ambi) {
 	alpha = al;
 	blend = bl;
 	disp = di;
 	addDiffuse = diffuse;
 	addSpecular = specu;
+	addAmbient = ambi;
 
 	if (disp) {
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -286,8 +294,12 @@ bool MeshData::SetVertex() {
 		pMaterial[i].Ks.x += addSpecular;
 		pMaterial[i].Ks.y += addSpecular;
 		pMaterial[i].Ks.z += addSpecular;
+		pMaterial[i].Ka.x += addAmbient;
+		pMaterial[i].Ka.y += addAmbient;
+		pMaterial[i].Ka.z += addAmbient;
 		sg.vDiffuse = pMaterial[i].Kd;//ディフューズカラーをシェーダーに渡す
 		sg.vDiffuse = pMaterial[i].Ks;//スペキュラーをシェーダーに渡す
+		sg.vAmbient = pMaterial[i].Ka;//アンビエントをシェーダーに渡す
 		mObject_MESHCB->CopyData(i, sg);
 	}
 

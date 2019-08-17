@@ -24,6 +24,8 @@ char *ShaderCommonPS =
 
 //平行光源計算
 "    Col = Col + DirectionalLightCom(g_Speculer, g_Diffuse, N, g_DLightst, g_DLightDirection, g_DLightColor, input.wPos, g_C_Pos);\n"
+//アンビエント加算
+"    Col = Col + g_Ambient.xyz;\n"
 
 //最後に基本色にテクスチャの色を掛け合わせる
 "    return float4(Col, 1.0f) * T + g_ObjCol;\n"
@@ -50,6 +52,8 @@ char *ShaderCommonPS =
 
 //平行光源計算
 "    Col = Col + DirectionalLightCom(g_Speculer, g_Diffuse, N, g_DLightst, g_DLightDirection, g_DLightColor, input.wPos, g_C_Pos);\n"
+//アンビエント加算
+"    Col = Col + g_Ambient.xyz;\n"
 
 //最後に基本色にテクスチャの色を掛け合わせる
 "    return float4(Col, 1.0f) * T + g_ObjCol;\n"

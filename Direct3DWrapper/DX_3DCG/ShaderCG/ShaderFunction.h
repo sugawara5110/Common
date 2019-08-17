@@ -123,6 +123,7 @@ char *ShaderFunction =
 "{\n"
 "    float4 g_Diffuse;\n"
 "    float4 g_Speculer; \n"
+"    float4 g_Ambient;\n"
 "};\n"
 
 //DS, PS‚ÅŽg—p

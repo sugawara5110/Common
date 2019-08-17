@@ -61,6 +61,7 @@ protected:
 	bool disp = false;//テセレータフラグ
 	float addDiffuse;
 	float addSpecular;
+	float addAmbient;
 
 	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
 
@@ -75,7 +76,7 @@ protected:
 public:
 	MeshData();
 	~MeshData();
-	void SetState(bool alpha, bool blend, bool disp, float diffuse = 0.0f, float specu = 0.0f);
+	void SetState(bool alpha, bool blend, bool disp, float diffuse = 0.0f, float specu = 0.0f, float ambi = 0.0f);
 	bool GetBuffer(char* FileName);
 	bool SetVertex();
 	bool CreateMesh();

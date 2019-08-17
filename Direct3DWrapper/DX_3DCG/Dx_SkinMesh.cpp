@@ -49,6 +49,9 @@ SkinMesh::SkinMesh() {
 	pvVB_delete_f = true;
 	pvVB = nullptr;
 	texNum = 0;
+	addDiffuse = 0.0f;
+	addSpecular = 0.0f;
+	addAmbient = 0.0f;
 }
 
 SkinMesh::~SkinMesh() {
@@ -70,9 +73,12 @@ SkinMesh::~SkinMesh() {
 	DestroyFBX();
 }
 
-void SkinMesh::SetState(bool al, bool bl) {
+void SkinMesh::SetState(bool al, bool bl, float diffuse, float specu, float ambi) {
 	alpha = al;
 	blend = bl;
+	addDiffuse = diffuse;
+	addSpecular = specu;
+	addAmbient = ambi;
 }
 
 void SkinMesh::ObjCentering(bool f, int ind) {
@@ -295,24 +301,24 @@ void SkinMesh::SetVertex() {
 	//4頂点ポリゴンは分割後法線変化無しの為, 頂点は3頂点,4頂点混在状態の要素数で生成
 	pvVB = new MY_VERTEX_S[IndexCount34MeAll];
 
-	MY_VERTEX_S *tmpVB = new MY_VERTEX_S[VerAllpcs];
+	MY_VERTEX_S* tmpVB = new MY_VERTEX_S[VerAllpcs];
 	//スキン情報(ジョイント, ウェイト)
 	ReadSkinInfo(tmpVB);
 
 	//同一座標頂点リスト
-	SameVertexList *svList = new SameVertexList[VerAllpcs];
+	SameVertexList* svList = new SameVertexList[VerAllpcs];
 
-	FbxLoader *fbL = fbx[0].fbxL;
+	FbxLoader* fbL = fbx[0].fbxL;
 	//メッシュ毎に配列格納処理
 	int mInd = 0;//マテリアル内カウント
 	DWORD VerArrStart = 0;//分割前インデックス数(最終的な頂点数)
 	DWORD VerArrStart2 = 0;//読み込み時頂点数
 	for (int m = 0; m < NodeArraypcs; m++) {
-		FbxMeshNode *mesh = fbL->getFbxMeshNode(m);
-		int *piIndex = mesh->getPolygonVertices();//fbxから頂点インデックス配列取得
+		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);
+		int* piIndex = mesh->getPolygonVertices();//fbxから頂点インデックス配列取得
 
 		//頂点配列をfbxからコピー
-		double *pCoord = mesh->getVertices();
+		double* pCoord = mesh->getVertices();
 		for (int i = 0; i < IndexCount34Me[m]; i++) {
 			//fbxから読み込んだindex順で頂点を整列しながら頂点格納
 			pvVB[i + VerArrStart].vPos.x = (float)pCoord[piIndex[i] * 3 + 0];
@@ -330,8 +336,8 @@ void SkinMesh::SetVertex() {
 		int IndCount = 0;
 		int NorCount = 0;
 		int UVCount = 0;
-		double *Normal = mesh->getNormal();
-		double *UV = mesh->getAlignedUV();
+		double* Normal = mesh->getNormal();
+		double* UV = mesh->getAlignedUV();
 		for (DWORD i = 0; i < pdwNumFace[m]; i++) {
 			//int iStartIndex = pFbxMesh->GetPolygonVertexIndex(i);//ポリゴンを構成する最初のインデックス取得
 			int pcs = mesh->getPolygonSize(i);//各ポリゴンの頂点数
@@ -415,6 +421,11 @@ void SkinMesh::SetVertex() {
 			m_pMaterial[mInd].Ks.y = (float)mesh->getSpecularColor(0, 1);
 			m_pMaterial[mInd].Ks.z = (float)mesh->getSpecularColor(0, 2);
 			m_pMaterial[mInd].Ks.w = 0.0f;//使用してない
+			//アンビエント
+			m_pMaterial[mInd].Ka.x = (float)mesh->getAmbientColor(0, 0);
+			m_pMaterial[mInd].Ka.y = (float)mesh->getAmbientColor(0, 1);
+			m_pMaterial[mInd].Ka.z = (float)mesh->getAmbientColor(0, 2);
+			m_pMaterial[mInd].Ka.w = 0.0f;//使用してない
 
 			//テクスチャー
 			if (mesh->getNormalTextureName(i)) {
@@ -509,8 +520,18 @@ void SkinMesh::SetVertex() {
 
 	for (int i = 0; i < MateAllpcs; i++) {
 		CONSTANT_BUFFER2 sg;
+		m_pMaterial[i].Kd.x += addDiffuse;
+		m_pMaterial[i].Kd.y += addDiffuse;
+		m_pMaterial[i].Kd.z += addDiffuse;
+		m_pMaterial[i].Ks.x += addSpecular;
+		m_pMaterial[i].Ks.y += addSpecular;
+		m_pMaterial[i].Ks.z += addSpecular;
+		m_pMaterial[i].Ka.x += addAmbient;
+		m_pMaterial[i].Ka.y += addAmbient;
+		m_pMaterial[i].Ka.z += addAmbient;
 		sg.vDiffuse = m_pMaterial[i].Kd;//ディフューズカラーをシェーダーに渡す
 		sg.vSpeculer = m_pMaterial[i].Ks;//スペキュラーをシェーダーに渡す
+		sg.vAmbient = m_pMaterial[i].Ka;//アンビエントをシェーダーに渡す
 		mObjectCB1->CopyData(i, sg);
 	}
 }

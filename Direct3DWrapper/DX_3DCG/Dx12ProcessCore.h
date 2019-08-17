@@ -560,7 +560,8 @@ public:
 	~PolygonData();
 	ID3D12PipelineState* GetPipelineState();
 	void GetVBarray(PrimitiveType type, int v);
-	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB);
+	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
+		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 	bool Create(bool light, int tNo, bool blend, bool alpha);
 	bool Create(bool light, int tNo, int nortNo, bool blend, bool alpha);
 	void SetVertex(int I1, int I2, int i,

@@ -31,14 +31,17 @@ class SkinMesh :public Common {
 protected:
 	friend SkinMesh_sub;
 	friend Dx12Process;
-	ID3DBlob *vs = nullptr;
-	ID3DBlob *vsB = nullptr;
-	ID3DBlob *hs = nullptr;
-	ID3DBlob *ds = nullptr;
-	ID3DBlob *ps = nullptr;
-	ID3DBlob *psB = nullptr;
+	ID3DBlob* vs = nullptr;
+	ID3DBlob* vsB = nullptr;
+	ID3DBlob* hs = nullptr;
+	ID3DBlob* ds = nullptr;
+	ID3DBlob* ps = nullptr;
+	ID3DBlob* psB = nullptr;
 	bool alpha = false;
 	bool blend = false;
+	float addDiffuse;
+	float addSpecular;
+	float addAmbient;
 
 	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
 
@@ -47,9 +50,9 @@ protected:
 	int texNum;//テクスチャー数
 
 	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB0 = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
-	ConstantBuffer<SHADER_GLOBAL_BONES> *mObject_BONES = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB0 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
 	CONSTANT_BUFFER cb[2];
 	SHADER_GLOBAL_BONES sgb[2];
 	int sw = 0;
@@ -67,33 +70,33 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
 	//メッシュ関連	
-	DWORD *m_pdwNumVert;//メッシュ毎の頂点数
+	DWORD* m_pdwNumVert;//メッシュ毎の頂点数
 	DWORD VerAllpcs;   //全頂点数
-	MY_VERTEX_S *pvVB;//使用後保持するか破棄するかフラグで決める,通常は破棄
+	MY_VERTEX_S* pvVB;//使用後保持するか破棄するかフラグで決める,通常は破棄
 	bool pvVB_delete_f;
 
 	int MateAllpcs;  //全マテリアル数
-	MY_MATERIAL_S *m_pMaterial;
+	MY_MATERIAL_S* m_pMaterial;
 
 	//一時格納用
-	DWORD *m_pMaterialCount;//メッシュ毎のマテリアルカウント
-	DWORD *pdwNumFace; //メッシュ毎のポリゴン数
-	int *IndexCount34Me;  //4頂点ポリゴン分割前のメッシュ毎のインデックス数
+	DWORD* m_pMaterialCount;//メッシュ毎のマテリアルカウント
+	DWORD* pdwNumFace; //メッシュ毎のポリゴン数
+	int* IndexCount34Me;  //4頂点ポリゴン分割前のメッシュ毎のインデックス数
 	int IndexCount34MeAll;
-	int *IndexCount3M;  //4頂点ポリゴン分割後のマテリアル毎のインデックス数
-	int **pIndex;      //メッシュ毎のインデックス配列(4頂点ポリゴン分割後)
+	int* IndexCount3M;  //4頂点ポリゴン分割後のマテリアル毎のインデックス数
+	int** pIndex;      //メッシュ毎のインデックス配列(4頂点ポリゴン分割後)
 
 	//ボーン
 	int m_iNumBone;
-	BONE *m_BoneArray;
+	BONE* m_BoneArray;
 
 	//FBX
-	SkinMesh_sub *fbx;
-	Deformer **m_ppCluster;//ボーン情報
-	char *m_pClusterName;
+	SkinMesh_sub* fbx;
+	Deformer** m_ppCluster;//ボーン情報
+	char* m_pClusterName;
 	int NodeArraypcs;
-	Deformer **m_ppSubAnimationBone;//その他アニメーションボーンポインタ配列
-	MATRIX *m_pLastBoneMatrix;
+	Deformer** m_ppSubAnimationBone;//その他アニメーションボーンポインタ配列
+	MATRIX* m_pLastBoneMatrix;
 	int AnimLastInd;
 	float BoneConnect;
 
@@ -104,10 +107,10 @@ protected:
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
 	void CreateIndexBuffer(int cnt, int IviewInd);
-	void CreateIndexBuffer2(int *pIndex, int IviewInd);
-	void ReadSkinInfo(MY_VERTEX_S *pvVB);
+	void CreateIndexBuffer2(int* pIndex, int IviewInd);
+	void ReadSkinInfo(MY_VERTEX_S* pvVB);
 	MATRIX GetCurrentPoseMatrix(int index);
-	void MatrixMap_Bone(SHADER_GLOBAL_BONES *sbB);
+	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
 	bool GetTexture();
 	bool SetNewPoseMatrices(float time, int ind);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
@@ -121,7 +124,7 @@ public:
 	SkinMesh();
 	~SkinMesh();
 
-	void SetState(bool alpha, bool blend);
+	void SetState(bool alpha, bool blend, float diffuse = 0.0f, float specu = 0.0f, float ambi = 0.0f);
 	void ObjCentering(bool f, int ind);
 	void ObjCentering(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind);
 	void ObjOffset(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind);
@@ -130,8 +133,8 @@ public:
 	HRESULT GetFbx(CHAR* szFileName);
 	void GetBuffer(float end_frame);
 	void SetVertex();
-	void SetDiffuseTextureName(char *textureName, int materialIndex);
-	void SetNormalTextureName(char *textureName, int materialIndex);
+	void SetDiffuseTextureName(char* textureName, int materialIndex);
+	void SetNormalTextureName(char* textureName, int materialIndex);
 	bool CreateFromFBX(bool disp);
 	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
