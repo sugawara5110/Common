@@ -44,7 +44,7 @@ void MeshData::GetShaderByteCode(bool disp) {
 	psB = dx->pPixelShader_Bump.Get();
 }
 
-bool MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
+bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) {
 
 	//マテリアルファイルを開いて内容を読み込む
 	errno_t error;
@@ -72,7 +72,7 @@ bool MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 		}
 	}
 
-	MY_MATERIAL* pMaterial = new MY_MATERIAL[MaterialCount]();
+	MY_MATERIAL_S* pMaterial = new MY_MATERIAL_S[MaterialCount]();
 
 	//本読み込み	
 	fseek(fp, 0, SEEK_SET);
@@ -89,7 +89,7 @@ bool MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 		{
 			iMCount++;
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));//lineの7要素目(newmtl)の直後から1個目の文字列をkeyに格納
-			strcpy_s(pMaterial[iMCount].MaterialName, key);
+			strcpy_s(pMaterial[iMCount].szName, key);
 		}
 		//Kd　ディフューズ
 		if (strcmp(key, "Kd") == 0)
@@ -106,8 +106,8 @@ bool MeshData::LoadMaterialFromFile(char *FileName, MY_MATERIAL** ppMaterial) {
 		//map_Kd　テクスチャー
 		if (strcmp(key, "map_Kd") == 0)
 		{
-			sscanf_s(&line[7], "%s", &pMaterial[iMCount].TextureName, (unsigned int)sizeof(pMaterial[iMCount].TextureName));
-			pMaterial[iMCount].tex_no = dx->GetTexNumber(pMaterial[iMCount].TextureName);
+			sscanf_s(&line[7], "%s", &pMaterial[iMCount].szTextureName, (unsigned int)sizeof(pMaterial[iMCount].szTextureName));
+			pMaterial[iMCount].tex_no = dx->GetTexNumber(pMaterial[iMCount].szTextureName);
 			texNum++;
 		}
 		//map_bump　テクスチャー
@@ -276,7 +276,7 @@ bool MeshData::SetVertex() {
 	}
 
 	//同一座標頂点リスト
-	SameVertexList *svList = new SameVertexList[VCount];
+	SameVertexList* svList = new SameVertexList[VCount];
 
 	for (int i = 0; i < MaterialCount; i++) {
 		CONSTANT_BUFFER2 sg;
@@ -312,7 +312,7 @@ bool MeshData::SetVertex() {
 			if (strcmp(key, "usemtl") == 0)
 			{
 				sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-				if (strcmp(key, pMaterial[i].MaterialName) == 0)
+				if (strcmp(key, pMaterial[i].szName) == 0)
 				{
 					boFlag = true;
 				}
@@ -360,7 +360,7 @@ bool MeshData::SetVertex() {
 				FCount++;
 			}
 		}
-
+		pMaterial[i].dwNumFace = dwPartFCount;
 		if (dwPartFCount == 0)//使用されていないマテリアル対策が必要な場合処理追加。Drawにも
 		{
 			continue;
@@ -507,43 +507,22 @@ void MeshData::Draw() {
 	mObjectCB->CopyData(0, cb[1 - sw]);
 	Unlock();
 
-	mCommandList->SetPipelineState(mPSO.Get());
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
-
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	for (int i = 0; i < MaterialCount; i++) {
-
-		mCommandList->IASetIndexBuffer(&Iview[i].IndexBufferView());
-
-		mCommandList->SetGraphicsRootDescriptorTable(0, tex);
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
-		if (pMaterial[i].nortex_no != -1) {
-			mCommandList->IASetPrimitiveTopology(primType_drawB);
-			//normalMapが存在する場合diffuseの次に格納されている
-			mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-			mCommandList->SetPipelineState(mPSO_B.Get());//normalMap有り無しでPSO切り替え
-		}
-		else {
-			mCommandList->IASetPrimitiveTopology(primType_draw);
-			mCommandList->SetPipelineState(mPSO.Get());
-		}
-		mCommandList->SetGraphicsRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
-		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
-		mCommandList->SetGraphicsRootConstantBufferView(3, mObject_MESHCB->Resource()->GetGPUVirtualAddress() + mElementByteSize * i);
-
-		mCommandList->DrawIndexedInstanced(Iview[i].IndexCount, insNum, 0, 0, 0);
-	}
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	drawPara para;
+	para.NumMaterial = MaterialCount;
+	para.srv = mSrvHeap.Get();
+	para.rootSignature = mRootSignature.Get();
+	para.Vview = Vview.get();
+	para.Iview = Iview.get();
+	para.material = pMaterial;
+	para.haveNortexTOPOLOGY = primType_drawB;
+	para.notHaveNortexTOPOLOGY = primType_draw;
+	para.haveNortexPSO = mPSO_B.Get();
+	para.notHaveNortexPSO = mPSO.Get();
+	para.cbRes0 = mObjectCB->Resource();
+	para.cbRes1 = mObject_MESHCB->Resource();
+	para.cbRes2 = nullptr;
+	para.sRes0 = nullptr;
+	para.sRes1 = nullptr;
+	para.insNum = insNum;
+	drawsub(para);
 }

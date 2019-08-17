@@ -115,11 +115,11 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
 	Vview = std::make_unique<VertexView>();
-	Iview = std::make_unique<IndexView>();
+	Iview = std::make_unique<IndexView[]>(1);
 }
 
 void PolygonData::GetShaderByteCode(bool light, int tNo, int nortNo) {
-	t_no = tNo;
+	material[0].tex_no = tNo;
 	bool disp = false;
 	if (primType_create == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH)disp = true;
 	if (tNo == -1 && m_on == false) {
@@ -192,6 +192,9 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 
 	//SRVのデスクリプターヒープ生成
 	texNum = 1;
+	material[0].tex_no = tNo;
+	material[0].nortex_no = nortNo;
+	material[0].dwNumFace = 1;
 	if (nortNo != -1)texNum = 2;//normalMap有りの場合2個生成
 	TextureNo te;
 	te.diffuse = tNo;
@@ -214,13 +217,13 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	else
 		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview->IndexBufferUploader);
+	Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview[0].IndexBufferUploader);
 
 	Vview->VertexByteStride = VertexSize;
 	Vview->VertexBufferByteSize = vbByteSize;
-	Iview->IndexFormat = DXGI_FORMAT_R16_UINT;
-	Iview->IndexBufferByteSize = ibByteSize;
-	Iview->IndexCount = verI;
+	Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
+	Iview[0].IndexBufferByteSize = ibByteSize;
+	Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
 	if (tNo == -1 && !m_on)
@@ -273,33 +276,22 @@ void PolygonData::Draw() {
 	mObjectCB->CopyData(0, cb[1 - sw]);
 	Unlock();
 
-	mCommandList->SetPipelineState(mPSO.Get());
-
-	//mSwapChainBuffer PRESENT→RENDER_TARGET
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);//テクスチャ無しの場合このままで良いのやら・・エラーは無し
-
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
-
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-	mCommandList->IASetIndexBuffer(&Iview->IndexBufferView());
-	mCommandList->IASetPrimitiveTopology(primType_draw);
-
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetGraphicsRootDescriptorTable(0, tex);
-	if (texNum == 2) {
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-	}
-	mCommandList->SetGraphicsRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->SetGraphicsRootConstantBufferView(3, mObjectCB1->Resource()->GetGPUVirtualAddress());
-
-	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum, 0, 0, 0);
-
-	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	drawPara para;
+	para.NumMaterial = 1;
+	para.srv = mSrvHeap.Get();
+	para.rootSignature = mRootSignature.Get();
+	para.Vview = Vview.get();
+	para.Iview = Iview.get();
+	para.material = material;
+	para.haveNortexTOPOLOGY = primType_draw;
+	para.notHaveNortexTOPOLOGY = primType_draw;
+	para.haveNortexPSO = mPSO.Get();
+	para.notHaveNortexPSO = mPSO.Get();
+	para.cbRes0 = mObjectCB->Resource();
+	para.cbRes1 = mObjectCB1->Resource();
+	para.cbRes2 = nullptr;
+	para.sRes0 = nullptr;
+	para.sRes1 = nullptr;
+	para.insNum = insNum;
+	drawsub(para);
 }

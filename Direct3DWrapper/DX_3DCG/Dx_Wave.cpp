@@ -54,7 +54,7 @@ void Wave::GetVBarray(int v) {
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
 	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
 	Vview = std::make_unique<VertexView>();
-	Iview = std::make_unique<IndexView>();
+	Iview = std::make_unique<IndexView[]>(1);
 }
 
 void Wave::GetShaderByteCode(int texNum) {
@@ -164,6 +164,9 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	mRootSignatureDraw = CreateRs(6, slotRootParameter);
 	if (mRootSignatureDraw == nullptr)return false;
 
+	material[0].tex_no = texNo;
+	material[0].nortex_no = nortNo;
+	material[0].dwNumFace = 1;
 	TextureNo te;
 	te.diffuse = texNo;
 	te.normal = nortNo;
@@ -176,13 +179,13 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview->IndexBufferUploader);
+	Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview[0].IndexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(Vertex);
 	Vview->VertexBufferByteSize = vbByteSize;
-	Iview->IndexFormat = DXGI_FORMAT_R16_UINT;
-	Iview->IndexBufferByteSize = ibByteSize;
-	Iview->IndexCount = verI;
+	Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
+	Iview[0].IndexBufferByteSize = ibByteSize;
+	Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
 	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend);
@@ -198,7 +201,8 @@ bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float div
 bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide) {
 	cbw.wHei_divide.as(waveHeight, divide, 0.0f, 0.0f);
 	mObjectCB_WAVE->CopyData(0, cbw);
-	t_no = texNo;
+	material[0].tex_no = texNo;
+	material[0].nortex_no = nortNo;
 	if (nortNo != -1)texNum = 2;
 	GetShaderByteCode(texNum);
 	if (!ComCreate())return false;
@@ -259,37 +263,24 @@ void Wave::Compute() {
 
 void Wave::DrawSub() {
 
-	mCommandList->SetPipelineState(mPSODraw.Get());
-
-	//mSwapChainBuffer PRESENT→RENDER_TARGET
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);//テクスチャ無しの場合このままで良いのやら・・エラーは無し
-
-	mCommandList->SetGraphicsRootSignature(mRootSignatureDraw.Get());
-
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-	mCommandList->IASetIndexBuffer(&Iview->IndexBufferView());
-	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetGraphicsRootDescriptorTable(0, tex);
-	if (texNum == 2) {
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-	}
-	mCommandList->SetGraphicsRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->SetGraphicsRootConstantBufferView(3, mObjectCB1->Resource()->GetGPUVirtualAddress());
-	mCommandList->SetGraphicsRootConstantBufferView(4, mObjectCB_WAVE->Resource()->GetGPUVirtualAddress());
-	mCommandList->SetGraphicsRootShaderResourceView(5, mOutputBuffer->GetGPUVirtualAddress());
-
-	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum, 0, 0, 0);
-
-	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	drawPara para;
+	para.NumMaterial = 1;
+	para.srv = mSrvHeap.Get();
+	para.rootSignature = mRootSignatureDraw.Get();
+	para.Vview = Vview.get();
+	para.Iview = Iview.get();
+	para.material = material;
+	para.haveNortexTOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+	para.notHaveNortexTOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+	para.haveNortexPSO = mPSODraw.Get();
+	para.notHaveNortexPSO = mPSODraw.Get();
+	para.cbRes0 = mObjectCB->Resource();
+	para.cbRes1 = mObjectCB1->Resource();
+	para.cbRes2 = mObjectCB_WAVE->Resource();
+	para.sRes0 = mOutputBuffer.Get();
+	para.sRes1 = nullptr;
+	para.insNum = insNum;
+	drawsub(para);
 }
 
 void Wave::Draw() {

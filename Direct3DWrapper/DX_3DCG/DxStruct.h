@@ -127,24 +127,6 @@ struct VertexM {
 	VECTOR2 tex;    //テクスチャ座標
 };
 
-struct MY_MATERIAL {
-	CHAR MaterialName[110];//マテリアルファイル内のマテリアル名が入る
-	VECTOR4 Kd;           //ディフューズ
-	VECTOR4 Ks;           //スペキュラー
-	CHAR TextureName[110];//テクスチャファイル名
-	CHAR norTextureName[255];//ノーマルマップファイル名
-	int tex_no;
-	int nortex_no;
-
-	MY_MATERIAL()
-	{
-		ZeroMemory(this, sizeof(MY_MATERIAL));
-		tex_no = -1;
-		nortex_no = -1;
-	}
-	~MY_MATERIAL() {}
-};
-
 //以下スキンメッシュ
 struct MY_VERTEX_S{
 	VECTOR3 vPos;//頂点

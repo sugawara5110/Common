@@ -687,12 +687,12 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 
 	int frame = (int)fbx[ind].current_frame;
 	Deformer Time;
-	int64_t time = Time.getTimeFRAMES60(frame / 10.0);
+	int64_t time = Time.getTimeFRAMES60(frame / 10);
 
 	bool subanm = true;
 	if (ind <= 0 || ind > FBX_PCS - 1)subanm = false;
 
-	Deformer *defo = nullptr;
+	Deformer* defo = nullptr;
 	if (!subanm) {
 		defo = m_ppCluster[0];
 	}
@@ -714,7 +714,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 
 	MATRIX pose;
 	for (int i = 0; i < m_iNumBone; i++) {
-		Deformer *de = nullptr;
+		Deformer* de = nullptr;
 		if (!subanm) {
 			de = m_ppCluster[i];
 		}
@@ -863,49 +863,24 @@ void SkinMesh::Draw() {
 	mObject_BONES->CopyData(0, sgb[1 - sw]);
 	Unlock();
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
-
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	for (int i = 0; i < MateAllpcs; i++) {
-		//使用されていないマテリアル対策
-		if (m_pMaterial[i].dwNumFace == 0)
-		{
-			continue;
-		}
-		mCommandList->IASetIndexBuffer(&Iview[i].IndexBufferView());
-
-		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex(shader内registerIndex), DESCRIPTOR_HANDLE)
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
-		if (m_pMaterial[i].nortex_no != -1) {
-			mCommandList->IASetPrimitiveTopology(primType_drawB);
-			//normalMapが存在する場合diffuseの次に格納されている
-			mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-			mCommandList->SetPipelineState(mPSO_B.Get());//normalMap有り無しでPSO切り替え
-		}
-		else {
-			mCommandList->IASetPrimitiveTopology(primType_draw);
-			mCommandList->SetPipelineState(mPSO.Get());
-		}
-
-		mCommandList->SetGraphicsRootConstantBufferView(2, mObjectCB0->Resource()->GetGPUVirtualAddress());
-		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
-		mCommandList->SetGraphicsRootConstantBufferView(3, mObjectCB1->Resource()->GetGPUVirtualAddress() + mElementByteSize * i);
-		mCommandList->SetGraphicsRootConstantBufferView(4, mObject_BONES->Resource()->GetGPUVirtualAddress());
-
-		mCommandList->DrawIndexedInstanced(Iview[i].IndexCount, 1, 0, 0, 0);
-	}
-
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	drawPara para;
+	para.NumMaterial = MateAllpcs;
+	para.srv = mSrvHeap.Get();
+	para.rootSignature = mRootSignature.Get();
+	para.Vview = Vview.get();
+	para.Iview = Iview.get();
+	para.material = m_pMaterial;
+	para.haveNortexTOPOLOGY = primType_drawB;
+	para.notHaveNortexTOPOLOGY = primType_draw;
+	para.haveNortexPSO = mPSO_B.Get();
+	para.notHaveNortexPSO = mPSO.Get();
+	para.cbRes0 = mObjectCB0->Resource();
+	para.cbRes1 = mObjectCB1->Resource();
+	para.cbRes2 = mObject_BONES->Resource();
+	para.sRes0 = nullptr;
+	para.sRes1 = nullptr;
+	para.insNum = 1;
+	drawsub(para);
 }
 
 

@@ -189,9 +189,6 @@ private:
 
 	bool CreateShaderByteCodeBool = true;
 
-	//サンプラ
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
-
 	D3D12_VIEWPORT mScreenViewport;
 	D3D12_RECT mScissorRect;
 
@@ -413,74 +410,94 @@ protected:
 	friend Wave;
 	friend PostEffect;
 	Common() {}//外部からのオブジェクト生成禁止
-	Common(const Common &obj) {}     // コピーコンストラクタ禁止
+	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
 
-	Dx12Process                *dx;
-	ID3D12GraphicsCommandList  *mCommandList;
+	Dx12Process* dx;
+	ID3D12GraphicsCommandList* mCommandList;
 	int                        com_no = 0;
 
 	//テクスチャ保持(SetTextureMPixel用)
-	ID3D12Resource *texture = nullptr;
-	ID3D12Resource *textureUp = nullptr;
+	ID3D12Resource* texture = nullptr;
+	ID3D12Resource* textureUp = nullptr;
 	//movie_on
 	bool   m_on = false;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
-	ID3D12DescriptorHeap *CreateSrvHeap(int MaterialNum, int texNum, TextureNo *to, ID3D12Resource *movietex = nullptr);
+	ID3D12DescriptorHeap* CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to, ID3D12Resource* movietex = nullptr);
 
-	ID3D12RootSignature *CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC *rootSigDesc);//直接使用禁止
+	ID3D12RootSignature* CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//直接使用禁止
 
-	ID3D12RootSignature *CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER *slotRootParameter);
-	ID3D12RootSignature *CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER *slotRootParameter);
-	ID3D12RootSignature *CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER *slotRootParameter);
+	ID3D12RootSignature* CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ID3D12RootSignature* CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ID3D12RootSignature* CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 
-	ID3D12PipelineState *CreatePSO(ID3DBlob *vs, ID3DBlob *hs,
-		ID3DBlob *ds, ID3DBlob *ps, ID3DBlob *gs,
-		ID3D12RootSignature *mRootSignature,
-		std::vector<D3D12_INPUT_ELEMENT_DESC> *pVertexLayout,
-		std::vector<D3D12_SO_DECLARATION_ENTRY> *pDeclaration,
+	ID3D12PipelineState* CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
+		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
+		ID3D12RootSignature* mRootSignature,
+		std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
+		std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
 		bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
 		PrimitiveType type);
 
-	ID3D12PipelineState *CreatePsoVsPs(ID3DBlob *vs, ID3DBlob *ps,
-		ID3D12RootSignature *mRootSignature,
+	ID3D12PipelineState* CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
+		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type = NUL);
 
-	ID3D12PipelineState *CreatePsoVsHsDsPs(ID3DBlob *vs, ID3DBlob *hs, ID3DBlob *ds, ID3DBlob *ps,
-		ID3D12RootSignature *mRootSignature,
+	ID3D12PipelineState* CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
+		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type = NUL);
 
-	ID3D12PipelineState *CreatePsoStreamOutput(ID3DBlob *vs, ID3DBlob *gs,
-		ID3D12RootSignature *mRootSignature,
+	ID3D12PipelineState* CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize);
 
-	ID3D12PipelineState *CreatePsoParticle(ID3DBlob *vs, ID3DBlob *ps, ID3DBlob *gs,
-		ID3D12RootSignature *mRootSignature,
+	ID3D12PipelineState* CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
+		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend);
 
-	ID3D12PipelineState *CreatePsoCompute(ID3DBlob *cs,
-		ID3D12RootSignature *mRootSignature);
+	ID3D12PipelineState* CreatePsoCompute(ID3DBlob* cs,
+		ID3D12RootSignature* mRootSignature);
 
-	ID3D12Resource *GetSwapChainBuffer();
-	ID3D12Resource *GetDepthStencilBuffer();
-	ID3D12Resource *GetTexture(int Num);
+	ID3D12Resource* GetSwapChainBuffer();
+	ID3D12Resource* GetDepthStencilBuffer();
+	ID3D12Resource* GetTexture(int Num);
 	D3D12_RESOURCE_STATES GetTextureStates();
-	ID3D12Resource *GetTextureUp(int Num);
+	ID3D12Resource* GetTextureUp(int Num);
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+
+	struct drawPara {
+		UINT NumMaterial = 0;
+		ID3D12DescriptorHeap* srv = nullptr;
+		ID3D12RootSignature* rootSignature = nullptr;
+		VertexView* Vview = nullptr;
+		IndexView* Iview = nullptr;
+		MY_MATERIAL_S* material = nullptr;
+		D3D_PRIMITIVE_TOPOLOGY haveNortexTOPOLOGY;
+		D3D_PRIMITIVE_TOPOLOGY notHaveNortexTOPOLOGY;
+		ID3D12PipelineState* haveNortexPSO = nullptr;
+		ID3D12PipelineState* notHaveNortexPSO = nullptr;
+		ID3D12Resource* cbRes0 = nullptr;
+		ID3D12Resource* cbRes1 = nullptr;
+		ID3D12Resource* cbRes2 = nullptr;
+		ID3D12Resource* sRes0 = nullptr;
+		ID3D12Resource* sRes1 = nullptr;
+		UINT insNum = 1;
+	};
+	void drawsub(drawPara para);
 
 public:
 	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource *texture, D3D12_RESOURCE_STATES res);
+	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res);
 	HRESULT TextureInit(int width, int height);
-	HRESULT SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold = 50);
+	HRESULT SetTextureMPixel(UINT** m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold = 50);
 };
 
 //*********************************PolygonDataクラス*************************************//
@@ -489,17 +506,17 @@ class PolygonData :public Common {
 
 protected:
 	//ポインタで受け取る
-	ID3DBlob *vs = nullptr;
-	ID3DBlob *ps = nullptr;
-	ID3DBlob *hs = nullptr;
-	ID3DBlob *ds = nullptr;
+	ID3DBlob* vs = nullptr;
+	ID3DBlob* ps = nullptr;
+	ID3DBlob* hs = nullptr;
+	ID3DBlob* ds = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
 	CONSTANT_BUFFER cb[2];
 	CONSTANT_BUFFER2 sg;
 	int sw = 0;
@@ -512,19 +529,19 @@ protected:
 
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
-	std::unique_ptr<IndexView> Iview = nullptr;
+	std::unique_ptr<IndexView[]> Iview = nullptr;
 
 	//テクスチャ番号(通常テクスチャ用)
-	int    t_no = -1;
+	MY_MATERIAL_S material[1];
 	int    insNum = 0;
 	int    texNum;//テクスチャ個数
 
 	//パイプラインOBJ
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
-	Vertex         *d3varray;  //頂点配列
-	VertexBC       *d3varrayBC;//頂点配列基本色
-	std::uint16_t  *d3varrayI;//頂点インデックス
+	Vertex* d3varray;  //頂点配列
+	VertexBC* d3varrayBC;//頂点配列基本色
+	std::uint16_t* d3varrayI;//頂点インデックス
 	int            ver;      //頂点個数
 	int            verI;    //頂点インデックス
 
@@ -541,7 +558,7 @@ protected:
 public:
 	PolygonData();
 	~PolygonData();
-	ID3D12PipelineState *GetPipelineState();
+	ID3D12PipelineState* GetPipelineState();
 	void GetVBarray(PrimitiveType type, int v);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB);
 	bool Create(bool light, int tNo, bool blend, bool alpha);

@@ -12,19 +12,19 @@
 class Wave :public Common {
 
 protected:
-	ID3DBlob *cs = nullptr;
-	ID3DBlob *vs = nullptr;
-	ID3DBlob *ps = nullptr;
-	ID3DBlob *hs = nullptr;
-	ID3DBlob *ds = nullptr;
+	ID3DBlob* cs = nullptr;
+	ID3DBlob* vs = nullptr;
+	ID3DBlob* ps = nullptr;
+	ID3DBlob* hs = nullptr;
+	ID3DBlob* ds = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
-	ConstantBuffer<CONSTANT_BUFFER> *mObjectCB = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2> *mObjectCB1 = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER_WAVE> *mObjectCB_WAVE = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_WAVE>* mObjectCB_WAVE = nullptr;
 	CONSTANT_BUFFER cb[2];
 	CONSTANT_BUFFER2 sg;
 	CONSTANT_BUFFER_WAVE cbw;
@@ -37,17 +37,17 @@ protected:
 	bool DrawOn = false;
 
 	std::unique_ptr<VertexView> Vview = nullptr;
-	std::unique_ptr<IndexView> Iview = nullptr;
+	std::unique_ptr<IndexView[]> Iview = nullptr;
 
 	//テクスチャ番号(通常テクスチャ用)
-	int    t_no = -1;
+	MY_MATERIAL_S material[1];
 	int    insNum = 0;
 	int    texNum;//テクスチャー数
 
 	int div;//分割数
 
-	Vertex         *d3varray;  //頂点配列
-	std::uint16_t  *d3varrayI;//頂点インデックス
+	Vertex* d3varray;  //頂点配列
+	std::uint16_t* d3varrayI;//頂点インデックス
 	int            ver;      //頂点個数
 	int            verI;    //頂点インデックス
 

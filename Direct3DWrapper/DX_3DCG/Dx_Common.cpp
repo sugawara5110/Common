@@ -238,12 +238,17 @@ ID3D12RootSignature *Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC *rootSig
 	return rs;
 }
 
-ID3D12RootSignature *Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER *slotRootParameter)
+ID3D12RootSignature* Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
 {
-	auto staticSamplers = dx->GetStaticSamplers();
+	const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+		0, // shaderRegister
+		D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+		D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(paramNum, slotRootParameter,
-		(UINT)staticSamplers.size(), staticSamplers.data(),
+		1, &linearWrap,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	return CreateRsCommon(&rootSigDesc);
@@ -452,4 +457,56 @@ ID3D12Resource *Common::GetTextureUp(int Num) {
 
 Microsoft::WRL::ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
 	return dx->CompileShader(szFileName, size, szFuncName, szProfileName);
+}
+
+void Common::drawsub(drawPara para) {
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	ID3D12DescriptorHeap* descriptorHeaps[] = { para.srv };
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+	mCommandList->SetGraphicsRootSignature(para.rootSignature);
+
+	mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.srv->GetGPUDescriptorHandleForHeapStart());
+	for (UINT i = 0; i < para.NumMaterial; i++) {
+		//使用されていないマテリアル対策
+		if (para.material[i].dwNumFace == 0)
+		{
+			continue;
+		}
+		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
+
+		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex(shader内registerIndex), DESCRIPTOR_HANDLE)
+		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
+		if (para.material[i].nortex_no != -1) {
+			mCommandList->IASetPrimitiveTopology(para.haveNortexTOPOLOGY);
+			//normalMapが存在する場合diffuseの次に格納されている
+			mCommandList->SetGraphicsRootDescriptorTable(1, tex);
+			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+			mCommandList->SetPipelineState(para.haveNortexPSO);//normalMap有り無しでPSO切り替え
+		}
+		else {
+			mCommandList->IASetPrimitiveTopology(para.notHaveNortexTOPOLOGY);
+			mCommandList->SetPipelineState(para.notHaveNortexPSO);
+		}
+
+		mCommandList->SetGraphicsRootConstantBufferView(2, para.cbRes0->GetGPUVirtualAddress());
+		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
+		mCommandList->SetGraphicsRootConstantBufferView(3, para.cbRes1->GetGPUVirtualAddress() + mElementByteSize * i);
+		UINT viewIndex = 4;
+		if (para.cbRes2 != nullptr)
+			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2->GetGPUVirtualAddress());
+		if (para.sRes0 != nullptr)
+			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes0->GetGPUVirtualAddress());
+		if (para.sRes1 != nullptr)
+			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes1->GetGPUVirtualAddress());
+
+		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
+	}
+
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 }
