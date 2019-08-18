@@ -60,7 +60,6 @@ DxText::DxText() {
 	}
 	dx->End(0);
 	dx->WaitFenceCurrent();
-	CreateTextNo = 0;
 }
 
 DxText::~DxText(){
@@ -361,24 +360,30 @@ TCHAR* DxText::getStr(char* str, ...) {
 	return tc;
 }
 
-void DxText::UpDateText(TCHAR *c, float x, float y, float fontsize, VECTOR4 cl) {
-	bool match = false;
+void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
+
 	int texNo = -1;
 
 	//登録済みテキスト検索
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		if (_tcscmp(c, str[i]) == 0 && f_size[i] == fontsize) {
-			match = true;
 			texNo = i;
+			break;
 		}
 	}
 
+	//登録されてないテキストの場合新規登録
 	if (texNo == -1) {
-		if (CreateTextNo == STRTEX_MAX_PCS)CreateTextNo = 0;
-		texNo = CreateTextNo++;
-	}
-
-	if (match == false) {
+		//既にUpDate済みテキスト以外で一番先頭の配列を探索
+		for (int i = 0; i < STRTEX_MAX_PCS; i++) {
+			if (textInsData[i].pcs <= 0) {
+				texNo = i;
+				break;
+			}
+		}
+		//全てUpDate済みの場合,配列0に登録
+		if (texNo == -1)texNo = 0;
+		//テキスト登録
 		strcnt[texNo] = CreateText(text, c, texNo, fontsize);
 		_tcscpy_s(str[texNo], c);//テキスト登録
 		f_size[texNo] = fontsize;//フォントサイズ登録

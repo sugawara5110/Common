@@ -23,7 +23,6 @@ private:
 	int strcnt[STRTEX_MAX_PCS];       //登録テキスト文字数 
 	HFONT hFont, oldFont;           //フォント
 	HDC hdc;                       //デバイスコンテキスト
-	int CreateTextNo;              //テキスト作成ターゲット
 	BYTE* ptr;                    //ビットマップ配列
 	TEXTMETRIC* TM;    //文字レイアウト
 	GLYPHMETRICS* GM; //文字レイアウト
