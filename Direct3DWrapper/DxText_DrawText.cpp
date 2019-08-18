@@ -8,6 +8,7 @@
 #include "DxText.h"
 #include <string.h>
 #include <tchar.h>
+#include <stdarg.h>
 
 DxText *DxText::textobj = nullptr;
 
@@ -53,7 +54,7 @@ DxText::DxText() {
 		value[i].GetVBarray2D(1);
 		value[i].TexOn();
 		value[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
-		TCHAR *va = CreateTextValue(i);
+		TCHAR* va = CreateTextValue(i);
 		CreateText(value, va, i, 15.0f);
 		value[i].SetText();
 	}
@@ -177,7 +178,7 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 	return count;
 }
 
-TCHAR *DxText::CreateTextValue(int val){
+TCHAR* DxText::CreateTextValue(int val) {
 
 	int cnt = 0;
 	int va = val;
@@ -185,16 +186,16 @@ TCHAR *DxText::CreateTextValue(int val){
 	_tcscpy_s(c, L"");//‰Šú‰»
 
 	//Œ…”ƒJƒEƒ“ƒg
-	for (int i = 1;; i *= 10){
+	for (int i = 1;; i *= 10) {
 		if (val / i == 0)break;
 		cnt++;
 	}
 	if (cnt == 0)_tcscpy_s(c, L"‚O");
 
-	for (int i = cnt - 1; i >= 0; i--){
+	for (int i = cnt - 1; i >= 0; i--) {
 
 		int s = va / (int)pow(10.0, i);
-		switch (s){
+		switch (s) {
 		case 0:
 			_tcscat(c, L"‚O");
 			break;
@@ -229,6 +230,135 @@ TCHAR *DxText::CreateTextValue(int val){
 		va = va - (int)pow(10.0, i) * s;
 	}
 	return c;
+}
+
+char* DxText::CreateTextValueCh(int val) {
+
+	int cnt = 0;
+	int va = val;
+	bool sig = false;
+	if (va < 0)sig = true;
+	static char c[STR_MAX_LENGTH];
+
+	//Œ…”ƒJƒEƒ“ƒg
+	for (int i = 1;; i *= 10) {
+		if (val / i == 0)break;
+		cnt++;
+	}
+	if (cnt == 0)strcpy(c, "‚O");
+
+	int cInd = 0;
+	if (sig)strcpy(&c[cInd++], "|");
+	for (int i = cnt - 1; i >= 0; i--) {
+
+		int s = va / (int)pow(10.0, i);
+		switch (s) {
+		case 0:
+			strcpy(&c[cInd], "‚O");
+			break;
+		case 1:
+			strcpy(&c[cInd], "‚P");
+			break;
+		case 2:
+			strcpy(&c[cInd], "‚Q");
+			break;
+		case 3:
+			strcpy(&c[cInd], "‚R");
+			break;
+		case 4:
+			strcpy(&c[cInd], "‚S");
+			break;
+		case 5:
+			strcpy(&c[cInd], "‚T");
+			break;
+		case 6:
+			strcpy(&c[cInd], "‚U");
+			break;
+		case 7:
+			strcpy(&c[cInd], "‚V");
+			break;
+		case 8:
+			strcpy(&c[cInd], "‚W");
+			break;
+		case 9:
+			strcpy(&c[cInd], "‚X");
+			break;
+		}
+		cInd += 2;
+		va = va - (int)pow(10.0, i) * s;
+	}
+	return c;
+}
+
+char* DxText::CreateTextValueCh(double val, int Numdig) {
+
+	static char c[STR_MAX_LENGTH];
+	int cInd = 0;
+
+	int valInt = (int)val;
+	char* va = CreateTextValueCh(valInt);
+	int vasize = (int)strlen(va) * sizeof(char);
+	memcpy(&c[cInd], va, vasize);
+	cInd += vasize;
+
+	double Decimal = val - (double)valInt;
+	if (Decimal <= 0.0) {
+		c[cInd] = '\0';
+		return c;
+	}
+	c[cInd++] = '.';
+	int DecimalInt = int(Decimal * pow(10, Numdig));
+	char* vad = CreateTextValueCh(DecimalInt);
+	int vadsize = (int)strlen(vad) * sizeof(char);
+	memcpy(&c[cInd], vad, vadsize);
+	cInd += vadsize;
+	c[cInd] = '\0';
+
+	return c;
+}
+
+TCHAR* DxText::getStr(char* str, ...) {
+
+	va_list ap;
+	va_start(ap, str);
+
+	char c[STR_MAX_LENGTH];
+	static TCHAR tc[STR_MAX_LENGTH];
+	int cInd = 0;
+
+	while (*str != '\0') {
+
+		if (*str == '%') {
+			str++;
+			char* out2 = nullptr;
+
+			if (*str == 'd') {
+				int out = va_arg(ap, int);
+				out2 = CreateTextValueCh(out);
+			}
+			else if (*str == 'f') {
+				double out = va_arg(ap, double);
+				out2 = CreateTextValueCh(out, 4);
+			}
+			if (!out2)continue;
+			int size = (int)strlen(out2) * sizeof(char);
+			memcpy(&c[cInd], out2, size);
+			cInd += size;
+		}
+		else {
+			c[cInd++] = *str;
+		}
+		str++;
+	}
+	c[cInd] = '\0';
+	va_end(ap);
+
+	//ƒƒP[ƒ‹Žw’è
+	setlocale(LC_ALL, "japanese");
+	//char¨TCHAR(wchar)•ÏŠ·
+	mbstowcs(tc, c, sizeof(c));
+
+	return tc;
 }
 
 void DxText::UpDateText(TCHAR *c, float x, float y, float fontsize, VECTOR4 cl) {

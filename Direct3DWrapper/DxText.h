@@ -15,7 +15,7 @@
 class DxText {
 
 private:
-	Dx12Process *dx;
+	Dx12Process* dx;
 	PolygonData2D text[STRTEX_MAX_PCS];       //文字描画用
 	PolygonData2D value[VAL_PCS];              //可変数字用
 	TCHAR str[STRTEX_MAX_PCS][STR_MAX_LENGTH]; //登録テキスト
@@ -24,10 +24,10 @@ private:
 	HFONT hFont, oldFont;           //フォント
 	HDC hdc;                       //デバイスコンテキスト
 	int CreateTextNo;              //テキスト作成ターゲット
-	BYTE *ptr;                    //ビットマップ配列
-	TEXTMETRIC *TM;    //文字レイアウト
-	GLYPHMETRICS *GM; //文字レイアウト
-	DWORD *allsize;   //各要素までの合計サイズ
+	BYTE* ptr;                    //ビットマップ配列
+	TEXTMETRIC* TM;    //文字レイアウト
+	GLYPHMETRICS* GM; //文字レイアウト
+	DWORD* allsize;   //各要素までの合計サイズ
 	bool draw_f = false;
 
 	struct InsDataSub {
@@ -42,21 +42,24 @@ private:
 	InstanceData textInsData[STRTEX_MAX_PCS];
 	InstanceData valueInsData[VAL_PCS];
 
-	static DxText *textobj;
+	static DxText* textobj;
 
-	DxText(const DxText &obj);     // コピーコンストラクタ禁止
+	DxText(const DxText& obj);     // コピーコンストラクタ禁止
 	void operator=(const DxText& obj);// 代入演算子禁止
 	DxText();
 	~DxText();
-	int CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize);
-	TCHAR *CreateTextValue(int val);
+	int CreateText(PolygonData2D* p2, TCHAR* c, int texNo, float fontsize);
+	TCHAR* CreateTextValue(int val);
+	char* CreateTextValueCh(int val);
+	char* CreateTextValueCh(double val, int Numdig);
 
 public:
 	static void InstanceCreate();
-	static DxText *GetInstance();
+	static DxText* GetInstance();
 	static void DeleteInstance();
-	void UpDateText(TCHAR *c, float x, float y, float fontsize, VECTOR4 cl);
-	void UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl);
+	TCHAR* getStr(char* str, ...);
+	void UpDateText(TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDate();
 	void Draw(int com_no);
 };
