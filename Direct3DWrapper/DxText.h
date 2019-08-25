@@ -19,6 +19,7 @@ private:
 	PolygonData2D text[STRTEX_MAX_PCS];       //文字描画用
 	PolygonData2D value[VAL_PCS];              //可変数字用
 	TCHAR str[STRTEX_MAX_PCS][STR_MAX_LENGTH]; //登録テキスト
+	bool Using[STRTEX_MAX_PCS];
 	float f_size[STRTEX_MAX_PCS];              //登録テキストのフォントサイズ
 	int strcnt[STRTEX_MAX_PCS];       //登録テキスト文字数 
 	HFONT hFont, oldFont;           //フォント
@@ -57,6 +58,7 @@ public:
 	static DxText* GetInstance();
 	static void DeleteInstance();
 	TCHAR* getStr(char* str, ...);
+	void UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDateText(TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDate();

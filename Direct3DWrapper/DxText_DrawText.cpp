@@ -40,11 +40,12 @@ DxText::DxText() {
 	dx->Bigin(0);
 	//文字列用バッファ初期化
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
+		Using[i] = false;
 		text[i].SetCommandList(0);
 		text[i].GetVBarray2D(1);
 		text[i].TexOn();
 		text[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
-		_tcscpy_s(str[i], STR_MAX_LENGTH * sizeof(TCHAR), _T("***************************************"));//直接代入
+		_tcscpy_s(str[i], sizeof(TCHAR), _T(""));
 		f_size[i] = 0;
 	}
 
@@ -360,7 +361,7 @@ TCHAR* DxText::getStr(char* str, ...) {
 	return tc;
 }
 
-void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
+void DxText::UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
 
 	int texNo = -1;
 
@@ -374,19 +375,20 @@ void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) 
 
 	//登録されてないテキストの場合新規登録
 	if (texNo == -1) {
-		//既にUpDate済みテキスト以外で一番先頭の配列を探索
+		//空きかつ使用中でないかつupdate前配列で一番若い配列に登録する
 		for (int i = 0; i < STRTEX_MAX_PCS; i++) {
-			if (textInsData[i].pcs <= 0) {
+			if (!Using[i] && textInsData[i].pcs <= 0) {
 				texNo = i;
 				break;
 			}
 		}
-		//全てUpDate済みの場合,配列0に登録
+		//空き無しの場合,配列0に登録
 		if (texNo == -1)texNo = 0;
 		//テキスト登録
 		strcnt[texNo] = CreateText(text, c, texNo, fontsize);
 		_tcscpy_s(str[texNo], c);//テキスト登録
 		f_size[texNo] = fontsize;//フォントサイズ登録
+		Using[texNo] = ChangeImmediately;//継続使用するかどうか登録
 	}
 
 	//後で描画する為に必要なデータをOBJ毎に保持しておく
@@ -400,6 +402,10 @@ void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) 
 	textInsData[texNo].s[textInsData[texNo].pcs].sizeY = f_size[texNo];
 	textInsData[texNo].pcs++;
 	draw_f = true;
+}
+
+void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
+	UpDateText(true, c, x, y, fontsize, cl);
 }
 
 void DxText::UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl) {
