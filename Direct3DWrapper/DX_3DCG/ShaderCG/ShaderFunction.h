@@ -40,7 +40,7 @@ char *ShaderFunction =
 "       float3 EyeVec = normalize(CPos.xyz - wPos.xyz);\n"
 //スぺキュラ
 "       float3 Reflect = normalize(2 * NL * Nor - L);\n"
-"       float3 specular = pow(saturate(dot(Reflect, EyeVec)), 4);\n"
+"       float specular = pow(saturate(dot(Reflect, EyeVec)), 4);\n"
 
 //デフォルト減衰率
 "       float attenuation = 2.0f;\n"
@@ -50,7 +50,7 @@ char *ShaderFunction =
 "       float r = lightSt.y / (pow(distance, attenuation) * 0.001f);\n"
 
 //法線,ライト方向から陰影作成
-"       Col = (max(NL, shadow.x) * Diffuse.xyz * lightCol.xyz + specular * SpeculerCol.xyz) * r;\n"
+"       Col = (max(NL, shadow.x) * Diffuse.xyz + specular * SpeculerCol.xyz) * lightCol.xyz * r;\n"
 "    }\n"
 "    return Col;\n"
 "}\n"
@@ -73,9 +73,9 @@ char *ShaderFunction =
 "       float3 EyeVec = normalize(CPos.xyz - wPos.xyz);\n"
 //スぺキュラ
 "       float3 Reflect = normalize(2 * NL * Nor - L);\n"
-"       float3 specular = pow(saturate(dot(Reflect, EyeVec)), 4);\n"
+"       float specular = pow(saturate(dot(Reflect, EyeVec)), 4);\n"
 
-"       Col = DCol.xyz * DlightSt.x * Diffuse.xyz * NL + specular * SpeculerCol.xyz;\n"
+"       Col = DCol.xyz * DlightSt.x * (Diffuse.xyz * NL + specular * SpeculerCol.xyz);\n"
 "    }\n"
 "    return Col;\n"
 "}\n"
