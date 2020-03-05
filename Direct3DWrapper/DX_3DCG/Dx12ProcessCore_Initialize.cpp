@@ -103,7 +103,22 @@ Dx12Process::~Dx12Process() {
 	ARR_DELETE(textureUp);
 }
 
-void Dx12Process::WaitFence(int fence) {
+void Dx12Process::FenceSetEvent() {
+	//ここまででコマンドキューが終了してしまうと
+	//↓のイベントが正しく処理されない可能性有る為↓ifでチェックしている
+	//GetCompletedValue():Fence内部UINT64のカウンタ取得(初期値0)
+	if (mFence->GetCompletedValue() < mCurrentFence) {
+		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		//このFenceにおいて,mCurrentFence の値になったらイベントを発火させる
+		mFence->SetEventOnCompletion(mCurrentFence, eventHandle);
+		//イベントが発火するまで待つ(GPUの処理待ち)これによりGPU上の全コマンド実行終了まで待たせる
+		WaitForSingleObject(eventHandle, INFINITE);
+		CloseHandle(eventHandle);
+	}
+}
+
+void Dx12Process::WaitFence(bool mode) {
+	fenceMode = mode;
 	//クローズ後リストに加える
 	for (int i = 0; i < COM_NO; i++) {
 		if (dx_sub[i].mComState != CLOSE)continue;
@@ -118,31 +133,19 @@ void Dx12Process::WaitFence(int fence) {
 	//(mFence->GetCompletedValue()で得られる値がmCurrentFenceと同じになる)
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 
-	//ここまででコマンドキューが終了してしまうと
-	//↓のイベントが正しく処理されない可能性有る為↓ifでチェックしている
-	//GetCompletedValue():Fence内部UINT64のカウンタ取得(初期値0)
-	//コマンドアロケータをダブルバッファにしているのでFence値1つ手前までのGPU処理が未完の場合のみ待ち処理を行う
-	if (mFence->GetCompletedValue() < mCurrentFence - fence) {
-
-		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-		//このFenceにおいて,mCurrentFence の値になったらイベントを発火させる
-		//↑上記のif文が無いと既にmCurrentFenceと同値になってしまう事もあるのでその際は↓WaitForSingleObjectで停止したままになる
-		mFence->SetEventOnCompletion(mCurrentFence, eventHandle);
-		//イベントが発火するまで待つ(GPUの処理待ち)これによりGPU上の全コマンド実行終了まで待たせる事が出来る
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
-	}
+	if (!mode)
+		FenceSetEvent();
 }
 
 void Dx12Process::WaitFenceCurrent() {
 	Lock();
-	WaitFence(0);
+	WaitFence(false);
 	Unlock();
 }
 
 void Dx12Process::WaitFencePast() {
 	Lock();
-	WaitFence(1);
+	WaitFence(true);
 	Unlock();
 }
 
@@ -692,6 +695,7 @@ void Dx12Process::Sclear(int com_no) {
 }
 
 void Dx12Process::Bigin(int com_no) {
+	if (fenceMode)FenceSetEvent();
 	dx_sub[com_no].Bigin();
 }
 

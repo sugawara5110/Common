@@ -230,6 +230,7 @@ private:
 	Fog fog;
 
 	int  ins_no = 0;
+	bool fenceMode = false;
 
 	Dx12Process() {}//外部からのオブジェクト生成禁止
 	Dx12Process(const Dx12Process& obj) {}   // コピーコンストラクタ禁止
@@ -244,7 +245,8 @@ private:
 	void InstancedMap(CONSTANT_BUFFER* cb, float x, float y, float z,
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
 	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
-	void WaitFence(int fence);
+	void FenceSetEvent();
+	void WaitFence(bool mode);
 
 public:
 	static void InstanceCreate();
