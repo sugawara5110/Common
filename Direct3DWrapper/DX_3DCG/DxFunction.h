@@ -61,7 +61,6 @@ struct VECTOR2{
 	}
 };
 
-void swap(float *a, float *b);
 //s—ñ‰Šú‰»
 void MatrixIdentity(MATRIX *mat);
 //Šg‘åk¬

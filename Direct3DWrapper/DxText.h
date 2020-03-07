@@ -8,8 +8,8 @@
 #define Class_DxText_Header
 
 #include "DX_3DCG\Dx12ProcessCore.h"
-#define STRTEX_MAX_PCS 40
-#define STR_MAX_LENGTH 40
+#define STRTEX_MAX_PCS 125
+#define STR_MAX_LENGTH 125
 #define VAL_PCS 10
 
 class DxText {

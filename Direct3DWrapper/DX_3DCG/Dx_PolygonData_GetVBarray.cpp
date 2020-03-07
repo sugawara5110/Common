@@ -7,8 +7,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
 
-std::mutex PolygonData::mtx;
-
 PolygonData::PolygonData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
@@ -249,30 +247,27 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 }
 
 void PolygonData::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
-	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
+	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
 }
 
 void PolygonData::CbSwap() {
-	Lock();
 	if (!UpOn) {
 		upCount++;
 		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
-	sw = 1 - sw;//cbスワップ
-	insNum = dx->ins_no;
-	dx->ins_no = 0;
-	Unlock();
+	insNum[dx->cBuffSwap[0]] = ins_no;
+	ins_no = 0;
 	DrawOn = true;
 }
 
 void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
-	dx->MatrixMap(&cb[sw], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my);
 	CbSwap();
 }
 
 void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my) {
-	dx->InstancedMap(&cb[sw], x, y, z, theta, 0, 0, size);
-	dx->MatrixMap(&cb[sw], r, g, b, a, disp, px, py, mx, my);
+	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, size);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my);
 	CbSwap();
 }
 
@@ -284,9 +279,7 @@ void PolygonData::Draw() {
 
 	if (!UpOn | !DrawOn)return;
 
-	Lock();
-	mObjectCB->CopyData(0, cb[1 - sw]);
-	Unlock();
+	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 
 	drawPara para;
 	para.NumMaterial = 1;
@@ -304,6 +297,6 @@ void PolygonData::Draw() {
 	para.cbRes2 = nullptr;
 	para.sRes0 = nullptr;
 	para.sRes1 = nullptr;
-	para.insNum = insNum;
+	para.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(para);
 }

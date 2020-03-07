@@ -28,8 +28,7 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER2>* mObject_MESHCB = nullptr;//マテリアル渡し用(1回しか更新しない)
 															 //UpLoad用
 	CONSTANT_BUFFER cb[2];
-	int sw = 0;//↑切り替え
-			   //UpLoadカウント
+	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
 	bool UpOn = false;
@@ -43,16 +42,17 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
-	int        MaterialCount = 0;//マテリアル数
+	int  MaterialCount = 0;//マテリアル数
 	int* piFaceBuffer;
 	VertexM* pvVertexBuffer;
-	int        FaceCount;  //ポリゴン数カウンター
-	char       mFileName[255];
+	int FaceCount;  //ポリゴン数カウンター
+	char mFileName[255];
 	//一時保管
 	VECTOR3* pvCoord;
 	VECTOR3* pvNormal;
 	VECTOR2* pvTexture;
-	int insNum = 0;
+	int ins_no = 0;
+	int insNum[2] = {};
 
 	MY_MATERIAL_S* pMaterial;
 
@@ -64,10 +64,6 @@ protected:
 	float addAmbient;
 
 	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
-
-	static std::mutex mtx;
-	static void Lock() { mtx.lock(); }
-	static void Unlock() { mtx.unlock(); }
 
 	bool LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial);
 	void GetShaderByteCode(bool disp);

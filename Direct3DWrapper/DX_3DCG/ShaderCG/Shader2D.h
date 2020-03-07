@@ -8,9 +8,9 @@ char *Shader2D =
 
 "cbuffer global  : register(b0)\n"
 "{\n"
-"    float4  g_pos[80];\n"
-"    float4  g_ObjCol[80];\n"
-"    float4  g_sizeXY[80];\n"
+"    float4  g_pos[256];\n"
+"    float4  g_ObjCol[256];\n"
+"    float4  g_sizeXY[256];\n"
 "    float4  g_WidHei;\n"
 "}\n"
 

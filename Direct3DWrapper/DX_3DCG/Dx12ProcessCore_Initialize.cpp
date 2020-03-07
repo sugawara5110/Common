@@ -860,7 +860,7 @@ ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR
 	return byteCode;
 }
 
-void Dx12Process::InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z,
+void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
 	float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY, float sizeZ) {
 
 	if (sizeY <= 0.0f || sizeZ <= 0.0f) {
@@ -868,7 +868,7 @@ void Dx12Process::InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z,
 		sizeZ = sizeX;
 	}
 
-	if (ins_no > INSTANCE_PCS_3D - 1)ins_no--;
+	if (insNum > INSTANCE_PCS_3D - 1)insNum--;
 	MATRIX mov;
 	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
 	MATRIX scale;
@@ -889,12 +889,12 @@ void Dx12Process::InstancedMap(CONSTANT_BUFFER *cb, float x, float y, float z,
 	MatrixMultiply(&world, &scro, &mov);
 
 	//ワールド、カメラ、射影行列、等
-	cb->World[ins_no] = world;
+	cb->World[insNum] = world;
 	MatrixMultiply(&WV, &world, &mView);
-	MatrixMultiply(&cb->WVP[ins_no], &WV, &mProj);
-	MatrixTranspose(&cb->World[ins_no]);
-	MatrixTranspose(&cb->WVP[ins_no]);
-	ins_no++;
+	MatrixMultiply(&cb->WVP[insNum], &WV, &mProj);
+	MatrixTranspose(&cb->World[insNum]);
+	MatrixTranspose(&cb->WVP[insNum]);
+	insNum++;
 }
 
 void Dx12Process::MatrixMap(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {

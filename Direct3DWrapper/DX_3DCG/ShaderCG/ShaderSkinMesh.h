@@ -6,7 +6,7 @@
 char *ShaderSkinMesh =
 "cbuffer global_bones : register(b2)\n"//ボーンのポーズ行列が入る
 "{\n"
-"   matrix g_mConstBoneWorld[150];\n"
+"   matrix g_mConstBoneWorld[256];\n"
 "};\n"
 
 //スキニング後の頂点・法線が入る

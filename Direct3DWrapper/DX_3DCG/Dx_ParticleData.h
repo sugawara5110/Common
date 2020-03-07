@@ -12,23 +12,22 @@
 class ParticleData :public Common {
 
 protected:
-	ID3DBlob * gsSO;
-	ID3DBlob *vsSO;
-	ID3DBlob *gs;
-	ID3DBlob *vs;
-	ID3DBlob *ps;
+	ID3DBlob* gsSO;
+	ID3DBlob* vsSO;
+	ID3DBlob* gs;
+	ID3DBlob* vs;
+	ID3DBlob* ps;
 	int      ver;//頂点数
 
-	PartPos  *P_pos;//パーティクルデータ配列
+	PartPos* P_pos;//パーティクルデータ配列
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_com = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_draw = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER_P> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER_P>* mObjectCB = nullptr;
 	CONSTANT_BUFFER_P cbP[2];
-	int sw = 0;
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
@@ -50,13 +49,9 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_com = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
 
-	static std::mutex mtx;
-	static void Lock() { mtx.lock(); }
-	static void Unlock() { mtx.unlock(); }
-
 	void GetShaderByteCode();
-	void MatrixMap(CONSTANT_BUFFER_P *cb_p, float x, float y, float z, float theta, float size, float speed, bool tex);
-	void MatrixMap2(CONSTANT_BUFFER_P *cb_p, bool init);
+	void MatrixMap(CONSTANT_BUFFER_P* cb_p, float x, float y, float z, float theta, float size, float speed, bool tex);
+	void MatrixMap2(CONSTANT_BUFFER_P* cb_p, bool init);
 	HRESULT GetVbColarray(int texture_no, float size, float density);
 	void CreateVbObj();
 	bool CreatePartsCom();

@@ -14,7 +14,6 @@
 #include <string.h>
 
 using namespace std;
-mutex SkinMesh::mtx;
 
 SkinMesh_sub::SkinMesh_sub() {
 	fbxL = new FbxLoader();
@@ -32,10 +31,6 @@ SkinMesh_sub::~SkinMesh_sub() {
 bool SkinMesh_sub::Create(CHAR *szFileName) {
 	return fbxL->setFbxFile(szFileName);
 }
-
-void SkinMesh::CreateManager() {}
-
-void SkinMesh::DeleteManager() {}
 
 SkinMesh::SkinMesh() {
 	ZeroMemory(this, sizeof(SkinMesh));
@@ -845,14 +840,10 @@ bool SkinMesh::GetTexture() {
 }
 
 void SkinMesh::CbSwap() {
-	Lock();
 	if (!UpOn) {
 		upCount++;
 		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
-	sw = 1 - sw;//cbスワップ
-	dx->ins_no = 0;
-	Unlock();
 	DrawOn = true;
 }
 
@@ -863,10 +854,11 @@ bool SkinMesh::Update(float time, float x, float y, float z, float r, float g, f
 bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp) {
 
 	bool frame_end = false;
-	dx->InstancedMap(&cb[sw], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	int insnum = 0;
+	dx->InstancedMap(insnum, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
-	MatrixMap_Bone(&sgb[sw]);
+	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
 	CbSwap();
 	return frame_end;
 }
@@ -879,10 +871,8 @@ void SkinMesh::Draw() {
 
 	if (!UpOn | !DrawOn)return;
 
-	Lock();
-	mObjectCB0->CopyData(0, cb[1 - sw]);
-	mObject_BONES->CopyData(0, sgb[1 - sw]);
-	Unlock();
+	mObjectCB0->CopyData(0, cb[dx->cBuffSwap[1]]);
+	mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
 
 	drawPara para;
 	para.NumMaterial = MateAllpcs;

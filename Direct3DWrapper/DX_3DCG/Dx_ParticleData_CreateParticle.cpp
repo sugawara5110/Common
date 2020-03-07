@@ -6,8 +6,6 @@
 
 #include "Dx_ParticleData.h"
 
-std::mutex ParticleData::mtx;
-
 ParticleData::ParticleData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
@@ -268,19 +266,16 @@ void ParticleData::DrawParts2() {
 }
 
 void ParticleData::CbSwap(bool init) {
-	Lock();
 	if (!parInit)parInit = init;//parInit==TRUEの場合まだ初期化終了していない為フラグを書き換えない
 	if (!UpOn) {
 		upCount++;
 		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
-	sw = 1 - sw;//cbスワップ
-	Unlock();
 	DrawOn = true;
 }
 
 void ParticleData::Update(float x, float y, float z, float theta, float size, bool init, float speed) {
-	MatrixMap(&cbP[sw], x, y, z, theta, size, speed, texpar_on | m_on);
+	MatrixMap(&cbP[dx->cBuffSwap[0]], x, y, z, theta, size, speed, texpar_on | m_on);
 	CbSwap(init);
 }
 
@@ -292,7 +287,6 @@ void ParticleData::Draw() {
 
 	if (!UpOn | !DrawOn)return;
 
-	Lock();
 	bool init = parInit;
 	//一回のinit == TRUE で二つのstreamOutを初期化
 	if (init) { streamInitcount = 1; }
@@ -300,9 +294,8 @@ void ParticleData::Draw() {
 		if (streamInitcount > 2) { streamInitcount = 0; }
 		if (streamInitcount != 0) { init = true; streamInitcount++; }
 	}
-	MatrixMap2(&cbP[1 - sw], init);
-	mObjectCB->CopyData(0, cbP[1 - sw]);
-	Unlock();
+	MatrixMap2(&cbP[dx->cBuffSwap[1]], init);
+	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
 	DrawParts0();
 	DrawParts1();
@@ -315,7 +308,7 @@ void ParticleData::Draw() {
 }
 
 void ParticleData::Update(float size) {
-	MatrixMap(&cbP[sw], 0, 0, 0, 0, size, 1.0f, texpar_on | m_on);
+	MatrixMap(&cbP[dx->cBuffSwap[0]], 0, 0, 0, 0, size, 1.0f, texpar_on | m_on);
 	CbSwap(true);
 }
 
@@ -323,10 +316,8 @@ void ParticleData::DrawBillboard() {
 
 	if (!UpOn | !DrawOn)return;
 
-	Lock();
-	MatrixMap2(&cbP[1 - sw], true);
-	mObjectCB->CopyData(0, cbP[1 - sw]);
-	Unlock();
+	MatrixMap2(&cbP[dx->cBuffSwap[1]], true);
+	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
 	DrawParts0();
 	DrawParts2();

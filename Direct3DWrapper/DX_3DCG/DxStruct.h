@@ -9,10 +9,10 @@
 
 #include "DxFunction.h"
 
-#define LIGHT_PCS 150
-#define INSTANCE_PCS_3D 150
-#define INSTANCE_PCS_2D 80
-#define MAX_BONES 150
+#define LIGHT_PCS 256
+#define INSTANCE_PCS_3D 256
+#define INSTANCE_PCS_2D 256
+#define MAX_BONES 256
 #define RELEASE(p)    if(p){p->Release();  p=nullptr;}
 #define S_DELETE(p)   if(p){delete p;      p=nullptr;}
 #define ARR_DELETE(p) if(p){delete[] p;    p=nullptr;}

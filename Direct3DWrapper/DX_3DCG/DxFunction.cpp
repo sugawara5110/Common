@@ -95,7 +95,7 @@ void MatrixMultiply(MATRIX *mat, MATRIX *mat1, MATRIX *mat2){
 	mat->_44 = mat1->_41 * mat2->_14 + mat1->_42 * mat2->_24 + mat1->_43 * mat2->_34 + mat1->_44 * mat2->_44;
 }
 
-void swap(float *a, float *b){
+static void swap(float* a, float* b) {
 	float tmp;
 	tmp = *a;
 	*a = *b;

@@ -28,7 +28,6 @@ protected:
 	CONSTANT_BUFFER cb[2];
 	CONSTANT_BUFFER2 sg;
 	CONSTANT_BUFFER_WAVE cbw;
-	int sw = 0;
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
@@ -41,25 +40,22 @@ protected:
 
 	//テクスチャ番号(通常テクスチャ用)
 	MY_MATERIAL_S material[1];
-	int    insNum = 0;
-	int    texNum;//テクスチャー数
+	int ins_no = 0;
+	int insNum[2] = {};
+	int texNum;//テクスチャー数
 
 	int div;//分割数
 
 	Vertex* d3varray;  //頂点配列
 	std::uint16_t* d3varrayI;//頂点インデックス
-	int            ver;      //頂点個数
-	int            verI;    //頂点インデックス
+	int ver;      //頂点個数
+	int verI;    //頂点インデックス
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSODraw = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
-
-	static std::mutex mtx;
-	static void Lock() { mtx.lock(); }
-	static void Unlock() { mtx.unlock(); }
 
 	void GetShaderByteCode(int texNum);
 	bool ComCreate();

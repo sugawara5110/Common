@@ -210,9 +210,9 @@ private:
 	static Dx12Process* dx;//クラス内でオブジェクト生成し使いまわす
 	static std::mutex mtx;
 
-	MATRIX      mProj;
-	MATRIX      mView;
-	MATRIX      Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
+	MATRIX mProj;
+	MATRIX mView;
+	MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
 	float posX, posY, posZ;
 
 	//カメラ画角
@@ -229,7 +229,7 @@ private:
 	DirectionLight dlight;
 	Fog fog;
 
-	int  ins_no = 0;
+	int  cBuffSwap[2] = { 0,0 };
 	bool fenceMode = false;
 
 	Dx12Process() {}//外部からのオブジェクト生成禁止
@@ -242,7 +242,7 @@ private:
 		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-	void InstancedMap(CONSTANT_BUFFER* cb, float x, float y, float z,
+	void InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
 	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
 	void FenceSetEvent();
@@ -265,6 +265,8 @@ public:
 	void Sclear(int com_no);
 	void Bigin(int com_no);
 	void End(int com_no);
+	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
+	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
 	void WaitFenceCurrent();//GPU処理そのまま待つ
 	void WaitFencePast();//前回GPU処理未完の場合待つ
 	void DrawScreen();
@@ -417,13 +419,13 @@ protected:
 
 	Dx12Process* dx;
 	ID3D12GraphicsCommandList* mCommandList;
-	int                        com_no = 0;
+	int com_no = 0;
 
 	//テクスチャ保持(SetTextureMPixel用)
 	ID3D12Resource* texture = nullptr;
 	ID3D12Resource* textureUp = nullptr;
 	//movie_on
-	bool   m_on = false;
+	bool m_on = false;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
@@ -521,7 +523,6 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
 	CONSTANT_BUFFER cb[2];
 	CONSTANT_BUFFER2 sg;
-	int sw = 0;
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
@@ -535,8 +536,9 @@ protected:
 
 	//テクスチャ番号(通常テクスチャ用)
 	MY_MATERIAL_S material[1];
-	int    insNum = 0;
-	int    texNum;//テクスチャ個数
+	int ins_no = 0;
+	int insNum[2] = {};
+	int texNum;//テクスチャ個数
 
 	//パイプラインOBJ
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;
@@ -544,15 +546,11 @@ protected:
 	Vertex* d3varray;  //頂点配列
 	VertexBC* d3varrayBC;//頂点配列基本色
 	std::uint16_t* d3varrayI;//頂点インデックス
-	int            ver;      //頂点個数
-	int            verI;    //頂点インデックス
+	int ver;      //頂点個数
+	int verI;    //頂点インデックス
 
-	PrimitiveType            primType_create;
-	D3D_PRIMITIVE_TOPOLOGY   primType_draw;
-
-	static std::mutex mtx;
-	static void Lock() { mtx.lock(); }
-	static void Unlock() { mtx.unlock(); }
+	PrimitiveType          primType_create;
+	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 
 	void GetShaderByteCode(bool light, int tNo, int nortNo);
 	void CbSwap();
@@ -595,8 +593,8 @@ class PolygonData2D :public Common {
 protected:
 	friend DxText;
 
-	ID3DBlob *vs = nullptr;
-	ID3DBlob *ps = nullptr;
+	ID3DBlob* vs = nullptr;
+	ID3DBlob* ps = nullptr;
 
 	int      ver;//頂点数
 
@@ -604,9 +602,8 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER2D> *mObjectCB = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2D>* mObjectCB = nullptr;
 	CONSTANT_BUFFER2D cb2[2];
-	int sw = 0;
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
@@ -626,41 +623,37 @@ protected:
 	int Twidth;
 	int Theight;
 	int Tcount;
-	TEXTMETRIC *Tm;
-	GLYPHMETRICS *Gm;
-	BYTE *Ptr;
-	DWORD *Allsize;
+	TEXTMETRIC* Tm;
+	GLYPHMETRICS* Gm;
+	BYTE* Ptr;
+	DWORD* Allsize;
 	bool CreateTextOn = false;
 
 	int  ins_no = 0;
-	int  insNum = 0;//Drawで読み込み用
+	int  insNum[2] = {};//Drawで読み込み用
 
 	static float magnificationX;//倍率
 	static float magnificationY;
 	float magX = 1.0f;
 	float magY = 1.0f;
 
-	static std::mutex mtx;
-	static void Lock() { mtx.lock(); }
-	static void Unlock() { mtx.unlock(); }
-
 	void GetShaderByteCode();
-	void SetConstBf(CONSTANT_BUFFER2D *cb2, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
-	void SetTextParameter(int width, int height, int textCount, TEXTMETRIC **TM, GLYPHMETRICS **GM, BYTE **ptr, DWORD **allsize);
+	void SetConstBf(CONSTANT_BUFFER2D* cb2, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
+	void SetTextParameter(int width, int height, int textCount, TEXTMETRIC** TM, GLYPHMETRICS** GM, BYTE** ptr, DWORD** allsize);
 	void SetText();//DxText classでしか使わない
 	void CbSwap();
 
 public:
-	MY_VERTEX2 * d2varray;  //頂点配列
-	std::uint16_t *d2varrayI;//頂点インデックス
+	MY_VERTEX2* d2varray;  //頂点配列
+	std::uint16_t* d2varrayI;//頂点インデックス
 
-	static void Pos2DCompute(VECTOR3 *p);//3D座標→2D座標変換(magnificationX, magnificationYは無視される)
+	static void Pos2DCompute(VECTOR3* p);//3D座標→2D座標変換(magnificationX, magnificationYは無視される)
 	static void SetMagnification(float x, float y);//表示倍率
 
 	PolygonData2D();
 	~PolygonData2D();
 	void DisabledMagnification();
-	ID3D12PipelineState *GetPipelineState();
+	ID3D12PipelineState* GetPipelineState();
 	void GetVBarray2D(int pcs);
 	void TexOn();
 	bool CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha);

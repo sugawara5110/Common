@@ -6,7 +6,6 @@
 
 #include "Dx12ProcessCore.h"
 
-std::mutex PolygonData2D::mtx;
 float PolygonData2D::magnificationX = 1.0f;
 float PolygonData2D::magnificationY = 1.0f;
 
@@ -57,6 +56,7 @@ void PolygonData2D::InstancedSetConstBf(float x, float y, float r, float g, floa
 
 void PolygonData2D::InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
 
+	int sw = dx->cBuffSwap[0];
 	cb2[sw].Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
 	cb2[sw].Color[ins_no].as(r, g, b, a);
 	cb2[sw].sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
@@ -333,15 +333,12 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 }
 
 void PolygonData2D::CbSwap() {
-	Lock();
 	if (!UpOn) {
 		upCount++;
 		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
-	sw = 1 - sw;//cbスワップ
-	insNum = ins_no;
+	insNum[dx->cBuffSwap[0]] = ins_no;
 	ins_no = 0;
-	Unlock();
 	DrawOn = true;
 }
 
@@ -354,7 +351,7 @@ void PolygonData2D::Update(float x, float y, float r, float g, float b, float a,
 }
 
 void PolygonData2D::Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
-	SetConstBf(&cb2[sw], x, y, z, r, g, b, a, sizeX, sizeY);
+	SetConstBf(&cb2[dx->cBuffSwap[0]], x, y, z, r, g, b, a, sizeX, sizeY);
 	CbSwap();
 }
 
@@ -366,9 +363,7 @@ void PolygonData2D::Draw() {
 
 	if (!UpOn | !DrawOn)return;
 
-	Lock();
-	mObjectCB->CopyData(0, cb2[1 - sw]);
-	Unlock();
+	mObjectCB->CopyData(0, cb2[dx->cBuffSwap[1]]);
 
 	mCommandList->SetPipelineState(mPSO.Get());
 
@@ -388,7 +383,7 @@ void PolygonData2D::Draw() {
 	mCommandList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
 	mCommandList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
 
-	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum, 0, 0, 0);
+	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum[dx->cBuffSwap[1]], 0, 0, 0);
 
 	//mSwapChainBuffer RENDER_TARGET→PRESENT
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),

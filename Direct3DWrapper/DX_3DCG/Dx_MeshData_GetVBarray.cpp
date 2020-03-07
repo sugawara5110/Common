@@ -6,8 +6,6 @@
 
 #include "Dx_MeshData.h"
 
-std::mutex MeshData::mtx;
-
 MeshData::MeshData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
@@ -480,30 +478,27 @@ bool MeshData::GetTexture() {
 }
 
 void MeshData::InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size) {
-	dx->InstancedMap(&cb[sw], x, y, z, thetaZ, thetaY, thetaX, size);
+	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
 }
 
 void MeshData::CbSwap() {
-	Lock();
 	if (!UpOn) {
 		upCount++;
 		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
 	}
-	sw = 1 - sw;//cbスワップ
-	insNum = dx->ins_no;
-	dx->ins_no = 0;
-	Unlock();
+	insNum[dx->cBuffSwap[0]] = ins_no;
+	ins_no = 0;
 	DrawOn = true;
 }
 
 void MeshData::InstanceUpdate(float r, float g, float b, float a, float disp) {
-	dx->MatrixMap(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
 	CbSwap();
 }
 
 void MeshData::Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp) {
-	dx->InstancedMap(&cb[sw], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[sw], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
 	CbSwap();
 }
 
@@ -515,9 +510,7 @@ void MeshData::Draw() {
 
 	if (!UpOn | !DrawOn)return;
 
-	Lock();
-	mObjectCB->CopyData(0, cb[1 - sw]);
-	Unlock();
+	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 
 	drawPara para;
 	para.NumMaterial = MaterialCount;
@@ -535,6 +528,6 @@ void MeshData::Draw() {
 	para.cbRes2 = nullptr;
 	para.sRes0 = nullptr;
 	para.sRes1 = nullptr;
-	para.insNum = insNum;
+	para.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(para);
 }

@@ -55,7 +55,6 @@ protected:
 	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
 	CONSTANT_BUFFER cb[2];
 	SHADER_GLOBAL_BONES sgb[2];
-	int sw = 0;
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
@@ -100,10 +99,6 @@ protected:
 	int AnimLastInd;
 	float BoneConnect;
 
-	static std::mutex mtx;
-	static void Lock() { mtx.lock(); }
-	static void Unlock() { mtx.unlock(); }
-
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
 	void CreateIndexBuffer(int cnt, int IviewInd);
@@ -117,10 +112,6 @@ protected:
 	void CbSwap();
 
 public:
-	//共通で使うマネージャー生成(外部で生成解放を行う)
-	static void CreateManager();
-	static void DeleteManager();
-
 	SkinMesh();
 	~SkinMesh();
 

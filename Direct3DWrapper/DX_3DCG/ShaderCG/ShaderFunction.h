@@ -88,18 +88,18 @@ char *ShaderFunction =
 
 "cbuffer global : register(b0)\n"
 "{\n"
-"    matrix g_World[150]; \n"
-"    matrix g_WVP[150];\n"
+"    matrix g_World[256]; \n"
+"    matrix g_WVP[256];\n"
 //視点
 "    float4 g_C_Pos;\n"
 //オブジェクト追加カラー
 "    float4 g_ObjCol;\n"
 //光源位置
-"    float4 g_LightPos[150];\n"
+"    float4 g_LightPos[256];\n"
 //ライト色
-"    float4 g_LightColor[150];\n"
+"    float4 g_LightColor[256];\n"
 //レンジ, 明るさ, 減衰の大きさ, オンオフ
-"    float4 g_Lightst[150];\n"
+"    float4 g_Lightst[256];\n"
 //影の下限値x, ライト個数y
 "    float4 g_ShadowLow_Lpcs;\n"
 //平行光源方向
