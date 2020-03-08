@@ -22,6 +22,8 @@
 #include "./ShaderCG/ShaderCommonTriangleHSDS.h"
 #include "./ShaderCG/ShaderPostEffect.h"
 #include <locale.h>
+#include "../../../PNGLoader/PNGLoader.h"
+#include "../../../JPGLoader/JPGLoader.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -314,8 +316,8 @@ int Dx12Process::GetTexNumber(CHAR *fileName) {
 
 bool Dx12Process::GetTexture(int com_no) {
 
-	texture = new ID3D12Resource*[texNum];
-	textureUp = new ID3D12Resource*[texNum];
+	texture = new ID3D12Resource * [texNum];
+	textureUp = new ID3D12Resource * [texNum];
 
 	std::unique_ptr<uint8_t[]> decodedData = nullptr;
 	D3D12_SUBRESOURCE_DATA subresource;
@@ -410,7 +412,157 @@ bool Dx12Process::GetTexture(int com_no) {
 		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
 		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
 	}
+	return true;
+}
 
+bool Dx12Process::GetTexture2(int com_no) {
+
+	texture = new ID3D12Resource * [texNum];
+	textureUp = new ID3D12Resource * [texNum];
+
+	char str[100];
+	PNGLoader png;
+	JPGLoader jpg;
+	UCHAR* byteArr = nullptr;
+
+	for (int i = 0; i < texNum; i++) {
+
+		if (tex[i].texName == nullptr)continue;
+
+		if (tex[i].binary_ch != nullptr) {
+			byteArr = (UCHAR*)png.loadPngInByteArray((UCHAR*)tex[i].binary_ch, tex[i].binary_size, tex[i].width, tex[i].height);
+			if (!byteArr)
+				byteArr = (UCHAR*)jpg.loadJpgInByteArray((UCHAR*)tex[i].binary_ch, tex[i].binary_size, tex[i].width, tex[i].height);
+		}
+		else {
+			byteArr = (UCHAR*)png.loadPNG(tex[i].texName, tex[i].width, tex[i].height);
+			if (!byteArr)
+				byteArr = (UCHAR*)jpg.loadJPG(tex[i].texName, tex[i].width, tex[i].height);
+			tex[i].texName = GetNameFromPass(tex[i].texName);
+
+		}
+		if (!byteArr) {
+			sprintf(str, "テクスチャ№%d読み込みエラー", (i));
+			ErrorMessage(str);
+			return false;
+		}
+
+		D3D12_RESOURCE_DESC texDesc = {};
+		texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		texDesc.Width = tex[i].width;
+		texDesc.Height = tex[i].height;
+		texDesc.DepthOrArraySize = 1;
+		texDesc.MipLevels = 1;
+		texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		texDesc.SampleDesc.Count = 1;
+		texDesc.SampleDesc.Quality = 0;
+		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		D3D12_HEAP_PROPERTIES HeapProps;
+		HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+		HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		HeapProps.CreationNodeMask = 1;
+		HeapProps.VisibleNodeMask = 1;
+
+		if (FAILED(md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
+			D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&texture[i])))) {
+			ARR_DELETE(byteArr);
+			sprintf(str, "texture[%d]読み込みエラー", (i));
+			ErrorMessage(str);
+			return false;
+		}
+
+		//upload
+		UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture[i], 0, 1);
+		D3D12_HEAP_PROPERTIES HeapPropsUp;
+		HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
+		HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		HeapPropsUp.CreationNodeMask = 1;
+		HeapPropsUp.VisibleNodeMask = 1;
+
+		D3D12_RESOURCE_DESC BufferDesc;
+		BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		BufferDesc.Alignment = 0;
+		BufferDesc.Width = uploadBufferSize;
+		BufferDesc.Height = 1;
+		BufferDesc.DepthOrArraySize = 1;
+		BufferDesc.MipLevels = 1;
+		BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+		BufferDesc.SampleDesc.Count = 1;
+		BufferDesc.SampleDesc.Quality = 0;
+		BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		if (FAILED(md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
+			&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr, IID_PPV_ARGS(&textureUp[i])))) {
+			ARR_DELETE(byteArr);
+			sprintf(str, "textureUp[%d]読み込みエラー", (i));
+			ErrorMessage(str);
+			return false;
+		}
+
+		D3D12_RESOURCE_BARRIER BarrierDesc;
+		BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		BarrierDesc.Transition.pResource = texture[i];
+		BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
+
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+		D3D12_TEXTURE_COPY_LOCATION dest, src;
+
+		UINT64  total_bytes = 0;
+		dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+
+		memset(&dest, 0, sizeof(dest));
+		dest.pResource = texture[i];
+		dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dest.SubresourceIndex = 0;
+
+		memset(&src, 0, sizeof(src));
+		src.pResource = textureUp[i];
+		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		src.PlacedFootprint = footprint;
+
+		D3D12_SUBRESOURCE_DATA texResource;
+		HRESULT hr;
+		hr = textureUp[i]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+		if (FAILED(hr)) {
+			ARR_DELETE(byteArr);
+			ErrorMessage("textureUp[i]->Map Error!!"); return false;
+		}
+
+		UCHAR* destTex = (UCHAR*)texResource.pData;
+		texResource.RowPitch = footprint.Footprint.RowPitch;
+		texResource.SlicePitch = total_bytes;
+		UCHAR* srcTex = byteArr;
+
+		int copyDestWsize = texResource.RowPitch;
+		int copySrcWsize = tex[i].width * 4;
+
+		if (copyDestWsize == copySrcWsize) {
+			memcpy(destTex, srcTex, sizeof(UCHAR) * copySrcWsize * tex[i].height);
+		}
+		else {
+			for (int s = 0; s < tex[i].height; s++) {
+				memcpy(&destTex[copyDestWsize * s], &srcTex[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
+			}
+		}
+		ARR_DELETE(byteArr);
+		textureUp[i]->Unmap(0, nullptr);
+
+		dx_sub[com_no].mCommandList.Get()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+
+		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
+	}
 	return true;
 }
 

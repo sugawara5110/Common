@@ -187,10 +187,12 @@ struct SHADER_GLOBAL_BONES {
 
 //テクスチャ管理
 struct Texture {
-	char  *binary_ch = nullptr; //デコード後バイナリ
+	char* binary_ch = nullptr; //デコード後バイナリ
 	int   binary_size = 0;  //バイナリサイズ
-	char  *texName = nullptr; //ファイル名
+	char* texName = nullptr; //ファイル名
 	bool  UpKeep = false; //Upload後Up用バッファを保持するか
+	int   width = 512;
+	int   height = 512;
 };
 
 //Wave
