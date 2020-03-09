@@ -291,9 +291,9 @@ bool Dx12Process::CreateShaderByteCode() {
 	return CreateShaderByteCodeBool;
 }
 
-void Dx12Process::SetTextureBinary(Texture *texture, int size) {
+void Dx12Process::SetTextureBinary(Texture* byte, int size) {
 	texNum = size;
-	tex = texture;
+	tex = byte;
 }
 
 int Dx12Process::GetTexNumber(CHAR *fileName) {
@@ -314,19 +314,160 @@ int Dx12Process::GetTexNumber(CHAR *fileName) {
 	return -1;
 }
 
+HRESULT Dx12Process::textureInit(int width, int height,
+	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
+	D3D12_RESOURCE_STATES firstState,
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint,
+	D3D12_TEXTURE_COPY_LOCATION& dest, D3D12_TEXTURE_COPY_LOCATION& src) {
+
+	D3D12_RESOURCE_DESC texDesc = {};
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Width = width;
+	texDesc.Height = height;
+	texDesc.DepthOrArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.Format = format;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	D3D12_HEAP_PROPERTIES HeapProps;
+	HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	HeapProps.CreationNodeMask = 1;
+	HeapProps.VisibleNodeMask = 1;
+
+	HRESULT hr = md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
+		firstState, nullptr, IID_PPV_ARGS(def));
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	//upload
+	UINT64 uploadBufferSize = GetRequiredIntermediateSize(*def, 0, 1);
+	D3D12_HEAP_PROPERTIES HeapPropsUp;
+	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	HeapPropsUp.CreationNodeMask = 1;
+	HeapPropsUp.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC BufferDesc;
+	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	BufferDesc.Alignment = 0;
+	BufferDesc.Width = uploadBufferSize;
+	BufferDesc.Height = 1;
+	BufferDesc.DepthOrArraySize = 1;
+	BufferDesc.MipLevels = 1;
+	BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+	BufferDesc.SampleDesc.Count = 1;
+	BufferDesc.SampleDesc.Quality = 0;
+	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	hr = md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
+		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(up));
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	UINT64  total_bytes = 0;
+	dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+
+	memset(&dest, 0, sizeof(dest));
+	dest.pResource = *def;
+	dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dest.SubresourceIndex = 0;
+
+	memset(&src, 0, sizeof(src));
+	src.pResource = *up;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint = footprint;
+
+	return S_OK;
+}
+
+HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
+	ID3D12Resource** up, ID3D12Resource** def,
+	int width, LONG_PTR RowPitch, int height) {
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+	D3D12_TEXTURE_COPY_LOCATION dest, src;
+
+	HRESULT hr = textureInit(width, height, up, def, format,
+		D3D12_RESOURCE_STATE_COMMON, footprint, dest, src);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	D3D12_RESOURCE_BARRIER BarrierDesc;
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = *def;
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
+
+	D3D12_SUBRESOURCE_DATA texResource;
+	hr = (*up)->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	UCHAR* destTex = (UCHAR*)texResource.pData;
+	texResource.RowPitch = footprint.Footprint.RowPitch;
+	UCHAR* srcTex = byteArr;
+
+	UINT copyDestWsize = (UINT)texResource.RowPitch;
+	UINT copySrcWsize = (UINT)RowPitch;
+
+	if (copyDestWsize == copySrcWsize) {
+		memcpy(destTex, srcTex, sizeof(UCHAR) * copySrcWsize * height);
+	}
+	else {
+		for (int s = 0; s < height; s++) {
+			memcpy(&destTex[copyDestWsize * s], &srcTex[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
+		}
+	}
+	(*up)->Unmap(0, nullptr);
+
+	dx_sub[com_no].mCommandList.Get()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+	dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
+
+	return S_OK;
+}
+
+HRESULT Dx12Process::createTextureArr(int com_no, int resourceIndex,
+	UCHAR* byteArr, DXGI_FORMAT format,
+	int width, LONG_PTR RowPitch, int height) {
+
+	if (!texture) {
+		texture = new ID3D12Resource * [texNum];
+		textureUp = new ID3D12Resource * [texNum];
+	}
+
+	return createTexture(com_no, byteArr, format,
+		&textureUp[resourceIndex], &texture[resourceIndex],
+		width, RowPitch, height);
+}
+
 bool Dx12Process::GetTexture(int com_no) {
 
-	texture = new ID3D12Resource * [texNum];
-	textureUp = new ID3D12Resource * [texNum];
-
-	std::unique_ptr<uint8_t[]> decodedData = nullptr;
-	D3D12_SUBRESOURCE_DATA subresource;
-	Microsoft::WRL::ComPtr<ID3D12Resource> t = nullptr;
-
-	char str[50];
+	char str[100];
 
 	for (int i = 0; i < texNum; i++) {
+
 		if (tex[i].texName == nullptr)continue;
+
+		std::unique_ptr<uint8_t[]> decodedData = nullptr;
+		D3D12_SUBRESOURCE_DATA subresource;
+		Microsoft::WRL::ComPtr<ID3D12Resource> t = nullptr;
 
 		if (tex[i].binary_ch != nullptr) {
 			if (FAILED(DirectX::LoadWICTextureFromMemory(md3dDevice.Get(),
@@ -352,73 +493,23 @@ bool Dx12Process::GetTexture(int com_no) {
 
 		D3D12_RESOURCE_DESC texDesc;
 		texDesc = t->GetDesc();
+		//テクスチャの横サイズ取得
+		int width = (int)texDesc.Width;
+		//テクスチャの縦サイズ取得
+		int height = (int)texDesc.Height;
+		UCHAR* byteArr = (UCHAR*)subresource.pData;
 
-		D3D12_HEAP_PROPERTIES HeapProps;
-		HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-		HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		HeapProps.CreationNodeMask = 1;
-		HeapProps.VisibleNodeMask = 1;
-
-		if (FAILED(md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
-			D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&texture[i])))) {
-			sprintf(str, "texture[%d]読み込みエラー", (i));
+		if (FAILED(createTextureArr(com_no, i, byteArr, texDesc.Format,
+			width, subresource.RowPitch, height))) {
+			sprintf(str, "createTexture №%d エラー", (i));
 			ErrorMessage(str);
 			return false;
 		}
-
-		//upload
-		UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture[i], 0, 1);
-		D3D12_HEAP_PROPERTIES HeapPropsUp;
-		HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
-		HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		HeapPropsUp.CreationNodeMask = 1;
-		HeapPropsUp.VisibleNodeMask = 1;
-
-		D3D12_RESOURCE_DESC BufferDesc;
-		BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		BufferDesc.Alignment = 0;
-		BufferDesc.Width = uploadBufferSize;
-		BufferDesc.Height = 1;
-		BufferDesc.DepthOrArraySize = 1;
-		BufferDesc.MipLevels = 1;
-		BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-		BufferDesc.SampleDesc.Count = 1;
-		BufferDesc.SampleDesc.Quality = 0;
-		BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		if (FAILED(md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
-			&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr, IID_PPV_ARGS(&textureUp[i])))) {
-			sprintf(str, "textureUp[%d]読み込みエラー", (i));
-			ErrorMessage(str);
-			return false;
-		}
-
-		D3D12_RESOURCE_BARRIER BarrierDesc;
-		BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		BarrierDesc.Transition.pResource = texture[i];
-		BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
-
-		UpdateSubresources(dx_sub[com_no].mCommandList.Get(), texture[i], textureUp[i], 0, 0, 1, &subresource);
-
-		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
 	}
 	return true;
 }
 
 bool Dx12Process::GetTexture2(int com_no) {
-
-	texture = new ID3D12Resource * [texNum];
-	textureUp = new ID3D12Resource * [texNum];
 
 	char str[100];
 	PNGLoader png;
@@ -447,121 +538,14 @@ bool Dx12Process::GetTexture2(int com_no) {
 			return false;
 		}
 
-		D3D12_RESOURCE_DESC texDesc = {};
-		texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		texDesc.Width = tex[i].width;
-		texDesc.Height = tex[i].height;
-		texDesc.DepthOrArraySize = 1;
-		texDesc.MipLevels = 1;
-		texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		texDesc.SampleDesc.Count = 1;
-		texDesc.SampleDesc.Quality = 0;
-		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES HeapProps;
-		HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-		HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		HeapProps.CreationNodeMask = 1;
-		HeapProps.VisibleNodeMask = 1;
-
-		if (FAILED(md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
-			D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&texture[i])))) {
+		if (FAILED(createTextureArr(com_no, i, byteArr, DXGI_FORMAT_R8G8B8A8_UNORM,
+			tex[i].width, tex[i].width * 4, tex[i].height))) {
 			ARR_DELETE(byteArr);
-			sprintf(str, "texture[%d]読み込みエラー", (i));
+			sprintf(str, "createTexture №%d エラー", (i));
 			ErrorMessage(str);
 			return false;
-		}
-
-		//upload
-		UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture[i], 0, 1);
-		D3D12_HEAP_PROPERTIES HeapPropsUp;
-		HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
-		HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		HeapPropsUp.CreationNodeMask = 1;
-		HeapPropsUp.VisibleNodeMask = 1;
-
-		D3D12_RESOURCE_DESC BufferDesc;
-		BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		BufferDesc.Alignment = 0;
-		BufferDesc.Width = uploadBufferSize;
-		BufferDesc.Height = 1;
-		BufferDesc.DepthOrArraySize = 1;
-		BufferDesc.MipLevels = 1;
-		BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-		BufferDesc.SampleDesc.Count = 1;
-		BufferDesc.SampleDesc.Quality = 0;
-		BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		if (FAILED(md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
-			&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr, IID_PPV_ARGS(&textureUp[i])))) {
-			ARR_DELETE(byteArr);
-			sprintf(str, "textureUp[%d]読み込みエラー", (i));
-			ErrorMessage(str);
-			return false;
-		}
-
-		D3D12_RESOURCE_BARRIER BarrierDesc;
-		BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		BarrierDesc.Transition.pResource = texture[i];
-		BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-		D3D12_TEXTURE_COPY_LOCATION dest, src;
-
-		UINT64  total_bytes = 0;
-		dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
-
-		memset(&dest, 0, sizeof(dest));
-		dest.pResource = texture[i];
-		dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		dest.SubresourceIndex = 0;
-
-		memset(&src, 0, sizeof(src));
-		src.pResource = textureUp[i];
-		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-		src.PlacedFootprint = footprint;
-
-		D3D12_SUBRESOURCE_DATA texResource;
-		HRESULT hr;
-		hr = textureUp[i]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
-		if (FAILED(hr)) {
-			ARR_DELETE(byteArr);
-			ErrorMessage("textureUp[i]->Map Error!!"); return false;
-		}
-
-		UCHAR* destTex = (UCHAR*)texResource.pData;
-		texResource.RowPitch = footprint.Footprint.RowPitch;
-		texResource.SlicePitch = total_bytes;
-		UCHAR* srcTex = byteArr;
-
-		int copyDestWsize = texResource.RowPitch;
-		int copySrcWsize = tex[i].width * 4;
-
-		if (copyDestWsize == copySrcWsize) {
-			memcpy(destTex, srcTex, sizeof(UCHAR) * copySrcWsize * tex[i].height);
-		}
-		else {
-			for (int s = 0; s < tex[i].height; s++) {
-				memcpy(&destTex[copyDestWsize * s], &srcTex[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
-			}
 		}
 		ARR_DELETE(byteArr);
-		textureUp[i]->Unmap(0, nullptr);
-
-		dx_sub[com_no].mCommandList.Get()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
-
-		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-		dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
 	}
 	return true;
 }

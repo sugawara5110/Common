@@ -240,13 +240,32 @@ private:
 	bool CreateShaderByteCode();
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(ID3D12GraphicsCommandList* cmdList,
 		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
+
 	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+
 	void InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
+
 	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
+
 	void FenceSetEvent();
 	void WaitFence(bool mode);
+
+	HRESULT textureInit(int width, int height,
+		ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
+		D3D12_RESOURCE_STATES firstState,
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint,
+		D3D12_TEXTURE_COPY_LOCATION& dest, D3D12_TEXTURE_COPY_LOCATION& src);
+
+	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
+		ID3D12Resource** up, ID3D12Resource** def,
+		int width, LONG_PTR RowPitch, int height);
+
+	HRESULT createTextureArr(int com_no, int resourceIndex,
+		UCHAR* byteArr, DXGI_FORMAT format,
+		int width, LONG_PTR RowPitch, int height);
 
 public:
 	static void InstanceCreate();
@@ -258,7 +277,7 @@ public:
 
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
-	void SetTextureBinary(Texture* tex, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
+	void SetTextureBinary(Texture* byte, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 	bool GetTexture(int com_no);//デコード済みのバイナリからリソースの生成
 	bool GetTexture2(int com_no);//テスト中
