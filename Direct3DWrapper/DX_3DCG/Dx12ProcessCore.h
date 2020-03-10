@@ -449,15 +449,15 @@ protected:
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
-	ID3D12DescriptorHeap* CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to, ID3D12Resource* movietex = nullptr);
+	Microsoft::WRL::ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum,
+		TextureNo* to, ID3D12Resource* movietex = nullptr);
 
-	ID3D12RootSignature* CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//íºê⁄égópã÷é~
+	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//íºê⁄égópã÷é~
+	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 
-	ID3D12RootSignature* CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	ID3D12RootSignature* CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	ID3D12RootSignature* CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-
-	ID3D12PipelineState* CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
+	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
@@ -465,29 +465,29 @@ protected:
 		bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
 		PrimitiveType type);
 
-	ID3D12PipelineState* CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
+	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type = NUL);
 
-	ID3D12PipelineState* CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
+	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type = NUL);
 
-	ID3D12PipelineState* CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize);
 
-	ID3D12PipelineState* CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
+	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend);
 
-	ID3D12PipelineState* CreatePsoCompute(ID3DBlob* cs,
+	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
 		ID3D12RootSignature* mRootSignature);
 
 	ID3D12Resource* GetSwapChainBuffer();
