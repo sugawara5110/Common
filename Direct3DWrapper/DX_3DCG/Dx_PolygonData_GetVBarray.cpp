@@ -38,6 +38,7 @@ PolygonData::~PolygonData() {
 	free(d3varrayI);
 	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
+	S_DELETE(mObjectCB1);
 	RELEASE(texture);
 	RELEASE(textureUp);
 }
