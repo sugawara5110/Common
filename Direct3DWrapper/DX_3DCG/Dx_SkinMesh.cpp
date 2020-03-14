@@ -558,7 +558,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	//バーテックスバッファー作成
 	const UINT vbByteSize = (UINT)IndexCount34MeAll * sizeof(MY_VERTEX_S);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pvVB, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB, vbByteSize, Vview->VertexBufferUploader);
 	Vview->VertexByteStride = sizeof(MY_VERTEX_S);
 	Vview->VertexBufferByteSize = vbByteSize;
 
@@ -670,9 +670,9 @@ void SkinMesh::CreateIndexBuffer(int cnt, int IviewInd) {
 	Iview[IviewInd].IndexCount = cnt;
 }
 
-void SkinMesh::CreateIndexBuffer2(int *pIndex, int IviewInd) {
+void SkinMesh::CreateIndexBuffer2(int* pIndex, int IviewInd) {
 
-	Iview[IviewInd].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pIndex,
+	Iview[IviewInd].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, pIndex,
 		Iview[IviewInd].IndexBufferByteSize, Iview[IviewInd].IndexBufferUploader);
 }
 

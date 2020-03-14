@@ -75,9 +75,9 @@ HRESULT ParticleData::GetVbColarray(int texture_no, float size, float density) {
 	}
 
 	texResource.RowPitch = footprint.Footprint.RowPitch;
-	UCHAR *ptex = (UCHAR*)texResource.pData;
+	UCHAR* ptex = (UCHAR*)texResource.pData;
 	for (float j = 0; j < height; j += step) {
-		UINT j1 = (UINT)j * texResource.RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
+		UINT j1 = (UINT)j * (UINT)texResource.RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
 		for (float i = 0; i < width; i += step) {
 			UINT ptexI = (UINT)i * 4 + j1;
 			if (ptex[ptexI + 3] > 0)ver++;//アルファ値0より高い場合カウント
@@ -101,7 +101,7 @@ HRESULT ParticleData::GetVbColarray(int texture_no, float size, float density) {
 	float ws = width * size / 2;//中心を0,0,0にする為
 	float hs = height * size / 2;
 	for (float j = 0; j < height; j += step) {
-		UINT j1 = (UINT)j * texResource.RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
+		UINT j1 = (UINT)j * (UINT)texResource.RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
 		for (float i = 0; i < width; i += step) {
 			UINT ptexI = (UINT)i * 4 + j1;
 			float yp = (float)(j * size - hs);
@@ -144,7 +144,7 @@ void ParticleData::GetBufferBill(int v) {
 void ParticleData::CreateVbObj() {
 	const UINT vbByteSize = ver * sizeof(PartPos);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, P_pos, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, P_pos, vbByteSize, Vview->VertexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(PartPos);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -219,8 +219,8 @@ bool ParticleData::CreateBillboard() {
 void ParticleData::DrawParts0() {
 
 	//mSwapChainBuffer PRESENT→RENDER_TARGET
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void ParticleData::DrawParts1() {
@@ -239,11 +239,11 @@ void ParticleData::DrawParts1() {
 
 	svInd = 1 - svInd;
 	if (firstDraw) {
-		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Vview->VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
+		dx->dx_sub[com_no].ResourceBarrier(Vview->VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 		mCommandList->CopyResource(Vview->VertexBufferGPU.Get(), Sview1[svInd].StreamBufferGPU.Get());
-		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Vview->VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+		dx->dx_sub[com_no].ResourceBarrier(Vview->VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 	}
 	mCommandList->SOSetTargets(0, 1, nullptr);
 }
@@ -301,8 +301,8 @@ void ParticleData::Draw() {
 	DrawParts1();
 	if (firstDraw)DrawParts2();
 	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	firstDraw = true;
 	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
 }
@@ -322,8 +322,8 @@ void ParticleData::DrawBillboard() {
 	DrawParts0();
 	DrawParts2();
 	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 void ParticleData::SetVertex(int i,

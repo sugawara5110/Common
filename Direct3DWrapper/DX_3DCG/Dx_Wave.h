@@ -18,9 +18,9 @@ protected:
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
@@ -51,11 +51,11 @@ protected:
 	int ver;      //頂点個数
 	int verI;    //頂点インデックス
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSODraw = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
+	ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
+	ComPtr<ID3D12PipelineState> mPSODraw = nullptr;
+	ComPtr<ID3D12Resource> mInputBuffer = nullptr;
+	ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
+	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 
 	void GetShaderByteCode(int texNum);
 	bool ComCreate();

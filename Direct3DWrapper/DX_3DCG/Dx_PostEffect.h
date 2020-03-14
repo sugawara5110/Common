@@ -14,11 +14,11 @@ class PostEffect :public Common {
 protected:
 	ID3DBlob *cs = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mUavHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mInputBuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
+	ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
+	ComPtr<ID3D12DescriptorHeap> mUavHeap = nullptr;
+	ComPtr<ID3D12Resource> mInputBuffer = nullptr;
+	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 
 	ConstantBuffer<CONSTANT_BUFFER_PostMosaic> *mObjectCB = nullptr;
 

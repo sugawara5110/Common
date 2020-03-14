@@ -11,25 +11,21 @@ void Common::SetCommandList(int no) {
 	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
 }
 
-void Common::CopyResource(ID3D12Resource *Intexture, D3D12_RESOURCE_STATES res) {
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture,
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Intexture,
-		res, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	
+void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res) {
+	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx->dx_sub[com_no].ResourceBarrier(Intexture, res, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
 	mCommandList->CopyResource(texture, Intexture);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(Intexture,
-		D3D12_RESOURCE_STATE_COPY_SOURCE, res));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture,
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+	dx->dx_sub[com_no].ResourceBarrier(Intexture, D3D12_RESOURCE_STATE_COPY_SOURCE, res);
+	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
 HRESULT Common::TextureInit(int width, int height) {
 
 	HRESULT hr = dx->textureInit(width, height, &textureUp, &texture,
 		DXGI_FORMAT_R8G8B8A8_UNORM,
-		D3D12_RESOURCE_STATE_GENERIC_READ, footprint, dest, src);
+		D3D12_RESOURCE_STATE_GENERIC_READ);
 	if (FAILED(hr)) {
 		ErrorMessage("Common::TextureInit Error!!");
 		return hr;
@@ -40,7 +36,7 @@ HRESULT Common::TextureInit(int width, int height) {
 	return S_OK;
 }
 
-HRESULT Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold) {
+HRESULT Common::SetTextureMPixel(UINT** m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold) {
 
 	D3D12_RESOURCE_DESC texdesc;
 	texdesc = texture->GetDesc();
@@ -49,16 +45,24 @@ HRESULT Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, B
 	//テクスチャの縦サイズ取得
 	int height = texdesc.Height;
 
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+	D3D12_TEXTURE_COPY_LOCATION dest, src;
+	UINT64  total_bytes = 0;
+	dx->md3dDevice->GetCopyableFootprints(&texture->GetDesc(), 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+
+	memset(&dest, 0, sizeof(dest));
+	dest.pResource = texture;
+	dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+	dest.SubresourceIndex = 0;
+
+	memset(&src, 0, sizeof(src));
+	src.pResource = textureUp;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+	src.PlacedFootprint = footprint;
+
 	D3D12_SUBRESOURCE_DATA texResource;
 
-	D3D12_RESOURCE_BARRIER BarrierDesc;
-	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	BarrierDesc.Transition.pResource = texture;
-	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-	mCommandList->ResourceBarrier(1, &BarrierDesc);
+	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	HRESULT hr;
 	hr = textureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
@@ -66,7 +70,7 @@ HRESULT Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, B
 		ErrorMessage("Common::SetTextureMPixel Error!!"); return hr;
 	}
 
-	UCHAR *ptex = (UCHAR*)texResource.pData;
+	UCHAR* ptex = (UCHAR*)texResource.pData;
 	texResource.RowPitch = footprint.Footprint.RowPitch;
 
 	for (int j = 0; j < height; j++) {
@@ -89,16 +93,14 @@ HRESULT Common::SetTextureMPixel(UINT **m_pix, BYTE r, BYTE g, BYTE b, BYTE a, B
 
 	mCommandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
 
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	mCommandList->ResourceBarrier(1, &BarrierDesc);
+	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return S_OK;
 }
 
-Microsoft::WRL::ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to, ID3D12Resource* movietex)
+ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to, ID3D12Resource* movietex)
 {
-	Microsoft::WRL::ComPtr <ID3D12DescriptorHeap>srv;
+	ComPtr <ID3D12DescriptorHeap>srv;
 
 	//使用テクスチャ数だけDescriptorを用意する
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
@@ -145,12 +147,12 @@ Microsoft::WRL::ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int Material
 	return srv;
 }
 
-Microsoft::WRL::ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc)
+ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc)
 {
-	Microsoft::WRL::ComPtr <ID3D12RootSignature>rs;
+	ComPtr <ID3D12RootSignature>rs;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSig = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	HRESULT hr;
 	hr = D3D12SerializeRootSignature(rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
@@ -178,7 +180,7 @@ Microsoft::WRL::ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_
 	return rs;
 }
 
-Microsoft::WRL::ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
+ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
 {
 	const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
 		0, // shaderRegister
@@ -194,7 +196,7 @@ Microsoft::WRL::ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3D
 	return CreateRsCommon(&rootSigDesc);
 }
 
-Microsoft::WRL::ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
+ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
 {
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(paramNum, slotRootParameter,
 		NULL, NULL,
@@ -204,7 +206,7 @@ Microsoft::WRL::ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int pa
 	return CreateRsCommon(&rootSigDesc);
 }
 
-Microsoft::WRL::ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
+ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
 {
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(paramNum, slotRootParameter,
 		0, nullptr,
@@ -213,7 +215,7 @@ Microsoft::WRL::ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNu
 	return CreateRsCommon(&rootSigDesc);
 }
 
-Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
+ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
@@ -223,7 +225,7 @@ Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3
 {
 	D3D12_PRIMITIVE_TOPOLOGY_TYPE topology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> pso;
+	ComPtr <ID3D12PipelineState> pso;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
 	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
@@ -319,7 +321,7 @@ Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3
 	return pso;
 }
 
-Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
+ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend,
@@ -328,7 +330,7 @@ Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs,
 	return CreatePSO(vs, nullptr, nullptr, ps, nullptr, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
 }
 
-Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
+ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend,
@@ -337,7 +339,7 @@ Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob*
 	return CreatePSO(vs, hs, ds, ps, nullptr, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
 }
 
-Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize)
@@ -345,7 +347,7 @@ Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DB
 	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout, &pDeclaration, true, StreamSize, true, true, NUL);
 }
 
-Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
+ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend)
@@ -353,10 +355,10 @@ Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob*
 	return CreatePSO(vs, nullptr, nullptr, ps, gs, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, NUL);
 }
 
-Microsoft::WRL::ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
+ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 	ID3D12RootSignature* mRootSignature)
 {
-	Microsoft::WRL::ComPtr <ID3D12PipelineState>pso;
+	ComPtr <ID3D12PipelineState>pso;
 
 	D3D12_COMPUTE_PIPELINE_STATE_DESC PsoDesc = {};
 	PsoDesc.pRootSignature = mRootSignature;
@@ -396,13 +398,13 @@ ID3D12Resource *Common::GetTextureUp(int Num) {
 	return dx->textureUp[Num];
 }
 
-Microsoft::WRL::ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
+ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
 	return dx->CompileShader(szFileName, size, szFuncName, szProfileName);
 }
 
 void Common::drawsub(drawPara para) {
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.srv };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -448,6 +450,6 @@ void Common::drawsub(drawPara para) {
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }

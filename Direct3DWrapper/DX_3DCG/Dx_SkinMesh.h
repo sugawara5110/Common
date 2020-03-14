@@ -45,8 +45,8 @@ protected:
 
 	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 	int texNum;//テクスチャー数
 
 	//コンスタントバッファOBJ
@@ -65,8 +65,8 @@ protected:
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView[]> Iview = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
+	ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
+	ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
 	//メッシュ関連	
 	DWORD* m_pdwNumVert;//メッシュ毎の頂点数

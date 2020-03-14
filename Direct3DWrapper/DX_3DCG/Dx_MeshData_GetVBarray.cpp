@@ -455,7 +455,7 @@ bool MeshData::CreateMesh() {
 
 bool MeshData::GetTexture() {
 
-	TextureNo *te = new TextureNo[MaterialCount];
+	TextureNo* te = new TextureNo[MaterialCount];
 	for (int i = 0; i < MaterialCount; i++) {
 		te[i].diffuse = pMaterial[i].tex_no;
 		te[i].normal = pMaterial[i].nortex_no;
@@ -466,12 +466,12 @@ bool MeshData::GetTexture() {
 	if (mSrvHeap == nullptr)return false;
 
 	for (int i = 0; i < MaterialCount; i++)
-		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
+		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
 
 	ARR_DELETE(te);
 	ARR_DELETE(piFaceBuffer);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, pvVertexBuffer, Vview->VertexBufferByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVertexBuffer, Vview->VertexBufferByteSize, Vview->VertexBufferUploader);
 	ARR_DELETE(pvVertexBuffer);
 
 	return true;

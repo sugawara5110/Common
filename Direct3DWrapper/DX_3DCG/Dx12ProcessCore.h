@@ -41,6 +41,7 @@
 #pragma comment(lib, "dxgi.lib")
 
 #define COM_NO 7
+using Microsoft::WRL::ComPtr;
 
 //前方宣言
 template<class T>
@@ -88,12 +89,13 @@ private:
 	friend DxActivation;
 	friend DxOptimizer;
 
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList;
+	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
+	ComPtr<ID3D12GraphicsCommandList> mCommandList;
 	int mAloc_Num = 0;
 	volatile ComListState mComState;
 
 	bool ListCreate();
+	void ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void Bigin();
 	void End();
 };
@@ -122,38 +124,38 @@ private:
 	friend DxActivation;
 	friend DxOptimizer;
 
-	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
-	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;
-	Microsoft::WRL::ComPtr<IDXGISwapChain> mSwapChain;
-	Microsoft::WRL::ComPtr<ID3D12Fence> mFence;
+	ComPtr<IDXGIFactory4> mdxgiFactory;
+	ComPtr<ID3D12Device> md3dDevice;
+	ComPtr<IDXGISwapChain> mSwapChain;
+	ComPtr<ID3D12Fence> mFence;
 	UINT64 mCurrentFence = 0;
 
 	//MultiSampleレベルチェック
 	bool m4xMsaaState = false;
 	UINT m4xMsaaQuality = 0;
 
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCommandQueue;
+	ComPtr<ID3D12CommandQueue> mCommandQueue;
 	Dx12Process_sub dx_sub[COM_NO];
 
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
-	Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[SwapChainBufferCount];
-	Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
+	ComPtr<ID3D12Resource> mSwapChainBuffer[SwapChainBufferCount];
+	ComPtr<ID3D12Resource> mDepthStencilBuffer;
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
+	ComPtr<ID3D12DescriptorHeap> mRtvHeap;
+	ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 
 	//シェーダーバイトコード
-	Microsoft::WRL::ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pHullShader_DISP = nullptr;
+	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
+	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
+	ComPtr<ID3DBlob> pHullShader_DISP = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pDomainShader_Wave = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pDomainShaderTriangle = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pDomainShader_DISP = nullptr;
+	ComPtr<ID3DBlob> pDomainShader_Wave = nullptr;
+	ComPtr<ID3DBlob> pDomainShaderTriangle = nullptr;
+	ComPtr<ID3DBlob> pDomainShader_DISP = nullptr;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_SKIN;
 	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_PSO;
@@ -163,29 +165,29 @@ private:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3DBC;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_2D;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_Wave = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_SKIN = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_SKIN_D = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_PSO = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_P = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_MESH_D = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_MESH = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_DISP = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_TC = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_BC = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_2D = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pVertexShader_2DTC = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_Wave = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_SKIN = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_SKIN_D = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_PSO = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_P = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_MESH_D = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_MESH = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_DISP = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_TC = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_BC = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_2D = nullptr;
+	ComPtr<ID3DBlob> pVertexShader_2DTC = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_P = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_Bump = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_3D = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_Emissive = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_BC = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_2D = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pPixelShader_2DTC = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_P = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_Bump = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_3D = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_Emissive = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_BC = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_2D = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_2DTC = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
+	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
+	ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
 
 	bool CreateShaderByteCodeBool = true;
 
@@ -238,12 +240,15 @@ private:
 	~Dx12Process();
 
 	bool CreateShaderByteCode();
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(ID3D12GraphicsCommandList* cmdList,
-		const void* initData, UINT64 byteSize, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
+	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
+		const void* initData, LONG_PTR RowPitch);
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
+	ComPtr<ID3D12Resource> CreateDefaultBuffer(int com_no,
+		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer);
 
-	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+	ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
+
+	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 	void InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
@@ -255,9 +260,7 @@ private:
 
 	HRESULT textureInit(int width, int height,
 		ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
-		D3D12_RESOURCE_STATES firstState,
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint,
-		D3D12_TEXTURE_COPY_LOCATION& dest, D3D12_TEXTURE_COPY_LOCATION& src);
+		D3D12_RESOURCE_STATES firstState);
 
 	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
 		ID3D12Resource** up, ID3D12Resource** def,
@@ -307,8 +310,8 @@ public:
 struct VertexView {
 
 	//各パラメーターを自分でコピーする
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
+	ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
 
 	//バッファのサイズ等
 	UINT VertexByteStride = 0;
@@ -329,8 +332,8 @@ struct VertexView {
 struct IndexView {
 
 	//各パラメーターを自分でコピーする
-	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
+	ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
 	//バッファのサイズ等
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
@@ -352,7 +355,7 @@ struct IndexView {
 
 struct StreamView {
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> StreamBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> StreamBufferGPU = nullptr;
 
 	//バッファのサイズ等
 	UINT StreamByteStride = 0;
@@ -374,10 +377,10 @@ template<class T>
 class ConstantBuffer {
 
 private:
-	Microsoft::WRL::ComPtr<ID3D12Resource> mUploadBuffer;
-	BYTE *mMappedData = nullptr;
+	ComPtr<ID3D12Resource> mUploadBuffer;
+	BYTE* mMappedData = nullptr;
 	UINT mElementByteSize = 0;
-	Dx12Process *dx = nullptr;
+	Dx12Process* dx = nullptr;
 
 public:
 	ConstantBuffer(UINT elementCount) {
@@ -393,7 +396,7 @@ public:
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(&mUploadBuffer)))) {
-			char *str = "ConstantBufferエラー";
+			char* str = "ConstantBufferエラー";
 			throw str;
 		}
 
@@ -411,12 +414,12 @@ public:
 		mMappedData = nullptr;
 	}
 
-	ID3D12Resource *Resource()const {
+	ID3D12Resource* Resource()const {
 		return mUploadBuffer.Get();
 	}
 
 	void CopyData(int elementIndex, const T& data) {
-		memcpy(&mMappedData[elementIndex*mElementByteSize], &data, sizeof(T));
+		memcpy(&mMappedData[elementIndex * mElementByteSize], &data, sizeof(T));
 	}
 };
 
@@ -446,18 +449,19 @@ protected:
 	ID3D12Resource* textureUp = nullptr;
 	//movie_on
 	bool m_on = false;
+
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
-	Microsoft::WRL::ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum,
+	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum,
 		TextureNo* to, ID3D12Resource* movietex = nullptr);
 
-	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//直接使用禁止
-	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	Microsoft::WRL::ComPtr <ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//直接使用禁止
+	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr <ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
+	ComPtr <ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
@@ -465,29 +469,29 @@ protected:
 		bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
 		PrimitiveType type);
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
+	ComPtr <ID3D12PipelineState> CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type = NUL);
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
+	ComPtr <ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type = NUL);
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+	ComPtr <ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize);
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
+	ComPtr <ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend);
 
-	Microsoft::WRL::ComPtr <ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
+	ComPtr <ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
 		ID3D12RootSignature* mRootSignature);
 
 	ID3D12Resource* GetSwapChainBuffer();
@@ -495,7 +499,7 @@ protected:
 	ID3D12Resource* GetTexture(int Num);
 	D3D12_RESOURCE_STATES GetTextureStates();
 	ID3D12Resource* GetTextureUp(int Num);
-	Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 	struct drawPara {
 		UINT NumMaterial = 0;
@@ -535,8 +539,8 @@ protected:
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
@@ -561,7 +565,7 @@ protected:
 	int texNum;//テクスチャ個数
 
 	//パイプラインOBJ
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;
+	ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
 	Vertex* d3varray;  //頂点配列
 	VertexBC* d3varrayBC;//頂点配列基本色
@@ -618,8 +622,8 @@ protected:
 
 	int      ver;//頂点数
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER2D>* mObjectCB = nullptr;
@@ -635,7 +639,7 @@ protected:
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView> Iview = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;
+	ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
 	//テクスチャ保持,DxText classでしか使わない
 	bool tex_on = false;

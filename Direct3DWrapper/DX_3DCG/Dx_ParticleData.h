@@ -21,9 +21,9 @@ protected:
 
 	PartPos* P_pos;//パーティクルデータ配列
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_com = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature_draw = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature_com = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature_draw = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER_P>* mObjectCB = nullptr;
@@ -46,8 +46,8 @@ protected:
 	int  streamInitcount = 0;
 	bool parInit = false;
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_com = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
+	ComPtr<ID3D12PipelineState> mPSO_com = nullptr;
+	ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
 
 	void GetShaderByteCode();
 	void MatrixMap(CONSTANT_BUFFER_P* cb_p, float x, float y, float z, float theta, float size, float speed, bool tex);

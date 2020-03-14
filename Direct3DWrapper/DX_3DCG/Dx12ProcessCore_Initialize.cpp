@@ -25,8 +25,6 @@
 #include "../../../PNGLoader/PNGLoader.h"
 #include "../../../JPGLoader/JPGLoader.h"
 
-using Microsoft::WRL::ComPtr;
-
 bool Dx12Process_sub::ListCreate() {
 	for (int i = 0; i < 2; i++) {
 		//コマンドアロケータ生成(コマンドリストに積むバッファを確保するObj)
@@ -56,6 +54,17 @@ bool Dx12Process_sub::ListCreate() {
 	mComState = USED;
 
 	return true;
+}
+
+void Dx12Process_sub::ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+	D3D12_RESOURCE_BARRIER BarrierDesc;
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = res;
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = before;
+	BarrierDesc.Transition.StateAfter = after;
+	mCommandList->ResourceBarrier(1, &BarrierDesc);
 }
 
 void Dx12Process_sub::Bigin() {
@@ -316,9 +325,7 @@ int Dx12Process::GetTexNumber(CHAR *fileName) {
 
 HRESULT Dx12Process::textureInit(int width, int height,
 	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
-	D3D12_RESOURCE_STATES firstState,
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint,
-	D3D12_TEXTURE_COPY_LOCATION& dest, D3D12_TEXTURE_COPY_LOCATION& src) {
+	D3D12_RESOURCE_STATES firstState) {
 
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -373,19 +380,6 @@ HRESULT Dx12Process::textureInit(int width, int height,
 		return hr;
 	}
 
-	UINT64  total_bytes = 0;
-	dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
-
-	memset(&dest, 0, sizeof(dest));
-	dest.pResource = *def;
-	dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-	dest.SubresourceIndex = 0;
-
-	memset(&src, 0, sizeof(src));
-	src.pResource = *up;
-	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-	src.PlacedFootprint = footprint;
-
 	return S_OK;
 }
 
@@ -393,54 +387,17 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 	ID3D12Resource** up, ID3D12Resource** def,
 	int width, LONG_PTR RowPitch, int height) {
 
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-	D3D12_TEXTURE_COPY_LOCATION dest, src;
-
 	HRESULT hr = textureInit(width, height, up, def, format,
-		D3D12_RESOURCE_STATE_COMMON, footprint, dest, src);
+		D3D12_RESOURCE_STATE_COMMON);
 	if (FAILED(hr)) {
 		return hr;
 	}
 
-	D3D12_RESOURCE_BARRIER BarrierDesc;
-	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	BarrierDesc.Transition.pResource = *def;
-	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-	dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
+	dx_sub[com_no].ResourceBarrier(*def, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	hr = CopyResourcesToGPU(com_no, *up, *def, byteArr, RowPitch);
+	dx_sub[com_no].ResourceBarrier(*def, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-	D3D12_SUBRESOURCE_DATA texResource;
-	hr = (*up)->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
-	if (FAILED(hr)) {
-		return hr;
-	}
-
-	UCHAR* destTex = (UCHAR*)texResource.pData;
-	texResource.RowPitch = footprint.Footprint.RowPitch;
-	UCHAR* srcTex = byteArr;
-
-	UINT copyDestWsize = (UINT)texResource.RowPitch;
-	UINT copySrcWsize = (UINT)RowPitch;
-
-	if (copyDestWsize == copySrcWsize) {
-		memcpy(destTex, srcTex, sizeof(UCHAR) * copySrcWsize * height);
-	}
-	else {
-		for (int s = 0; s < height; s++) {
-			memcpy(&destTex[copyDestWsize * s], &srcTex[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
-		}
-	}
-	(*up)->Unmap(0, nullptr);
-
-	dx_sub[com_no].mCommandList.Get()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
-
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	dx_sub[com_no].mCommandList->ResourceBarrier(1, &BarrierDesc);
-
-	return S_OK;
+	return hr;
 }
 
 HRESULT Dx12Process::createTextureArr(int com_no, int resourceIndex,
@@ -467,7 +424,7 @@ bool Dx12Process::GetTexture(int com_no) {
 
 		std::unique_ptr<uint8_t[]> decodedData = nullptr;
 		D3D12_SUBRESOURCE_DATA subresource;
-		Microsoft::WRL::ComPtr<ID3D12Resource> t = nullptr;
+		ComPtr<ID3D12Resource> t = nullptr;
 
 		if (tex[i].binary_ch != nullptr) {
 			if (FAILED(DirectX::LoadWICTextureFromMemory(md3dDevice.Get(),
@@ -758,8 +715,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	dx_sub[0].Bigin();
 
 	//深度ステンシルバッファ,リソースバリア共有→深度書き込み
-	dx_sub[0].mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mDepthStencilBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	dx_sub[0].ResourceBarrier(mDepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	dx_sub[0].End();
 	WaitFenceCurrent();
@@ -811,8 +767,8 @@ void Dx12Process::Sclear(int com_no) {
 	dx_sub[com_no].mCommandList->RSSetViewports(1, &mScreenViewport);
 	dx_sub[com_no].mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-	dx_sub[com_no].mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mSwapChainBuffer[mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	dx_sub[com_no].ResourceBarrier(mSwapChainBuffer[mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	dx_sub[com_no].mCommandList->ClearRenderTargetView(CD3DX12_CPU_DESCRIPTOR_HANDLE(
 		mRtvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -826,8 +782,8 @@ void Dx12Process::Sclear(int com_no) {
 		mCurrBackBuffer,
 		mRtvDescriptorSize), true, &mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	dx_sub[com_no].mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mSwapChainBuffer[mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	dx_sub[com_no].ResourceBarrier(mSwapChainBuffer[mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 void Dx12Process::Bigin(int com_no) {
@@ -918,52 +874,160 @@ void Dx12Process::Fog(float r, float g, float b, float amount, float density, bo
 	fog.Density = density;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
-	ID3D12GraphicsCommandList* cmdList,
+HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
+	const void* initData, LONG_PTR RowPitch) {
+
+	bool copyTexture = false;
+	D3D12_RESOURCE_DESC desc = def->GetDesc();
+	if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+		desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+		desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+		copyTexture = true;
+	}
+
+	D3D12_SUBRESOURCE_DATA subResourceData = {};
+	subResourceData.pData = initData;
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+	D3D12_TEXTURE_COPY_LOCATION dest, src;
+
+	if (copyTexture) {
+		UINT64  total_bytes = 0;
+		dx->md3dDevice->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+
+		memset(&dest, 0, sizeof(dest));
+		dest.pResource = def;
+		dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dest.SubresourceIndex = 0;
+
+		memset(&src, 0, sizeof(src));
+		src.pResource = up;
+		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		src.PlacedFootprint = footprint;
+
+		subResourceData.RowPitch = footprint.Footprint.RowPitch;
+	}
+	else {
+		subResourceData.RowPitch = RowPitch;
+	}
+
+	D3D12_SUBRESOURCE_DATA mapResource;
+	HRESULT hr = up->Map(0, nullptr, reinterpret_cast<void**>(&mapResource));
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	UCHAR* destResource = (UCHAR*)mapResource.pData;
+	mapResource.RowPitch = subResourceData.RowPitch;
+	UCHAR* srcResource = (UCHAR*)subResourceData.pData;
+
+	UINT copyDestWsize = (UINT)mapResource.RowPitch;
+	UINT copySrcWsize = (UINT)RowPitch;
+
+	if (copyDestWsize == copySrcWsize) {
+		memcpy(destResource, srcResource, sizeof(UCHAR) * copySrcWsize * desc.Height);
+	}
+	else {
+		for (UINT s = 0; s < desc.Height; s++) {
+			memcpy(&destResource[copyDestWsize * s], &srcResource[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
+		}
+	}
+
+	up->Unmap(0, nullptr);
+
+	if (copyTexture) {
+		dx_sub[com_no].mCommandList.Get()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+	}
+	else {
+		dx_sub[com_no].mCommandList.Get()->CopyBufferRegion(def, 0, up, 0, copySrcWsize);
+	}
+
+	return S_OK;
+}
+
+ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
+	int com_no,
 	const void* initData,
 	UINT64 byteSize,
-	Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer)
+	ComPtr<ID3D12Resource>& uploadBuffer)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 
+	D3D12_RESOURCE_DESC BufferDesc = {};
+	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	BufferDesc.Width = byteSize;
+	BufferDesc.Height = 1;
+	BufferDesc.DepthOrArraySize = 1;
+	BufferDesc.MipLevels = 1;
+	BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+	BufferDesc.SampleDesc.Count = 1;
+	BufferDesc.SampleDesc.Quality = 0;
+	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	D3D12_HEAP_PROPERTIES HeapProps;
+	HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	HeapProps.CreationNodeMask = 1;
+	HeapProps.VisibleNodeMask = 1;
+
 	//デフォルトバッファ生成
-	md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+	HRESULT hr = md3dDevice->CreateCommittedResource(
+		&HeapProps,
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),
+		&BufferDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
 		IID_PPV_ARGS(defaultBuffer.GetAddressOf()));
+	if (FAILED(hr)) {
+		return nullptr;
+	}
+
+	UINT64 uploadBufferSize = GetRequiredIntermediateSize(defaultBuffer.Get(), 0, 1);
+	D3D12_HEAP_PROPERTIES HeapPropsUp;
+	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	HeapPropsUp.CreationNodeMask = 1;
+	HeapPropsUp.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC BufferDescUp;
+	BufferDescUp.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	BufferDescUp.Alignment = 0;
+	BufferDescUp.Width = uploadBufferSize;
+	BufferDescUp.Height = 1;
+	BufferDescUp.DepthOrArraySize = 1;
+	BufferDescUp.MipLevels = 1;
+	BufferDescUp.Format = DXGI_FORMAT_UNKNOWN;
+	BufferDescUp.SampleDesc.Count = 1;
+	BufferDescUp.SampleDesc.Quality = 0;
+	BufferDescUp.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	BufferDescUp.Flags = D3D12_RESOURCE_FLAG_NONE;
 
 	//デフォルトバッファにCPUメモリデータをコピーするための中間バッファ生成
-	md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+	hr = md3dDevice->CreateCommittedResource(
+		&HeapPropsUp,
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),
+		&BufferDescUp,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(uploadBuffer.GetAddressOf()));
+	if (FAILED(hr)) {
+		return nullptr;
+	}
 
-	//デフォルトバッファにコピーしたいデータの内容
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = initData;
-	subResourceData.RowPitch = (LONG_PTR)byteSize;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
-
-	//デフォルトバッファ,リソースバリア共有→コピーされる側
-	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(defaultBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	//UpdateSubresources:中間バッファにCPUメモリをコピーする
-	//その後CommandListを使うと中間バッファの内容をアップロードされる
-	UpdateSubresources<1>(cmdList, defaultBuffer.Get(), uploadBuffer.Get(), 0, 0, 1, &subResourceData);
-	//デフォルトバッファ,リソースバリアコピーされる側→アップロード
-	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(defaultBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	hr = CopyResourcesToGPU(com_no, uploadBuffer.Get(), defaultBuffer.Get(), initData, byteSize);
+	if (FAILED(hr)) {
+		return nullptr;
+	}
+	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return defaultBuffer;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(UINT64 byteSize)
+ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(UINT64 byteSize)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 

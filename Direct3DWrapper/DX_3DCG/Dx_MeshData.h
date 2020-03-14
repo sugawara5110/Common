@@ -19,8 +19,8 @@ protected:
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 	int texNum;//テクスチャー数
 
 			   //コンスタントバッファOBJ
@@ -39,8 +39,8 @@ protected:
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView[]> Iview = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
+	ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
+	ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
 	int  MaterialCount = 0;//マテリアル数
 	int* piFaceBuffer;

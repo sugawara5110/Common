@@ -161,14 +161,7 @@ void PolygonData2D::SetText() {
 	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 	src.PlacedFootprint = footprint;
 
-	D3D12_RESOURCE_BARRIER BarrierDesc;
-	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	BarrierDesc.Transition.pResource = texture;
-	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-	mCommandList->ResourceBarrier(1, &BarrierDesc);
+	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	D3D12_SUBRESOURCE_DATA texResource;
 	textureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
@@ -209,9 +202,7 @@ void PolygonData2D::SetText() {
 
 	mCommandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
 
-	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	mCommandList->ResourceBarrier(1, &BarrierDesc);
+	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
 
@@ -315,9 +306,9 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d2varray, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d2varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d2varrayI, ibByteSize, Iview->IndexBufferUploader);
+	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d2varrayI, ibByteSize, Iview->IndexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(MY_VERTEX2);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -368,8 +359,8 @@ void PolygonData2D::Draw() {
 	mCommandList->SetPipelineState(mPSO.Get());
 
 	//mSwapChainBuffer PRESENT→RENDER_TARGET
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);//テクスチャ無しの場合このままで良いのやら・・エラーは無し
@@ -386,8 +377,8 @@ void PolygonData2D::Draw() {
 	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum[dx->cBuffSwap[1]], 0, 0, 0);
 
 	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 

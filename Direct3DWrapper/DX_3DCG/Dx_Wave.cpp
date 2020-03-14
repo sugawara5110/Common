@@ -35,6 +35,7 @@ Wave::~Wave() {
 	free(d3varrayI);
 	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
+	S_DELETE(mObjectCB1);
 	S_DELETE(mObjectCB_WAVE);
 	RELEASE(texture);
 	RELEASE(textureUp);
@@ -112,17 +113,18 @@ bool Wave::ComCreate() {
 
 	D3D12_SUBRESOURCE_DATA subResourceData = {};
 	subResourceData.pData = wdata.data();
-	subResourceData.RowPitch = wdata.size();
+	subResourceData.RowPitch = byteSize;
 	subResourceData.SlicePitch = subResourceData.RowPitch;
 	//wdata,UpLoad
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, mInputBuffer.Get(), mInputUploadBuffer.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	dx->dx_sub[com_no].ResourceBarrier(mInputBuffer.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	dx->CopyResourcesToGPU(com_no, mInputUploadBuffer.Get(), mInputBuffer.Get(), subResourceData.pData, subResourceData.RowPitch);
+
+	dx->dx_sub[com_no].ResourceBarrier(mInputBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	dx->dx_sub[com_no].ResourceBarrier(mOutputBuffer.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
 	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
@@ -187,9 +189,9 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varray, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, Vview->VertexBufferUploader);
 
-	Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(mCommandList, d3varrayI, ibByteSize, Iview[0].IndexBufferUploader);
+	Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, Iview[0].IndexBufferUploader);
 
 	Vview->VertexByteStride = sizeof(Vertex);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -264,8 +266,8 @@ void Wave::Compute() {
 	mInputBuffer = mOutputBuffer;
 	mOutputBuffer = tmp;
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ));
+	dx->dx_sub[com_no].ResourceBarrier(mInputBuffer.Get(),
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
 void Wave::DrawSub() {
