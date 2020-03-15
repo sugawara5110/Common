@@ -36,63 +36,19 @@ HRESULT Common::TextureInit(int width, int height) {
 	return S_OK;
 }
 
-HRESULT Common::SetTextureMPixel(UINT** m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold) {
+HRESULT Common::SetTextureMPixel(BYTE* frame) {
 
 	D3D12_RESOURCE_DESC texdesc;
 	texdesc = texture->GetDesc();
 	//テクスチャの横サイズ取得
 	int width = (int)texdesc.Width;
-	//テクスチャの縦サイズ取得
-	int height = texdesc.Height;
-
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-	D3D12_TEXTURE_COPY_LOCATION dest, src;
-	UINT64  total_bytes = 0;
-	dx->md3dDevice->GetCopyableFootprints(&texture->GetDesc(), 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
-
-	memset(&dest, 0, sizeof(dest));
-	dest.pResource = texture;
-	dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-	dest.SubresourceIndex = 0;
-
-	memset(&src, 0, sizeof(src));
-	src.pResource = textureUp;
-	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-	src.PlacedFootprint = footprint;
-
-	D3D12_SUBRESOURCE_DATA texResource;
 
 	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	HRESULT hr;
-	hr = textureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	HRESULT hr = dx->CopyResourcesToGPU(com_no, textureUp, texture, frame, width * 4);
 	if (FAILED(hr)) {
-		ErrorMessage("Common::SetTextureMPixel Error!!"); return hr;
+		ErrorMessage("Common::SetTextureMPixel Error!!");
+		return hr;
 	}
-
-	UCHAR* ptex = (UCHAR*)texResource.pData;
-	texResource.RowPitch = footprint.Footprint.RowPitch;
-
-	for (int j = 0; j < height; j++) {
-		UINT j1 = (UINT)(j * texResource.RowPitch);//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
-		for (int i = 0; i < width; i++) {
-			UINT ptexI = i * 4 + j1;
-			ptex[ptexI + 2] = m_pix[j][i] >> 16 & r;
-			ptex[ptexI + 1] = m_pix[j][i] >> 8 & g;
-			ptex[ptexI + 0] = m_pix[j][i] & b;
-
-			if ((m_pix[j][i] >> 16 & b) < Threshold && (m_pix[j][i] >> 8 & g) < Threshold && (m_pix[j][i] & r) < Threshold) {
-				ptex[ptexI + 3] = 0;
-			}
-			else {
-				ptex[ptexI + 3] = a;
-			}
-		}
-	}
-	textureUp->Unmap(0, nullptr);
-
-	mCommandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
-
 	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return S_OK;

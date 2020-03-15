@@ -11,25 +11,26 @@
 class Movie :public DsProcess {
 
 protected:
-	VIDEOINFOHEADER *pVideoInfoHeader = NULL;//構造体,ビデオ イメージのビットマップと色情報
+	VIDEOINFOHEADER* pVideoInfoHeader = NULL;//構造体,ビデオ イメージのビットマップと色情報
 	AM_MEDIA_TYPE am_media_type;     //メディア サンプルの メジャー タイプを指定するグローバル一意識別子 (GUID)
 
 	long nBufferSize = 0;//バッファサイズ
-	BYTE *pBuffer = NULL;  //ピクセルデータバッファ
+	BYTE* pBuffer = NULL;  //ピクセルデータバッファ
 	int linesize = 0;   //1ラインサイズ
 	int xs, ys;    //画像サイズ
 	int wid, hei; //格納時画像サイズ 
-	UINT **m_pix = NULL; //受け渡し用ピクセルデータ(1要素1ピクセル)
-	BYTE *pix1 = nullptr;
+	BYTE* pix = nullptr;
+	UINT** m_pix = nullptr;
 
-	UINT **getframe(int width, int height);
-	BYTE *getframe1(int width, int height);
+	UINT** getframe(int width, int height);
+	BYTE* getframe1(int width, int height);
 
 public:
 	Movie() {}
-	Movie(char *fileName);//デコード後のファイルネーム
-	UINT **GetFrame(int width, int height);
-	BYTE *GetFrame1(int width, int height);
+	Movie(char* fileName);//デコード後のファイルネーム
+	BYTE* GetFrame(int width, int height, BYTE Threshold,
+		BYTE addR = 0, BYTE addG = 0, BYTE addB = 0, BYTE addA = 0);
+	void sound(long volume);
 	virtual ~Movie();
 };
 

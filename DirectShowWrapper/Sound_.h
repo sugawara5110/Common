@@ -13,7 +13,7 @@ class Sound_ :public DsProcess {
 
 public:
 	Sound_() {}
-	Sound_(char *filename);
+	Sound_(char* filename);
 	void sound(bool repeat, long volume);//volume -10000Å`0
 	void soundoff();
 	void soundloop(bool repeat, long volume, REFTIME start, REFTIME end);

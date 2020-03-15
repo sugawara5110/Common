@@ -525,7 +525,7 @@ public:
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res);
 	HRESULT TextureInit(int width, int height);
-	HRESULT SetTextureMPixel(UINT** m_pix, BYTE r, BYTE g, BYTE b, BYTE a, BYTE Threshold = 50);
+	HRESULT SetTextureMPixel(BYTE* frame);
 };
 
 //*********************************PolygonDataƒNƒ‰ƒX*************************************//
