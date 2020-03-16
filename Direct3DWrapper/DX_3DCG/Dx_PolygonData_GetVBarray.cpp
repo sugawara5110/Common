@@ -39,8 +39,7 @@ PolygonData::~PolygonData() {
 	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
 	S_DELETE(mObjectCB1);
-	RELEASE(texture);
-	RELEASE(textureUp);
+	destroyTexture();
 }
 
 ID3D12PipelineState *PolygonData::GetPipelineState() {
@@ -202,16 +201,18 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	if (mRootSignature == nullptr)return false;
 
 	//SRVのデスクリプターヒープ生成
-	texNum = 1;
+	numTex = 1;
 	material[0].tex_no = tNo;
 	material[0].nortex_no = nortNo;
 	material[0].dwNumFace = 1;
-	if (nortNo != -1)texNum = 2;//normalMap有りの場合2個生成
+	if (nortNo != -1)numTex = 2;//normalMap有りの場合2個生成
 	TextureNo te;
 	te.diffuse = tNo;
 	te.normal = nortNo;
 	te.movie = m_on;
-	mSrvHeap = CreateSrvHeap(1, texNum, &te, texture);
+
+	createTextureResource(1, numTex, &te);
+	mSrvHeap = CreateSrvHeap(1, numTex, &te, mtexture);
 	if (mSrvHeap == nullptr)return false;
 
 	UINT VertexSize;

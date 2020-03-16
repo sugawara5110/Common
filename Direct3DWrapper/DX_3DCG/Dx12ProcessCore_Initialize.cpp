@@ -103,15 +103,7 @@ void Dx12Process::DeleteInstance() {
 }
 
 Dx12Process::~Dx12Process() {
-
-	WaitFenceCurrent();
-
-	for (int i = 0; i < texNum; i++) {
-		RELEASE(texture[i]);
-		RELEASE(textureUp[i]);
-	}
 	ARR_DELETE(texture);
-	ARR_DELETE(textureUp);
 }
 
 void Dx12Process::FenceSetEvent() {
@@ -400,18 +392,21 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 	return hr;
 }
 
-HRESULT Dx12Process::createTextureArr(int com_no, int resourceIndex,
+void Dx12Process::createTextureArr(int resourceIndex,
 	UCHAR* byteArr, DXGI_FORMAT format,
 	int width, LONG_PTR RowPitch, int height) {
 
 	if (!texture) {
-		texture = new ID3D12Resource * [texNum];
-		textureUp = new ID3D12Resource * [texNum];
+		texture = new InternalTexture[texNum];
 	}
 
-	return createTexture(com_no, byteArr, format,
-		&textureUp[resourceIndex], &texture[resourceIndex],
-		width, RowPitch, height);
+	InternalTexture* tex = &texture[resourceIndex];
+	tex->byteArr = new UCHAR[RowPitch * height];
+	memcpy(tex->byteArr, byteArr, sizeof(UCHAR) * RowPitch * height);
+	tex->format = format;
+	tex->width = width;
+	tex->RowPitch = RowPitch;
+	tex->height = height;
 }
 
 bool Dx12Process::GetTexture(int com_no) {
@@ -456,12 +451,8 @@ bool Dx12Process::GetTexture(int com_no) {
 		int height = (int)texDesc.Height;
 		UCHAR* byteArr = (UCHAR*)subresource.pData;
 
-		if (FAILED(createTextureArr(com_no, i, byteArr, texDesc.Format,
-			width, subresource.RowPitch, height))) {
-			sprintf(str, "createTexture №%d エラー", (i));
-			ErrorMessage(str);
-			return false;
-		}
+		createTextureArr(i, byteArr, texDesc.Format,
+			width, subresource.RowPitch, height);
 	}
 	return true;
 }
@@ -495,23 +486,12 @@ bool Dx12Process::GetTexture2(int com_no) {
 			return false;
 		}
 
-		if (FAILED(createTextureArr(com_no, i, byteArr, DXGI_FORMAT_R8G8B8A8_UNORM,
-			tex[i].width, tex[i].width * 4, tex[i].height))) {
-			ARR_DELETE(byteArr);
-			sprintf(str, "createTexture №%d エラー", (i));
-			ErrorMessage(str);
-			return false;
-		}
+		createTextureArr(i, byteArr, DXGI_FORMAT_R8G8B8A8_UNORM,
+			tex[i].width, tex[i].width * 4, tex[i].height);
+
 		ARR_DELETE(byteArr);
 	}
 	return true;
-}
-
-void Dx12Process::UpTextureRelease() {
-	for (int i = 0; i < texNum; i++) {
-		if (tex[i].binary_size == 0 || tex[i].UpKeep)continue;
-		RELEASE(textureUp[i]);
-	}
 }
 
 bool Dx12Process::Initialize(HWND hWnd, int width, int height) {

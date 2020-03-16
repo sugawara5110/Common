@@ -42,7 +42,6 @@ protected:
 	MY_MATERIAL_S material[1];
 	int ins_no = 0;
 	int insNum[2] = {};
-	int texNum;//テクスチャー数
 
 	int div;//分割数
 

@@ -43,7 +43,7 @@ SkinMesh::SkinMesh() {
 	BoneConnect = -1.0f;
 	pvVB_delete_f = true;
 	pvVB = nullptr;
-	texNum = 0;
+	numTex = 0;
 	addDiffuse = 0.0f;
 	addSpecular = 0.0f;
 	addAmbient = 0.0f;
@@ -62,10 +62,9 @@ SkinMesh::~SkinMesh() {
 	S_DELETE(mObjectCB0);
 	S_DELETE(mObjectCB1);
 	S_DELETE(mObject_BONES);
-	RELEASE(texture);
-	RELEASE(textureUp);
 
 	DestroyFBX();
+	destroyTexture();
 }
 
 void SkinMesh::SetState(bool al, bool bl, float diffuse, float specu, float ambi) {
@@ -427,18 +426,18 @@ void SkinMesh::SetVertex() {
 				strcpy_s(m_pMaterial[mInd].norTextureName, mesh->getNormalTextureName(i));
 				//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 				m_pMaterial[mInd].nortex_no = dx->GetTexNumber(m_pMaterial[mInd].norTextureName);
-				texNum++;
+				numTex++;
 			}
 			if (mesh->getDiffuseTextureName(i)) {
 				strcpy_s(m_pMaterial[mInd].szTextureName, mesh->getDiffuseTextureName(i));
 				//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 				m_pMaterial[mInd].tex_no = dx->GetTexNumber(m_pMaterial[mInd].szTextureName);
-				texNum++;
+				numTex++;
 			}
 			else {
 				strcpy_s(m_pMaterial[mInd].szTextureName, mesh->getMaterialName());//テクスチャ名が無い場合マテリアル名から
 				m_pMaterial[mInd].tex_no = dx->GetTexNumber(m_pMaterial[mInd].szTextureName);
-				texNum++;
+				numTex++;
 			}
 
 			int iCount = 0;//最終的な(分割後)indexカウント
@@ -531,20 +530,20 @@ void SkinMesh::SetVertex() {
 	}
 }
 
-void SkinMesh::SetDiffuseTextureName(char *textureName, int materialIndex) {
+void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex) {
 	if (m_pMaterial[materialIndex].tex_no != -1)return;//既に設定済みの場合無効
 	strcpy_s(m_pMaterial[materialIndex].szTextureName, textureName);
 	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 	m_pMaterial[materialIndex].tex_no = dx->GetTexNumber(m_pMaterial[materialIndex].szTextureName);
-	texNum++;
+	numTex++;
 }
 
-void SkinMesh::SetNormalTextureName(char *textureName, int materialIndex) {
+void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex) {
 	if (m_pMaterial[materialIndex].nortex_no != -1)return;
 	strcpy_s(m_pMaterial[materialIndex].norTextureName, textureName);
 	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 	m_pMaterial[materialIndex].nortex_no = dx->GetTexNumber(m_pMaterial[materialIndex].norTextureName);
-	texNum++;
+	numTex++;
 }
 
 bool SkinMesh::CreateFromFBX(bool disp) {
@@ -825,13 +824,15 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES *sgb) {
 
 bool SkinMesh::GetTexture() {
 
-	TextureNo *te = new TextureNo[MateAllpcs];
+	TextureNo* te = new TextureNo[MateAllpcs];
 	for (int i = 0; i < MateAllpcs; i++) {
 		te[i].diffuse = m_pMaterial[i].tex_no;
 		te[i].normal = m_pMaterial[i].nortex_no;
 		te[i].movie = m_on;
 	}
-	mSrvHeap = CreateSrvHeap(MateAllpcs, texNum, te, texture);
+
+	createTextureResource(MateAllpcs, numTex, te);
+	mSrvHeap = CreateSrvHeap(MateAllpcs, numTex, te, mtexture);
 
 	ARR_DELETE(te);
 	if (mSrvHeap == nullptr)return false;

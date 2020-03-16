@@ -18,8 +18,7 @@ MeshData::~MeshData() {
 	S_DELETE(mObjectCB);
 	S_DELETE(mObject_MESHCB);
 	ARR_DELETE(pMaterial);
-	RELEASE(texture);
-	RELEASE(textureUp);
+	destroyTexture();
 }
 
 ID3D12PipelineState *MeshData::GetPipelineState() {
@@ -76,7 +75,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 	//本読み込み	
 	fseek(fp, 0, SEEK_SET);
 	INT iMCount = -1;
-	texNum = 0;
+	numTex = 0;
 
 	while (!feof(fp))
 	{
@@ -113,14 +112,14 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 		{
 			sscanf_s(&line[7], "%s", &pMaterial[iMCount].szTextureName, (unsigned int)sizeof(pMaterial[iMCount].szTextureName));
 			pMaterial[iMCount].tex_no = dx->GetTexNumber(pMaterial[iMCount].szTextureName);
-			texNum++;
+			numTex++;
 		}
 		//map_bump　テクスチャー
 		if (strcmp(key, "map_bump") == 0)
 		{
 			sscanf_s(&line[7], "%s", &pMaterial[iMCount].norTextureName, (unsigned int)sizeof(pMaterial[iMCount].norTextureName));
 			pMaterial[iMCount].nortex_no = dx->GetTexNumber(pMaterial[iMCount].norTextureName);
-			texNum++;
+			numTex++;
 		}
 	}
 	fclose(fp);
@@ -462,7 +461,8 @@ bool MeshData::GetTexture() {
 		te[i].movie = m_on;
 	}
 
-	mSrvHeap = CreateSrvHeap(MaterialCount, texNum, te, texture);
+	createTextureResource(MaterialCount, numTex, te);
+	mSrvHeap = CreateSrvHeap(MaterialCount, numTex, te, mtexture);
 	if (mSrvHeap == nullptr)return false;
 
 	for (int i = 0; i < MaterialCount; i++)

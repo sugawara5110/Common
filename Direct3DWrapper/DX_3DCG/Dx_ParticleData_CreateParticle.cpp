@@ -19,8 +19,7 @@ ParticleData::~ParticleData() {
 		free(P_pos);
 		P_pos = nullptr;
 	}
-	RELEASE(texture);
-	RELEASE(textureUp);
+	destroyTexture();
 }
 
 void ParticleData::GetShaderByteCode() {
@@ -52,56 +51,37 @@ void ParticleData::MatrixMap2(CONSTANT_BUFFER_P *cb, bool init) {
 	if (init)cb->size.y = 1.0f; else cb->size.y = 0.0f;
 }
 
-HRESULT ParticleData::GetVbColarray(int texture_no, float size, float density) {
-	UINT64  total_bytes = 0;
-	dx->md3dDevice->GetCopyableFootprints(&dx->texture[texture_no]->GetDesc(), 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+void ParticleData::GetVbColarray(int texture_no, float size, float density) {
+
+	InternalTexture* tex = &dx->texture[texture_no];
 
 	//テクスチャの横サイズ取得
-	float width = (float)dx->texture[texture_no]->GetDesc().Width;
+	float width = (float)tex->width;
 	//テクスチャの縦サイズ取得
-	float height = (float)dx->texture[texture_no]->GetDesc().Height;
+	float height = (float)tex->height;
 
 	//ステップ数
 	float step = 1 / size / density;
 
-	//RESOURCE_BARRIERはテクスチャ取得時WICTextureLoader内でD3D12_RESOURCE_STATE_GENERIC_READになってるのでそのまま
-
 	//頂点個数カウント
-	D3D12_SUBRESOURCE_DATA texResource;
-	HRESULT hr;
-	hr = dx->textureUp[texture_no]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
-	if (FAILED(hr)) {
-		ErrorMessage("ParticleData::GetVbColarray Error!!"); return hr;
-	}
-
-	texResource.RowPitch = footprint.Footprint.RowPitch;
-	UCHAR* ptex = (UCHAR*)texResource.pData;
+	UCHAR* ptex = tex->byteArr;
 	for (float j = 0; j < height; j += step) {
-		UINT j1 = (UINT)j * (UINT)texResource.RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
+		UINT j1 = (UINT)j * (UINT)tex->RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
 		for (float i = 0; i < width; i += step) {
 			UINT ptexI = (UINT)i * 4 + j1;
 			if (ptex[ptexI + 3] > 0)ver++;//アルファ値0より高い場合カウント
 		}
 	}
 
-	dx->textureUp[texture_no]->Unmap(0, nullptr);
-
 	//パーティクル配列確保
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
 
 	//ピクセルデータ読み込み
-	hr = dx->textureUp[texture_no]->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
-	if (FAILED(hr)) {
-		ErrorMessage("ParticleData::GetVbColarray Error!!"); return hr;
-	}
-
-	texResource.RowPitch = footprint.Footprint.RowPitch;
-	ptex = (UCHAR*)texResource.pData;
 	int P_no = 0;
 	float ws = width * size / 2;//中心を0,0,0にする為
 	float hs = height * size / 2;
 	for (float j = 0; j < height; j += step) {
-		UINT j1 = (UINT)j * (UINT)texResource.RowPitch;//RowPitchデータの行ピッチ、行幅、または物理サイズ (バイト単位)
+		UINT j1 = (UINT)j * (UINT)tex->RowPitch;
 		for (float i = 0; i < width; i += step) {
 			UINT ptexI = (UINT)i * 4 + j1;
 			float yp = (float)(j * size - hs);
@@ -118,18 +98,14 @@ HRESULT ParticleData::GetVbColarray(int texture_no, float size, float density) {
 			}
 		}
 	}
-
-	dx->textureUp[texture_no]->Unmap(0, nullptr);
-
-	return S_OK;
 }
 
-HRESULT ParticleData::GetBufferParticle(int texture_no, float size, float density) {
+void ParticleData::GetBufferParticle(int texture_no, float size, float density) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
 	Sview1 = std::make_unique<StreamView[]>(2);
 	Sview2 = std::make_unique<StreamView[]>(2);
-	return GetVbColarray(texture_no, size, density);
+	GetVbColarray(texture_no, size, density);
 }
 
 void ParticleData::GetBufferBill(int v) {
@@ -193,7 +169,9 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	te.diffuse = texpar;
 	te.normal = -1;
 	te.movie = m_on;
-	mSrvHeap = CreateSrvHeap(1, 1, &te, texture);
+
+	createTextureResource(1, 1, &te);
+	mSrvHeap = CreateSrvHeap(1, 1, &te, mtexture);
 	if (mSrvHeap == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(Draw)

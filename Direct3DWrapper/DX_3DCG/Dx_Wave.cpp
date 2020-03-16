@@ -11,7 +11,7 @@ Wave::Wave() {
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	d3varray = nullptr;
 	d3varrayI = nullptr;
-	texNum = 1;
+	numTex = 1;
 
 	sg.vDiffuse.x = 1.0f;
 	sg.vDiffuse.y = 1.0f;
@@ -37,8 +37,7 @@ Wave::~Wave() {
 	S_DELETE(mObjectCB);
 	S_DELETE(mObjectCB1);
 	S_DELETE(mObjectCB_WAVE);
-	RELEASE(texture);
-	RELEASE(textureUp);
+	destroyTexture();
 }
 
 void Wave::SetVertex(int i,
@@ -183,7 +182,9 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	te.diffuse = texNo;
 	te.normal = nortNo;
 	te.movie = m_on;
-	mSrvHeap = CreateSrvHeap(1, texNum, &te, texture);
+
+	createTextureResource(1, numTex, &te);
+	mSrvHeap = CreateSrvHeap(1, numTex, &te, mtexture);
 	if (mSrvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
@@ -215,8 +216,8 @@ bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 	mObjectCB_WAVE->CopyData(0, cbw);
 	material[0].tex_no = texNo;
 	material[0].nortex_no = nortNo;
-	if (nortNo != -1)texNum = 2;
-	GetShaderByteCode(texNum);
+	if (nortNo != -1)numTex = 2;
+	GetShaderByteCode(numTex);
 	if (!ComCreate())return false;
 	return DrawCreate(texNo, nortNo, blend, alpha);
 }

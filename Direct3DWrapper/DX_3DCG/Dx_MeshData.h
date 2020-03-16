@@ -21,12 +21,11 @@ protected:
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
-	int texNum;//テクスチャー数
 
-			   //コンスタントバッファOBJ
+	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObject_MESHCB = nullptr;//マテリアル渡し用(1回しか更新しない)
-															 //UpLoad用
+	//UpLoad用
 	CONSTANT_BUFFER cb[2];
 	//UpLoadカウント
 	int upCount = 0;

@@ -46,8 +46,7 @@ PolygonData2D::~PolygonData2D() {
 	free(d2varrayI);
 	d2varrayI = nullptr;
 	S_DELETE(mObjectCB);
-	RELEASE(texture);
-	RELEASE(textureUp);
+	destroyTexture();
 }
 
 void PolygonData2D::InstancedSetConstBf(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY) {
@@ -94,8 +93,8 @@ void PolygonData2D::SetText() {
 
 	if (!CreateTextOn)return;
 
-	RELEASE(texture);
-	RELEASE(textureUp);
+	RELEASE(mtexture);
+	RELEASE(mtextureUp);
 
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -117,10 +116,10 @@ void PolygonData2D::SetText() {
 	HeapProps.VisibleNodeMask = 1;
 
 	dx->md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
-		D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&texture));
+		D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&mtexture));
 
 	//upload
-	UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture, 0, 1);
+	UINT64 uploadBufferSize = GetRequiredIntermediateSize(mtexture, 0, 1);
 	D3D12_HEAP_PROPERTIES HeapPropsUp;
 	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
 	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -143,7 +142,7 @@ void PolygonData2D::SetText() {
 
 	dx->md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
 		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr, IID_PPV_ARGS(&textureUp));
+		nullptr, IID_PPV_ARGS(&mtextureUp));
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT  footprint;
 	UINT64  total_bytes = 0;
@@ -152,19 +151,19 @@ void PolygonData2D::SetText() {
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
 	memset(&dest, 0, sizeof(dest));
-	dest.pResource = texture;
+	dest.pResource = mtexture;
 	dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 	dest.SubresourceIndex = 0;
 
 	memset(&src, 0, sizeof(src));
-	src.pResource = textureUp;
+	src.pResource = mtextureUp;
 	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 	src.PlacedFootprint = footprint;
 
-	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx->dx_sub[com_no].ResourceBarrier(mtexture, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	D3D12_SUBRESOURCE_DATA texResource;
-	textureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
+	mtextureUp->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
 	BYTE* pBits = (BYTE*)texResource.pData;
 	texResource.RowPitch = footprint.Footprint.RowPitch;
 	memset(pBits, 0, texResource.RowPitch * Theight);//0–„‚ß
@@ -198,11 +197,11 @@ void PolygonData2D::SetText() {
 			}
 		}
 	}
-	textureUp->Unmap(0, nullptr);
+	mtextureUp->Unmap(0, nullptr);
 
 	mCommandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
 
-	dx->dx_sub[com_no].ResourceBarrier(texture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	dx->dx_sub[com_no].ResourceBarrier(mtexture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
 
@@ -211,9 +210,9 @@ void PolygonData2D::SetText() {
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	srvDesc.Format = texture->GetDesc().Format;
-	srvDesc.Texture2D.MipLevels = texture->GetDesc().MipLevels;
-	dx->md3dDevice->CreateShaderResourceView(texture, &srvDesc, hDescriptor);
+	srvDesc.Format = mtexture->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = mtexture->GetDesc().MipLevels;
+	dx->md3dDevice->CreateShaderResourceView(mtexture, &srvDesc, hDescriptor);
 
 	ARR_DELETE(Tm);
 	ARR_DELETE(Gm);
@@ -300,7 +299,9 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	te.diffuse = -1;
 	te.normal = -1;
 	te.movie = m_on;
-	mSrvHeap = CreateSrvHeap(1, 1, &te, texture);
+
+	createTextureResource(1, 1, &te);
+	mSrvHeap = CreateSrvHeap(1, 1, &te, mtexture);
 	if (mSrvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);

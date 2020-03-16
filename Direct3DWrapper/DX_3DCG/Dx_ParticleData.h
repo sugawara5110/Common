@@ -52,7 +52,7 @@ protected:
 	void GetShaderByteCode();
 	void MatrixMap(CONSTANT_BUFFER_P* cb_p, float x, float y, float z, float theta, float size, float speed, bool tex);
 	void MatrixMap2(CONSTANT_BUFFER_P* cb_p, bool init);
-	HRESULT GetVbColarray(int texture_no, float size, float density);
+	void GetVbColarray(int texture_no, float size, float density);
 	void CreateVbObj();
 	bool CreatePartsCom();
 	bool CreatePartsDraw(int texpar);
@@ -64,7 +64,7 @@ protected:
 public:
 	ParticleData();
 	~ParticleData();
-	HRESULT GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
+	void GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
 	void GetBufferBill(int v);
 	void SetVertex(int i,
 		float vx, float vy, float vz,

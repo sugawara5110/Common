@@ -47,7 +47,6 @@ protected:
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
-	int texNum;//テクスチャー数
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB0 = nullptr;

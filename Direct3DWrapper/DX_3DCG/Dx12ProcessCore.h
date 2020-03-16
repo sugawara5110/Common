@@ -13,11 +13,8 @@
 #endif
 
 #define _CRT_SECURE_NO_WARNINGS
-#include <windows.h>
-#include <wrl.h>//Microsoft::WRL
 #include "DxStruct.h"
 #include "DxEnum.h"
-#include <dxgi1_4.h>
 #include <d3d12.h>
 #include "../MicroSoftLibrary/d3dx12.h"
 #include <d3d10_1.h>
@@ -206,8 +203,7 @@ private:
 	//テクスチャ
 	Texture* tex = nullptr;//外部からアドレスが渡される
 	int texNum = 0;    //配列数
-	ID3D12Resource** texture = nullptr;
-	ID3D12Resource** textureUp = nullptr;
+	InternalTexture* texture = nullptr;
 
 	static Dx12Process* dx;//クラス内でオブジェクト生成し使いまわす
 	static std::mutex mtx;
@@ -266,7 +262,7 @@ private:
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
 
-	HRESULT createTextureArr(int com_no, int resourceIndex,
+	void createTextureArr(int resourceIndex,
 		UCHAR* byteArr, DXGI_FORMAT format,
 		int width, LONG_PTR RowPitch, int height);
 
@@ -284,7 +280,6 @@ public:
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 	bool GetTexture(int com_no);//デコード済みのバイナリからリソースの生成
 	bool GetTexture2(int com_no);//テスト中
-	void UpTextureRelease();
 	void Sclear(int com_no);
 	void Bigin(int com_no);
 	void End(int com_no);
@@ -445,13 +440,20 @@ protected:
 	int com_no = 0;
 
 	//テクスチャ保持(SetTextureMPixel用)
-	ID3D12Resource* texture = nullptr;
-	ID3D12Resource* textureUp = nullptr;
+	ID3D12Resource* mtexture = nullptr;
+	ID3D12Resource* mtextureUp = nullptr;
 	//movie_on
 	bool m_on = false;
 
+	//テクスチャ
+	ComPtr <ID3D12Resource> texture[255] = {};
+	ComPtr <ID3D12Resource> textureUp[255] = {};
+	int numTex = 0;
+
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
+
+	void createTextureResource(int MaterialNum, int texNum, TextureNo* to);
 
 	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum,
 		TextureNo* to, ID3D12Resource* movietex = nullptr);
@@ -496,9 +498,7 @@ protected:
 
 	ID3D12Resource* GetSwapChainBuffer();
 	ID3D12Resource* GetDepthStencilBuffer();
-	ID3D12Resource* GetTexture(int Num);
 	D3D12_RESOURCE_STATES GetTextureStates();
-	ID3D12Resource* GetTextureUp(int Num);
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 	struct drawPara {
@@ -520,6 +520,7 @@ protected:
 		UINT insNum = 1;
 	};
 	void drawsub(drawPara para);
+	void destroyTexture();
 
 public:
 	void SetCommandList(int no);
@@ -562,7 +563,6 @@ protected:
 	MY_MATERIAL_S material[1];
 	int ins_no = 0;
 	int insNum[2] = {};
-	int texNum;//テクスチャ個数
 
 	//パイプラインOBJ
 	ComPtr<ID3D12PipelineState> mPSO = nullptr;

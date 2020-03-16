@@ -8,6 +8,9 @@
 #define Class_DxStruct_Header
 
 #include "DxFunction.h"
+#include <windows.h>
+#include <wrl.h>//Microsoft::WRL
+#include <dxgi1_4.h>
 
 #define LIGHT_PCS 256
 #define INSTANCE_PCS_3D 256
@@ -190,9 +193,21 @@ struct Texture {
 	char* binary_ch = nullptr; //デコード後バイナリ
 	int   binary_size = 0;  //バイナリサイズ
 	char* texName = nullptr; //ファイル名
-	bool  UpKeep = false; //Upload後Up用バッファを保持するか
 	int   width = 512;
 	int   height = 512;
+};
+
+class InternalTexture {
+public:
+	UCHAR* byteArr = nullptr;
+	DXGI_FORMAT format = {};
+	int width = 0;
+	LONG_PTR RowPitch = 0;
+	int height = 0;
+
+	~InternalTexture() {
+		ARR_DELETE(byteArr);
+	}
 };
 
 //Wave
