@@ -18,7 +18,6 @@ MeshData::~MeshData() {
 	S_DELETE(mObjectCB);
 	S_DELETE(mObject_MESHCB);
 	ARR_DELETE(pMaterial);
-	destroyTexture();
 }
 
 ID3D12PipelineState *MeshData::GetPipelineState() {
@@ -458,11 +457,10 @@ bool MeshData::GetTexture() {
 	for (int i = 0; i < MaterialCount; i++) {
 		te[i].diffuse = pMaterial[i].tex_no;
 		te[i].normal = pMaterial[i].nortex_no;
-		te[i].movie = m_on;
 	}
 
-	createTextureResource(MaterialCount, numTex, te);
-	mSrvHeap = CreateSrvHeap(MaterialCount, numTex, te, mtexture);
+	createTextureResource(MaterialCount, te);
+	mSrvHeap = CreateSrvHeap(MaterialCount, numTex, te);
 	if (mSrvHeap == nullptr)return false;
 
 	for (int i = 0; i < MaterialCount; i++)

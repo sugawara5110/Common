@@ -37,7 +37,6 @@ Wave::~Wave() {
 	S_DELETE(mObjectCB);
 	S_DELETE(mObjectCB1);
 	S_DELETE(mObjectCB_WAVE);
-	destroyTexture();
 }
 
 void Wave::SetVertex(int i,
@@ -181,10 +180,9 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	TextureNo te;
 	te.diffuse = texNo;
 	te.normal = nortNo;
-	te.movie = m_on;
 
-	createTextureResource(1, numTex, &te);
-	mSrvHeap = CreateSrvHeap(1, numTex, &te, mtexture);
+	createTextureResource(1, &te);
+	mSrvHeap = CreateSrvHeap(1, numTex, &te);
 	if (mSrvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);

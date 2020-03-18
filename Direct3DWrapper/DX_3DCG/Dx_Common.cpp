@@ -11,77 +11,81 @@ void Common::SetCommandList(int no) {
 	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
 }
 
-void Common::destroyTexture() {
-	RELEASE(mtextureUp);
-	RELEASE(mtexture);
-}
-
-void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res) {
-	dx->dx_sub[com_no].ResourceBarrier(mtexture, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int index) {
+	dx->dx_sub[com_no].ResourceBarrier(texture[index].Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 	dx->dx_sub[com_no].ResourceBarrier(Intexture, res, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	mCommandList->CopyResource(mtexture, Intexture);
+	mCommandList->CopyResource(texture[index].Get(), Intexture);
 
 	dx->dx_sub[com_no].ResourceBarrier(Intexture, D3D12_RESOURCE_STATE_COPY_SOURCE, res);
-	dx->dx_sub[com_no].ResourceBarrier(mtexture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	dx->dx_sub[com_no].ResourceBarrier(texture[index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
-HRESULT Common::TextureInit(int width, int height) {
-
-	HRESULT hr = dx->textureInit(width, height, &mtextureUp, &mtexture,
-		DXGI_FORMAT_R8G8B8A8_UNORM,
-		D3D12_RESOURCE_STATE_GENERIC_READ);
-	if (FAILED(hr)) {
-		ErrorMessage("Common::TextureInit Error!!");
-		return hr;
-	}
-
-	m_on = true;
-
-	return S_OK;
+void Common::TextureInit(int width, int height, int index) {
+	movOn[index].m_on = true;
+	movOn[index].width = width;
+	movOn[index].height = height;
 }
 
-HRESULT Common::SetTextureMPixel(BYTE* frame) {
+HRESULT Common::SetTextureMPixel(BYTE* frame, int index) {
 
 	D3D12_RESOURCE_DESC texdesc;
-	texdesc = mtexture->GetDesc();
+	texdesc = texture[index].Get()->GetDesc();
 	//テクスチャの横サイズ取得
 	int width = (int)texdesc.Width;
 
-	dx->dx_sub[com_no].ResourceBarrier(mtexture, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	HRESULT hr = dx->CopyResourcesToGPU(com_no, mtextureUp, mtexture, frame, width * 4);
+	dx->dx_sub[com_no].ResourceBarrier(texture[index].Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	HRESULT hr = dx->CopyResourcesToGPU(com_no, textureUp[index].Get(), texture[index].Get(), frame, width * 4);
 	if (FAILED(hr)) {
 		ErrorMessage("Common::SetTextureMPixel Error!!");
 		return hr;
 	}
-	dx->dx_sub[com_no].ResourceBarrier(mtexture, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	dx->dx_sub[com_no].ResourceBarrier(texture[index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return S_OK;
 }
 
-void Common::createTextureResource(int MaterialNum, int texNum, TextureNo* to) {
-	int resCnt = 0;
-	for (int i = 0; i < MaterialNum; i++) {
-		//diffuse(movietex使用の場合スキップ)
-		if (!to[i].movie && to[i].diffuse != -1) {
-			InternalTexture* tex = &dx->texture[to[i].diffuse];
+HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
 
-			dx->createTexture(com_no, tex->byteArr, tex->format,
-				textureUp[resCnt].GetAddressOf(), texture[resCnt++].GetAddressOf(),
-				tex->width, tex->RowPitch, tex->height);
+	HRESULT hr = S_OK;
+	int resCnt = -1;
+	for (int i = 0; i < MaterialNum; i++) {
+		//diffuse
+		if (movOn[i].m_on) {
+			hr = dx->textureInit(movOn[i].width, movOn[i].height,
+				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				DXGI_FORMAT_R8G8B8A8_UNORM,
+				D3D12_RESOURCE_STATE_GENERIC_READ);
+		}
+		else
+			if (to[i].diffuse != -1) {
+				InternalTexture* tex = &dx->texture[to[i].diffuse];
+
+				hr = dx->createTexture(com_no, tex->byteArr, tex->format,
+					textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+					tex->width, tex->RowPitch, tex->height);
+			}
+		if (FAILED(hr)) {
+			ErrorMessage("Common::createTextureResource Error!!");
+			return hr;
 		}
 		//normalMapが存在する場合
 		if (to[i].normal != -1) {
 			InternalTexture* tex = &dx->texture[to[i].normal];
 
-			dx->createTexture(com_no, tex->byteArr, tex->format,
-				textureUp[resCnt].GetAddressOf(), texture[resCnt++].GetAddressOf(),
+			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
+				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				tex->width, tex->RowPitch, tex->height);
 		}
+		if (FAILED(hr)) {
+			ErrorMessage("Common::createTextureResource Error!!");
+			return hr;
+		}
 	}
+	return S_OK;
 }
 
-ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to, ID3D12Resource* movietex)
+ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to)
 {
 	ComPtr <ID3D12DescriptorHeap>srv;
 
@@ -105,18 +109,11 @@ ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum,
 	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 	int resCnt = 0;
 	for (int i = 0; i < MaterialNum; i++) {
-		//diffuse(movietex使用の場合スキップ)
-		if (!to[i].movie && to[i].diffuse != -1) {
+		//diffuse
+		if (movOn[i].m_on || to[i].diffuse != -1) {
 			srvDesc.Format = texture[resCnt].Get()->GetDesc().Format;
 			srvDesc.Texture2D.MipLevels = texture[resCnt].Get()->GetDesc().MipLevels;
 			dx->md3dDevice->CreateShaderResourceView(texture[resCnt++].Get(), &srvDesc, hDescriptor);
-			hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		}
-		//movietex使用
-		if (to[i].movie) {
-			srvDesc.Format = movietex->GetDesc().Format;
-			srvDesc.Texture2D.MipLevels = movietex->GetDesc().MipLevels;
-			dx->md3dDevice->CreateShaderResourceView(movietex, &srvDesc, hDescriptor);
 			hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		}
 		//normalMapが存在する場合

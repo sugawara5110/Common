@@ -250,7 +250,12 @@ public:
 struct TextureNo {
 	int diffuse;
 	int normal;
-	bool movie;
+};
+
+struct MovieTexture {
+	bool m_on = false;
+	int width = 0;
+	int height = 0;
 };
 
 //ポストエフェクト

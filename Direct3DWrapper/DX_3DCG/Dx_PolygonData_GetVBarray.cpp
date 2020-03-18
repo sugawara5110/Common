@@ -39,7 +39,6 @@ PolygonData::~PolygonData() {
 	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
 	S_DELETE(mObjectCB1);
-	destroyTexture();
 }
 
 ID3D12PipelineState *PolygonData::GetPipelineState() {
@@ -126,7 +125,7 @@ void PolygonData::GetShaderByteCode(bool light, int tNo, int nortNo) {
 	material[0].tex_no = tNo;
 	bool disp = false;
 	if (primType_create == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH)disp = true;
-	if (tNo == -1 && m_on == false) {
+	if (tNo == -1 && movOn[0].m_on == false) {
 		vs = dx->pVertexShader_BC.Get();
 		ps = dx->pPixelShader_BC.Get();
 		return;
@@ -209,14 +208,13 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	TextureNo te;
 	te.diffuse = tNo;
 	te.normal = nortNo;
-	te.movie = m_on;
 
-	createTextureResource(1, numTex, &te);
-	mSrvHeap = CreateSrvHeap(1, numTex, &te, mtexture);
+	createTextureResource(1, &te);
+	mSrvHeap = CreateSrvHeap(1, numTex, &te);
 	if (mSrvHeap == nullptr)return false;
 
 	UINT VertexSize;
-	if (tNo == -1 && !m_on)
+	if (tNo == -1 && !movOn[0].m_on)
 		VertexSize = sizeof(VertexBC);
 	else
 		VertexSize = sizeof(Vertex);
@@ -224,7 +222,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	const UINT vbByteSize = VertexSize * ver;
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
-	if (tNo == -1 && !m_on)
+	if (tNo == -1 && !movOn[0].m_on)
 		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayBC, vbByteSize, Vview->VertexBufferUploader);
 	else
 		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, Vview->VertexBufferUploader);
@@ -238,7 +236,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
-	if (tNo == -1 && !m_on)
+	if (tNo == -1 && !movOn[0].m_on)
 		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
 	else
 		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3D, alpha, blend, primType_create);

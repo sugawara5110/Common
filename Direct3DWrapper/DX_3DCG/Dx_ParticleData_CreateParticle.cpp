@@ -19,7 +19,6 @@ ParticleData::~ParticleData() {
 		free(P_pos);
 		P_pos = nullptr;
 	}
-	destroyTexture();
 }
 
 void ParticleData::GetShaderByteCode() {
@@ -168,10 +167,9 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	TextureNo te;
 	te.diffuse = texpar;
 	te.normal = -1;
-	te.movie = m_on;
 
-	createTextureResource(1, 1, &te);
-	mSrvHeap = CreateSrvHeap(1, 1, &te, mtexture);
+	createTextureResource(1, &te);
+	mSrvHeap = CreateSrvHeap(1, 1, &te);
 	if (mSrvHeap == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(Draw)
@@ -253,7 +251,7 @@ void ParticleData::CbSwap(bool init) {
 }
 
 void ParticleData::Update(float x, float y, float z, float theta, float size, bool init, float speed) {
-	MatrixMap(&cbP[dx->cBuffSwap[0]], x, y, z, theta, size, speed, texpar_on | m_on);
+	MatrixMap(&cbP[dx->cBuffSwap[0]], x, y, z, theta, size, speed, texpar_on | movOn[0].m_on);
 	CbSwap(init);
 }
 
@@ -286,7 +284,7 @@ void ParticleData::Draw() {
 }
 
 void ParticleData::Update(float size) {
-	MatrixMap(&cbP[dx->cBuffSwap[0]], 0, 0, 0, 0, size, 1.0f, texpar_on | m_on);
+	MatrixMap(&cbP[dx->cBuffSwap[0]], 0, 0, 0, 0, size, 1.0f, texpar_on | movOn[0].m_on);
 	CbSwap(true);
 }
 

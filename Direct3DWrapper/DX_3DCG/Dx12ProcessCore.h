@@ -439,25 +439,17 @@ protected:
 	ID3D12GraphicsCommandList* mCommandList;
 	int com_no = 0;
 
-	//テクスチャ保持(SetTextureMPixel用)
-	ID3D12Resource* mtexture = nullptr;
-	ID3D12Resource* mtextureUp = nullptr;
-	//movie_on
-	bool m_on = false;
-
 	//テクスチャ
-	ComPtr <ID3D12Resource> texture[255] = {};
-	ComPtr <ID3D12Resource> textureUp[255] = {};
+	ComPtr <ID3D12Resource> textureUp[256] = {};
+	ComPtr <ID3D12Resource> texture[256] = {};
+	MovieTexture movOn[256] = {};
 	int numTex = 0;
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
-	void createTextureResource(int MaterialNum, int texNum, TextureNo* to);
-
-	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum,
-		TextureNo* to, ID3D12Resource* movietex = nullptr);
-
+	HRESULT createTextureResource(int MaterialNum, TextureNo* to);
+	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to);
 	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//直接使用禁止
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
@@ -520,13 +512,12 @@ protected:
 		UINT insNum = 1;
 	};
 	void drawsub(drawPara para);
-	void destroyTexture();
 
 public:
 	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res);
-	HRESULT TextureInit(int width, int height);
-	HRESULT SetTextureMPixel(BYTE* frame);
+	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
+	void TextureInit(int width, int height, int index = 0);
+	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
 };
 
 //*********************************PolygonDataクラス*************************************//

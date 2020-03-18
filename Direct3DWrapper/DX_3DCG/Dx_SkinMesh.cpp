@@ -64,7 +64,6 @@ SkinMesh::~SkinMesh() {
 	S_DELETE(mObject_BONES);
 
 	DestroyFBX();
-	destroyTexture();
 }
 
 void SkinMesh::SetState(bool al, bool bl, float diffuse, float specu, float ambi) {
@@ -828,11 +827,10 @@ bool SkinMesh::GetTexture() {
 	for (int i = 0; i < MateAllpcs; i++) {
 		te[i].diffuse = m_pMaterial[i].tex_no;
 		te[i].normal = m_pMaterial[i].nortex_no;
-		te[i].movie = m_on;
 	}
 
-	createTextureResource(MateAllpcs, numTex, te);
-	mSrvHeap = CreateSrvHeap(MateAllpcs, numTex, te, mtexture);
+	createTextureResource(MateAllpcs, te);
+	mSrvHeap = CreateSrvHeap(MateAllpcs, numTex, te);
 
 	ARR_DELETE(te);
 	if (mSrvHeap == nullptr)return false;
