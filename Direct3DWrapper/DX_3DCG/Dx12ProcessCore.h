@@ -20,14 +20,10 @@
 #include <d3d10_1.h>
 #include <D3Dcompiler.h>
 #include <DirectXColors.h>
-//#include <DirectXCollision.h>
-#include "../MicroSoftLibrary/WICTextureLoader12.h"
-//#include <memory>
 #include <stdlib.h>
 #include <string>
 #include <vector>
 #include <array>
-//#include <unordered_map>
 #include <assert.h>
 #include <Process.h>
 #include <mutex>
@@ -201,7 +197,6 @@ private:
 	int mClientHeight;
 
 	//テクスチャ
-	Texture* tex = nullptr;//外部からアドレスが渡される
 	int texNum = 0;    //配列数
 	InternalTexture* texture = nullptr;
 
@@ -262,10 +257,6 @@ private:
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
 
-	void createTextureArr(int resourceIndex,
-		UCHAR* byteArr, DXGI_FORMAT format,
-		int width, LONG_PTR RowPitch, int height);
-
 public:
 	static void InstanceCreate();
 	static Dx12Process* GetInstance();
@@ -275,11 +266,14 @@ public:
 	static void Unlock() { mtx.unlock(); }
 
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
+	ID3D12Device* getDevice() { return md3dDevice.Get(); }
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
-	void SetTextureBinary(Texture* byte, int size);//外部で生成したデコード済みバイナリ配列のポインタと配列数をセットする,解放は外部で
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
-	bool GetTexture(int com_no);//デコード済みのバイナリからリソースの生成
-	bool GetTexture2(int com_no);//テスト中
+
+	void createTextureArr(int numTexArr, int resourceIndex, char* texName,
+		UCHAR* byteArr, DXGI_FORMAT format,
+		int width, LONG_PTR RowPitch, int height);
+
 	void Sclear(int com_no);
 	void Bigin(int com_no);
 	void End(int com_no);

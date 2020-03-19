@@ -188,18 +188,10 @@ struct SHADER_GLOBAL_BONES {
 	}
 };
 
-//テクスチャ管理
-struct Texture {
-	char* binary_ch = nullptr; //デコード後バイナリ
-	int   binary_size = 0;  //バイナリサイズ
-	char* texName = nullptr; //ファイル名
-	int   width = 512;
-	int   height = 512;
-};
-
 class InternalTexture {
 public:
 	UCHAR* byteArr = nullptr;
+	char* texName = nullptr; //ファイル名
 	DXGI_FORMAT format = {};
 	int width = 0;
 	LONG_PTR RowPitch = 0;
@@ -207,6 +199,7 @@ public:
 
 	~InternalTexture() {
 		ARR_DELETE(byteArr);
+		ARR_DELETE(texName);
 	}
 };
 

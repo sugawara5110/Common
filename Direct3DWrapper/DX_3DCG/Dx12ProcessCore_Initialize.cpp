@@ -22,8 +22,6 @@
 #include "./ShaderCG/ShaderCommonTriangleHSDS.h"
 #include "./ShaderCG/ShaderPostEffect.h"
 #include <locale.h>
-#include "../../../PNGLoader/PNGLoader.h"
-#include "../../../JPGLoader/JPGLoader.h"
 
 bool Dx12Process_sub::ListCreate() {
 	for (int i = 0; i < 2; i++) {
@@ -292,20 +290,15 @@ bool Dx12Process::CreateShaderByteCode() {
 	return CreateShaderByteCodeBool;
 }
 
-void Dx12Process::SetTextureBinary(Texture* byte, int size) {
-	texNum = size;
-	tex = byte;
-}
-
-int Dx12Process::GetTexNumber(CHAR *fileName) {
+int Dx12Process::GetTexNumber(CHAR* fileName) {
 
 	fileName = GetNameFromPass(fileName);
 
 	for (int i = 0; i < texNum; i++) {
-		if (tex[i].texName == '\0')continue;
+		if (texture[i].texName == '\0')continue;
 		char str[50];
 		char str1[50];
-		strcpy(str, tex[i].texName);
+		strcpy(str, texture[i].texName);
 		strcpy(str1, fileName);
 		int i1 = -1;
 		while (str[++i1] != '\0' && str[i1] != '.' && str[i1] == str1[i1]);
@@ -392,10 +385,11 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 	return hr;
 }
 
-void Dx12Process::createTextureArr(int resourceIndex,
+void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texName,
 	UCHAR* byteArr, DXGI_FORMAT format,
 	int width, LONG_PTR RowPitch, int height) {
 
+	texNum = numTexArr;
 	if (!texture) {
 		texture = new InternalTexture[texNum];
 	}
@@ -403,95 +397,13 @@ void Dx12Process::createTextureArr(int resourceIndex,
 	InternalTexture* tex = &texture[resourceIndex];
 	tex->byteArr = new UCHAR[RowPitch * height];
 	memcpy(tex->byteArr, byteArr, sizeof(UCHAR) * RowPitch * height);
+	int ln = (int)strlen(texName) + 1;
+	tex->texName = new char[ln];
+	memcpy(tex->texName, texName, sizeof(char) * ln);
 	tex->format = format;
 	tex->width = width;
 	tex->RowPitch = RowPitch;
 	tex->height = height;
-}
-
-bool Dx12Process::GetTexture(int com_no) {
-
-	char str[100];
-
-	for (int i = 0; i < texNum; i++) {
-
-		if (tex[i].texName == nullptr)continue;
-
-		std::unique_ptr<uint8_t[]> decodedData = nullptr;
-		D3D12_SUBRESOURCE_DATA subresource;
-		ComPtr<ID3D12Resource> t = nullptr;
-
-		if (tex[i].binary_ch != nullptr) {
-			if (FAILED(DirectX::LoadWICTextureFromMemory(md3dDevice.Get(),
-				(uint8_t*)tex[i].binary_ch, tex[i].binary_size, &t, decodedData, subresource))) {
-				sprintf(str, "テクスチャ№%d読み込みエラー", (i));
-				ErrorMessage(str);
-				return false;
-			}
-		}
-		else {
-			wchar_t ws[200];
-			setlocale(LC_CTYPE, "jpn");
-			mbstowcs(ws, tex[i].texName, 200);
-			tex[i].texName = GetNameFromPass(tex[i].texName);
-
-			if (FAILED(DirectX::LoadWICTextureFromFile(md3dDevice.Get(),
-				ws, &t, decodedData, subresource))) {
-				sprintf(str, "テクスチャ№%d読み込みエラー", (i));
-				ErrorMessage(str);
-				return false;
-			}
-		}
-
-		D3D12_RESOURCE_DESC texDesc;
-		texDesc = t->GetDesc();
-		//テクスチャの横サイズ取得
-		int width = (int)texDesc.Width;
-		//テクスチャの縦サイズ取得
-		int height = (int)texDesc.Height;
-		UCHAR* byteArr = (UCHAR*)subresource.pData;
-
-		createTextureArr(i, byteArr, texDesc.Format,
-			width, subresource.RowPitch, height);
-	}
-	return true;
-}
-
-bool Dx12Process::GetTexture2(int com_no) {
-
-	char str[100];
-	PNGLoader png;
-	JPGLoader jpg;
-	UCHAR* byteArr = nullptr;
-
-	for (int i = 0; i < texNum; i++) {
-
-		if (tex[i].texName == nullptr)continue;
-
-		if (tex[i].binary_ch != nullptr) {
-			byteArr = (UCHAR*)png.loadPngInByteArray((UCHAR*)tex[i].binary_ch, tex[i].binary_size, tex[i].width, tex[i].height);
-			if (!byteArr)
-				byteArr = (UCHAR*)jpg.loadJpgInByteArray((UCHAR*)tex[i].binary_ch, tex[i].binary_size, tex[i].width, tex[i].height);
-		}
-		else {
-			byteArr = (UCHAR*)png.loadPNG(tex[i].texName, tex[i].width, tex[i].height);
-			if (!byteArr)
-				byteArr = (UCHAR*)jpg.loadJPG(tex[i].texName, tex[i].width, tex[i].height);
-			tex[i].texName = GetNameFromPass(tex[i].texName);
-
-		}
-		if (!byteArr) {
-			sprintf(str, "テクスチャ№%d読み込みエラー", (i));
-			ErrorMessage(str);
-			return false;
-		}
-
-		createTextureArr(i, byteArr, DXGI_FORMAT_R8G8B8A8_UNORM,
-			tex[i].width, tex[i].width * 4, tex[i].height);
-
-		ARR_DELETE(byteArr);
-	}
-	return true;
 }
 
 bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
