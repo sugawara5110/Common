@@ -27,7 +27,9 @@ void Common::TextureInit(int width, int height, int index) {
 	movOn[index].height = height;
 }
 
-HRESULT Common::SetTextureMPixel(BYTE* frame, int index) {
+HRESULT Common::SetTextureMPixel(BYTE* frame, int ind) {
+
+	int index = movOn[ind].resIndex;
 
 	D3D12_RESOURCE_DESC texdesc;
 	texdesc = texture[index].Get()->GetDesc();
@@ -56,6 +58,7 @@ HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
 				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				DXGI_FORMAT_R8G8B8A8_UNORM,
 				D3D12_RESOURCE_STATE_GENERIC_READ);
+			movOn[i].resIndex = resCnt;
 		}
 		else
 			if (to[i].diffuse != -1) {

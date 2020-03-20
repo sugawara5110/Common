@@ -294,6 +294,7 @@ public:
 	float Getaspect();
 	float GetNearPlane();
 	float GetFarPlane();
+	InternalTexture* getInternalTexture(int index) { return &texture[index]; }
 };
 
 struct VertexView {
@@ -512,6 +513,7 @@ public:
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
 	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
+	InternalTexture* getInternalTexture(int index) { return &dx->texture[index]; }
 };
 
 //*********************************PolygonDataƒNƒ‰ƒX*************************************//

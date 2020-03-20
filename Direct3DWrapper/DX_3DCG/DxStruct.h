@@ -249,6 +249,7 @@ struct MovieTexture {
 	bool m_on = false;
 	int width = 0;
 	int height = 0;
+	int resIndex = -1;
 };
 
 //ポストエフェクト
