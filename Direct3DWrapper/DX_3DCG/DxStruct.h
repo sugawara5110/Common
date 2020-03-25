@@ -158,12 +158,8 @@ struct MY_MATERIAL_S {
 	MY_MATERIAL_S()
 	{
 		ZeroMemory(this, sizeof(MY_MATERIAL_S));
-		tex_no = -1;
-		nortex_no = -1;
-	}
-	~MY_MATERIAL_S()
-	{
-
+		tex_no = 0;
+		nortex_no = 0;
 	}
 };
 
@@ -197,6 +193,21 @@ public:
 	LONG_PTR RowPitch = 0;
 	int height = 0;
 
+	void setParameter(DXGI_FORMAT Format, int Width, LONG_PTR rowPitch, int Height) {
+		format = Format;
+		width = Width;
+		RowPitch = rowPitch;
+		height = Height;
+	}
+	void setName(char* name) {
+		int ln = (int)strlen(name) + 1;
+		texName = new char[ln];
+		memcpy(texName, name, sizeof(char) * ln);
+	}
+	void setData(UCHAR* ByteArr) {
+		byteArr = new UCHAR[RowPitch * height];
+		memcpy(byteArr, ByteArr, sizeof(UCHAR) * RowPitch * height);
+	}
 	~InternalTexture() {
 		ARR_DELETE(byteArr);
 		ARR_DELETE(texName);
@@ -247,8 +258,8 @@ struct TextureNo {
 
 struct MovieTexture {
 	bool m_on = false;
-	int width = 0;
-	int height = 0;
+	int width = 8;
+	int height = 8;
 	int resIndex = -1;
 };
 

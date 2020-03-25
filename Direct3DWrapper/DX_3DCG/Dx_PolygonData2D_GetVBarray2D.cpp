@@ -299,8 +299,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	te.normal = -1;
 
 	createTextureResource(1, &te);
-	mSrvHeap = CreateSrvHeap(1, 1, &te);
-	if (mSrvHeap == nullptr)return false;
+	mSrvHeap = CreateSrvHeap(1, &te);
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
@@ -362,7 +361,7 @@ void PolygonData2D::Draw() {
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);//テクスチャ無しの場合このままで良いのやら・・エラーは無し
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 

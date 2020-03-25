@@ -56,7 +56,7 @@ protected:
 	ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
 	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 
-	void GetShaderByteCode(int texNum);
+	void GetShaderByteCode();
 	bool ComCreate();
 	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha);
 	void CbSwap();

@@ -53,7 +53,7 @@ HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
 	int resCnt = -1;
 	for (int i = 0; i < MaterialNum; i++) {
 		//diffuse
-		if (movOn[i].m_on) {
+		if (to[i].diffuse < 0 || movOn[i].m_on) {
 			hr = dx->textureInit(movOn[i].width, movOn[i].height,
 				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -61,21 +61,19 @@ HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
 			movOn[i].resIndex = resCnt;
 		}
 		else
-			if (to[i].diffuse != -1) {
-				InternalTexture* tex = &dx->texture[to[i].diffuse];
-
-				hr = dx->createTexture(com_no, tex->byteArr, tex->format,
-					textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
-					tex->width, tex->RowPitch, tex->height);
-			}
+		{
+			InternalTexture* tex = &dx->texture[to[i].diffuse];
+			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
+				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				tex->width, tex->RowPitch, tex->height);
+		}
 		if (FAILED(hr)) {
 			ErrorMessage("Common::createTextureResource Error!!");
 			return hr;
 		}
 		//normalMapが存在する場合
-		if (to[i].normal != -1) {
+		if (to[i].normal >= 0) {
 			InternalTexture* tex = &dx->texture[to[i].normal];
-
 			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
 				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				tex->width, tex->RowPitch, tex->height);
@@ -88,7 +86,7 @@ HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
 	return S_OK;
 }
 
-ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to)
+ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int texNum, TextureNo* to)
 {
 	ComPtr <ID3D12DescriptorHeap>srv;
 
@@ -110,24 +108,13 @@ ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int MaterialNum, int texNum,
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	int resCnt = 0;
-	for (int i = 0; i < MaterialNum; i++) {
-		//diffuse
-		if (movOn[i].m_on || to[i].diffuse != -1) {
-			srvDesc.Format = texture[resCnt].Get()->GetDesc().Format;
-			srvDesc.Texture2D.MipLevels = texture[resCnt].Get()->GetDesc().MipLevels;
-			dx->md3dDevice->CreateShaderResourceView(texture[resCnt++].Get(), &srvDesc, hDescriptor);
-			hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		}
-		//normalMapが存在する場合
-		if (to[i].normal != -1) {
-			srvDesc.Format = texture[resCnt].Get()->GetDesc().Format;
-			srvDesc.Texture2D.MipLevels = texture[resCnt].Get()->GetDesc().MipLevels;
-			dx->md3dDevice->CreateShaderResourceView(texture[resCnt++].Get(), &srvDesc, hDescriptor);
-			hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		}
-	}
+	for (int i = 0; i < texNum; i++) {
+		srvDesc.Format = texture[i].Get()->GetDesc().Format;
+		srvDesc.Texture2D.MipLevels = texture[i].Get()->GetDesc().MipLevels;
+		dx->md3dDevice->CreateShaderResourceView(texture[i].Get(), &srvDesc, hDescriptor);
+		hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
 
+	}
 	return srv;
 }
 
@@ -400,17 +387,10 @@ void Common::drawsub(drawPara para) {
 
 		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex(shader内registerIndex), DESCRIPTOR_HANDLE)
 		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
-		if (para.material[i].nortex_no != -1) {
-			mCommandList->IASetPrimitiveTopology(para.haveNortexTOPOLOGY);
-			//normalMapが存在する場合diffuseの次に格納されている
-			mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-			mCommandList->SetPipelineState(para.haveNortexPSO);//normalMap有り無しでPSO切り替え
-		}
-		else {
-			mCommandList->IASetPrimitiveTopology(para.notHaveNortexTOPOLOGY);
-			mCommandList->SetPipelineState(para.notHaveNortexPSO);
-		}
+		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
+		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
+		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+		mCommandList->SetPipelineState(para.PSO);
 
 		mCommandList->SetGraphicsRootConstantBufferView(2, para.cbRes0->GetGPUVirtualAddress());
 		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;

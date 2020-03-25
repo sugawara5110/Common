@@ -11,7 +11,6 @@ Wave::Wave() {
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	d3varray = nullptr;
 	d3varrayI = nullptr;
-	numTex = 1;
 
 	sg.vDiffuse.x = 1.0f;
 	sg.vDiffuse.y = 1.0f;
@@ -60,13 +59,10 @@ void Wave::GetVBarray(int v) {
 	Iview = std::make_unique<IndexView[]>(1);
 }
 
-void Wave::GetShaderByteCode(int texNum) {
+void Wave::GetShaderByteCode() {
 	cs = dx->pComputeShader_Wave.Get();
 	vs = dx->pVertexShader_Wave.Get();
-	if (texNum <= 1)
-		ps = dx->pPixelShader_3D.Get();
-	else
-		ps = dx->pPixelShader_Bump.Get();
+	ps = dx->pPixelShader_3D.Get();
 	hs = dx->pHullShader_Wave.Get();
 	ds = dx->pDomainShader_Wave.Get();
 }
@@ -178,11 +174,13 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	material[0].nortex_no = nortNo;
 	material[0].dwNumFace = 1;
 	TextureNo te;
-	te.diffuse = texNo;
-	te.normal = nortNo;
+	if (texNo < 0)te.diffuse = 0; else
+		te.diffuse = texNo;
+	if (nortNo < 0)te.normal = 0; else
+		te.normal = nortNo;
 
 	createTextureResource(1, &te);
-	mSrvHeap = CreateSrvHeap(1, numTex, &te);
+	mSrvHeap = CreateSrvHeap(2, &te);
 	if (mSrvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
@@ -214,8 +212,7 @@ bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 	mObjectCB_WAVE->CopyData(0, cbw);
 	material[0].tex_no = texNo;
 	material[0].nortex_no = nortNo;
-	if (nortNo != -1)numTex = 2;
-	GetShaderByteCode(numTex);
+	GetShaderByteCode();
 	if (!ComCreate())return false;
 	return DrawCreate(texNo, nortNo, blend, alpha);
 }
@@ -278,10 +275,8 @@ void Wave::DrawSub() {
 	para.Vview = Vview.get();
 	para.Iview = Iview.get();
 	para.material = material;
-	para.haveNortexTOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
-	para.notHaveNortexTOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
-	para.haveNortexPSO = mPSODraw.Get();
-	para.notHaveNortexPSO = mPSODraw.Get();
+	para.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+	para.PSO = mPSODraw.Get();
 	para.cbRes0 = mObjectCB->Resource();
 	para.cbRes1 = mObjectCB1->Resource();
 	para.cbRes2 = mObjectCB_WAVE->Resource();

@@ -13,9 +13,7 @@ class MeshData :public Common {
 
 protected:
 	ID3DBlob* vs = nullptr;
-	ID3DBlob* vsB = nullptr;
 	ID3DBlob* ps = nullptr;
-	ID3DBlob* psB = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 
@@ -39,7 +37,6 @@ protected:
 	std::unique_ptr<IndexView[]> Iview = nullptr;
 
 	ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
-	ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
 	int  MaterialCount = 0;//マテリアル数
 	int* piFaceBuffer;
@@ -62,7 +59,7 @@ protected:
 	float addSpecular;
 	float addAmbient;
 
-	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
+	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 
 	bool LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial);
 	void GetShaderByteCode(bool disp);

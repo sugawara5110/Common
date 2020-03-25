@@ -172,7 +172,6 @@ private:
 	ComPtr<ID3DBlob> pVertexShader_2DTC = nullptr;
 
 	ComPtr<ID3DBlob> pPixelShader_P = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_Bump = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_3D = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_Emissive = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_BC = nullptr;
@@ -438,13 +437,12 @@ protected:
 	ComPtr <ID3D12Resource> textureUp[256] = {};
 	ComPtr <ID3D12Resource> texture[256] = {};
 	MovieTexture movOn[256] = {};
-	int numTex = 0;
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
 	HRESULT createTextureResource(int MaterialNum, TextureNo* to);
-	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int MaterialNum, int texNum, TextureNo* to);
+	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int texNum, TextureNo* to);
 	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//íºê⁄égópã÷é~
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
@@ -495,10 +493,8 @@ protected:
 		VertexView* Vview = nullptr;
 		IndexView* Iview = nullptr;
 		MY_MATERIAL_S* material = nullptr;
-		D3D_PRIMITIVE_TOPOLOGY haveNortexTOPOLOGY;
-		D3D_PRIMITIVE_TOPOLOGY notHaveNortexTOPOLOGY;
-		ID3D12PipelineState* haveNortexPSO = nullptr;
-		ID3D12PipelineState* notHaveNortexPSO = nullptr;
+		D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
+		ID3D12PipelineState* PSO = nullptr;
 		ID3D12Resource* cbRes0 = nullptr;
 		ID3D12Resource* cbRes1 = nullptr;
 		ID3D12Resource* cbRes2 = nullptr;
@@ -563,7 +559,7 @@ protected:
 	PrimitiveType          primType_create;
 	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 
-	void GetShaderByteCode(bool light, int tNo, int nortNo);
+	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
 
 public:

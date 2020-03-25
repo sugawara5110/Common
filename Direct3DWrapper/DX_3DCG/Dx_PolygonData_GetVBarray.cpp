@@ -121,7 +121,7 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 	Iview = std::make_unique<IndexView[]>(1);
 }
 
-void PolygonData::GetShaderByteCode(bool light, int tNo, int nortNo) {
+void PolygonData::GetShaderByteCode(bool light, int tNo) {
 	material[0].tex_no = tNo;
 	bool disp = false;
 	if (primType_create == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH)disp = true;
@@ -142,10 +142,7 @@ void PolygonData::GetShaderByteCode(bool light, int tNo, int nortNo) {
 	}
 	if (disp && light) {
 		vs = dx->pVertexShader_DISP.Get();
-		if (nortNo == -1)
-			ps = dx->pPixelShader_3D.Get();
-		else
-			ps = dx->pPixelShader_Bump.Get();
+		ps = dx->pPixelShader_3D.Get();
 		hs = dx->pHullShader_DISP.Get();
 		ds = dx->pDomainShader_DISP.Get();
 		return;
@@ -180,7 +177,7 @@ bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
 
 bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha) {
 
-	GetShaderByteCode(light, tNo, nortNo);
+	GetShaderByteCode(light, tNo);
 
 	mObjectCB1->CopyData(0, sg);
 
@@ -200,17 +197,18 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	if (mRootSignature == nullptr)return false;
 
 	//SRVのデスクリプターヒープ生成
-	numTex = 1;
 	material[0].tex_no = tNo;
 	material[0].nortex_no = nortNo;
 	material[0].dwNumFace = 1;
-	if (nortNo != -1)numTex = 2;//normalMap有りの場合2個生成
+
 	TextureNo te;
-	te.diffuse = tNo;
-	te.normal = nortNo;
+	if (tNo < 0)te.diffuse = 0; else
+		te.diffuse = tNo;
+	if (nortNo < 0)te.normal = 0; else
+		te.normal = nortNo;
 
 	createTextureResource(1, &te);
-	mSrvHeap = CreateSrvHeap(1, numTex, &te);
+	mSrvHeap = CreateSrvHeap(2, &te);
 	if (mSrvHeap == nullptr)return false;
 
 	UINT VertexSize;
@@ -288,10 +286,8 @@ void PolygonData::Draw() {
 	para.Vview = Vview.get();
 	para.Iview = Iview.get();
 	para.material = material;
-	para.haveNortexTOPOLOGY = primType_draw;
-	para.notHaveNortexTOPOLOGY = primType_draw;
-	para.haveNortexPSO = mPSO.Get();
-	para.notHaveNortexPSO = mPSO.Get();
+	para.TOPOLOGY = primType_draw;
+	para.PSO = mPSO.Get();
 	para.cbRes0 = mObjectCB->Resource();
 	para.cbRes1 = mObjectCB1->Resource();
 	para.cbRes2 = nullptr;

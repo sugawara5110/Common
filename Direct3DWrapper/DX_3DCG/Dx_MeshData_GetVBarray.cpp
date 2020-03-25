@@ -26,19 +26,17 @@ ID3D12PipelineState *MeshData::GetPipelineState() {
 
 void MeshData::GetShaderByteCode(bool disp) {
 
-	vs = dx->pVertexShader_MESH.Get();
 	if (disp) {
-		vsB = dx->pVertexShader_MESH_D.Get();
+		vs = dx->pVertexShader_MESH_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->pDomainShaderTriangle.Get();
 	}
 	else {
-		vsB = dx->pVertexShader_MESH.Get();
+		vs = dx->pVertexShader_MESH.Get();
 		hs = nullptr;
 		ds = nullptr;
 	}
 	ps = dx->pPixelShader_3D.Get();
-	psB = dx->pPixelShader_Bump.Get();
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) {
@@ -74,7 +72,6 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 	//本読み込み	
 	fseek(fp, 0, SEEK_SET);
 	INT iMCount = -1;
-	numTex = 0;
 
 	while (!feof(fp))
 	{
@@ -111,14 +108,12 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 		{
 			sscanf_s(&line[7], "%s", &pMaterial[iMCount].szTextureName, (unsigned int)sizeof(pMaterial[iMCount].szTextureName));
 			pMaterial[iMCount].tex_no = dx->GetTexNumber(pMaterial[iMCount].szTextureName);
-			numTex++;
 		}
 		//map_bump　テクスチャー
 		if (strcmp(key, "map_bump") == 0)
 		{
 			sscanf_s(&line[7], "%s", &pMaterial[iMCount].norTextureName, (unsigned int)sizeof(pMaterial[iMCount].norTextureName));
 			pMaterial[iMCount].nortex_no = dx->GetTexNumber(pMaterial[iMCount].norTextureName);
-			numTex++;
 		}
 	}
 	fclose(fp);
@@ -137,12 +132,10 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 	addAmbient = ambi;
 
 	if (disp) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		primType_drawB = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		primType_drawB = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 }
 
@@ -443,10 +436,8 @@ bool MeshData::CreateMesh() {
 	if (mRootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend);
+	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend);
 	if (mPSO == nullptr)return false;
-	mPSO_B = CreatePsoVsHsDsPs(vsB, hs, ds, psB, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend);
-	if (mPSO_B == nullptr)return false;
 
 	return true;
 }
@@ -455,12 +446,15 @@ bool MeshData::GetTexture() {
 
 	TextureNo* te = new TextureNo[MaterialCount];
 	for (int i = 0; i < MaterialCount; i++) {
-		te[i].diffuse = pMaterial[i].tex_no;
-		te[i].normal = pMaterial[i].nortex_no;
+		if (pMaterial[i].tex_no < 0)te[i].diffuse = 0; else
+			te[i].diffuse = pMaterial[i].tex_no;
+		if (pMaterial[i].nortex_no < 0)te[i].normal = 0; else
+			te[i].normal = pMaterial[i].nortex_no;
 	}
 
 	createTextureResource(MaterialCount, te);
-	mSrvHeap = CreateSrvHeap(MaterialCount, numTex, te);
+	int numTex = MaterialCount * 2;
+	mSrvHeap = CreateSrvHeap(numTex, te);
 	if (mSrvHeap == nullptr)return false;
 
 	for (int i = 0; i < MaterialCount; i++)
@@ -517,10 +511,8 @@ void MeshData::Draw() {
 	para.Vview = Vview.get();
 	para.Iview = Iview.get();
 	para.material = pMaterial;
-	para.haveNortexTOPOLOGY = primType_drawB;
-	para.notHaveNortexTOPOLOGY = primType_draw;
-	para.haveNortexPSO = mPSO_B.Get();
-	para.notHaveNortexPSO = mPSO.Get();
+	para.TOPOLOGY = primType_draw;
+	para.PSO = mPSO.Get();
 	para.cbRes0 = mObjectCB->Resource();
 	para.cbRes1 = mObject_MESHCB->Resource();
 	para.cbRes2 = nullptr;

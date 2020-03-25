@@ -43,7 +43,6 @@ SkinMesh::SkinMesh() {
 	BoneConnect = -1.0f;
 	pvVB_delete_f = true;
 	pvVB = nullptr;
-	numTex = 0;
 	addDiffuse = 0.0f;
 	addSpecular = 0.0f;
 	addAmbient = 0.0f;
@@ -425,18 +424,15 @@ void SkinMesh::SetVertex() {
 				strcpy_s(m_pMaterial[mInd].norTextureName, mesh->getNormalTextureName(i));
 				//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 				m_pMaterial[mInd].nortex_no = dx->GetTexNumber(m_pMaterial[mInd].norTextureName);
-				numTex++;
 			}
 			if (mesh->getDiffuseTextureName(i)) {
 				strcpy_s(m_pMaterial[mInd].szTextureName, mesh->getDiffuseTextureName(i));
 				//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 				m_pMaterial[mInd].tex_no = dx->GetTexNumber(m_pMaterial[mInd].szTextureName);
-				numTex++;
 			}
 			else {
 				strcpy_s(m_pMaterial[mInd].szTextureName, mesh->getMaterialName());//テクスチャ名が無い場合マテリアル名から
 				m_pMaterial[mInd].tex_no = dx->GetTexNumber(m_pMaterial[mInd].szTextureName);
-				numTex++;
 			}
 
 			int iCount = 0;//最終的な(分割後)indexカウント
@@ -534,7 +530,6 @@ void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex) {
 	strcpy_s(m_pMaterial[materialIndex].szTextureName, textureName);
 	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 	m_pMaterial[materialIndex].tex_no = dx->GetTexNumber(m_pMaterial[materialIndex].szTextureName);
-	numTex++;
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex) {
@@ -542,7 +537,6 @@ void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex) {
 	strcpy_s(m_pMaterial[materialIndex].norTextureName, textureName);
 	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
 	m_pMaterial[materialIndex].nortex_no = dx->GetTexNumber(m_pMaterial[materialIndex].norTextureName);
-	numTex++;
 }
 
 bool SkinMesh::CreateFromFBX(bool disp) {
@@ -562,23 +556,19 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 
 	if (pvVB_delete_f)ARR_DELETE(pvVB);//使わない場合解放
 
-	vs = dx->pVertexShader_SKIN.Get();
 	if (disp) {
-		vsB = dx->pVertexShader_SKIN_D.Get();
+		vs = dx->pVertexShader_SKIN_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->pDomainShaderTriangle.Get();
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		primType_drawB = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
-		vsB = dx->pVertexShader_SKIN.Get();
+		vs = dx->pVertexShader_SKIN.Get();
 		hs = nullptr;
 		ds = nullptr;
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		primType_drawB = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 	ps = dx->pPixelShader_3D.Get();
-	psB = dx->pPixelShader_Bump.Get();
 
 	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//このDescriptorRangeはシェーダーリソースビュー,Descriptor 1個, shader内registerIndex
@@ -595,10 +585,8 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	if (mRootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend);
+	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend);
 	if (mPSO == nullptr)return false;
-	mPSO_B = CreatePsoVsHsDsPs(vsB, hs, ds, psB, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend);
-	if (mPSO_B == nullptr)return false;
 
 	return GetTexture();
 }
@@ -825,12 +813,15 @@ bool SkinMesh::GetTexture() {
 
 	TextureNo* te = new TextureNo[MateAllpcs];
 	for (int i = 0; i < MateAllpcs; i++) {
-		te[i].diffuse = m_pMaterial[i].tex_no;
-		te[i].normal = m_pMaterial[i].nortex_no;
+		if (m_pMaterial[i].tex_no < 0)te[i].diffuse = 0; else
+			te[i].diffuse = m_pMaterial[i].tex_no;
+		if (m_pMaterial[i].nortex_no < 0)te[i].normal = 0; else
+			te[i].normal = m_pMaterial[i].nortex_no;
 	}
 
 	createTextureResource(MateAllpcs, te);
-	mSrvHeap = CreateSrvHeap(MateAllpcs, numTex, te);
+	int numTex = MateAllpcs * 2;
+	mSrvHeap = CreateSrvHeap(numTex, te);
 
 	ARR_DELETE(te);
 	if (mSrvHeap == nullptr)return false;
@@ -880,10 +871,8 @@ void SkinMesh::Draw() {
 	para.Vview = Vview.get();
 	para.Iview = Iview.get();
 	para.material = m_pMaterial;
-	para.haveNortexTOPOLOGY = primType_drawB;
-	para.notHaveNortexTOPOLOGY = primType_draw;
-	para.haveNortexPSO = mPSO_B.Get();
-	para.notHaveNortexPSO = mPSO.Get();
+	para.TOPOLOGY = primType_draw;
+	para.PSO = mPSO.Get();
 	para.cbRes0 = mObjectCB0->Resource();
 	para.cbRes1 = mObjectCB1->Resource();
 	para.cbRes2 = mObject_BONES->Resource();

@@ -32,18 +32,16 @@ protected:
 	friend SkinMesh_sub;
 	friend Dx12Process;
 	ID3DBlob* vs = nullptr;
-	ID3DBlob* vsB = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* ps = nullptr;
-	ID3DBlob* psB = nullptr;
 	bool alpha = false;
 	bool blend = false;
 	float addDiffuse;
 	float addSpecular;
 	float addAmbient;
 
-	D3D_PRIMITIVE_TOPOLOGY primType_draw, primType_drawB;
+	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
@@ -65,7 +63,6 @@ protected:
 	std::unique_ptr<IndexView[]> Iview = nullptr;
 
 	ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
-	ComPtr<ID3D12PipelineState> mPSO_B = nullptr;//パイプラインOBJ(バンプマップ)
 
 	//メッシュ関連	
 	DWORD* m_pdwNumVert;//メッシュ毎の頂点数

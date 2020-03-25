@@ -182,7 +182,6 @@ bool Dx12Process::CreateShaderByteCode() {
 	ComHSDS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonTriangleHSDS, strlen(ShaderCommonTriangleHSDS));
 
 	//CommonPS
-	pPixelShader_Bump = CompileShader(ComPS.str, ComPS.size, "PS_LBump", "ps_5_0");
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
 	pPixelShader_Emissive = CompileShader(ComPS.str, ComPS.size, "PS", "ps_5_0");
 	//CommonHSDS(Triangle)
@@ -389,21 +388,20 @@ void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texNa
 	UCHAR* byteArr, DXGI_FORMAT format,
 	int width, LONG_PTR RowPitch, int height) {
 
-	texNum = numTexArr;
 	if (!texture) {
+		texNum = numTexArr + 1;
 		texture = new InternalTexture[texNum];
+		UCHAR dm[8 * 4 * 8] = {};
+		memset(dm, 255, sizeof(UCHAR) * 8 * 4 * 8);
+		texture[0].setParameter(DXGI_FORMAT_R8G8B8A8_UNORM, 8, 8 * 4, 8);
+		texture[0].setName("dummy");
+		texture[0].setData(dm);
 	}
 
-	InternalTexture* tex = &texture[resourceIndex];
-	tex->byteArr = new UCHAR[RowPitch * height];
-	memcpy(tex->byteArr, byteArr, sizeof(UCHAR) * RowPitch * height);
-	int ln = (int)strlen(texName) + 1;
-	tex->texName = new char[ln];
-	memcpy(tex->texName, texName, sizeof(char) * ln);
-	tex->format = format;
-	tex->width = width;
-	tex->RowPitch = RowPitch;
-	tex->height = height;
+	InternalTexture* tex = &texture[resourceIndex + 1];
+	tex->setParameter(format, width, RowPitch, height);
+	tex->setName(texName);
+	tex->setData(byteArr);
 }
 
 bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
