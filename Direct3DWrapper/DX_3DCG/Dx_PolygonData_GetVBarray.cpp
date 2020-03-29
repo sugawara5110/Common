@@ -124,7 +124,7 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
 	material[0].tex_no = tNo;
 	bool disp = false;
-	if (primType_create == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH)disp = true;
+	if (primType_create == CONTROL_POINT)disp = true;
 	if (tNo == -1 && movOn[0].m_on == false) {
 		vs = dx->pVertexShader_BC.Get();
 		ps = dx->pPixelShader_BC.Get();

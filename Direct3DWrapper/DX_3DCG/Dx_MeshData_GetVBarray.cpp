@@ -246,7 +246,7 @@ bool MeshData::SetVertex() {
 		if (strcmp(key, "v") == 0)
 		{
 			sscanf_s(&line[2], "%f %f %f", &x, &y, &z);
-			pvCoord[VCount].x = -x;
+			pvCoord[VCount].x = x;
 			pvCoord[VCount].y = z;
 			pvCoord[VCount].z = y;
 			VCount++;
@@ -257,8 +257,8 @@ bool MeshData::SetVertex() {
 		{
 			sscanf_s(&line[3], "%f %f %f", &x, &y, &z);
 			pvNormal[VNCount].x = x;
-			pvNormal[VNCount].y = -z;
-			pvNormal[VNCount].z = -y;
+			pvNormal[VNCount].y = z;
+			pvNormal[VNCount].z = y;
 			VNCount++;
 		}
 

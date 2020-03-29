@@ -641,7 +641,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//平行光源初期化
 	dlight.Direction.as(0.0f, 0.0f, 0.0f, 0.0f);
 	dlight.LightColor.as(1.0f, 1.0f, 1.0f, 1.0f);
-	dlight.Lightst.as(1.0f, 0.0f, 0.3f, 0.0f);
+	dlight.onoff = 0.0f;
 
 	//フォグ初期化
 	fog.FogColor.as(1.0f, 1.0f, 1.0f, 1.0f);
@@ -708,48 +708,41 @@ void Dx12Process::ResetPointLight() {
 	for (int i = 0; i < LIGHT_PCS; i++) {
 		plight.LightPos[i].as(0.0f, 0.0f, 0.0f, 0.0f);
 		plight.LightColor[i].as(0.0f, 0.0f, 0.0f, 0.0f);
-		plight.Lightst[i].as(0.0f, 0.0f, 0.0f, 0.0f);
+		plight.Lightst[i].as(0.0f, 1.0f, 0.001f, 0.001f);
 	}
-	plight.ShadowLow_val = 0.0f;
 	lightNum = 0;
 }
 
-void Dx12Process::P_ShadowBright(float val) {
-	plight.ShadowLow_val = val;
-}
-
-bool Dx12Process::PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
-	float brightness, float attenuation, bool on_off) {
+bool Dx12Process::PointLightPosSet(int Idx, float x, float y, float z,
+	float r, float g, float b, float a, bool on_off,
+	float range, float atten1, float atten2, float atten3) {
 
 	if (Idx > LIGHT_PCS - 1 || Idx < 0) {
 		ErrorMessage("lightNumの値が範囲外です");
 		return false;
 	}
 
-	if (Idx + 1 > lightNum && on_off)lightNum = Idx + 1;
+	if (Idx + 1 > lightNum&& on_off)lightNum = Idx + 1;
 
 	float onoff;
 	if (on_off)onoff = 1.0f; else onoff = 0.0f;
-	plight.LightPos[Idx].as(x, y, z, 1.0f);
+	plight.LightPos[Idx].as(x, y, z, onoff);
 	plight.LightColor[Idx].as(r, g, b, a);
-	plight.Lightst[Idx].as(range, brightness, attenuation, onoff);
+	plight.Lightst[Idx].as(range, atten1, atten2, atten3);
 	plight.LightPcs = lightNum;
 
 	return true;
 }
 
-void Dx12Process::DirectionLight(float x, float y, float z, float r, float g, float b, float bright, float ShadowBright) {
+void Dx12Process::DirectionLight(float x, float y, float z, float r, float g, float b) {
 	dlight.Direction.as(x, y, z, 0.0f);
 	dlight.LightColor.as(r, g, b, 0.0f);
-	dlight.Lightst.x = bright;
-	dlight.Lightst.z = ShadowBright;
-	dlight.Lightst.w = 0.0f;
 }
 
 void Dx12Process::SetDirectionLight(bool onoff) {
 	float f = 0.0f;
 	if (onoff)f = 1.0f;
-	dlight.Lightst.y = f;
+	dlight.onoff = f;
 }
 
 void Dx12Process::Fog(float r, float g, float b, float amount, float density, bool onoff) {
@@ -987,17 +980,17 @@ void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float 
 	insNum++;
 }
 
-void Dx12Process::MatrixMap(CONSTANT_BUFFER *cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
+void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
 
 	cb->C_Pos.as(posX, posY, posZ, 0.0f);
 	cb->AddObjColor.as(r, g, b, a);
-	cb->pShadowLow_Lpcs.as(plight.ShadowLow_val, (float)plight.LightPcs, 0.0f, 0.0f);
+	cb->numLight.as((float)plight.LightPcs, 0.0f, 0.0f, 0.0f);
 	memcpy(cb->pLightPos, plight.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
 	memcpy(cb->pLightColor, plight.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
 	memcpy(cb->pLightst, plight.Lightst, sizeof(VECTOR4) * LIGHT_PCS);
 	cb->dDirection = dlight.Direction;
 	cb->dLightColor = dlight.LightColor;
-	cb->dLightst = dlight.Lightst;
+	cb->dLightst.x = dlight.onoff;
 	cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
 	cb->FogColor = fog.FogColor;
 	if (disp == 0.0f)disp = 3.0f;

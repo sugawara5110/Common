@@ -243,7 +243,8 @@ private:
 	void InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
 
-	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my);
+	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a,
+		float disp, float px, float py, float mx, float my);
 
 	void FenceSetEvent();
 	void WaitFence(bool mode);
@@ -283,10 +284,12 @@ public:
 	void DrawScreen();
 	void Cameraset(float cx1, float cx2, float cy1, float cy2, float cz1, float cz2);
 	void ResetPointLight();
-	void P_ShadowBright(float val);
-	bool PointLightPosSet(int Idx, float x, float y, float z, float r, float g, float b, float a, float range,
-		float brightness, float attenuation, bool on_off);
-	void DirectionLight(float x, float y, float z, float r, float g, float b, float bright, float ShadowBright);
+
+	bool PointLightPosSet(int Idx, float x, float y, float z,
+		float r, float g, float b, float a, bool on_off,
+		float range, float atten1 = 0.01f, float atten2 = 0.001f, float atten3 = 0.001f);
+
+	void DirectionLight(float x, float y, float z, float r, float g, float b);
 	void SetDirectionLight(bool onoff);
 	void Fog(float r, float g, float b, float amount, float density, bool onoff);
 	float GetViewY_theta();

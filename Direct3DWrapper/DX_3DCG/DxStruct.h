@@ -28,22 +28,22 @@ struct CONSTANT_BUFFER {
 	VECTOR4 C_Pos;       //視点位置
 	VECTOR4 AddObjColor;//オブジェクトの色変化用
 
-    //ポイントライト
-	VECTOR4 pLightPos[LIGHT_PCS];
+	//ポイントライト
+	VECTOR4 pLightPos[LIGHT_PCS];//xyz:Pos, w:オンオフ
 	VECTOR4 pLightColor[LIGHT_PCS];
-	VECTOR4 pLightst[LIGHT_PCS];
-	VECTOR4 pShadowLow_Lpcs;//影の下限値, ライト個数, ライト有無
+	VECTOR4 pLightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
+	VECTOR4 numLight;//x:ライト個数
 
-    //ディレクショナルライト
+	//ディレクショナルライト
 	VECTOR4 dDirection;
 	VECTOR4 dLightColor;
-	VECTOR4 dLightst;
+	VECTOR4 dLightst;//x:オンオフ
 
 	//フォグ
 	VECTOR4  FogAmo_Density; //フォグ量x, フォグの密度y, onoffz
 	VECTOR4  FogColor;   //フォグの色
 
-    //ディスプレイトメントマッピングの起伏量x(0入力の場合デフォルト値3になる)
+	//ディスプレイトメントマッピングの起伏量x(0入力の場合デフォルト値3になる)
 	VECTOR4  DispAmount;
 
 	//UV座標移動用
@@ -73,10 +73,9 @@ struct CONSTANT_BUFFER_P {
 
 //ポイントライト
 struct PointLight {
-	VECTOR4 LightPos[LIGHT_PCS];   //光源
+	VECTOR4 LightPos[LIGHT_PCS];   //xyz:Pos, w:オンオフ
 	VECTOR4 LightColor[LIGHT_PCS];//色
-	VECTOR4 Lightst[LIGHT_PCS];  //レンジ,明るさ,減衰の大きさ,オンオフ
-	float   ShadowLow_val; //影の下限値
+	VECTOR4 Lightst[LIGHT_PCS];  //レンジ, 減衰1, 減衰2, 減衰3
 	int     LightPcs;     //ライト個数
 };
 
@@ -84,7 +83,7 @@ struct PointLight {
 struct DirectionLight {
 	VECTOR4 Direction;  //方向
 	VECTOR4 LightColor;//色
-	VECTOR4 Lightst;  //明るさx,オンオフy,影の下限値
+	float onoff;
 };
 
 //フォグ

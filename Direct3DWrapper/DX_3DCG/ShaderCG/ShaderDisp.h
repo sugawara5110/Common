@@ -96,7 +96,7 @@ char *ShaderDisp =
 "   float2 uv = float2(lerp(top_uv, bottom_uv, UV.y));\n"
 "   output.Tex = uv;\n"
 //‰æ‘œ‚©‚ç‚‚³‚ğZo
-"   float4 texheight = g_texColor.SampleLevel(g_samLinear, uv, 0);\n"
+"   float4 texheight = g_texDiffuse.SampleLevel(g_samLinear, uv, 0);\n"
 "   float4 height = texheight * g_DispAmount.x;\n"
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 //posÀ•WŒvZ

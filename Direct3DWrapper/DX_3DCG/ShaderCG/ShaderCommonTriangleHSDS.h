@@ -84,7 +84,7 @@ char *ShaderCommonTriangleHSDS =
 "   output.Tex = uv;\n"
 
 //画像から高さを算出
-"   float4 height = g_texColor.SampleLevel(g_samLinear, uv, 0);\n"
+"   float4 height = g_texDiffuse.SampleLevel(g_samLinear, uv, 0);\n"
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
 //  法線ベクトル計算
