@@ -53,6 +53,7 @@ void PolygonData::SetVertex(int I1, int I2, int i,
 	d3varrayI[I2] = i;
 	d3varray[i].Pos.as(vx, vy, vz);
 	d3varray[i].normal.as(nx, ny, nz);
+	d3varray[i].geoNormal.as(nx, ny, nz);
 	d3varray[i].tex.as(u, v);
 }
 
@@ -63,6 +64,7 @@ void PolygonData::SetVertex(int I1, int i,
 	d3varrayI[I1] = i;
 	d3varray[i].Pos.as(vx, vy, vz);
 	d3varray[i].normal.as(nx, ny, nz);
+	d3varray[i].geoNormal.as(nx, ny, nz);
 	d3varray[i].tex.as(u, v);
 }
 
@@ -107,12 +109,12 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 		verI = v * 2;
 	}
 	if (type == CONTROL_POINT) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 		ver = v * 4;//v==ÉpÉbÉ`ÇÃå¬êî
-		verI = v * 4;
+		verI = v * 6;
 	}
 
-	d3varray = (Vertex*)malloc(sizeof(Vertex) * ver);
+	d3varray = (VertexM*)malloc(sizeof(VertexM) * ver);
 	d3varrayBC = (VertexBC*)malloc(sizeof(VertexBC) * ver);
 	d3varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * verI);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
@@ -141,17 +143,17 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 		return;
 	}
 	if (disp && light) {
-		vs = dx->pVertexShader_DISP.Get();
+		vs = dx->pVertexShader_MESH_D.Get();
 		ps = dx->pPixelShader_3D.Get();
-		hs = dx->pHullShader_DISP.Get();
-		ds = dx->pDomainShader_DISP.Get();
+		hs = dx->pHullShaderTriangle.Get();
+		ds = dx->dx->pDomainShaderTriangle.Get();
 		return;
 	}
 	if (disp && !light) {
-		vs = dx->pVertexShader_DISP.Get();
+		vs = dx->pVertexShader_MESH_D.Get();
 		ps = dx->pPixelShader_Emissive.Get();
-		hs = dx->pHullShader_DISP.Get();
-		ds = dx->pDomainShader_DISP.Get();
+		hs = dx->pHullShaderTriangle.Get();
+		ds = dx->dx->pDomainShaderTriangle.Get();
 		return;
 	}
 }
@@ -215,7 +217,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	if (tNo == -1 && !movOn[0].m_on)
 		VertexSize = sizeof(VertexBC);
 	else
-		VertexSize = sizeof(Vertex);
+		VertexSize = sizeof(VertexM);
 
 	const UINT vbByteSize = VertexSize * ver;
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
@@ -237,7 +239,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	if (tNo == -1 && !movOn[0].m_on)
 		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
 	else
-		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3D, alpha, blend, primType_create);
+		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
 
 	if (mPSO == nullptr)return false;
 

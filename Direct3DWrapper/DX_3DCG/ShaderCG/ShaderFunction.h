@@ -96,7 +96,7 @@ char *ShaderFunction =
 
         //ŒõŒ¹ŒvŽZ
 "       Out = LightCom(SpeculerCol, Diffuse, Ambient, Nor, \n"
-"                      wPos, DCol, eyePos, Dir, 1.0f);\n"
+"                      wPos, DCol, eyePos, -Dir, 1.0f);\n"
 
 "    }\n"
 "    return Out;\n"

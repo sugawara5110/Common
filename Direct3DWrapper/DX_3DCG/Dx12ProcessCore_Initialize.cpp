@@ -10,7 +10,6 @@
 #include "./ShaderCG/ShaderFunction.h"
 #include "./ShaderCG/Shader2D.h"
 #include "./ShaderCG/Shader3D.h"
-#include "./ShaderCG/ShaderDisp.h"
 #include "./ShaderCG/ShaderMesh.h"
 #include "./ShaderCG/ShaderMesh_D.h"
 #include "./ShaderCG/ShaderParticle.h"
@@ -170,9 +169,8 @@ public:
 
 bool Dx12Process::CreateShaderByteCode() {
 
-	addShader D3, Disp, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS;
+	addShader D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS;
 	D3.addStr(ShaderFunction, strlen(ShaderFunction), Shader3D, strlen(Shader3D));
-	Disp.addStr(ShaderFunction, strlen(ShaderFunction), ShaderDisp, strlen(ShaderDisp));
 	Mesh.addStr(ShaderFunction, strlen(ShaderFunction), ShaderMesh, strlen(ShaderMesh));
 	MeshD.addStr(ShaderFunction, strlen(ShaderFunction), ShaderMesh_D, strlen(ShaderMesh_D));
 	Skin.addStr(ShaderFunction, strlen(ShaderFunction), ShaderSkinMesh, strlen(ShaderSkinMesh));
@@ -251,6 +249,7 @@ bool Dx12Process::CreateShaderByteCode() {
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 4 * 3 * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
+
 	//3Dレイアウト基本色
 	pVertexLayout_3DBC =
 	{
@@ -262,10 +261,6 @@ bool Dx12Process::CreateShaderByteCode() {
 	//基本色3D
 	pVertexShader_BC = CompileShader(D3.str, D3.size, "VSBaseColor", "vs_5_0");
 	pPixelShader_BC = CompileShader(D3.str, D3.size, "PSBaseColor", "ps_5_0");
-	//テセレータ
-	pVertexShader_DISP = CompileShader(Disp.str, Disp.size, "VSDisp", "vs_5_0");
-	pHullShader_DISP = CompileShader(Disp.str, Disp.size, "HSDisp", "hs_5_0");
-	pDomainShader_DISP = CompileShader(Disp.str, Disp.size, "DSDisp", "ds_5_0");
 	//Wave
 	pComputeShader_Wave = CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_0");
 	pVertexShader_Wave = CompileShader(Wave.str, Wave.size, "VSWave", "vs_5_0");

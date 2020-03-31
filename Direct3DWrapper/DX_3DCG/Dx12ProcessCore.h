@@ -144,11 +144,9 @@ private:
 
 	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
-	ComPtr<ID3DBlob> pHullShader_DISP = nullptr;
 
 	ComPtr<ID3DBlob> pDomainShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pDomainShaderTriangle = nullptr;
-	ComPtr<ID3DBlob> pDomainShader_DISP = nullptr;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_SKIN;
 	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_PSO;
@@ -165,7 +163,6 @@ private:
 	ComPtr<ID3DBlob> pVertexShader_P = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_MESH_D = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_MESH = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_DISP = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_TC = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_BC = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_2D = nullptr;
@@ -553,7 +550,7 @@ protected:
 	//パイプラインOBJ
 	ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
-	Vertex* d3varray;  //頂点配列
+	VertexM* d3varray;  //頂点配列
 	VertexBC* d3varrayBC;//頂点配列基本色
 	std::uint16_t* d3varrayI;//頂点インデックス
 	int ver;      //頂点個数

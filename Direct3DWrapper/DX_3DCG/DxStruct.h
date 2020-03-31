@@ -94,13 +94,6 @@ struct Fog {
 	float    on_off;
 };
 
-//頂点3DTexture有り
-struct Vertex {
-	VECTOR3 Pos;       //位置
-	VECTOR3 normal;   //法線
-	VECTOR2 tex;    //テクスチャ座標
-};
-
 //頂点3DTexture無し
 struct VertexBC {
 	VECTOR3 Pos;       //位置
@@ -120,6 +113,13 @@ struct PartPos {
 	VECTOR3 PosSt;     //開始位置
 	VECTOR3 PosEnd;   //終了位置
 	VECTOR4 Col;
+};
+
+//頂点3DTexture有り
+struct Vertex {
+	VECTOR3 Pos;       //位置
+	VECTOR3 normal;   //法線
+	VECTOR2 tex;    //テクスチャ座標
 };
 
 //Mesh.obj
