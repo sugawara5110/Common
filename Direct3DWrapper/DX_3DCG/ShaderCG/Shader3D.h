@@ -11,15 +11,15 @@ char *Shader3D =
 "};\n"
 
 //****************************************テクスチャ頂点**************************************************************//
-"PS_INPUT VSTextureColor(float3 Pos : POSITION, float3 Nor : NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
+"GS_Mesh_INPUT VSTextureColor(float3 Pos : POSITION, float3 Nor : NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
 "{\n"
-"    PS_INPUT output = (PS_INPUT)0;\n"
-"    float4 pos4 = float4(Pos, 1);\n"
-"    output.Pos = mul(pos4, g_WVP[instanceID]);\n"
-"    output.wPos = mul(pos4, g_World[instanceID]);\n"
-"    output.Nor = mul(Nor, (float3x3)g_World[instanceID]);\n"
+"    GS_Mesh_INPUT output = (GS_Mesh_INPUT)0;\n"
+
+"    output.Pos = float4(Pos, 1);\n"
+"    output.Nor = Nor;\n"
 "    output.Tex.x = Tex.x * g_pXpYmXmY.x + g_pXpYmXmY.x * g_pXpYmXmY.z;\n"
 "    output.Tex.y = Tex.y * g_pXpYmXmY.y + g_pXpYmXmY.y * g_pXpYmXmY.w;\n"
+"    output.instanceID = instanceID;\n"
 
 "    return output;\n"
 "}\n"

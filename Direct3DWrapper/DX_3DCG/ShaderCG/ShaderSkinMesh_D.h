@@ -27,15 +27,6 @@ char *ShaderSkinMesh_D =
 "   float4 Weights : BONE_WEIGHT;\n"//ボーンの重み
 "};\n"
 
-"struct VS_OUTPUT\n"
-"{\n"
-"    float4 Pos    : POSITION;\n"
-"    float3 Nor    : NORMAL;\n"
-"    float3 GNor   : GEO_NORMAL;\n"
-"    float2 Tex        : TEXCOORD;\n"
-"    uint   instanceID : SV_InstanceID;\n"
-"};\n"
-
 //指定した番号のボーンのポーズ行列を返す　サブ関数（バーテックスシェーダーで使用）
 "matrix FetchBoneMatrix(uint iBone)\n"
 "{\n"

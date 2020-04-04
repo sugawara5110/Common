@@ -194,8 +194,6 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
 	PrimitiveType type)
 {
-	D3D12_PRIMITIVE_TOPOLOGY_TYPE topology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
 	ComPtr <ID3D12PipelineState> pso;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
@@ -213,7 +211,6 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 			reinterpret_cast<BYTE*>(hs->GetBufferPointer()),
 			hs->GetBufferSize()
 		};
-		topology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 	}
 	if (ds != nullptr) {
 		psoDesc.DS =
@@ -228,7 +225,6 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 			reinterpret_cast<BYTE*>(gs->GetBufferPointer()),
 			gs->GetBufferSize()
 		};
-		topology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 	}
 	if (!STREAM_OUTPUT) {
 		psoDesc.PS =
@@ -272,9 +268,6 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	case CONTROL_POINT:
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 		break;
-	case NUL:
-		psoDesc.PrimitiveTopologyType = topology;
-		break;
 	}
 
 	psoDesc.NumRenderTargets = 1;
@@ -301,13 +294,13 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 	return CreatePSO(vs, nullptr, nullptr, ps, nullptr, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
+ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend,
 	PrimitiveType type)
 {
-	return CreatePSO(vs, hs, ds, ps, nullptr, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
+	return CreatePSO(vs, hs, ds, ps, gs, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
@@ -315,7 +308,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlo
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize)
 {
-	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout, &pDeclaration, true, StreamSize, true, true, NUL);
+	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout, &pDeclaration, true, StreamSize, true, true, POINt);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
@@ -323,7 +316,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* p
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend)
 {
-	return CreatePSO(vs, nullptr, nullptr, ps, gs, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, NUL);
+	return CreatePSO(vs, nullptr, nullptr, ps, gs, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, POINt);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,

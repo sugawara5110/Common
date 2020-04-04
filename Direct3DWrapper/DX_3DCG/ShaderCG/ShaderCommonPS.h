@@ -11,8 +11,10 @@ char *ShaderCommonPS =
 //テクスチャ
 "    float4 Tdif = g_texDiffuse.Sample(g_samLinear, input.Tex);\n"
 "    float4 Tnor = g_texNormal.Sample(g_samLinear, input.Tex);\n"
-//NormalMapと法線を掛け合わせて正規化
-"    float3 N = normalize(input.Nor * Tnor.xyz);\n"
+
+//接ベクトル, NormalMap, ローカル法線からローカル法線の再計算
+"    float3 N = GetNormal(input.Nor, Tnor.xyz, input.tangent, input.binormal);\n"
+"    N = normalize(N);\n"
 
 //フォグ計算(テクスチャに対して計算)
 "    Tdif = FogCom(g_FogColor, g_FogAmo_Density, g_C_Pos, input.wPos, Tdif);\n"
@@ -32,6 +34,8 @@ char *ShaderCommonPS =
 "                                   g_DLightst, g_DLightDirection.xyz, g_DLightColor.xyz, input.wPos.xyz, g_C_Pos.xyz);\n"
 "    Out.Diffuse += tmp.Diffuse;\n"
 "    Out.Speculer += tmp.Speculer;\n"
+//グローバルアンビエントを足す
+"    Out.Diffuse += g_GlobalAmbientLight.xyz;\n"
 
 //最後にテクスチャの色を掛け合わせる
 "    float alpha = Tdif.w;\n"

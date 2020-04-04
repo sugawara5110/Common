@@ -28,6 +28,13 @@ PolygonData::PolygonData() {
 	sg.vAmbient.y = 0.0f;
 	sg.vAmbient.z = 0.0f;
 	sg.vAmbient.w = 0.0f;
+
+	divArr[0].distance = 1000.0f;
+	divArr[0].divide = 2;
+	divArr[1].distance = 500.0f;
+	divArr[1].divide = 50;
+	divArr[2].distance = 300.0f;
+	divArr[2].divide = 100;
 }
 
 PolygonData::~PolygonData() {
@@ -134,11 +141,13 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 	}
 	if (!disp && light) {
 		vs = dx->pVertexShader_TC.Get();
+		gs = dx->pGeometryShader_Before_vs.Get();
 		ps = dx->pPixelShader_3D.Get();
 		return;
 	}
 	if (!disp && !light) {
 		vs = dx->pVertexShader_TC.Get();
+		gs = dx->pGeometryShader_Before_vs.Get();
 		ps = dx->pPixelShader_Emissive.Get();
 		return;
 	}
@@ -147,6 +156,7 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 		ps = dx->pPixelShader_3D.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->dx->pDomainShaderTriangle.Get();
+		gs = dx->pGeometryShader_Before_ds.Get();
 		return;
 	}
 	if (disp && !light) {
@@ -154,6 +164,7 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 		ps = dx->pPixelShader_Emissive.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->dx->pDomainShaderTriangle.Get();
+		gs = dx->pGeometryShader_Before_ds.Get();
 		return;
 	}
 }
@@ -237,9 +248,9 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 
 	//パイプラインステートオブジェクト生成
 	if (tNo == -1 && !movOn[0].m_on)
-		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
+		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
 	else
-		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
+		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
 
 	if (mPSO == nullptr)return false;
 
@@ -261,13 +272,13 @@ void PolygonData::CbSwap() {
 }
 
 void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, divArr, numDiv);
 	CbSwap();
 }
 
 void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my) {
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, divArr, numDiv);
 	CbSwap();
 }
 

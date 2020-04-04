@@ -18,7 +18,7 @@ char *ShaderWaveDraw =
 "    float4 g_wHei_divide;\n"
 "};\n"
 
-"struct VS_OUTPUT\n"
+"struct VS_OUTPUT1\n"
 "{\n"
 "    float3 Pos        : POSITION;\n"
 "    float3 Nor        : NORMAL;\n"
@@ -41,9 +41,9 @@ char *ShaderWaveDraw =
 "};\n"
 
 //*********************************************頂点シェーダー*******************************************************************//
-"VS_OUTPUT VSWave(float3 Pos : POSITION, float3 Nor : NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
+"VS_OUTPUT1 VSWave(float3 Pos : POSITION, float3 Nor : NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
 "{\n"
-"    VS_OUTPUT output = (VS_OUTPUT)0;\n"
+"    VS_OUTPUT1 output = (VS_OUTPUT1)0;\n"
 "    output.Pos = Pos;\n"
 "    output.Nor = Nor;\n"
 "    output.Tex = Tex;\n"
@@ -53,7 +53,7 @@ char *ShaderWaveDraw =
 //*********************************************頂点シェーダー*******************************************************************//
 
 //***************************************ハルシェーダーコンスタント*************************************************************//
-"HS_CONSTANT_OUTPUT HSConstant(InputPatch<VS_OUTPUT, 4> ip, uint pid : SV_PrimitiveID)\n"
+"HS_CONSTANT_OUTPUT HSConstant(InputPatch<VS_OUTPUT1, 4> ip, uint pid : SV_PrimitiveID)\n"
 "{\n"
 "	HS_CONSTANT_OUTPUT output = (HS_CONSTANT_OUTPUT)0;\n"
 
@@ -84,7 +84,7 @@ char *ShaderWaveDraw =
 "[outputtopology(\"triangle_ccw\")]\n"
 "[outputcontrolpoints(4)]\n"
 "[patchconstantfunc(\"HSConstant\")]\n"
-"HS_OUTPUT HSWave(InputPatch<VS_OUTPUT, 4> ip, uint cpid : SV_OutputControlPointID, uint pid : SV_PrimitiveID)\n"
+"HS_OUTPUT HSWave(InputPatch<VS_OUTPUT1, 4> ip, uint cpid : SV_OutputControlPointID, uint pid : SV_PrimitiveID)\n"
 "{\n"
 "	HS_OUTPUT output = (HS_OUTPUT)0;\n"
 "	output.Pos = ip[cpid].Pos;\n"

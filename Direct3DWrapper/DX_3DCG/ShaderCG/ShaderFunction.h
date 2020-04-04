@@ -103,6 +103,37 @@ char *ShaderFunction =
 "}\n"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////Tangent/Binormal//////////////////////////////////////////////////////
+"struct TangentBinormal\n"
+"{\n"
+"    float3 tangent : TEXCOORD;\n"
+"    float3 binormal: TEXCOORD;\n"
+"};\n"
+
+"TangentBinormal GetTangentBinormal(float2 uv0, float2 uv1, float2 uv2, \n"
+"                                   float3 pos0, float3 pos1, float3 pos2)\n"
+"{\n"
+"	TangentBinormal Out = (TangentBinormal)0;\n"
+
+"   float2 UV1 = uv1 - uv0;\n"
+"   float2 UV2 = uv2 - uv0;\n"
+"   float3 Pos1 = pos1 - pos0;\n"
+"   float3 Pos2 = pos2 - pos0;\n"
+
+"   float r = 1.0f / (UV1.x * UV2.y - UV1.y * UV2.x);\n"
+"   Out.tangent = (Pos1 * UV2.y - Pos2 * UV1.y) * r;\n"
+"   Out.binormal = (Pos2 * UV1.x - Pos1 * UV2.x) * r;\n"
+
+"   return Out;\n"
+"}\n"
+
+"float3 GetNormal(float3 normal, float3 norTex, float3 tangent, float3 binormal)\n"
+"{\n"
+"   norTex = norTex * 2.0f - 1.0f;\n"
+"   return tangent * norTex.x + binormal * (-1.0f * norTex.y) + normal * norTex.z;\n"
+"}\n"
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //////////////////////////////////共通パラメーター////////////////////////////////////////////////////////
 "Texture2D g_texDiffuse : register(t0);\n"
 "Texture2D g_texNormal : register(t1);\n"
@@ -116,6 +147,8 @@ char *ShaderFunction =
 "    float4 g_C_Pos;\n"
 //オブジェクト追加カラー
 "    float4 g_ObjCol;\n"
+//グローバルアンビエント
+"    float4 g_GlobalAmbientLight;\n"
 //xyz:光源位置, w:オンオフ
 "    float4 g_LightPos[256];\n"
 //ライト色
@@ -134,8 +167,10 @@ char *ShaderFunction =
 "    float4 g_FogAmo_Density;\n"
 //フォグ色
 "    float4 g_FogColor;\n"
-//ディスプ起伏量x
+//x:ディスプ起伏量, y:divide配列数
 "    float4 g_DispAmount;\n"
+//divide配列 x:distance, y:divide
+"    float4 g_divide[16];\n"
 //UV座標移動用
 "    float4 g_pXpYmXmY;\n"
 "};\n"
@@ -148,12 +183,30 @@ char *ShaderFunction =
 "    float4 g_Ambient;\n"
 "};\n"
 
-//DS, PSで使用
+"struct VS_OUTPUT\n"
+"{\n"
+"    float4 Pos    : POSITION;\n"
+"    float3 Nor    : NORMAL;\n"
+"    float3 GNor   : GEO_NORMAL;\n"
+"    float2 Tex        : TEXCOORD;\n"
+"    uint   instanceID : SV_InstanceID;\n"
+"};\n"
+
+"struct GS_Mesh_INPUT\n"
+"{\n"
+"    float4 Pos   : POSITION;\n"
+"    float3 Nor   : NORMAL;\n"
+"    float2 Tex        : TEXCOORD;\n"
+"    uint   instanceID : SV_InstanceID;\n"
+"};\n"
+
 "struct PS_INPUT\n"
 "{\n"
-"    float4 Pos        : SV_POSITION;\n"
-"    float4 wPos       : POSITION;\n"
-"    float3 Nor        : NORMAL;\n"
-"    float2 Tex        : TEXCOORD;\n"
+"    float4 Pos      : SV_POSITION;\n"
+"    float4 wPos     : POSITION;\n"
+"    float3 Nor      : NORMAL;\n"
+"    float2 Tex      : TEXCOORD0;\n"
+"    float3 tangent  : TEXCOORD1;\n"
+"    float3 binormal : TEXCOORD2;\n"
 "};\n";
 /////////////////////////////////////////////////////////////////////////////////////////////////////////

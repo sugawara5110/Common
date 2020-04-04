@@ -12,8 +12,7 @@ enum PrimitiveType {
 	POINt,
 	LINE_S,
 	LINE_L,
-	CONTROL_POINT,
-	NUL
+	CONTROL_POINT
 };
 
 enum ComListState {

@@ -12,6 +12,13 @@ MeshData::MeshData() {
 	addDiffuse = 0.0f;
 	addSpecular = 0.0f;
 	addAmbient = 0.0f;
+
+	divArr[0].distance = 1000.0f;
+	divArr[0].divide = 2;
+	divArr[1].distance = 500.0f;
+	divArr[1].divide = 5;
+	divArr[2].distance = 300.0f;
+	divArr[2].divide = 10;
 }
 
 MeshData::~MeshData() {
@@ -30,11 +37,11 @@ void MeshData::GetShaderByteCode(bool disp) {
 		vs = dx->pVertexShader_MESH_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->pDomainShaderTriangle.Get();
+		gs = dx->pGeometryShader_Before_ds.Get();
 	}
 	else {
 		vs = dx->pVertexShader_MESH.Get();
-		hs = nullptr;
-		ds = nullptr;
+		gs = dx->pGeometryShader_Before_vs.Get();
 	}
 	ps = dx->pPixelShader_3D.Get();
 }
@@ -132,9 +139,11 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 	addAmbient = ambi;
 
 	if (disp) {
+		primType_create = CONTROL_POINT;
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
+		primType_create = SQUARE;
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 }
@@ -436,7 +445,7 @@ bool MeshData::CreateMesh() {
 	if (mRootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend);
+	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
 	if (mPSO == nullptr)return false;
 
 	return true;
@@ -484,13 +493,13 @@ void MeshData::CbSwap() {
 }
 
 void MeshData::InstanceUpdate(float r, float g, float b, float a, float disp) {
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv);
 	CbSwap();
 }
 
 void MeshData::Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp) {
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv);
 	CbSwap();
 }
 

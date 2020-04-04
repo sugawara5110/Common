@@ -18,6 +18,7 @@
 #include "./ShaderCG/ShaderWaveCom.h"
 #include "./ShaderCG/ShaderWaveDraw.h"
 #include "./ShaderCG/ShaderCommonPS.h"
+#include "./ShaderCG/ShaderCommonTriangleGS.h"
 #include "./ShaderCG/ShaderCommonTriangleHSDS.h"
 #include "./ShaderCG/ShaderPostEffect.h"
 #include <locale.h>
@@ -169,7 +170,7 @@ public:
 
 bool Dx12Process::CreateShaderByteCode() {
 
-	addShader D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS;
+	addShader D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS;
 	D3.addStr(ShaderFunction, strlen(ShaderFunction), Shader3D, strlen(Shader3D));
 	Mesh.addStr(ShaderFunction, strlen(ShaderFunction), ShaderMesh, strlen(ShaderMesh));
 	MeshD.addStr(ShaderFunction, strlen(ShaderFunction), ShaderMesh_D, strlen(ShaderMesh_D));
@@ -178,6 +179,7 @@ bool Dx12Process::CreateShaderByteCode() {
 	Wave.addStr(ShaderFunction, strlen(ShaderFunction), ShaderWaveDraw, strlen(ShaderWaveDraw));
 	ComPS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonPS, strlen(ShaderCommonPS));
 	ComHSDS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonTriangleHSDS, strlen(ShaderCommonTriangleHSDS));
+	ComGS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonTriangleGS, strlen(ShaderCommonTriangleGS));
 
 	//CommonPS
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
@@ -185,6 +187,9 @@ bool Dx12Process::CreateShaderByteCode() {
 	//CommonHSDS(Triangle)
 	pHullShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "HS", "hs_5_0");
 	pDomainShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "DS", "ds_5_0");
+	//CommonGS
+	pGeometryShader_Before_ds = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds", "gs_5_0");
+	pGeometryShader_Before_vs = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs", "gs_5_0");
 
 	//ポストエフェクト
 	pComputeShader_Post[0] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "MosaicCS", "cs_5_0");
@@ -975,10 +980,12 @@ void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float 
 	insNum++;
 }
 
-void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
+void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a,
+	float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv) {
 
 	cb->C_Pos.as(posX, posY, posZ, 0.0f);
 	cb->AddObjColor.as(r, g, b, a);
+	memcpy(&cb->GlobalAmbientLight, &GlobalAmbientLight, sizeof(VECTOR4));
 	cb->numLight.as((float)plight.LightPcs, 0.0f, 0.0f, 0.0f);
 	memcpy(cb->pLightPos, plight.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
 	memcpy(cb->pLightColor, plight.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
@@ -989,8 +996,11 @@ void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, floa
 	cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
 	cb->FogColor = fog.FogColor;
 	if (disp == 0.0f)disp = 3.0f;
-	cb->DispAmount.as(disp, 0.0f, 0.0f, 0.0f);
+	cb->DispAmount.as(disp, float(numDiv), 0.0f, 0.0f);
 	cb->pXpYmXmY.as(px, py, mx, my);
+	for (int i = 0; i < numDiv; i++) {
+		cb->Divide[i].as(divArr[i].distance, divArr[i].divide, 0.0f, 0.0f);
+	}
 }
 
 float Dx12Process::GetViewY_theta() {

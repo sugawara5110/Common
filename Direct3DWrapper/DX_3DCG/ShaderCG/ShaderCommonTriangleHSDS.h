@@ -4,15 +4,6 @@
 
 //ShaderFunction.hに連結させて使う
 char *ShaderCommonTriangleHSDS =
-"struct VS_OUTPUT\n"
-"{\n"
-"    float4 Pos    : POSITION;\n"
-"    float3 Nor    : NORMAL;\n"
-"    float3 GNor   : GEO_NORMAL;\n"
-"    float2 Tex        : TEXCOORD;\n"
-"    uint   instanceID : SV_InstanceID;\n"
-"};\n"
-
 "struct HS_CONSTANT_OUTPUT\n"
 "{\n"
 "	 float factor[3]    : SV_TessFactor;\n"
@@ -40,9 +31,9 @@ char *ShaderCommonTriangleHSDS =
 
 //距離でポリゴン数決定
 "   float divide = 1;\n"
-"   if(distance < 1000){divide = 2;}\n"
-"   if(distance < 500){divide = 5;}\n"
-"   if(distance < 300){divide = 10;}\n"
+"   for(int i = 0;i < g_DispAmount.y;i++){\n"
+"      if(distance < g_divide[i].x){divide = g_divide[i].y;}\n"
+"   }\n"
 
 "	output.factor[0] = divide;\n"
 "	output.factor[1] = divide;\n"
@@ -75,20 +66,19 @@ char *ShaderCommonTriangleHSDS =
 //**************************************ドメインシェーダー**********************************************************//
 //三角形は重心座標系  (UV.x + UV.y + UV.z) == 1.0f が成り立つ
 "[domain(\"tri\")]\n"
-"PS_INPUT DS(HS_CONSTANT_OUTPUT In, float3 UV : SV_DomaInLocation, const OutputPatch<HS_OUTPUT, 3> patch)\n"
+"GS_Mesh_INPUT DS(HS_CONSTANT_OUTPUT In, float3 UV : SV_DomaInLocation, const OutputPatch<HS_OUTPUT, 3> patch)\n"
 "{\n"
-"	PS_INPUT output = (PS_INPUT)0;\n"
+"	GS_Mesh_INPUT output = (GS_Mesh_INPUT)0;\n"
 
 //UV座標計算
-"   float2 uv = patch[0].Tex * UV.x + patch[1].Tex * UV.y + patch[2].Tex * UV.z;\n"
-"   output.Tex = uv;\n"
+"   output.Tex = patch[0].Tex * UV.x + patch[1].Tex * UV.y + patch[2].Tex * UV.z;\n"
 
 //画像から高さを算出
-"   float4 height = g_texDiffuse.SampleLevel(g_samLinear, uv, 0);\n"
+"   float4 height = g_texDiffuse.SampleLevel(g_samLinear, output.Tex, 0);\n"
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
-//  法線ベクトル計算
-"   float3 Normal0 = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
+//法線ベクトル
+"   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
 
 //pos座標計算
 "   output.Pos = patch[0].Pos * UV.x + patch[1].Pos * UV.y + patch[2].Pos * UV.z;\n"
@@ -101,18 +91,10 @@ char *ShaderCommonTriangleHSDS =
 "   }\n"
 "   else\n"
 "   {\n"
-"      output.Pos.xyz += hei * Normal0 * g_DispAmount.x;\n"
+"      output.Pos.xyz += hei * output.Nor * g_DispAmount.x;\n"
 "   }\n"
 
-//画像から生成したベクトルにローカル法線を足し法線ベクトルとする
-"   float3 Normal = height.xyz + Normal0;\n"
-
-//座標変換
-"   output.wPos = mul(output.Pos, g_World[patch[0].instanceID]);\n"
-"   output.Pos = mul(output.Pos, g_WVP[patch[0].instanceID]);\n"
-
-//出力する法線の作成
-"   output.Nor = mul(Normal, (float3x3)g_World[patch[0].instanceID]);\n"
+"   output.instanceID = patch[0].instanceID;\n"
 
 "	return output;\n"
 "}\n";

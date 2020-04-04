@@ -315,7 +315,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	Iview->IndexCount = (int)(ver * 1.5);
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_2D, alpha, blend);
+	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_2D, alpha, blend, SQUARE);
 	if (mPSO == nullptr)return false;
 
 	return true;

@@ -28,6 +28,9 @@ struct CONSTANT_BUFFER {
 	VECTOR4 C_Pos;       //視点位置
 	VECTOR4 AddObjColor;//オブジェクトの色変化用
 
+	//グローバルアンビエント
+	VECTOR4 GlobalAmbientLight;
+
 	//ポイントライト
 	VECTOR4 pLightPos[LIGHT_PCS];//xyz:Pos, w:オンオフ
 	VECTOR4 pLightColor[LIGHT_PCS];
@@ -43,8 +46,12 @@ struct CONSTANT_BUFFER {
 	VECTOR4  FogAmo_Density; //フォグ量x, フォグの密度y, onoffz
 	VECTOR4  FogColor;   //フォグの色
 
-	//ディスプレイトメントマッピングの起伏量x(0入力の場合デフォルト値3になる)
+	//x:ディスプレイトメントマッピングの起伏量(0入力の場合デフォルト値3になる)
+	//y:divide配列数
 	VECTOR4  DispAmount;
+
+	//divide配列 x:distance, y:divide
+	VECTOR4 Divide[16];
 
 	//UV座標移動用
 	VECTOR4 pXpYmXmY;
@@ -266,6 +273,11 @@ struct MovieTexture {
 struct CONSTANT_BUFFER_PostMosaic {
 	VECTOR4 mosaicSize;//x
 	VECTOR4 blur;//xy:座標, z:強さ
+};
+
+struct DivideArr {
+	float distance;
+	float divide;
 };
 
 #endif

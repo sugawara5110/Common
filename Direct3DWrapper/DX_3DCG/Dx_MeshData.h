@@ -16,6 +16,7 @@ protected:
 	ID3DBlob* ps = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
+	ID3DBlob* gs = nullptr;
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
@@ -59,7 +60,10 @@ protected:
 	float addSpecular;
 	float addAmbient;
 
+	PrimitiveType          primType_create;
 	D3D_PRIMITIVE_TOPOLOGY primType_draw;
+	DivideArr divArr[16] = {};
+	int numDiv = 3;
 
 	bool LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial);
 	void GetShaderByteCode(bool disp);

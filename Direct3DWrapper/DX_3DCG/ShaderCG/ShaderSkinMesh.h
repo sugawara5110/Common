@@ -67,16 +67,16 @@ char *ShaderSkinMesh =
 "}\n"
 
 //****************************************ÉÅÉbÉVÉÖí∏ì_**************************************************************//
-"PS_INPUT VSSkin(VSSkinIn input)\n"
+"GS_Mesh_INPUT VSSkin(VSSkinIn input, uint instanceID : SV_InstanceID)\n"
 "{\n"
-"    PS_INPUT output = (PS_INPUT)0;\n"
+"    GS_Mesh_INPUT output = (GS_Mesh_INPUT)0;\n"
 
 "    Skin vSkinned = SkinVert(input);\n"
 
-"    output.Pos = mul(vSkinned.Pos, g_WVP[0]);\n"
-"    output.wPos = mul(vSkinned.Pos, g_World[0]);\n"
-"    output.Nor = mul(vSkinned.Nor, (float3x3)g_World[0]);\n"
+"    output.Pos = vSkinned.Pos;\n"
+"    output.Nor = vSkinned.Nor;\n"
 "    output.Tex = input.Tex;\n"
+"    output.instanceID = instanceID;\n"
 
 "    return output;\n"
 "}\n";

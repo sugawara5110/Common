@@ -197,7 +197,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
-	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend);
+	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, nullptr, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
 	if (mPSODraw == nullptr)return false;
 
 	return true;
@@ -232,13 +232,13 @@ void Wave::CbSwap() {
 }
 
 void Wave::InstanceUpdate(float r, float g, float b, float a, float disp, float px, float py, float mx, float my) {
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, nullptr, 0);
 	CbSwap();
 }
 
 void Wave::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float size, float px, float py, float mx, float my) {
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, nullptr, 0);
 	CbSwap();
 }
 

@@ -46,6 +46,13 @@ SkinMesh::SkinMesh() {
 	addDiffuse = 0.0f;
 	addSpecular = 0.0f;
 	addAmbient = 0.0f;
+
+	divArr[0].distance = 1000.0f;
+	divArr[0].divide = 2;
+	divArr[1].distance = 500.0f;
+	divArr[1].divide = 5;
+	divArr[2].distance = 300.0f;
+	divArr[2].divide = 10;
 }
 
 SkinMesh::~SkinMesh() {
@@ -560,12 +567,14 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		vs = dx->pVertexShader_SKIN_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->pDomainShaderTriangle.Get();
+		gs = dx->pGeometryShader_Before_ds.Get();
+		primType_create = CONTROL_POINT;
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
 		vs = dx->pVertexShader_SKIN.Get();
-		hs = nullptr;
-		ds = nullptr;
+		gs = dx->pGeometryShader_Before_vs.Get();
+		primType_create = SQUARE;
 		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 	ps = dx->pPixelShader_3D.Get();
@@ -585,7 +594,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	if (mRootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend);
+	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend, primType_create);
 	if (mPSO == nullptr)return false;
 
 	return GetTexture();
@@ -846,7 +855,7 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 	bool frame_end = false;
 	int insnum = 0;
 	dx->InstancedMap(insnum, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv);
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
 	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
 	CbSwap();

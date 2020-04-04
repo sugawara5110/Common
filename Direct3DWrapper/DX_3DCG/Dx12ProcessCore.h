@@ -141,6 +141,8 @@ private:
 	//シェーダーバイトコード
 	ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_vs = nullptr;
 
 	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
@@ -217,6 +219,7 @@ private:
 	int lightNum = 0;
 	DirectionLight dlight;
 	Fog fog;
+	VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
 	int  cBuffSwap[2] = { 0,0 };
 	bool fenceMode = false;
@@ -241,7 +244,7 @@ private:
 		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
 
 	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a,
-		float disp, float px, float py, float mx, float my);
+		float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv);
 
 	void FenceSetEvent();
 	void WaitFence(bool mode);
@@ -281,6 +284,9 @@ public:
 	void DrawScreen();
 	void Cameraset(float cx1, float cx2, float cy1, float cy2, float cz1, float cz2);
 	void ResetPointLight();
+	void setGlobalAmbientLight(float r, float g, float b) {
+		GlobalAmbientLight.as(r, g, b, 0.0f);
+	}
 
 	bool PointLightPosSet(int Idx, float x, float y, float z,
 		float r, float g, float b, float a, bool on_off,
@@ -460,13 +466,13 @@ protected:
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
-		PrimitiveType type = NUL);
+		PrimitiveType type);
 
-	ComPtr <ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps,
+	ComPtr <ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
-		PrimitiveType type = NUL);
+		PrimitiveType type);
 
 	ComPtr <ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
@@ -522,6 +528,7 @@ protected:
 	ID3DBlob* ps = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
+	ID3DBlob* gs = nullptr;
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
@@ -558,6 +565,8 @@ protected:
 
 	PrimitiveType          primType_create;
 	D3D_PRIMITIVE_TOPOLOGY primType_draw;
+	DivideArr divArr[16] = {};
+	int numDiv = 3;
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
