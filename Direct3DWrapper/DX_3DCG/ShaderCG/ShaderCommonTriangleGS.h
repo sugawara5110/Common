@@ -11,6 +11,7 @@ char* ShaderCommonTriangleGS =
 "   output.wPos = mul(input.Pos, g_World[input.instanceID]);\n"
 "   output.Pos = mul(input.Pos, g_WVP[input.instanceID]);\n"
 "   output.Nor = mul(input.Nor, (float3x3)g_World[input.instanceID]);\n"
+"   output.Nor = normalize(output.Nor);\n"
 "   output.Tex = input.Tex;\n"
 
 "   return output;\n"
@@ -33,7 +34,8 @@ char* ShaderCommonTriangleGS =
 
 //接ベクトル計算
 "   tan = GetTangentBinormal(Input[0].Tex, Input[1].Tex, Input[2].Tex, \n"
-"                            Input[0].Pos.xyz,  Input[1].Pos.xyz,  Input[2].Pos.xyz);\n"
+"                            Input[0].Pos.xyz,  Input[1].Pos.xyz,  Input[2].Pos.xyz, \n"
+"                            Input[0].instanceID);\n"
 
 "   p = PsInput(Input[0]);\n"
 "   p.tangent = tan.tangent;\n"
@@ -60,7 +62,8 @@ char* ShaderCommonTriangleGS =
 
 //接ベクトル計算
 "   tan = GetTangentBinormal(Input[0].Tex, Input[1].Tex, Input[2].Tex, \n"
-"                            Input[0].Pos.xyz,  Input[1].Pos.xyz,  Input[2].Pos.xyz);\n"
+"                            Input[0].Pos.xyz,  Input[1].Pos.xyz,  Input[2].Pos.xyz, \n"
+"                            Input[0].instanceID);\n"
 
 "   p = PsInput(Input[0]);\n"
 "   p.tangent = tan.tangent;\n"
