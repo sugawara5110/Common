@@ -14,6 +14,8 @@ char *ShaderFunction =
 "    matrix g_WVP[256];\n"
 //視点
 "    float4 g_C_Pos;\n"
+//視点上方向
+"    float4 g_viewUp;"
 //オブジェクト追加カラー
 "    float4 g_ObjCol;\n"
 //グローバルアンビエント
@@ -184,35 +186,26 @@ char *ShaderFunction =
 ////////////////////////////////////Tangent/Binormal//////////////////////////////////////////////////////
 "struct TangentBinormal\n"
 "{\n"
+"    float3 normal  : NORMAL;\n"
 "    float3 tangent : TEXCOORD;\n"
 "    float3 binormal: TEXCOORD;\n"
 "};\n"
 
-"TangentBinormal GetTangentBinormal(float2 uv0, float2 uv1, float2 uv2, \n"
-"                                   float3 pos0, float3 pos1, float3 pos2, \n"
-"                                   uint instanceID)\n"
+"TangentBinormal GetTangentBinormal(float3 normal, int instanceID)\n"
 "{\n"
 "	TangentBinormal Out = (TangentBinormal)0;\n"
 
-"   float2 UV1 = uv1 - uv0;\n"
-"   float2 UV2 = uv2 - uv0;\n"
-"   float3 Pos1 = pos1 - pos0;\n"
-"   float3 Pos2 = pos2 - pos0;\n"
-
-"   float r = 1.0f / (UV1.x * UV2.y - UV1.y * UV2.x);\n"
-"   Out.tangent = (Pos1 * UV2.y - Pos2 * UV1.y) * r;\n"
-"   Out.binormal = (Pos2 * UV1.x - Pos1 * UV2.x) * r;\n"
-"   Out.tangent = mul(Out.tangent, (float3x3)g_World[instanceID]);\n"
-"   Out.binormal = mul(Out.binormal, (float3x3)g_World[instanceID]);\n"
-"   Out.tangent = normalize(Out.tangent);\n"
-"   Out.binormal = normalize(Out.binormal);\n"
+"   Out.normal = mul(normal, (float3x3)g_World[instanceID]);\n"
+"   Out.normal = normalize(Out.normal);\n"
+"   Out.tangent = cross(Out.normal, g_viewUp.xyz);\n"
+"   Out.binormal = cross(Out.normal, Out.tangent);\n"
 
 "   return Out;\n"
 "}\n"
 
-"float3 GetNormal(float3 normal, float3 norTex, float3 tangent, float3 binormal)\n"
+"float3 GetNormal(float3 norTex, float3 normal, float3 tangent, float3 binormal)\n"
 "{\n"
-"   norTex = norTex * 2.0f - 1.0f;\n"
-"   return tangent * norTex.x + binormal * (-1.0f * norTex.y) + normal * norTex.z;\n"
+"   float3 norT = norTex * 2.0f - 1.0f;\n"
+"   return tangent * norT.x + binormal * (-1.0f * norT.y) + normal * norT.z;\n"
 "}\n";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

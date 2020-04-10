@@ -26,6 +26,7 @@ struct CONSTANT_BUFFER {
 	MATRIX World[INSTANCE_PCS_3D];
 	MATRIX WVP[INSTANCE_PCS_3D];
 	VECTOR4 C_Pos;       //視点位置
+	VECTOR4 viewUp;      //視点上方向
 	VECTOR4 AddObjColor;//オブジェクトの色変化用
 
 	//グローバルアンビエント

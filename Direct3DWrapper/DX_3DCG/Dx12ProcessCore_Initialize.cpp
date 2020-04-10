@@ -392,7 +392,9 @@ void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texNa
 		texNum = numTexArr + 1;
 		texture = new InternalTexture[texNum];
 		UCHAR dm[8 * 4 * 8] = {};
-		memset(dm, 255, sizeof(UCHAR) * 8 * 4 * 8);
+		UCHAR sdm[4] = { 255,255,255,255 };
+		for (int i = 0; i < 8 * 4 * 8; i += 4)
+			memcpy(&dm[i], sdm, sizeof(UCHAR) * 4);
 		texture[0].setParameter(DXGI_FORMAT_R8G8B8A8_UNORM, 8, 8 * 4, 8);
 		texture[0].setName("dummy");
 		texture[0].setData(dm);
@@ -691,17 +693,22 @@ void Dx12Process::DrawScreen() {
 	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
 }
 
-void Dx12Process::Cameraset(float cx1, float cx2, float cy1, float cy2, float cz1, float cz2) {
+void Dx12Process::Cameraset(float pos_X, float pos_Y, float pos_Z,
+	float dirX, float dirY, float dirZ,
+	float up_X, float up_Y, float up_Z) {
 
 	//カメラの位置と方向を設定
 	MatrixLookAtLH(&mView,
-		cx1, cy1, cz1,   //カメラの位置
-		cx2, cy2, cz2,   //カメラの方向を向ける点
-		0.0f, 0.0f, 1.0f); //カメラの上の方向(通常視点での上方向を1.0fにする)
+		pos_X, pos_Y, pos_Z, //カメラの位置
+		dirX, dirY, dirZ,   //カメラの方向を向ける点
+		up_X, up_Y, up_Z); //カメラの上の方向(通常視点での上方向を1.0fにする)
 	//シェーダー計算用座標登録(視点からの距離で使う)
-	posX = cx1;
-	posY = cy1;
-	posZ = cz1;
+	posX = pos_X;
+	posY = pos_Y;
+	posZ = pos_Z;
+	upX = up_X;
+	upY = up_Y;
+	upZ = up_Z;
 }
 
 void Dx12Process::ResetPointLight() {
@@ -984,6 +991,7 @@ void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, floa
 	float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv) {
 
 	cb->C_Pos.as(posX, posY, posZ, 0.0f);
+	cb->viewUp.as(upX, upY, upZ, 0.0f);
 	cb->AddObjColor.as(r, g, b, a);
 	memcpy(&cb->GlobalAmbientLight, &GlobalAmbientLight, sizeof(VECTOR4));
 	cb->numLight.as((float)plight.LightPcs, 0.0f, 0.0f, 0.0f);

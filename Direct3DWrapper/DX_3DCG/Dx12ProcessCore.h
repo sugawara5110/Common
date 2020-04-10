@@ -202,6 +202,7 @@ private:
 	MATRIX mView;
 	MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
 	float posX, posY, posZ;
+	float upX, upY, upZ;
 
 	//カメラ画角
 	float ViewY_theta;
@@ -279,7 +280,10 @@ public:
 	void WaitFenceCurrent();//GPU処理そのまま待つ
 	void WaitFencePast();//前回GPU処理未完の場合待つ
 	void DrawScreen();
-	void Cameraset(float cx1, float cx2, float cy1, float cy2, float cz1, float cz2);
+	void Cameraset(float posX, float posY, float posZ,
+		float dirX, float dirY, float dirZ,
+		float upX = 0.0f, float upY = 0.0f, float upZ = 1.0f);
+
 	void ResetPointLight();
 	void setGlobalAmbientLight(float r, float g, float b) {
 		GlobalAmbientLight.as(r, g, b, 0.0f);
