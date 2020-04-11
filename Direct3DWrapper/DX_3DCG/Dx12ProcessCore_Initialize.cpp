@@ -988,7 +988,7 @@ void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float 
 }
 
 void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a,
-	float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv) {
+	float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
 
 	cb->C_Pos.as(posX, posY, posZ, 0.0f);
 	cb->viewUp.as(upX, upY, upZ, 0.0f);
@@ -1003,8 +1003,7 @@ void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, floa
 	cb->dLightst.x = dlight.onoff;
 	cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
 	cb->FogColor = fog.FogColor;
-	if (disp == 0.0f)disp = 3.0f;
-	cb->DispAmount.as(disp, float(numDiv), 0.0f, 0.0f);
+	cb->DispAmount.as(disp, float(numDiv), shininess, 0.0f);
 	cb->pXpYmXmY.as(px, py, mx, my);
 	for (int i = 0; i < numDiv; i++) {
 		cb->Divide[i].as(divArr[i].distance, divArr[i].divide, 0.0f, 0.0f);

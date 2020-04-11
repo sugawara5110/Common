@@ -131,8 +131,10 @@ public:
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
 	void CreateFromFBX_SubAnimation(int ind);
-	bool Update(float time, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size);
-	bool Update(int ind, float time, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp = 1.0f);
+	bool Update(float time, float x, float y, float z, float r, float g, float b, float a,
+		float thetaZ, float thetaY, float thetaX, float size);
+	bool Update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
+		float thetaZ, float thetaY, float thetaX, float size, float disp = 1.0f, float shininess = 4.0f);
 	void DrawOff();
 	void Draw();
 	VECTOR3 GetVertexPosition(int verNum, float adjustZ, float adjustY, float adjustX, float thetaZ, float thetaY, float thetaX, float scale);

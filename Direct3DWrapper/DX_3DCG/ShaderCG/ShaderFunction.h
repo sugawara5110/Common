@@ -38,7 +38,7 @@ char *ShaderFunction =
 "    float4 g_FogAmo_Density;\n"
 //フォグ色
 "    float4 g_FogColor;\n"
-//x:ディスプ起伏量, y:divide配列数
+//x:ディスプ起伏量, y:divide配列数, z:shininess
 "    float4 g_DispAmount;\n"
 //divide配列 x:distance, y:divide
 "    float4 g_divide[16];\n"
@@ -76,9 +76,8 @@ char *ShaderFunction =
 "    float4 Pos      : SV_POSITION;\n"
 "    float4 wPos     : POSITION;\n"
 "    float3 Nor      : NORMAL;\n"
-"    float2 Tex      : TEXCOORD0;\n"
-"    float3 tangent  : TEXCOORD1;\n"
-"    float3 binormal : TEXCOORD2;\n"
+"    float2 Tex      : TEXCOORD;\n"
+"    float3 tangent  : TANGENT;\n"
 "};\n"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -123,7 +122,8 @@ char *ShaderFunction =
 //反射ベクトル
 "    float3 reflectVec = reflect(-LVec, Nor);\n"
 //角度減衰率スペキュラ
-"    float angleAttenSpe = pow(saturate(dot(eyeVec, reflectVec)), 4);\n"//4:shininess
+"    float shininess = g_DispAmount.z;\n"
+"    float angleAttenSpe = pow(saturate(dot(eyeVec, reflectVec)), shininess);\n"
 
 //ディフェーズ出力
 "    Out.Diffuse = distAtten * lightCol * (angleAttenDif * Diffuse + Ambient);\n"
@@ -184,28 +184,36 @@ char *ShaderFunction =
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////Tangent/Binormal//////////////////////////////////////////////////////
-"struct TangentBinormal\n"
+"struct NormalTangent\n"
 "{\n"
 "    float3 normal  : NORMAL;\n"
-"    float3 tangent : TEXCOORD;\n"
-"    float3 binormal: TEXCOORD;\n"
+"    float3 tangent : TANGENT;\n"
 "};\n"
 
-"TangentBinormal GetTangentBinormal(float3 normal, int instanceID)\n"
+"NormalTangent GetTangent(float3 normal, int instanceID)\n"
 "{\n"
-"	TangentBinormal Out = (TangentBinormal)0;\n"
+"	NormalTangent Out = (NormalTangent)0;\n"
 
 "   Out.normal = mul(normal, (float3x3)g_World[instanceID]);\n"
 "   Out.normal = normalize(Out.normal);\n"
-"   Out.tangent = cross(Out.normal, g_viewUp.xyz);\n"
-"   Out.binormal = cross(Out.normal, Out.tangent);\n"
+"   float3 view = normalize(g_viewUp.xyz);\n"
+"   Out.tangent = cross(Out.normal, view);\n"
+"   if(Out.tangent.x == 0.0f && Out.tangent.y == 0.0f && Out.tangent.z == 0.0f){"
+"      Out.tangent = cross(Out.normal, view - 0.001f);\n"
+"   }\n"
 
 "   return Out;\n"
 "}\n"
 
-"float3 GetNormal(float3 norTex, float3 normal, float3 tangent, float3 binormal)\n"
+"float3 GetNormal(float3 norTex, float3 normal, float3 tangent)\n"
 "{\n"
 "   float3 norT = norTex * 2.0f - 1.0f;\n"
-"   return tangent * norT.x + binormal * (-1.0f * norT.y) + normal * norT.z;\n"
+
+"   float3 N = normal;\n"
+"   float3 T = normalize(tangent - dot(tangent, N) * N);\n"
+"   float3 B = cross(N, T);\n"
+"   float3x3 TBN = float3x3(T, B, N);\n"
+
+"   return mul(norT, TBN);\n"
 "}\n";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -47,8 +47,9 @@ struct CONSTANT_BUFFER {
 	VECTOR4  FogAmo_Density; //フォグ量x, フォグの密度y, onoffz
 	VECTOR4  FogColor;   //フォグの色
 
-	//x:ディスプレイトメントマッピングの起伏量(0入力の場合デフォルト値3になる)
+	//x:ディスプレイトメントマッピングの起伏量
 	//y:divide配列数
+	//z:shininess
 	VECTOR4  DispAmount;
 
 	//divide配列 x:distance, y:divide

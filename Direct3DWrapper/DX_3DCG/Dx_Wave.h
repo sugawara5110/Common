@@ -77,8 +77,9 @@ public:
 		float nx, float ny, float nz,
 		float u, float v);
 	void InstancedMap(float x, float y, float z, float theta, float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
-	void InstanceUpdate(float r, float g, float b, float a, float disp, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp,
+	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f,
+		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess = 4.0f,
 		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
 	void Draw();

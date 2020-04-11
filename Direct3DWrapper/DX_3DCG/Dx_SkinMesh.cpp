@@ -850,12 +850,13 @@ bool SkinMesh::Update(float time, float x, float y, float z, float r, float g, f
 	return Update(0, time, x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size);
 }
 
-bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp) {
+bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, float g, float b, float a,
+	float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess) {
 
 	bool frame_end = false;
 	int insnum = 0;
 	dx->InstancedMap(insnum, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
 	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
 	CbSwap();

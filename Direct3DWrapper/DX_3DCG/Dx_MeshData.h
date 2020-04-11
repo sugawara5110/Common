@@ -80,9 +80,9 @@ public:
 	ID3D12PipelineState* GetPipelineState();
 	//•¡”Update
 	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);
-	void InstanceUpdate(float r, float g, float b, float a, float disp);
+	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f);
 	//’P‘ÌUpdate
-	void Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp);
+	void Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess = 4.0f);
 	//•`‰æ
 	void DrawOff();
 	void Draw();

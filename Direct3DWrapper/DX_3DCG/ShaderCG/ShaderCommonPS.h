@@ -12,8 +12,8 @@ char *ShaderCommonPS =
 "    float4 Tdif = g_texDiffuse.Sample(g_samLinear, input.Tex);\n"
 "    float4 Tnor = g_texNormal.Sample(g_samLinear, input.Tex);\n"
 
-//接ベクトル, NormalMap, ローカル法線からローカル法線の再計算
-"    float3 N = GetNormal(Tnor.xyz, input.Nor, input.tangent, input.binormal);\n"
+//法線の再計算
+"    float3 N = GetNormal(Tnor.xyz, input.Nor, input.tangent);\n"
 "    N = normalize(N);\n"
 
 //フォグ計算(テクスチャに対して計算)
