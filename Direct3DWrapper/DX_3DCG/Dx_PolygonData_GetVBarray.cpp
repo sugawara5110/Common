@@ -14,15 +14,15 @@ PolygonData::PolygonData() {
 	d3varrayBC = nullptr;
 	d3varrayI = nullptr;
 
-	sg.vDiffuse.x = 1.0f;
-	sg.vDiffuse.y = 1.0f;
-	sg.vDiffuse.z = 1.0f;
-	sg.vDiffuse.w = 1.0f;
+	sg.vDiffuse.x = 0.7f;
+	sg.vDiffuse.y = 0.7f;
+	sg.vDiffuse.z = 0.7f;
+	sg.vDiffuse.w = 0.0f;
 
-	sg.vSpeculer.x = 1.0f;
-	sg.vSpeculer.y = 1.0f;
-	sg.vSpeculer.z = 1.0f;
-	sg.vSpeculer.w = 1.0f;
+	sg.vSpeculer.x = 0.3f;
+	sg.vSpeculer.y = 0.3f;
+	sg.vSpeculer.z = 0.3f;
+	sg.vSpeculer.w = 0.0f;
 
 	sg.vAmbient.x = 0.0f;
 	sg.vAmbient.y = 0.0f;

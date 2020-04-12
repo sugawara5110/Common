@@ -17,6 +17,7 @@ protected:
 	ID3DBlob* ps = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
+	ID3DBlob* gs = nullptr;
 
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;

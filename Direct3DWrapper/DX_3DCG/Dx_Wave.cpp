@@ -65,6 +65,7 @@ void Wave::GetShaderByteCode() {
 	ps = dx->pPixelShader_3D.Get();
 	hs = dx->pHullShader_Wave.Get();
 	ds = dx->pDomainShader_Wave.Get();
+	gs = dx->pGeometryShader_Before_ds.Get();
 }
 
 bool Wave::ComCreate() {
@@ -197,7 +198,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
-	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, nullptr, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
+	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
 	if (mPSODraw == nullptr)return false;
 
 	return true;

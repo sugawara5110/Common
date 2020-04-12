@@ -56,9 +56,9 @@ protected:
 	bool alpha = false;
 	bool blend = false;
 	bool disp = false;//テセレータフラグ
-	float addDiffuse;
-	float addSpecular;
-	float addAmbient;
+	float addDiffuse = 0.0f;
+	float addSpecular = 0.0f;
+	float addAmbient = 0.0f;
 
 	PrimitiveType          primType_create;
 	D3D_PRIMITIVE_TOPOLOGY primType_draw;
