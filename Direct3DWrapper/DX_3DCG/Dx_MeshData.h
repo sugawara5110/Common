@@ -18,9 +18,6 @@ protected:
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* gs = nullptr;
 
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
-
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObject_MESHCB = nullptr;//マテリアル渡し用(1回しか更新しない)
@@ -33,13 +30,6 @@ protected:
 	//DrawOn
 	bool DrawOn = false;
 
-	//頂点バッファOBJ
-	std::unique_ptr<VertexView> Vview = nullptr;
-	std::unique_ptr<IndexView[]> Iview = nullptr;
-
-	ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
-
-	int  MaterialCount = 0;//マテリアル数
 	int* piFaceBuffer;
 	VertexM* pvVertexBuffer;
 	int FaceCount;  //ポリゴン数カウンター
@@ -51,8 +41,6 @@ protected:
 	int ins_no = 0;
 	int insNum[2] = {};
 
-	MY_MATERIAL_S* pMaterial;
-
 	bool alpha = false;
 	bool blend = false;
 	bool disp = false;//テセレータフラグ
@@ -61,11 +49,11 @@ protected:
 	float addAmbient = 0.0f;
 
 	PrimitiveType          primType_create;
-	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
+	drawPara dpara = {};
 
-	bool LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial);
+	bool LoadMaterialFromFile(char* FileName);
 	void GetShaderByteCode(bool disp);
 	void CbSwap();
 

@@ -43,12 +43,8 @@ protected:
 	float addAmbient = 0.0f;
 
 	PrimitiveType          primType_create;
-	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
-
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB0 = nullptr;
@@ -63,19 +59,11 @@ protected:
 	//DrawOn
 	bool DrawOn = false;
 
-	std::unique_ptr<VertexView> Vview = nullptr;
-	std::unique_ptr<IndexView[]> Iview = nullptr;
-
-	ComPtr<ID3D12PipelineState> mPSO = nullptr;//パイプラインOBJ
-
 	//メッシュ関連	
 	DWORD* m_pdwNumVert;//メッシュ毎の頂点数
 	DWORD VerAllpcs;   //全頂点数
 	MY_VERTEX_S* pvVB;//使用後保持するか破棄するかフラグで決める,通常は破棄
 	bool pvVB_delete_f;
-
-	int MateAllpcs;  //全マテリアル数
-	MY_MATERIAL_S* m_pMaterial;
 
 	//一時格納用
 	DWORD* m_pMaterialCount;//メッシュ毎のマテリアルカウント
@@ -98,6 +86,7 @@ protected:
 	MATRIX* m_pLastBoneMatrix;
 	int AnimLastInd;
 	float BoneConnect;
+	drawPara dpara = {};
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);

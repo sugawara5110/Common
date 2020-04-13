@@ -55,8 +55,10 @@ void Wave::GetVBarray(int v) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
 	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
-	Vview = std::make_unique<VertexView>();
-	Iview = std::make_unique<IndexView[]>(1);
+	dpara.NumMaterial = 1;
+	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.Vview = std::make_unique<VertexView>();
+	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 }
 
 void Wave::GetShaderByteCode() {
@@ -168,12 +170,12 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	slotRootParameter[4].InitAsConstantBufferView(2);//mObjectCB_WAVE(b2)
 	slotRootParameter[5].InitAsShaderResourceView(2);//StructuredBuffer(t2)
 
-	mRootSignatureDraw = CreateRs(6, slotRootParameter);
-	if (mRootSignatureDraw == nullptr)return false;
+	dpara.rootSignature = CreateRs(6, slotRootParameter);
+	if (dpara.rootSignature == nullptr)return false;
 
-	material[0].tex_no = texNo;
-	material[0].nortex_no = nortNo;
-	material[0].dwNumFace = 1;
+	dpara.material[0].tex_no = texNo;
+	dpara.material[0].nortex_no = nortNo;
+	dpara.material[0].dwNumFace = 1;
 	TextureNo te;
 	if (texNo < 0)te.diffuse = 0; else
 		te.diffuse = texNo;
@@ -181,25 +183,25 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 		te.normal = nortNo;
 
 	createTextureResource(1, &te);
-	mSrvHeap = CreateSrvHeap(2, &te);
-	if (mSrvHeap == nullptr)return false;
+	dpara.srvHeap = CreateSrvHeap(2, &te);
+	if (dpara.srvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, Vview->VertexBufferUploader);
+	dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, dpara.Vview->VertexBufferUploader);
 
-	Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, Iview[0].IndexBufferUploader);
+	dpara.Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, dpara.Iview[0].IndexBufferUploader);
 
-	Vview->VertexByteStride = sizeof(Vertex);
-	Vview->VertexBufferByteSize = vbByteSize;
-	Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
-	Iview[0].IndexBufferByteSize = ibByteSize;
-	Iview[0].IndexCount = verI;
+	dpara.Vview->VertexByteStride = sizeof(Vertex);
+	dpara.Vview->VertexBufferByteSize = vbByteSize;
+	dpara.Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
+	dpara.Iview[0].IndexBufferByteSize = ibByteSize;
+	dpara.Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
-	mPSODraw = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignatureDraw.Get(), dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
-	if (mPSODraw == nullptr)return false;
+	dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
+	if (dpara.PSO == nullptr)return false;
 
 	return true;
 }
@@ -211,8 +213,8 @@ bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float div
 bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide) {
 	cbw.wHei_divide.as(waveHeight, divide, 0.0f, 0.0f);
 	mObjectCB_WAVE->CopyData(0, cbw);
-	material[0].tex_no = texNo;
-	material[0].nortex_no = nortNo;
+	dpara.material[0].tex_no = texNo;
+	dpara.material[0].nortex_no = nortNo;
 	GetShaderByteCode();
 	if (!ComCreate())return false;
 	return DrawCreate(texNo, nortNo, blend, alpha);
@@ -273,22 +275,14 @@ void Wave::Compute() {
 
 void Wave::DrawSub() {
 
-	drawPara para;
-	para.NumMaterial = 1;
-	para.srv = mSrvHeap.Get();
-	para.rootSignature = mRootSignatureDraw.Get();
-	para.Vview = Vview.get();
-	para.Iview = Iview.get();
-	para.material = material;
-	para.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
-	para.PSO = mPSODraw.Get();
-	para.cbRes0 = mObjectCB->Resource();
-	para.cbRes1 = mObjectCB1->Resource();
-	para.cbRes2 = mObjectCB_WAVE->Resource();
-	para.sRes0 = mOutputBuffer.Get();
-	para.sRes1 = nullptr;
-	para.insNum = insNum[dx->cBuffSwap[1]];
-	drawsub(para);
+	dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+	dpara.cbRes0 = mObjectCB->Resource();
+	dpara.cbRes1 = mObjectCB1->Resource();
+	dpara.cbRes2 = mObjectCB_WAVE->Resource();
+	dpara.sRes0 = mOutputBuffer.Get();
+	dpara.sRes1 = nullptr;
+	dpara.insNum = insNum[dx->cBuffSwap[1]];
+	drawsub(dpara);
 }
 
 void Wave::Draw() {

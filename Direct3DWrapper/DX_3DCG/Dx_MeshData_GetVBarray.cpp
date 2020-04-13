@@ -24,11 +24,10 @@ MeshData::MeshData() {
 MeshData::~MeshData() {
 	S_DELETE(mObjectCB);
 	S_DELETE(mObject_MESHCB);
-	ARR_DELETE(pMaterial);
 }
 
-ID3D12PipelineState *MeshData::GetPipelineState() {
-	return mPSO.Get();
+ID3D12PipelineState* MeshData::GetPipelineState() {
+	return dpara.PSO.Get();
 }
 
 void MeshData::GetShaderByteCode(bool disp) {
@@ -46,7 +45,7 @@ void MeshData::GetShaderByteCode(bool disp) {
 	ps = dx->pPixelShader_3D.Get();
 }
 
-bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) {
+bool MeshData::LoadMaterialFromFile(char* FileName) {
 
 	//マテリアルファイルを開いて内容を読み込む
 	errno_t error;
@@ -61,7 +60,6 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 	VECTOR4 v = { 0, 0, 0, 1 };
 
 	//マテリアル数を調べる
-	MaterialCount = 0;
 	while (!feof(fp))
 	{
 		//キーワード読み込み
@@ -70,11 +68,11 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 		//マテリアル名
 		if (strcmp(key, "newmtl") == 0)
 		{
-			MaterialCount++;
+			dpara.NumMaterial++;
 		}
 	}
 
-	MY_MATERIAL_S* pMaterial = new MY_MATERIAL_S[MaterialCount]();
+	dpara.material = std::make_unique< MY_MATERIAL_S[]>(dpara.NumMaterial);
 
 	//本読み込み	
 	fseek(fp, 0, SEEK_SET);
@@ -90,43 +88,40 @@ bool MeshData::LoadMaterialFromFile(char* FileName, MY_MATERIAL_S** ppMaterial) 
 		{
 			iMCount++;
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));//lineの7要素目(newmtl)の直後から1個目の文字列をkeyに格納
-			strcpy_s(pMaterial[iMCount].szName, key);
+			strcpy_s(dpara.material[iMCount].szName, key);
 		}
 		//Kd　ディフューズ
 		if (strcmp(key, "Kd") == 0)
 		{
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
-			pMaterial[iMCount].Kd = v;
+			dpara.material[iMCount].Kd = v;
 		}
 		//Ks　スペキュラー
 		if (strcmp(key, "Ks") == 0)
 		{
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
-			pMaterial[iMCount].Ks = v;
+			dpara.material[iMCount].Ks = v;
 		}
 		//Ka　アンビエント
 		if (strcmp(key, "Ka") == 0)
 		{
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
-			pMaterial[iMCount].Ka = v;
+			dpara.material[iMCount].Ka = v;
 		}
 		//map_Kd　テクスチャー
 		if (strcmp(key, "map_Kd") == 0)
 		{
-			sscanf_s(&line[7], "%s", &pMaterial[iMCount].szTextureName, (unsigned int)sizeof(pMaterial[iMCount].szTextureName));
-			pMaterial[iMCount].tex_no = dx->GetTexNumber(pMaterial[iMCount].szTextureName);
+			sscanf_s(&line[7], "%s", &dpara.material[iMCount].szTextureName, (unsigned int)sizeof(dpara.material[iMCount].szTextureName));
+			dpara.material[iMCount].tex_no = dx->GetTexNumber(dpara.material[iMCount].szTextureName);
 		}
 		//map_bump　テクスチャー
 		if (strcmp(key, "map_bump") == 0)
 		{
-			sscanf_s(&line[7], "%s", &pMaterial[iMCount].norTextureName, (unsigned int)sizeof(pMaterial[iMCount].norTextureName));
-			pMaterial[iMCount].nortex_no = dx->GetTexNumber(pMaterial[iMCount].norTextureName);
+			sscanf_s(&line[7], "%s", &dpara.material[iMCount].norTextureName, (unsigned int)sizeof(dpara.material[iMCount].norTextureName));
+			dpara.material[iMCount].nortex_no = dx->GetTexNumber(dpara.material[iMCount].norTextureName);
 		}
 	}
 	fclose(fp);
-
-	*ppMaterial = pMaterial;
-
 	return true;
 }
 
@@ -140,15 +135,15 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 
 	if (disp) {
 		primType_create = CONTROL_POINT;
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
 		primType_create = SQUARE;
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 }
 
-bool MeshData::GetBuffer(char *FileName) {
+bool MeshData::GetBuffer(char* FileName) {
 
 	if (0 != strcpy_s(mFileName, FileName)) {
 		ErrorMessage("MeshData::GetBuffer strcpy_s Error");
@@ -183,7 +178,7 @@ bool MeshData::GetBuffer(char *FileName) {
 		if (strcmp(key, "mtllib") == 0)
 		{
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-			if (!LoadMaterialFromFile(key, &pMaterial))return false;
+			if (!LoadMaterialFromFile(key))return false;
 		}
 		//頂点
 		if (strcmp(key, "v") == 0)
@@ -213,11 +208,11 @@ bool MeshData::GetBuffer(char *FileName) {
 	pvNormal = new VECTOR3[VNCount]();
 	pvTexture = new VECTOR2[VTCount]();
 
-	mObject_MESHCB = new ConstantBuffer<CONSTANT_BUFFER2>(MaterialCount);//アドレスずらして各Materialアクセス
-	Vview = std::make_unique<VertexView>();
-	Iview = std::make_unique<IndexView[]>(MaterialCount);
+	mObject_MESHCB = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);//アドレスずらして各Materialアクセス
+	dpara.Vview = std::make_unique<VertexView>();
+	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 
-	piFaceBuffer = new int[MaterialCount * FaceCount * 3]();//3頂点なので3インデックス * Material個数
+	piFaceBuffer = new int[dpara.NumMaterial * FaceCount * 3]();//3頂点なので3インデックス * Material個数
 	pvVertexBuffer = new VertexM[FaceCount * 3]();
 
 	return true;
@@ -284,20 +279,20 @@ bool MeshData::SetVertex() {
 	//同一座標頂点リスト
 	SameVertexList* svList = new SameVertexList[VCount];
 
-	for (int i = 0; i < MaterialCount; i++) {
+	for (int i = 0; i < dpara.NumMaterial; i++) {
 		CONSTANT_BUFFER2 sg;
-		pMaterial[i].Kd.x += addDiffuse;
-		pMaterial[i].Kd.y += addDiffuse;
-		pMaterial[i].Kd.z += addDiffuse;
-		pMaterial[i].Ks.x += addSpecular;
-		pMaterial[i].Ks.y += addSpecular;
-		pMaterial[i].Ks.z += addSpecular;
-		pMaterial[i].Ka.x += addAmbient;
-		pMaterial[i].Ka.y += addAmbient;
-		pMaterial[i].Ka.z += addAmbient;
-		sg.vDiffuse = pMaterial[i].Kd;//ディフューズカラーをシェーダーに渡す
-		sg.vDiffuse = pMaterial[i].Ks;//スペキュラーをシェーダーに渡す
-		sg.vAmbient = pMaterial[i].Ka;//アンビエントをシェーダーに渡す
+		dpara.material[i].Kd.x += addDiffuse;
+		dpara.material[i].Kd.y += addDiffuse;
+		dpara.material[i].Kd.z += addDiffuse;
+		dpara.material[i].Ks.x += addSpecular;
+		dpara.material[i].Ks.y += addSpecular;
+		dpara.material[i].Ks.z += addSpecular;
+		dpara.material[i].Ka.x += addAmbient;
+		dpara.material[i].Ka.y += addAmbient;
+		dpara.material[i].Ka.z += addAmbient;
+		sg.vDiffuse = dpara.material[i].Kd;//ディフューズカラーをシェーダーに渡す
+		sg.vDiffuse = dpara.material[i].Ks;//スペキュラーをシェーダーに渡す
+		sg.vAmbient = dpara.material[i].Ka;//アンビエントをシェーダーに渡す
 		mObject_MESHCB->CopyData(i, sg);
 	}
 
@@ -306,7 +301,7 @@ bool MeshData::SetVertex() {
 
 	int FCount = 0;
 	int dwPartFCount = 0;
-	for (int i = 0; i < MaterialCount; i++)
+	for (int i = 0; i < dpara.NumMaterial; i++)
 	{
 		dwPartFCount = 0;
 		fseek(fp, 0, SEEK_SET);
@@ -322,7 +317,7 @@ bool MeshData::SetVertex() {
 			if (strcmp(key, "usemtl") == 0)
 			{
 				sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-				if (strcmp(key, pMaterial[i].szName) == 0)
+				if (strcmp(key, dpara.material[i].szName) == 0)
 				{
 					boFlag = true;
 				}
@@ -333,7 +328,7 @@ bool MeshData::SetVertex() {
 			}
 			if (strcmp(key, "f") == 0 && boFlag == true)
 			{
-				if (pMaterial[i].tex_no != -1)//テクスチャーありサーフェイス
+				if (dpara.material[i].tex_no != -1)//テクスチャーありサーフェイス
 				{
 					sscanf_s(&line[2], "%d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
 				}
@@ -370,7 +365,7 @@ bool MeshData::SetVertex() {
 				FCount++;
 			}
 		}
-		pMaterial[i].dwNumFace = dwPartFCount;
+		dpara.material[i].dwNumFace = dwPartFCount;
 		if (dwPartFCount == 0)//使用されていないマテリアル対策が必要な場合処理追加。Drawにも
 		{
 			continue;
@@ -378,9 +373,9 @@ bool MeshData::SetVertex() {
 
 		const UINT ibByteSize = (UINT)dwPartFCount * 3 * sizeof(UINT);
 
-		Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
-		Iview[i].IndexBufferByteSize = ibByteSize;
-		Iview[i].IndexCount = dwPartFCount * 3;
+		dpara.Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
+		dpara.Iview[i].IndexBufferByteSize = ibByteSize;
+		dpara.Iview[i].IndexCount = dwPartFCount * 3;
 	}
 
 	//同一座標頂点の法線統一化(テセレーション用)
@@ -415,8 +410,8 @@ bool MeshData::SetVertex() {
 
 	const UINT vbByteSize = (UINT)FCount * 3 * sizeof(VertexM);
 
-	Vview->VertexByteStride = sizeof(VertexM);
-	Vview->VertexBufferByteSize = vbByteSize;
+	dpara.Vview->VertexByteStride = sizeof(VertexM);
+	dpara.Vview->VertexBufferByteSize = vbByteSize;
 
 	//一時的変数解放
 	ARR_DELETE(pvCoord);
@@ -441,38 +436,40 @@ bool MeshData::CreateMesh() {
 	slotRootParameter[2].InitAsConstantBufferView(0);
 	slotRootParameter[3].InitAsConstantBufferView(1);
 
-	mRootSignature = CreateRs(4, slotRootParameter);
-	if (mRootSignature == nullptr)return false;
+	dpara.rootSignature = CreateRs(4, slotRootParameter);
+	if (dpara.rootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
-	if (mPSO == nullptr)return false;
+	dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
+	if (dpara.PSO == nullptr)return false;
 
 	return true;
 }
 
 bool MeshData::GetTexture() {
 
-	TextureNo* te = new TextureNo[MaterialCount];
-	for (int i = 0; i < MaterialCount; i++) {
-		if (pMaterial[i].tex_no < 0)te[i].diffuse = 0; else
-			te[i].diffuse = pMaterial[i].tex_no;
-		if (pMaterial[i].nortex_no < 0)te[i].normal = 0; else
-			te[i].normal = pMaterial[i].nortex_no;
+	TextureNo* te = new TextureNo[dpara.NumMaterial];
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.material[i].tex_no < 0)te[i].diffuse = 0; else
+			te[i].diffuse = dpara.material[i].tex_no;
+		if (dpara.material[i].nortex_no < 0)te[i].normal = 0; else
+			te[i].normal = dpara.material[i].nortex_no;
 	}
 
-	createTextureResource(MaterialCount, te);
-	int numTex = MaterialCount * 2;
-	mSrvHeap = CreateSrvHeap(numTex, te);
-	if (mSrvHeap == nullptr)return false;
+	createTextureResource(dpara.NumMaterial, te);
+	int numTex = dpara.NumMaterial * 2;
+	dpara.srvHeap = CreateSrvHeap(numTex, te);
+	if (dpara.srvHeap == nullptr)return false;
 
-	for (int i = 0; i < MaterialCount; i++)
-		Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, &piFaceBuffer[FaceCount * 3 * i], Iview[i].IndexBufferByteSize, Iview[i].IndexBufferUploader);
+	for (int i = 0; i < dpara.NumMaterial; i++)
+		dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, &piFaceBuffer[FaceCount * 3 * i],
+			dpara.Iview[i].IndexBufferByteSize, dpara.Iview[i].IndexBufferUploader);
 
 	ARR_DELETE(te);
 	ARR_DELETE(piFaceBuffer);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVertexBuffer, Vview->VertexBufferByteSize, Vview->VertexBufferUploader);
+	dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVertexBuffer,
+		dpara.Vview->VertexBufferByteSize, dpara.Vview->VertexBufferUploader);
 	ARR_DELETE(pvVertexBuffer);
 
 	return true;
@@ -513,20 +510,11 @@ void MeshData::Draw() {
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 
-	drawPara para;
-	para.NumMaterial = MaterialCount;
-	para.srv = mSrvHeap.Get();
-	para.rootSignature = mRootSignature.Get();
-	para.Vview = Vview.get();
-	para.Iview = Iview.get();
-	para.material = pMaterial;
-	para.TOPOLOGY = primType_draw;
-	para.PSO = mPSO.Get();
-	para.cbRes0 = mObjectCB->Resource();
-	para.cbRes1 = mObject_MESHCB->Resource();
-	para.cbRes2 = nullptr;
-	para.sRes0 = nullptr;
-	para.sRes1 = nullptr;
-	para.insNum = insNum[dx->cBuffSwap[1]];
-	drawsub(para);
+	dpara.cbRes0 = mObjectCB->Resource();
+	dpara.cbRes1 = mObject_MESHCB->Resource();
+	dpara.cbRes2 = nullptr;
+	dpara.sRes0 = nullptr;
+	dpara.sRes1 = nullptr;
+	dpara.insNum = insNum[dx->cBuffSwap[1]];
+	drawsub(dpara);
 }

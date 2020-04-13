@@ -48,8 +48,8 @@ PolygonData::~PolygonData() {
 	S_DELETE(mObjectCB1);
 }
 
-ID3D12PipelineState *PolygonData::GetPipelineState() {
-	return mPSO.Get();
+ID3D12PipelineState* PolygonData::GetPipelineState() {
+	return dpara.PSO.Get();
 }
 
 void PolygonData::SetVertex(int I1, int I2, int i,
@@ -96,27 +96,27 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 
 	primType_create = type;
 	if (type == SQUARE) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		ver = v * 4;//v==四角形の個数
 		verI = v * 6;
 	}
 	if (type == POINt) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
 		ver = v;//v==点の個数
 		verI = v;
 	}
 	if (type == LINE_L) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 		ver = v * 2;//v==線の個数
 		verI = v * 2;
 	}
 	if (type == LINE_S) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
 		ver = v * 2;//v==線の個数
 		verI = v * 2;
 	}
 	if (type == CONTROL_POINT) {
-		primType_draw = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 		ver = v * 4;//v==パッチの個数
 		verI = v * 6;
 	}
@@ -126,12 +126,14 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 	d3varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * verI);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
-	Vview = std::make_unique<VertexView>();
-	Iview = std::make_unique<IndexView[]>(1);
+	dpara.NumMaterial = 1;
+	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.Vview = std::make_unique<VertexView>();
+	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 }
 
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
-	material[0].tex_no = tNo;
+	dpara.material[0].tex_no = tNo;
 	bool disp = false;
 	if (primType_create == CONTROL_POINT)disp = true;
 	if (tNo == -1 && movOn[0].m_on == false) {
@@ -206,13 +208,13 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	slotRootParameter[2].InitAsConstantBufferView(0);
 	slotRootParameter[3].InitAsConstantBufferView(1);
 
-	mRootSignature = CreateRs(4, slotRootParameter);
-	if (mRootSignature == nullptr)return false;
+	dpara.rootSignature = CreateRs(4, slotRootParameter);
+	if (dpara.rootSignature == nullptr)return false;
 
 	//SRVのデスクリプターヒープ生成
-	material[0].tex_no = tNo;
-	material[0].nortex_no = nortNo;
-	material[0].dwNumFace = 1;
+	dpara.material[0].tex_no = tNo;
+	dpara.material[0].nortex_no = nortNo;
+	dpara.material[0].dwNumFace = 1;
 
 	TextureNo te;
 	if (tNo < 0)te.diffuse = 0; else
@@ -221,8 +223,8 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 		te.normal = nortNo;
 
 	createTextureResource(1, &te);
-	mSrvHeap = CreateSrvHeap(2, &te);
-	if (mSrvHeap == nullptr)return false;
+	dpara.srvHeap = CreateSrvHeap(2, &te);
+	if (dpara.srvHeap == nullptr)return false;
 
 	UINT VertexSize;
 	if (tNo == -1 && !movOn[0].m_on)
@@ -234,25 +236,25 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
 	if (tNo == -1 && !movOn[0].m_on)
-		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayBC, vbByteSize, Vview->VertexBufferUploader);
+		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayBC, vbByteSize, dpara.Vview->VertexBufferUploader);
 	else
-		Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, Vview->VertexBufferUploader);
+		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, dpara.Vview->VertexBufferUploader);
 
-	Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, Iview[0].IndexBufferUploader);
+	dpara.Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, dpara.Iview[0].IndexBufferUploader);
 
-	Vview->VertexByteStride = VertexSize;
-	Vview->VertexBufferByteSize = vbByteSize;
-	Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
-	Iview[0].IndexBufferByteSize = ibByteSize;
-	Iview[0].IndexCount = verI;
+	dpara.Vview->VertexByteStride = VertexSize;
+	dpara.Vview->VertexBufferByteSize = vbByteSize;
+	dpara.Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
+	dpara.Iview[0].IndexBufferByteSize = ibByteSize;
+	dpara.Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
 	if (tNo == -1 && !movOn[0].m_on)
-		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
+		dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
 	else
-		mPSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, mRootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
+		dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
 
-	if (mPSO == nullptr)return false;
+	if (dpara.PSO == nullptr)return false;
 
 	return true;
 }
@@ -292,20 +294,11 @@ void PolygonData::Draw() {
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 
-	drawPara para;
-	para.NumMaterial = 1;
-	para.srv = mSrvHeap.Get();
-	para.rootSignature = mRootSignature.Get();
-	para.Vview = Vview.get();
-	para.Iview = Iview.get();
-	para.material = material;
-	para.TOPOLOGY = primType_draw;
-	para.PSO = mPSO.Get();
-	para.cbRes0 = mObjectCB->Resource();
-	para.cbRes1 = mObjectCB1->Resource();
-	para.cbRes2 = nullptr;
-	para.sRes0 = nullptr;
-	para.sRes1 = nullptr;
-	para.insNum = insNum[dx->cBuffSwap[1]];
-	drawsub(para);
+	dpara.cbRes0 = mObjectCB->Resource();
+	dpara.cbRes1 = mObjectCB1->Resource();
+	dpara.cbRes2 = nullptr;
+	dpara.sRes0 = nullptr;
+	dpara.sRes1 = nullptr;
+	dpara.insNum = insNum[dx->cBuffSwap[1]];
+	drawsub(dpara);
 }

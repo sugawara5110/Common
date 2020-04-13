@@ -358,19 +358,19 @@ ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFu
 	return dx->CompileShader(szFileName, size, szFuncName, szProfileName);
 }
 
-void Common::drawsub(drawPara para) {
+void Common::drawsub(drawPara& para) {
 	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { para.srv };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { para.srvHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	mCommandList->SetGraphicsRootSignature(para.rootSignature);
+	mCommandList->SetGraphicsRootSignature(para.rootSignature.Get());
 
 	mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.srv->GetGPUDescriptorHandleForHeapStart());
-	for (UINT i = 0; i < para.NumMaterial; i++) {
+	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.srvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	for (int i = 0; i < para.NumMaterial; i++) {
 		//使用されていないマテリアル対策
 		if (para.material[i].dwNumFace == 0)
 		{
@@ -383,18 +383,18 @@ void Common::drawsub(drawPara para) {
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
 		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		mCommandList->SetPipelineState(para.PSO);
+		mCommandList->SetPipelineState(para.PSO.Get());
 
-		mCommandList->SetGraphicsRootConstantBufferView(2, para.cbRes0->GetGPUVirtualAddress());
+		mCommandList->SetGraphicsRootConstantBufferView(2, para.cbRes0.Get()->GetGPUVirtualAddress());
 		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
-		mCommandList->SetGraphicsRootConstantBufferView(3, para.cbRes1->GetGPUVirtualAddress() + mElementByteSize * i);
+		mCommandList->SetGraphicsRootConstantBufferView(3, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
 		UINT viewIndex = 4;
 		if (para.cbRes2 != nullptr)
-			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2->GetGPUVirtualAddress());
+			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2.Get()->GetGPUVirtualAddress());
 		if (para.sRes0 != nullptr)
-			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes0->GetGPUVirtualAddress());
+			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes0.Get()->GetGPUVirtualAddress());
 		if (para.sRes1 != nullptr)
-			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes1->GetGPUVirtualAddress());
+			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes1.Get()->GetGPUVirtualAddress());
 
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}

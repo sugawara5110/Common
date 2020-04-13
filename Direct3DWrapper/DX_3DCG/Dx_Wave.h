@@ -20,8 +20,6 @@ protected:
 	ID3DBlob* gs = nullptr;
 
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	ComPtr<ID3D12RootSignature> mRootSignatureDraw = nullptr;
-	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
 
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
@@ -36,11 +34,7 @@ protected:
 	//DrawOn
 	bool DrawOn = false;
 
-	std::unique_ptr<VertexView> Vview = nullptr;
-	std::unique_ptr<IndexView[]> Iview = nullptr;
-
 	//テクスチャ番号(通常テクスチャ用)
-	MY_MATERIAL_S material[1];
 	int ins_no = 0;
 	int insNum[2] = {};
 
@@ -51,11 +45,12 @@ protected:
 	int ver;      //頂点個数
 	int verI;    //頂点インデックス
 
-	ComPtr<ID3D12PipelineState> mPSOCom = nullptr;//パイプラインOBJ
-	ComPtr<ID3D12PipelineState> mPSODraw = nullptr;
+	ComPtr<ID3D12PipelineState> mPSOCom = nullptr;
 	ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
 	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
+
+	drawPara dpara = {};
 
 	void GetShaderByteCode();
 	bool ComCreate();

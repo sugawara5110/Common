@@ -493,22 +493,22 @@ protected:
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 	struct drawPara {
-		UINT NumMaterial = 0;
-		ID3D12DescriptorHeap* srv = nullptr;
-		ID3D12RootSignature* rootSignature = nullptr;
-		VertexView* Vview = nullptr;
-		IndexView* Iview = nullptr;
-		MY_MATERIAL_S* material = nullptr;
+		int NumMaterial = 0;
+		ComPtr<ID3D12DescriptorHeap> srvHeap = nullptr;
+		ComPtr<ID3D12RootSignature> rootSignature = nullptr;
+		std::unique_ptr<VertexView> Vview = nullptr;
+		std::unique_ptr<IndexView[]> Iview = nullptr;
+		std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
 		D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
-		ID3D12PipelineState* PSO = nullptr;
-		ID3D12Resource* cbRes0 = nullptr;
-		ID3D12Resource* cbRes1 = nullptr;
-		ID3D12Resource* cbRes2 = nullptr;
-		ID3D12Resource* sRes0 = nullptr;
-		ID3D12Resource* sRes1 = nullptr;
+		ComPtr<ID3D12PipelineState> PSO = nullptr;
+		ComPtr<ID3D12Resource> cbRes0 = nullptr;
+		ComPtr<ID3D12Resource> cbRes1 = nullptr;
+		ComPtr<ID3D12Resource> cbRes2 = nullptr;
+		ComPtr<ID3D12Resource> sRes0 = nullptr;
+		ComPtr<ID3D12Resource> sRes1 = nullptr;
 		UINT insNum = 1;
 	};
-	void drawsub(drawPara para);
+	void drawsub(drawPara& para);
 
 public:
 	void SetCommandList(int no);
@@ -530,9 +530,6 @@ protected:
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* gs = nullptr;
 
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
-
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
@@ -545,17 +542,9 @@ protected:
 	//DrawOn
 	bool DrawOn = false;
 
-	//頂点バッファOBJ
-	std::unique_ptr<VertexView> Vview = nullptr;
-	std::unique_ptr<IndexView[]> Iview = nullptr;
-
 	//テクスチャ番号(通常テクスチャ用)
-	MY_MATERIAL_S material[1];
 	int ins_no = 0;
 	int insNum[2] = {};
-
-	//パイプラインOBJ
-	ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
 	VertexM* d3varray;  //頂点配列
 	VertexBC* d3varrayBC;//頂点配列基本色
@@ -564,9 +553,9 @@ protected:
 	int verI;    //頂点インデックス
 
 	PrimitiveType          primType_create;
-	D3D_PRIMITIVE_TOPOLOGY primType_draw;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
+	drawPara dpara = {};
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
