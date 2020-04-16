@@ -214,7 +214,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	//SRVのデスクリプターヒープ生成
 	dpara.material[0].tex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
-	dpara.material[0].dwNumFace = 1;
+	dpara.material[0].numPolygon = 1;
 
 	TextureNo te;
 	if (tNo < 0)te.diffuse = 0; else
@@ -222,8 +222,8 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	if (nortNo < 0)te.normal = 0; else
 		te.normal = nortNo;
 
-	createTextureResource(1, &te);
-	dpara.srvHeap = CreateSrvHeap(2, &te);
+	createTextureResource(0, 1, &te);
+	dpara.srvHeap = CreateSrvHeap(0, 2, &te);
 	if (dpara.srvHeap == nullptr)return false;
 
 	UINT VertexSize;

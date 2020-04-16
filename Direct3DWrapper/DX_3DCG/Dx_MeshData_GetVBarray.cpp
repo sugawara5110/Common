@@ -365,7 +365,7 @@ bool MeshData::SetVertex() {
 				FCount++;
 			}
 		}
-		dpara.material[i].dwNumFace = dwPartFCount;
+		dpara.material[i].numPolygon = (UINT)dwPartFCount;
 		if (dwPartFCount == 0)//使用されていないマテリアル対策が必要な場合処理追加。Drawにも
 		{
 			continue;
@@ -456,9 +456,9 @@ bool MeshData::GetTexture() {
 			te[i].normal = dpara.material[i].nortex_no;
 	}
 
-	createTextureResource(dpara.NumMaterial, te);
+	createTextureResource(0, dpara.NumMaterial, te);
 	int numTex = dpara.NumMaterial * 2;
-	dpara.srvHeap = CreateSrvHeap(numTex, te);
+	dpara.srvHeap = CreateSrvHeap(0, numTex, te);
 	if (dpara.srvHeap == nullptr)return false;
 
 	for (int i = 0; i < dpara.NumMaterial; i++)

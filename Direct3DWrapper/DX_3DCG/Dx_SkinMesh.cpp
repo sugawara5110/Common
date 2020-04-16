@@ -38,7 +38,6 @@ SkinMesh::SkinMesh() {
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	fbx = new SkinMesh_sub[FBX_PCS];
 	m_ppSubAnimationBone = nullptr;
-	m_pClusterName = nullptr;
 	AnimLastInd = -1;
 	BoneConnect = -1.0f;
 	pvVB_delete_f = true;
@@ -56,16 +55,22 @@ SkinMesh::SkinMesh() {
 }
 
 SkinMesh::~SkinMesh() {
+	if (pvVB) {
+		for (int i = 0; i < numMesh; i++) {
+			ARR_DELETE(pvVB[i]);
+		}
+	}
 	ARR_DELETE(pvVB);
-	ARR_DELETE(m_pClusterName);
+	ARR_DELETE(boneName);
 	ARR_DELETE(m_ppSubAnimationBone);
 	ARR_DELETE(m_pLastBoneMatrix);
-	ARR_DELETE(m_pdwNumVert);
 	ARR_DELETE(m_BoneArray);
-	ARR_DELETE(m_ppCluster);
+	ARR_DELETE(dpara);
 
 	S_DELETE(mObjectCB0);
-	S_DELETE(mObjectCB1);
+	for (int i = 0; i < numMesh; i++)
+		S_DELETE(mObjectCB1[i]);
+	ARR_DELETE(mObjectCB1);
 	S_DELETE(mObject_BONES);
 
 	DestroyFBX();
@@ -124,45 +129,31 @@ void SkinMesh::DestroyFBX() {
 	ARR_DELETE(fbx);
 }
 
-void SkinMesh::ReadSkinInfo(MY_VERTEX_S* pvVB) {
-	FbxLoader* fbl = fbx[0].fbxL;
-	FbxMeshNode* mesh = fbl->getFbxMeshNode(0);//行列関係はどのメッシュからでも同じ物を得られる
+void SkinMesh::ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB) {
 
-	for (int i = 0; i < m_iNumBone; i++) {
-		m_ppCluster[i] = mesh->getDeformer(i);
-		const char* name = m_ppCluster[i]->getName();
-		strcpy(&m_pClusterName[i * 255], name);//ボーンの名前保持
-	}
+	//各Boneのウエイト,インデックスを調べ頂点配列に加える
+	for (int i = 0; i < numBone; i++) {
+		Deformer* defo = mesh->getDeformer(i);
+		int iNumIndex = defo->getIndicesCount();//このボーンに影響を受ける頂点インデックス数
+		int* piIndex = defo->getIndices();     //このボーンに影響を受ける頂点のインデックス配列
+		double* pdWeight = defo->getWeights();//このボーンに影響を受ける頂点のウエイト配列
 
-	int VertexStart = 0;
-	for (int m = 0; m < NodeArraypcs; m++) {
-		FbxMeshNode* meshBone = fbl->getFbxMeshNode(m);
-
-		//各Boneのウエイト,インデックスを調べ頂点配列に加える
-		for (int i = 0; i < m_iNumBone; i++) {
-			Deformer* defo = meshBone->getDeformer(i);
-			int iNumIndex = defo->getIndicesCount();//このボーンに影響を受ける頂点インデックス数
-			int* piIndex = defo->getIndices();     //このボーンに影響を受ける頂点のインデックス配列
-			double* pdWeight = defo->getWeights();//このボーンに影響を受ける頂点のウエイト配列
-
-			for (int k = 0; k < iNumIndex; k++) {
-				int index = piIndex[k];      //影響を受ける頂点
-				double weight = pdWeight[k];//ウエイト
-				for (int m = 0; m < 4; m++) {
-					//各Bone毎に影響を受ける頂点のウエイトを一番大きい数値に更新していく
-					if (weight > pvVB[index + VertexStart].bBoneWeight[m]) {//調べたウエイトの方が大きい
-						pvVB[index + VertexStart].bBoneIndex[m] = i;//Boneインデックス登録
-						pvVB[index + VertexStart].bBoneWeight[m] = (float)weight;//ウエイト登録
-						break;
-					}
+		for (int k = 0; k < iNumIndex; k++) {
+			int index = piIndex[k];      //影響を受ける頂点
+			double weight = pdWeight[k];//ウエイト
+			for (int m = 0; m < 4; m++) {
+				//各Bone毎に影響を受ける頂点のウエイトを一番大きい数値に更新していく
+				if (weight > pvVB[index].bBoneWeight[m]) {//調べたウエイトの方が大きい
+					pvVB[index].bBoneIndex[m] = i;//Boneインデックス登録
+					pvVB[index].bBoneWeight[m] = (float)weight;//ウエイト登録
+					break;
 				}
 			}
 		}
-		VertexStart += m_pdwNumVert[m];
 	}
 
 	//ウエイト正規化
-	for (DWORD i = 0; i < VerAllpcs; i++) {
+	for (UINT i = 0; i < mesh->getNumVertices(); i++) {
 		float we = 0;
 		for (int j = 0; j < 4; j++) {
 			we += pvVB[i].bBoneWeight[j];
@@ -170,16 +161,6 @@ void SkinMesh::ReadSkinInfo(MY_VERTEX_S* pvVB) {
 		float we1 = 1.0f / we;
 		for (int j = 0; j < 4; j++) {
 			pvVB[i].bBoneWeight[j] *= we1;
-		}
-	}
-
-	for (int i = 0; i < m_iNumBone; i++) {
-		//初期姿勢行列読み込み
-		//GetCurrentPoseMatrixで使う
-		for (int x = 0; x < 4; x++) {
-			for (int y = 0; y < 4; y++) {
-				m_BoneArray[i].mBindPose.m[y][x] = (float)m_ppCluster[i]->getTransformLinkMatrix(y, x);
-			}
 		}
 	}
 }
@@ -204,362 +185,256 @@ HRESULT SkinMesh::GetFbx(CHAR* szFileName) {
 
 void SkinMesh::GetBuffer(float end_frame) {
 
-	mObjectCB0 = new ConstantBuffer<CONSTANT_BUFFER>(1);
-	mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
-
 	fbx[0].end_frame = end_frame;
 	FbxLoader* fbL = fbx[0].fbxL;
-	NodeArraypcs = fbL->getNumFbxMeshNode();
+	numMesh = fbL->getNumFbxMeshNode();
+	dpara = new drawPara[numMesh];
+	newIndex = new UINT * *[numMesh];
 
-	//事前にメッシュ毎頂点数、ポリゴン数マテリアル数等を調べる
-	m_pdwNumVert = new DWORD[NodeArraypcs];
-	m_pMaterialCount = new DWORD[NodeArraypcs];
-	VerAllpcs = 0;//頂点全数
-	pdwNumFace = new DWORD[NodeArraypcs];
+	mObjectCB0 = new ConstantBuffer<CONSTANT_BUFFER>(1);
+	mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
+	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2> * [numMesh];
 
-	//カウント
-	for (int i = 0; i < NodeArraypcs; i++) {
-		FbxMeshNode* mesh = fbL->getFbxMeshNode(i);
-		m_pdwNumVert[i] = mesh->getNumVertices();//メッシュ毎頂点数
-		m_pMaterialCount[i] = mesh->getNumMaterial();//メッシュ毎マテリアル数
-		VerAllpcs += m_pdwNumVert[i];               //頂点全数カウント
-		dpara.NumMaterial += m_pMaterialCount[i];        //マテリアル全数カウント
-		pdwNumFace[i] = mesh->getNumPolygon();   //メッシュ毎ポリゴン数
-	}
+	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);//ボーンはどのメッシュでも取得できるようだ
+	numBone = mesh->getNumDeformer();
+	boneName = new char[numBone * 255];
 
-	//メッシュ毎4頂点分割前インデックス配列生成
-	IndexCount34Me = new int[NodeArraypcs];
-	//マテリアル毎4頂点分割後インデックス配列生成
-	IndexCount3M = new int[dpara.NumMaterial];
+	m_BoneArray = new BONE[numBone];
+	m_pLastBoneMatrix = new MATRIX[numBone];
 
-	//マテリアル配列生成
-	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	for (int i = 0; i < numBone; i++) {
+		Deformer* defo = mesh->getDeformer(i);
+		const char* name = defo->getName();
+		strcpy(&boneName[i * 255], name);//ボーンの名前保持
 
-	//マテリアルコンスタントバッファ
-	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
-
-	//VBO
-	dpara.Vview = std::make_unique<VertexView>();
-	//IBO マテリアル毎に生成する
-	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
-
-	//インデックス数計算(ポリゴン1個に付き頂点 2個～5個が存在することが有るが
-	//fbxからIndex配列コピー時に全てコピーするのでそのままの個数をカウントする)
-	IndexCount34MeAll = 0;
-	for (int k = 0; k < NodeArraypcs; k++) {
-		IndexCount34Me[k] = 0;
-		FbxMeshNode* mesh = fbL->getFbxMeshNode(k);
-		for (DWORD i = 0; i < pdwNumFace[k]; i++) {
-			IndexCount34Me[k] += mesh->getPolygonSize(i);//メッシュ毎の分割前頂点インデックス数
-		}
-		IndexCount34MeAll += IndexCount34Me[k];
-	}
-
-	int mInd = 0;
-	for (int k = 0; k < NodeArraypcs; k++) {
-		FbxMeshNode* mesh = fbL->getFbxMeshNode(k);
-		for (DWORD j = 0; j < m_pMaterialCount[k]; j++) {
-			IndexCount3M[mInd] = 0;
-			for (DWORD i = 0; i < pdwNumFace[k]; i++) {
-				int matId = mesh->getMaterialNoOfPolygon(i);//ポリゴンiの関連するマテリアル番号取得
-				if (matId == j) {//現在処理中のマテリアルと一致した場合以下処理実行(1Meshに2以上のマテリアルが有る場合の処理)
-					int pcs = mesh->getPolygonSize(i);//各ポリゴンの頂点インデックス数
-					switch (pcs) {
-					case 3:
-						IndexCount3M[mInd] += 3;
-						break;
-					case 4:
-						IndexCount3M[mInd] += 6;
-						break;
-					}
-				}
+		//初期姿勢行列読み込み
+		//GetCurrentPoseMatrixで使う
+		for (int x = 0; x < 4; x++) {
+			for (int y = 0; y < 4; y++) {
+				m_BoneArray[i].mBindPose.m[y][x] = (float)defo->getTransformLinkMatrix(y, x);
 			}
-			mInd++;
 		}
 	}
 
-	pIndex = new int* [dpara.NumMaterial];
-	for (int i = 0; i < dpara.NumMaterial; i++) {
-		pIndex[i] = new int[IndexCount3M[i]];
-	}
-
-	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);
-	m_iNumBone = mesh->getNumDeformer();//どのメッシュからでも同じボーン数が得られているようだ
-	m_ppCluster = new  Deformer * [m_iNumBone];//ボーン情報配列
-	m_pClusterName = new char[m_iNumBone * 255];
-
-	//ボーンを生成
-	m_BoneArray = new BONE[m_iNumBone];
-	m_pLastBoneMatrix = new MATRIX[m_iNumBone];
+	pvVB = new MY_VERTEX_S * [numMesh];
 }
 
 void SkinMesh::SetVertex() {
-	//4頂点分割前状態でのインデックス数で頂点配列生成
-	//4頂点ポリゴンは分割後法線変化無しの為, 頂点は3頂点,4頂点混在状態の要素数で生成
-	pvVB = new MY_VERTEX_S[IndexCount34MeAll];
-
-	MY_VERTEX_S* tmpVB = new MY_VERTEX_S[VerAllpcs];
-	//スキン情報(ジョイント, ウェイト)
-	ReadSkinInfo(tmpVB);
-
-	//同一座標頂点リスト
-	SameVertexList* svList = new SameVertexList[VerAllpcs];
 
 	FbxLoader* fbL = fbx[0].fbxL;
-	//メッシュ毎に配列格納処理
-	int mInd = 0;//マテリアル内カウント
-	DWORD VerArrStart = 0;//分割前インデックス数(最終的な頂点数)
-	DWORD VerArrStart2 = 0;//読み込み時頂点数
-	for (int m = 0; m < NodeArraypcs; m++) {
-		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);
-		int* piIndex = mesh->getPolygonVertices();//fbxから頂点インデックス配列取得
 
-		//頂点配列をfbxからコピー
-		double* pCoord = mesh->getVertices();
-		for (int i = 0; i < IndexCount34Me[m]; i++) {
-			//fbxから読み込んだindex順で頂点を整列しながら頂点格納
-			pvVB[i + VerArrStart].vPos.x = (float)pCoord[piIndex[i] * 3 + 0];
-			pvVB[i + VerArrStart].vPos.y = (float)pCoord[piIndex[i] * 3 + 1];
-			pvVB[i + VerArrStart].vPos.z = (float)pCoord[piIndex[i] * 3 + 2];
-			svList[piIndex[i] + VerArrStart2].Push(i + VerArrStart);
+	for (int m = 0; m < numMesh; m++) {
+
+		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);//メッシュ毎に処理する
+
+		MY_VERTEX_S* tmpVB = new MY_VERTEX_S[mesh->getNumVertices()];
+		//ボーンウエイト
+		ReadSkinInfo(mesh, tmpVB);
+
+		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
+		auto ver = mesh->getVertices();//頂点取得
+		auto nor = mesh->getNormal(0);//法線取得
+		double* uv0 = mesh->getAlignedUV(0);//テクスチャUV0
+
+		//同一座標頂点リスト
+		SameVertexList* svList = new SameVertexList[mesh->getNumVertices()];
+		pvVB[m] = new MY_VERTEX_S[mesh->getNumPolygonVertices()];
+
+		MY_VERTEX_S* vb = pvVB[m];
+		for (UINT i = 0; i < mesh->getNumPolygonVertices(); i++) {
+			//index順で頂点を整列しながら頂点格納
+			MY_VERTEX_S* v = &vb[i];
+			v->vPos.x = (float)ver[index[i] * 3];
+			v->vPos.y = (float)ver[index[i] * 3 + 1];
+			v->vPos.z = (float)ver[index[i] * 3 + 2];
+			v->vNorm.x = (float)nor[i * 3];
+			v->vNorm.y = (float)nor[i * 3 + 1];
+			v->vNorm.z = (float)nor[i * 3 + 2];
+			v->vGeoNorm.x = (float)nor[i * 3];
+			v->vGeoNorm.y = (float)nor[i * 3 + 1];
+			v->vGeoNorm.z = (float)nor[i * 3 + 2];
+			v->vTex.x = (float)uv0[i * 2];
+			v->vTex.y = 1.0f - (float)uv0[i * 2 + 1];//(1.0f-UV)
+			svList[index[i]].Push(i);
 			for (int bi = 0; bi < 4; bi++) {
 				//ReadSkinInfo(tmpVB)で読み込んだ各パラメータコピー
-				pvVB[i + VerArrStart].bBoneIndex[bi] = tmpVB[piIndex[i] + VerArrStart2].bBoneIndex[bi];
-				pvVB[i + VerArrStart].bBoneWeight[bi] = tmpVB[piIndex[i] + VerArrStart2].bBoneWeight[bi];
+				v->bBoneIndex[bi] = tmpVB[index[i]].bBoneIndex[bi];
+				v->bBoneWeight[bi] = tmpVB[index[i]].bBoneWeight[bi];
+			}
+		}
+		ARR_DELETE(tmpVB);
+
+		//同一座標頂点の法線統一化(テセレーション用)
+		for (UINT i = 0; i < mesh->getNumVertices(); i++) {
+			int indVB = 0;
+			VECTOR3 geo[50];
+			int indVb[50];
+			int indGeo = 0;
+			while (1) {
+				indVB = svList[i].Pop();
+				if (indVB == -1)break;
+				indVb[indGeo] = indVB;
+				geo[indGeo++] = vb[indVB].vGeoNorm;
+			}
+			VECTOR3 sum;
+			sum.as(0.0f, 0.0f, 0.0f);
+			for (int i1 = 0; i1 < indGeo; i1++) {
+				sum.x += geo[i1].x;
+				sum.y += geo[i1].y;
+				sum.z += geo[i1].z;
+			}
+			VECTOR3 ave;
+			ave.x = sum.x / (float)indGeo;
+			ave.y = sum.y / (float)indGeo;
+			ave.z = sum.z / (float)indGeo;
+			for (int i1 = 0; i1 < indGeo; i1++) {
+				vb[indVb[i1]].vGeoNorm = ave;
 			}
 		}
 
-		//法線, テクスチャー座標読み込み
-		int IndCount = 0;
-		int NorCount = 0;
-		int UVCount = 0;
-		double* Normal = mesh->getNormal();
-		double* UV = mesh->getAlignedUV();
-		for (DWORD i = 0; i < pdwNumFace[m]; i++) {
-			//int iStartIndex = pFbxMesh->GetPolygonVertexIndex(i);//ポリゴンを構成する最初のインデックス取得
-			int pcs = mesh->getPolygonSize(i);//各ポリゴンの頂点数
-			if (pcs != 3 && pcs != 4)continue;//頂点数3個,4個以外はスキップ
-			int iVert0Index, iVert1Index, iVert2Index, iVert3Index;
+		//頂点バッファ
+		dpara[m].Vview = std::make_unique<VertexView>();
+		const UINT verSize = mesh->getNumPolygonVertices() * sizeof(MY_VERTEX_S);
+		dpara[m].Vview->VertexByteStride = sizeof(MY_VERTEX_S);
+		dpara[m].Vview->VertexBufferByteSize = verSize;
 
-			//法線,UV読み込み,indexで読み込み
-			//頂点はindexで整列済み
-			iVert0Index = IndCount + VerArrStart;
-			iVert1Index = IndCount + 1 + VerArrStart;
-			iVert2Index = IndCount + 2 + VerArrStart;
-			iVert3Index = IndCount + 3 + VerArrStart;
+		ARR_DELETE(svList);
 
-			if (iVert0Index < 0)continue;
-			pvVB[iVert0Index].vNorm.x = (float)Normal[NorCount + 0];
-			pvVB[iVert0Index].vNorm.y = (float)Normal[NorCount + 1];
-			pvVB[iVert0Index].vNorm.z = (float)Normal[NorCount + 2];
-			pvVB[iVert0Index].vGeoNorm.x = (float)Normal[NorCount + 0];
-			pvVB[iVert0Index].vGeoNorm.y = (float)Normal[NorCount + 1];
-			pvVB[iVert0Index].vGeoNorm.z = (float)Normal[NorCount + 2];
+		auto numMaterial = mesh->getNumMaterial();
+		dpara[m].material = std::make_unique<MY_MATERIAL_S[]>(numMaterial);
 
-			pvVB[iVert0Index].vTex.x = (float)UV[UVCount + 0];
-			pvVB[iVert0Index].vTex.y = 1.0f - (float)UV[UVCount + 1];//(1.0f-UV)
-
-			NorCount += 3;
-			UVCount += 2;
-
-			pvVB[iVert1Index].vNorm.x = (float)Normal[NorCount + 0];
-			pvVB[iVert1Index].vNorm.y = (float)Normal[NorCount + 1];
-			pvVB[iVert1Index].vNorm.z = (float)Normal[NorCount + 2];
-			pvVB[iVert1Index].vGeoNorm.x = (float)Normal[NorCount + 0];
-			pvVB[iVert1Index].vGeoNorm.y = (float)Normal[NorCount + 1];
-			pvVB[iVert1Index].vGeoNorm.z = (float)Normal[NorCount + 2];
-
-			pvVB[iVert1Index].vTex.x = (float)UV[UVCount + 0];
-			pvVB[iVert1Index].vTex.y = 1.0f - (float)UV[UVCount + 1];
-
-			NorCount += 3;
-			UVCount += 2;
-
-			pvVB[iVert2Index].vNorm.x = (float)Normal[NorCount + 0];
-			pvVB[iVert2Index].vNorm.y = (float)Normal[NorCount + 1];
-			pvVB[iVert2Index].vNorm.z = (float)Normal[NorCount + 2];
-			pvVB[iVert2Index].vGeoNorm.x = (float)Normal[NorCount + 0];
-			pvVB[iVert2Index].vGeoNorm.y = (float)Normal[NorCount + 1];
-			pvVB[iVert2Index].vGeoNorm.z = (float)Normal[NorCount + 2];
-
-			pvVB[iVert2Index].vTex.x = (float)UV[UVCount + 0];
-			pvVB[iVert2Index].vTex.y = 1.0f - (float)UV[UVCount + 1];
-
-			NorCount += 3;
-			UVCount += 2;
-
-			if (pcs == 4) {
-				pvVB[iVert3Index].vNorm.x = (float)Normal[NorCount + 0];
-				pvVB[iVert3Index].vNorm.y = (float)Normal[NorCount + 1];
-				pvVB[iVert3Index].vNorm.z = (float)Normal[NorCount + 2];
-				pvVB[iVert3Index].vGeoNorm.x = (float)Normal[NorCount + 0];
-				pvVB[iVert3Index].vGeoNorm.y = (float)Normal[NorCount + 1];
-				pvVB[iVert3Index].vGeoNorm.z = (float)Normal[NorCount + 2];
-
-				pvVB[iVert3Index].vTex.x = (float)UV[UVCount + 0];
-				pvVB[iVert3Index].vTex.y = 1.0f - (float)UV[UVCount + 1];
-
-				NorCount += 3;
-				UVCount += 2;
-				IndCount++;
+		//4頂点ポリゴン分割後のIndex数カウント
+		dpara[m].NumMaterial = numMaterial;
+		UINT* numNewIndex = new UINT[numMaterial];
+		memset(numNewIndex, 0, sizeof(UINT) * numMaterial);
+		UINT currentMatNo = -1;
+		for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
+			if (mesh->getMaterialNoOfPolygon(i) != currentMatNo) {
+				currentMatNo = mesh->getMaterialNoOfPolygon(i);
 			}
-			IndCount += 3;
+			if (mesh->getPolygonSize(i) == 3) {
+				numNewIndex[currentMatNo] += 3;
+				dpara[m].material[currentMatNo].numPolygon++;
+			}
+			if (mesh->getPolygonSize(i) == 4) {
+				numNewIndex[currentMatNo] += 6;
+				dpara[m].material[currentMatNo].numPolygon += 2;
+			}
 		}
 
-		for (DWORD i = 0; i < m_pMaterialCount[m]; i++) {
+		//分割後のIndex生成
+		newIndex[m] = new UINT * [numMaterial];
+		for (UINT ind1 = 0; ind1 < numMaterial; ind1++) {
+			if (numNewIndex[ind1] <= 0) {
+				newIndex[ind1] = nullptr;
+				continue;
+			}
+			newIndex[m][ind1] = new UINT[numNewIndex[ind1]];
+		}
+		std::unique_ptr<UINT[]> indexCnt;
+		indexCnt = std::make_unique<UINT[]>(numMaterial);
+		currentMatNo = -1;
+		int Icnt = 0;
+		for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
+			if (mesh->getMaterialNoOfPolygon(i) != currentMatNo) {
+				currentMatNo = mesh->getMaterialNoOfPolygon(i);
+			}
+
+			if (mesh->getPolygonSize(i) == 3) {
+
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
+
+				Icnt += 3;
+			}
+			if (mesh->getPolygonSize(i) == 4) {
+
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 3;
+
+				Icnt += 4;
+			}
+		}
+
+		//インデックスバッファ
+		dpara[m].Iview = std::make_unique<IndexView[]>(numMaterial);
+		for (UINT i = 0; i < numMaterial; i++) {
+			const UINT indexSize = numNewIndex[i] * sizeof(UINT);
+			dpara[m].Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
+			dpara[m].Iview[i].IndexBufferByteSize = indexSize;
+			dpara[m].Iview[i].IndexCount = numNewIndex[i];
+		}
+		ARR_DELETE(numNewIndex);
+
+		mObjectCB1[m] = new ConstantBuffer<CONSTANT_BUFFER2>(numMaterial);
+		for (UINT i = 0; i < numMaterial; i++) {
 			//マテリアル情報取得
 			//拡散反射光
-			dpara.material[mInd].Kd.x = (float)mesh->getDiffuseColor(0, 0);
-			dpara.material[mInd].Kd.y = (float)mesh->getDiffuseColor(0, 1);
-			dpara.material[mInd].Kd.z = (float)mesh->getDiffuseColor(0, 2);
-			dpara.material[mInd].Kd.w = 0.0f;//使用してない
+			dpara[m].material[i].Kd.x = (float)mesh->getDiffuseColor(0, 0);
+			dpara[m].material[i].Kd.y = (float)mesh->getDiffuseColor(0, 1);
+			dpara[m].material[i].Kd.z = (float)mesh->getDiffuseColor(0, 2);
+			dpara[m].material[i].Kd.w = 0.0f;//使用してない
 			//スペキュラー
-			dpara.material[mInd].Ks.x = (float)mesh->getSpecularColor(0, 0);
-			dpara.material[mInd].Ks.y = (float)mesh->getSpecularColor(0, 1);
-			dpara.material[mInd].Ks.z = (float)mesh->getSpecularColor(0, 2);
-			dpara.material[mInd].Ks.w = 0.0f;//使用してない
+			dpara[m].material[i].Ks.x = (float)mesh->getSpecularColor(0, 0);
+			dpara[m].material[i].Ks.y = (float)mesh->getSpecularColor(0, 1);
+			dpara[m].material[i].Ks.z = (float)mesh->getSpecularColor(0, 2);
+			dpara[m].material[i].Ks.w = 0.0f;//使用してない
 			//アンビエント
-			dpara.material[mInd].Ka.x = (float)mesh->getAmbientColor(0, 0);
-			dpara.material[mInd].Ka.y = (float)mesh->getAmbientColor(0, 1);
-			dpara.material[mInd].Ka.z = (float)mesh->getAmbientColor(0, 2);
-			dpara.material[mInd].Ka.w = 0.0f;//使用してない
+			dpara[m].material[i].Ka.x = (float)mesh->getAmbientColor(0, 0);
+			dpara[m].material[i].Ka.y = (float)mesh->getAmbientColor(0, 1);
+			dpara[m].material[i].Ka.z = (float)mesh->getAmbientColor(0, 2);
+			dpara[m].material[i].Ka.w = 0.0f;//使用してない
 
 			//テクスチャー
 			if (mesh->getNormalTextureName(i)) {
-				strcpy_s(dpara.material[mInd].norTextureName, mesh->getNormalTextureName(i));
-				//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
-				dpara.material[mInd].nortex_no = dx->GetTexNumber(dpara.material[mInd].norTextureName);
+				strcpy_s(dpara[m].material[i].norTextureName, mesh->getNormalTextureName(i));
+				//ファイル名を元にテクスチャ番号を読み込む
+				dpara[m].material[i].nortex_no = dx->GetTexNumber(dpara[m].material[i].norTextureName);
 			}
 			if (mesh->getDiffuseTextureName(i)) {
-				strcpy_s(dpara.material[mInd].szTextureName, mesh->getDiffuseTextureName(i));
-				//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
-				dpara.material[mInd].tex_no = dx->GetTexNumber(dpara.material[mInd].szTextureName);
-			}
-			else {
-				strcpy_s(dpara.material[mInd].szTextureName, mesh->getMaterialName());//テクスチャ名が無い場合マテリアル名から
-				dpara.material[mInd].tex_no = dx->GetTexNumber(dpara.material[mInd].szTextureName);
+				strcpy_s(dpara[m].material[i].szTextureName, mesh->getDiffuseTextureName(i));
+				//ファイル名を元にテクスチャ番号を読み込む
+				dpara[m].material[i].tex_no = dx->GetTexNumber(dpara[m].material[i].szTextureName);
 			}
 
-			int iCount = 0;//最終的な(分割後)indexカウント
-			int vCount = 0;//頂点カウント
-			int polygon_cnt = 0;
-			for (DWORD k = 0; k < pdwNumFace[m]; k++) {
-				int matId = mesh->getMaterialNoOfPolygon(k);//ポリゴンkの関連するマテリアル番号取得
-				int pcs = mesh->getPolygonSize(k);//各ポリゴンの頂点数
-				if (pcs != 3 && pcs != 4)continue;//頂点数3個,4個以外はスキップ
-				if (matId == i)//現在処理中のマテリアルと一致した場合以下処理実行(1Meshに2以上のマテリアルが有る場合の処理)
-				{
-					pIndex[mInd][iCount] = vCount + VerArrStart;//vpVBは分割前index順に整列済み
-					pIndex[mInd][iCount + 1] = vCount + 1 + VerArrStart;
-					pIndex[mInd][iCount + 2] = vCount + 2 + VerArrStart;
-					iCount += 3;
-
-					//4頂点は{ 0, 1, 2 }, { 0, 2, 3 }で分割するよう処理
-					if (pcs == 4) {
-						pIndex[mInd][iCount] = vCount + VerArrStart;
-						pIndex[mInd][iCount + 1] = vCount + 2 + VerArrStart;
-						pIndex[mInd][iCount + 2] = vCount + 3 + VerArrStart;
-						iCount += 3;//4頂点を分割後はインデックスは3頂点の倍
-						vCount++;
-					}
-					vCount += 3;
-					polygon_cnt++;
-				}
-			}
-
-			//インデックスバッファ生成1段回目
-			if (iCount > 0) CreateIndexBuffer(iCount, mInd);
-			dpara.material[mInd].dwNumFace = polygon_cnt;//そのマテリアル内のポリゴン数	
-			mInd++;
+			CONSTANT_BUFFER2 sg;
+			dpara[m].material[i].Kd.x += addDiffuse;
+			dpara[m].material[i].Kd.y += addDiffuse;
+			dpara[m].material[i].Kd.z += addDiffuse;
+			dpara[m].material[i].Ks.x += addSpecular;
+			dpara[m].material[i].Ks.y += addSpecular;
+			dpara[m].material[i].Ks.z += addSpecular;
+			dpara[m].material[i].Ka.x += addAmbient;
+			dpara[m].material[i].Ka.y += addAmbient;
+			dpara[m].material[i].Ka.z += addAmbient;
+			sg.vDiffuse = dpara[m].material[i].Kd;//ディフューズカラーをシェーダーに渡す
+			sg.vSpeculer = dpara[m].material[i].Ks;//スペキュラーをシェーダーに渡す
+			sg.vAmbient = dpara[m].material[i].Ka;//アンビエントをシェーダーに渡す
+			mObjectCB1[m]->CopyData(i, sg);
 		}
-		VerArrStart += IndexCount34Me[m];
-		VerArrStart2 += m_pdwNumVert[m];
-	}
-
-	//同一座標頂点の法線統一化(テセレーション用)
-	for (DWORD i = 0; i < VerAllpcs; i++) {
-		int indVB = 0;
-		VECTOR3 geo[50];
-		int indVb[50];
-		int indGeo = 0;
-		while (1) {
-			indVB = svList[i].Pop();
-			if (indVB == -1)break;
-			indVb[indGeo] = indVB;
-			geo[indGeo++] = pvVB[indVB].vGeoNorm;
-		}
-		VECTOR3 sum;
-		sum.as(0.0f, 0.0f, 0.0f);
-		for (int i1 = 0; i1 < indGeo; i1++) {
-			sum.x += geo[i1].x;
-			sum.y += geo[i1].y;
-			sum.z += geo[i1].z;
-		}
-		VECTOR3 ave;
-		ave.x = sum.x / (float)indGeo;
-		ave.y = sum.y / (float)indGeo;
-		ave.z = sum.z / (float)indGeo;
-		for (int i1 = 0; i1 < indGeo; i1++) {
-			pvVB[indVb[i1]].vGeoNorm = ave;
-		}
-	}
-
-	//各一時格納用配列解放
-	ARR_DELETE(m_pMaterialCount);
-	ARR_DELETE(IndexCount34Me);
-	ARR_DELETE(IndexCount3M);
-	ARR_DELETE(pdwNumFace);
-	ARR_DELETE(tmpVB);
-	ARR_DELETE(svList);
-
-	for (int i = 0; i < dpara.NumMaterial; i++) {
-		CONSTANT_BUFFER2 sg;
-		dpara.material[i].Kd.x += addDiffuse;
-		dpara.material[i].Kd.y += addDiffuse;
-		dpara.material[i].Kd.z += addDiffuse;
-		dpara.material[i].Ks.x += addSpecular;
-		dpara.material[i].Ks.y += addSpecular;
-		dpara.material[i].Ks.z += addSpecular;
-		dpara.material[i].Ka.x += addAmbient;
-		dpara.material[i].Ka.y += addAmbient;
-		dpara.material[i].Ka.z += addAmbient;
-		sg.vDiffuse = dpara.material[i].Kd;//ディフューズカラーをシェーダーに渡す
-		sg.vSpeculer = dpara.material[i].Ks;//スペキュラーをシェーダーに渡す
-		sg.vAmbient = dpara.material[i].Ka;//アンビエントをシェーダーに渡す
-		mObjectCB1->CopyData(i, sg);
 	}
 }
 
-void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex) {
-	if (dpara.material[materialIndex].tex_no != -1)return;//既に設定済みの場合無効
-	strcpy_s(dpara.material[materialIndex].szTextureName, textureName);
+void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
+	if (dpara[meshIndex].material[materialIndex].tex_no != -1)return;//既に設定済みの場合無効
+	strcpy_s(dpara[meshIndex].material[materialIndex].szTextureName, textureName);
 	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
-	dpara.material[materialIndex].tex_no = dx->GetTexNumber(dpara.material[materialIndex].szTextureName);
+	dpara[meshIndex].material[materialIndex].tex_no = dx->GetTexNumber(dpara[meshIndex].material[materialIndex].szTextureName);
 }
 
-void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex) {
-	if (dpara.material[materialIndex].nortex_no != -1)return;
-	strcpy_s(dpara.material[materialIndex].norTextureName, textureName);
+void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
+	if (dpara[meshIndex].material[materialIndex].nortex_no != -1)return;
+	strcpy_s(dpara[meshIndex].material[materialIndex].norTextureName, textureName);
 	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
-	dpara.material[materialIndex].nortex_no = dx->GetTexNumber(dpara.material[materialIndex].norTextureName);
+	dpara[meshIndex].material[materialIndex].nortex_no = dx->GetTexNumber(dpara[meshIndex].material[materialIndex].norTextureName);
 }
 
 bool SkinMesh::CreateFromFBX(bool disp) {
-	//インデックスバッファ生成2段回目, 一時格納配列解放
-	for (int i = 0; i < dpara.NumMaterial; i++) {
-		CreateIndexBuffer2(pIndex[i], i);
-		ARR_DELETE(pIndex[i]);
-	}
-	ARR_DELETE(pIndex);
-
-	//バーテックスバッファー作成
-	const UINT vbByteSize = (UINT)IndexCount34MeAll * sizeof(MY_VERTEX_S);
-
-	dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB, vbByteSize, dpara.Vview->VertexBufferUploader);
-	dpara.Vview->VertexByteStride = sizeof(MY_VERTEX_S);
-	dpara.Vview->VertexBufferByteSize = vbByteSize;
-
-	if (pvVB_delete_f)ARR_DELETE(pvVB);//使わない場合解放
 
 	if (disp) {
 		vs = dx->pVertexShader_SKIN_D.Get();
@@ -567,13 +442,15 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		ds = dx->pDomainShaderTriangle.Get();
 		gs = dx->pGeometryShader_Before_ds.Get();
 		primType_create = CONTROL_POINT;
-		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+		for (int i = 0; i < numMesh; i++)
+			dpara[i].TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
 		vs = dx->pVertexShader_SKIN.Get();
 		gs = dx->pGeometryShader_Before_vs.Get();
 		primType_create = SQUARE;
-		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		for (int i = 0; i < numMesh; i++)
+			dpara[i].TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 	ps = dx->pPixelShader_3D.Get();
 
@@ -588,13 +465,28 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	slotRootParameter[3].InitAsConstantBufferView(1);
 	slotRootParameter[4].InitAsConstantBufferView(2);
 
-	dpara.rootSignature = CreateRs(5, slotRootParameter);
-	if (dpara.rootSignature == nullptr)return false;
+	for (int i = 0; i < numMesh; i++) {
+		dpara[i].Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB[i],
+			dpara[i].Vview->VertexBufferByteSize,
+			dpara[i].Vview->VertexBufferUploader);
+		if (pvVB_delete_f)ARR_DELETE(pvVB[i]);//使わない場合解放
 
-	//パイプラインステートオブジェクト生成
-	dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_SKIN, alpha, blend, primType_create);
-	if (dpara.PSO == nullptr)return false;
+		for (int i1 = 0; i1 < dpara[i].NumMaterial; i1++) {
+			dpara[i].Iview[i1].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, newIndex[i][i1],
+				dpara[i].Iview[i1].IndexBufferByteSize, dpara[i].Iview[i1].IndexBufferUploader);
+			ARR_DELETE(newIndex[i][i1]);
+		}
+		ARR_DELETE(newIndex[i]);
+		dpara[i].rootSignature = CreateRs(5, slotRootParameter);
+		if (dpara[i].rootSignature == nullptr)return false;
 
+		//パイプラインステートオブジェクト生成
+		dpara[i].PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara[i].rootSignature.Get(),
+			dx->pVertexLayout_SKIN, alpha, blend, primType_create);
+		if (dpara[i].PSO == nullptr)return false;
+	}
+	ARR_DELETE(newIndex);
+	if (pvVB_delete_f)ARR_DELETE(pvVB);
 	return GetTexture();
 }
 
@@ -625,7 +517,7 @@ HRESULT SkinMesh::GetBuffer_Sub(int ind, float end_frame) {
 	}
 
 	if (!m_ppSubAnimationBone) {
-		m_ppSubAnimationBone = new Deformer*[(FBX_PCS - 1) * m_iNumBone];
+		m_ppSubAnimationBone = new Deformer * [(FBX_PCS - 1) * numBone];
 	}
 	return S_OK;
 }
@@ -634,13 +526,13 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 	int loopind = 0;
 	int searchCount = 0;
 	int name2Num = 0;
-	while (loopind < m_iNumBone) {
-		int sa_ind = (ind - 1) * m_iNumBone + loopind;
+	while (loopind < numBone) {
+		int sa_ind = (ind - 1) * numBone + loopind;
 		m_ppSubAnimationBone[sa_ind] = fbx[ind].fbxL->getNoneMeshDeformer(searchCount);
 		searchCount++;
-		const char *name = m_ppSubAnimationBone[sa_ind]->getName();
+		const char* name = m_ppSubAnimationBone[sa_ind]->getName();
 		if (!strncmp("Skeleton", name, 8))continue;
-		char *name2 = &m_pClusterName[loopind * 255];//各Bone名の先頭アドレスを渡す
+		char* name2 = &boneName[loopind * 255];//各Bone名の先頭アドレスを渡す
 		//Bone名に空白が含まれている場合最後の空白以降の文字から終端までの文字を比較する為,
 		//終端文字までポインタを進め, 終端から検査して空白位置手前まで比較する
 		while (*name != '\0')name++;//終端文字までポインタを進める
@@ -652,21 +544,6 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 		name2Num = 0;
 		loopind++;
 	}
-}
-
-void SkinMesh::CreateIndexBuffer(int cnt, int IviewInd) {
-
-	const UINT ibByteSize = (UINT)cnt * sizeof(UINT);
-
-	dpara.Iview[IviewInd].IndexFormat = DXGI_FORMAT_R32_UINT;
-	dpara.Iview[IviewInd].IndexBufferByteSize = ibByteSize;
-	dpara.Iview[IviewInd].IndexCount = cnt;
-}
-
-void SkinMesh::CreateIndexBuffer2(int* pIndex, int IviewInd) {
-
-	dpara.Iview[IviewInd].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, pIndex,
-		dpara.Iview[IviewInd].IndexBufferByteSize, dpara.Iview[IviewInd].IndexBufferUploader);
 }
 
 //ボーンを次のポーズ位置にセットする
@@ -682,7 +559,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (fbx[ind].end_frame <= fbx[ind].current_frame) frame_end = true;
 
 	if (frame_end || ind_change) {
-		for (int i = 0; i < m_iNumBone; i++) {
+		for (int i = 0; i < numBone; i++) {
 			for (int x = 0; x < 4; x++) {
 				for (int y = 0; y < 4; y++) {
 					m_pLastBoneMatrix[i].m[y][x] = m_BoneArray[i].mNewPose.m[y][x];
@@ -702,11 +579,13 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (ind <= 0 || ind > FBX_PCS - 1)subanm = false;
 
 	Deformer* defo = nullptr;
+	FbxLoader* fbL = fbx[0].fbxL;
+	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);
 	if (!subanm) {
-		defo = m_ppCluster[0];
+		defo = mesh->getDeformer(0);
 	}
 	else {
-		defo = m_ppSubAnimationBone[(ind - 1) * m_iNumBone];
+		defo = m_ppSubAnimationBone[(ind - 1) * numBone];
 	}
 	defo->EvaluateGlobalTransform(time);
 
@@ -722,13 +601,13 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	}
 
 	MATRIX pose;
-	for (int i = 0; i < m_iNumBone; i++) {
+	for (int i = 0; i < numBone; i++) {
 		Deformer* de = nullptr;
 		if (!subanm) {
-			de = m_ppCluster[i];
+			de = mesh->getDeformer(i);
 		}
 		else {
-			de = m_ppSubAnimationBone[(ind - 1) * m_iNumBone + i];
+			de = m_ppSubAnimationBone[(ind - 1) * numBone + i];
 		}
 		de->EvaluateGlobalTransform(time);
 
@@ -755,7 +634,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (BoneConnect != -1.0f) {
 		if (fbx[ind].connect_step <= 0.0f || BoneConnect > 1.0f)BoneConnect = -1.0f;
 		else {
-			for (int i = 0; i < m_iNumBone; i++) {
+			for (int i = 0; i < numBone; i++) {
 				StraightLinear(&m_BoneArray[i].mNewPose, &m_pLastBoneMatrix[i], &m_BoneArray[i].mNewPose, BoneConnect += (ti / fbx[ind].connect_step));
 			}
 		}
@@ -775,7 +654,8 @@ MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 	return ret;
 }
 
-VECTOR3 SkinMesh::GetVertexPosition(int verNum, float adjustZ, float adjustY, float adjustX, float thetaZ, float thetaY, float thetaX, float scal) {
+VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
+	float thetaZ, float thetaY, float thetaX, float scal) {
 
 	//頂点にボーン行列を掛け出力
 	VECTOR3 ret, pos;
@@ -791,12 +671,12 @@ VECTOR3 SkinMesh::GetVertexPosition(int verNum, float adjustZ, float adjustY, fl
 	ret.x = ret.y = ret.z = 0.0f;
 
 	for (int i = 0; i < 4; i++) {
-		pos.x = pvVB[verNum].vPos.x;
-		pos.y = pvVB[verNum].vPos.y;
-		pos.z = pvVB[verNum].vPos.z;
-		MATRIX m = GetCurrentPoseMatrix(pvVB[verNum].bBoneIndex[i]);
+		pos.x = pvVB[meshIndex][verNum].vPos.x;
+		pos.y = pvVB[meshIndex][verNum].vPos.y;
+		pos.z = pvVB[meshIndex][verNum].vPos.z;
+		MATRIX m = GetCurrentPoseMatrix(pvVB[meshIndex][verNum].bBoneIndex[i]);
 		VectorMatrixMultiply(&pos, &m);
-		VectorMultiply(&pos, pvVB[verNum].bBoneWeight[i]);
+		VectorMultiply(&pos, pvVB[meshIndex][verNum].bBoneWeight[i]);
 		VectorAddition(&ret, &ret, &pos);
 	}
 	ret.x += adjustX;
@@ -806,9 +686,9 @@ VECTOR3 SkinMesh::GetVertexPosition(int verNum, float adjustZ, float adjustY, fl
 	return ret;
 }
 
-void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES *sgb) {
+void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 
-	for (int i = 0; i < m_iNumBone; i++)
+	for (int i = 0; i < numBone; i++)
 	{
 		MATRIX mat = GetCurrentPoseMatrix(i);
 		MatrixTranspose(&mat);
@@ -818,21 +698,22 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES *sgb) {
 
 bool SkinMesh::GetTexture() {
 
-	TextureNo* te = new TextureNo[dpara.NumMaterial];
-	for (int i = 0; i < dpara.NumMaterial; i++) {
-		if (dpara.material[i].tex_no < 0)te[i].diffuse = 0; else
-			te[i].diffuse = dpara.material[i].tex_no;
-		if (dpara.material[i].nortex_no < 0)te[i].normal = 0; else
-			te[i].normal = dpara.material[i].nortex_no;
+	int stIndex = 0;
+	for (int m = 0; m < numMesh; m++) {
+		TextureNo* te = new TextureNo[dpara[m].NumMaterial];
+		for (int i = 0; i < dpara[m].NumMaterial; i++) {
+			if (dpara[m].material[i].tex_no < 0)te[i].diffuse = 0; else
+				te[i].diffuse = dpara[m].material[i].tex_no;
+			if (dpara[m].material[i].nortex_no < 0)te[i].normal = 0; else
+				te[i].normal = dpara[m].material[i].nortex_no;
+		}
+		createTextureResource(stIndex, dpara[m].NumMaterial, te);
+		int numTex = dpara[m].NumMaterial * 2;
+		dpara[m].srvHeap = CreateSrvHeap(stIndex, numTex, te);
+		stIndex += dpara[m].NumMaterial * 2;
+		ARR_DELETE(te);
+		if (dpara[m].srvHeap == nullptr)return false;
 	}
-
-	createTextureResource(dpara.NumMaterial, te);
-	int numTex = dpara.NumMaterial * 2;
-	dpara.srvHeap = CreateSrvHeap(numTex, te);
-
-	ARR_DELETE(te);
-	if (dpara.srvHeap == nullptr)return false;
-
 	return true;
 }
 
@@ -872,13 +753,15 @@ void SkinMesh::Draw() {
 	mObjectCB0->CopyData(0, cb[dx->cBuffSwap[1]]);
 	mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
 
-	dpara.cbRes0 = mObjectCB0->Resource();
-	dpara.cbRes1 = mObjectCB1->Resource();
-	dpara.cbRes2 = mObject_BONES->Resource();
-	dpara.sRes0 = nullptr;
-	dpara.sRes1 = nullptr;
-	dpara.insNum = 1;
-	drawsub(dpara);
+	for (int i = 0; i < numMesh; i++) {
+		dpara[i].cbRes0 = mObjectCB0->Resource();
+		dpara[i].cbRes1 = mObjectCB1[i]->Resource();
+		dpara[i].cbRes2 = mObject_BONES->Resource();
+		dpara[i].sRes0 = nullptr;
+		dpara[i].sRes1 = nullptr;
+		dpara[i].insNum = 1;
+		drawsub(dpara[i]);
+	}
 }
 
 

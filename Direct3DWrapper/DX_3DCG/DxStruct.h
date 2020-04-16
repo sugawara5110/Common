@@ -154,21 +154,15 @@ struct MY_VERTEX_S{
 };
 
 struct MY_MATERIAL_S {
-	CHAR szName[255];
-	VECTOR4 Kd;//ディフューズ
-	VECTOR4 Ks;//スペキュラー
-	VECTOR4 Ka;//アンビエント
-	CHAR szTextureName[255];//テクスチャーファイル名
-	CHAR norTextureName[255];//ノーマルマップ
-	DWORD dwNumFace;//マテリアル毎のポリゴン数
-	int tex_no;
-	int nortex_no;
-	MY_MATERIAL_S()
-	{
-		ZeroMemory(this, sizeof(MY_MATERIAL_S));
-		tex_no = 0;
-		nortex_no = 0;
-	}
+	CHAR szName[255] = {};
+	VECTOR4 Kd = {};//ディフューズ
+	VECTOR4 Ks = {};//スペキュラー
+	VECTOR4 Ka = {};//アンビエント
+	CHAR szTextureName[255] = {};//テクスチャーファイル名
+	CHAR norTextureName[255] = {};//ノーマルマップ
+	UINT numPolygon = 0;//マテリアル毎のポリゴン数
+	int tex_no = 0;
+	int nortex_no = 0;
 };
 
 struct BONE{

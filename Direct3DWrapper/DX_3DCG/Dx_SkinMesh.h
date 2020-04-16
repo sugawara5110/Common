@@ -42,13 +42,13 @@ protected:
 	float addSpecular = 0.0f;
 	float addAmbient = 0.0f;
 
-	PrimitiveType          primType_create;
+	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB0 = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2>** mObjectCB1 = nullptr;
 	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
 	CONSTANT_BUFFER cb[2];
 	SHADER_GLOBAL_BONES sgb[2];
@@ -59,40 +59,27 @@ protected:
 	//DrawOn
 	bool DrawOn = false;
 
-	//メッシュ関連	
-	DWORD* m_pdwNumVert;//メッシュ毎の頂点数
-	DWORD VerAllpcs;   //全頂点数
-	MY_VERTEX_S* pvVB;//使用後保持するか破棄するかフラグで決める,通常は破棄
+	MY_VERTEX_S** pvVB = nullptr;;//使用後保持するか破棄するかフラグで決める,通常は破棄
+	UINT*** newIndex = nullptr;
 	bool pvVB_delete_f;
 
-	//一時格納用
-	DWORD* m_pMaterialCount;//メッシュ毎のマテリアルカウント
-	DWORD* pdwNumFace; //メッシュ毎のポリゴン数
-	int* IndexCount34Me;  //4頂点ポリゴン分割前のメッシュ毎のインデックス数
-	int IndexCount34MeAll;
-	int* IndexCount3M;  //4頂点ポリゴン分割後のマテリアル毎のインデックス数
-	int** pIndex;      //メッシュ毎のインデックス配列(4頂点ポリゴン分割後)
-
 	//ボーン
-	int m_iNumBone;
-	BONE* m_BoneArray;
+	int numBone = 0;
+	BONE* m_BoneArray = nullptr;
+	char* boneName = nullptr;
 
 	//FBX
+	int numMesh = 0;
 	SkinMesh_sub* fbx;
-	Deformer** m_ppCluster;//ボーン情報
-	char* m_pClusterName;
-	int NodeArraypcs;
-	Deformer** m_ppSubAnimationBone;//その他アニメーションボーンポインタ配列
+	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
 	MATRIX* m_pLastBoneMatrix;
 	int AnimLastInd;
 	float BoneConnect;
-	drawPara dpara = {};
+	drawPara* dpara = nullptr;
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
-	void CreateIndexBuffer(int cnt, int IviewInd);
-	void CreateIndexBuffer2(int* pIndex, int IviewInd);
-	void ReadSkinInfo(MY_VERTEX_S* pvVB);
+	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB);
 	MATRIX GetCurrentPoseMatrix(int index);
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
 	bool GetTexture();
@@ -113,8 +100,8 @@ public:
 	HRESULT GetFbx(CHAR* szFileName);
 	void GetBuffer(float end_frame);
 	void SetVertex();
-	void SetDiffuseTextureName(char* textureName, int materialIndex);
-	void SetNormalTextureName(char* textureName, int materialIndex);
+	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
+	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
 	bool CreateFromFBX(bool disp);
 	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
@@ -126,7 +113,8 @@ public:
 		float thetaZ, float thetaY, float thetaX, float size, float disp = 1.0f, float shininess = 4.0f);
 	void DrawOff();
 	void Draw();
-	VECTOR3 GetVertexPosition(int verNum, float adjustZ, float adjustY, float adjustX, float thetaZ, float thetaY, float thetaX, float scale);
+	VECTOR3 GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
+		float thetaZ, float thetaY, float thetaX, float scale);
 };
 
 #endif

@@ -168,8 +168,8 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	te.diffuse = texpar;
 	te.normal = -1;
 
-	createTextureResource(1, &te);
-	mSrvHeap = CreateSrvHeap(1, &te);
+	createTextureResource(0, 1, &te);
+	mSrvHeap = CreateSrvHeap(0, 1, &te);
 	if (mSrvHeap == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(Draw)

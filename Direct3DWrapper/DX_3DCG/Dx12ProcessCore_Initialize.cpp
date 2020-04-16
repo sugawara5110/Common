@@ -392,7 +392,7 @@ void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texNa
 		texNum = numTexArr + 1;
 		texture = new InternalTexture[texNum];
 		UCHAR dm[8 * 4 * 8] = {};
-		UCHAR sdm[4] = { 255,255,255,255 };
+		UCHAR sdm[4] = { 128,128,255,0 };
 		for (int i = 0; i < 8 * 4 * 8; i += 4)
 			memcpy(&dm[i], sdm, sizeof(UCHAR) * 4);
 		texture[0].setParameter(DXGI_FORMAT_R8G8B8A8_UNORM, 8, 8 * 4, 8);

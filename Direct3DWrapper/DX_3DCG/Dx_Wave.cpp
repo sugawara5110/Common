@@ -175,15 +175,15 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	dpara.material[0].tex_no = texNo;
 	dpara.material[0].nortex_no = nortNo;
-	dpara.material[0].dwNumFace = 1;
+	dpara.material[0].numPolygon = 1;
 	TextureNo te;
 	if (texNo < 0)te.diffuse = 0; else
 		te.diffuse = texNo;
 	if (nortNo < 0)te.normal = 0; else
 		te.normal = nortNo;
 
-	createTextureResource(1, &te);
-	dpara.srvHeap = CreateSrvHeap(2, &te);
+	createTextureResource(0, 1, &te);
+	dpara.srvHeap = CreateSrvHeap(0, 2, &te);
 	if (dpara.srvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);

@@ -47,10 +47,10 @@ HRESULT Common::SetTextureMPixel(BYTE* frame, int ind) {
 	return S_OK;
 }
 
-HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
+HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to) {
 
 	HRESULT hr = S_OK;
-	int resCnt = -1;
+	int resCnt = resourceStartIndex - 1;
 	for (int i = 0; i < MaterialNum; i++) {
 		//diffuse
 		if (to[i].diffuse < 0 || movOn[i].m_on) {
@@ -86,7 +86,7 @@ HRESULT Common::createTextureResource(int MaterialNum, TextureNo* to) {
 	return S_OK;
 }
 
-ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int texNum, TextureNo* to)
+ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int resourceStartIndex, int texNum, TextureNo* to)
 {
 	ComPtr <ID3D12DescriptorHeap>srv;
 
@@ -108,7 +108,7 @@ ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int texNum, TextureNo* to)
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	for (int i = 0; i < texNum; i++) {
+	for (int i = resourceStartIndex; i < texNum + resourceStartIndex; i++) {
 		srvDesc.Format = texture[i].Get()->GetDesc().Format;
 		srvDesc.Texture2D.MipLevels = texture[i].Get()->GetDesc().MipLevels;
 		dx->md3dDevice->CreateShaderResourceView(texture[i].Get(), &srvDesc, hDescriptor);
@@ -372,7 +372,7 @@ void Common::drawsub(drawPara& para) {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.srvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
 		//使用されていないマテリアル対策
-		if (para.material[i].dwNumFace == 0)
+		if (para.material[i].numPolygon == 0)
 		{
 			continue;
 		}
