@@ -234,7 +234,19 @@ void SkinMesh::SetVertex() {
 		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 		auto ver = mesh->getVertices();//頂点取得
 		auto nor = mesh->getNormal(0);//法線取得
+
 		double* uv0 = mesh->getAlignedUV(0);//テクスチャUV0
+		char* uv0Name = nullptr;            //テクスチャUVSet名0
+		double* uv1 = nullptr;              //テクスチャUV1
+		char* uv1Name = nullptr;            //テクスチャUVSet名1
+		if (mesh->getNumUVObj() > 1) {
+			uv1 = mesh->getAlignedUV(1);
+			uv0Name = mesh->getUVName(0);
+			uv1Name = mesh->getUVName(1);
+		}
+		else {
+			uv1 = mesh->getAlignedUV(0);
+		}
 
 		//同一座標頂点リスト
 		SameVertexList* svList = new SameVertexList[mesh->getNumVertices()];
@@ -253,8 +265,10 @@ void SkinMesh::SetVertex() {
 			v->vGeoNorm.x = (float)nor[i * 3];
 			v->vGeoNorm.y = (float)nor[i * 3 + 1];
 			v->vGeoNorm.z = (float)nor[i * 3 + 2];
-			v->vTex.x = (float)uv0[i * 2];
-			v->vTex.y = 1.0f - (float)uv0[i * 2 + 1];//(1.0f-UV)
+			v->vTex0.x = (float)uv0[i * 2];
+			v->vTex0.y = 1.0f - (float)uv0[i * 2 + 1];//(1.0f-UV)
+			v->vTex1.x = (float)uv1[i * 2];
+			v->vTex1.y = 1.0f - (float)uv1[i * 2 + 1];//(1.0f-UV)
 			svList[index[i]].Push(i);
 			for (int bi = 0; bi < 4; bi++) {
 				//ReadSkinInfo(tmpVB)で読み込んだ各パラメータコピー
@@ -373,63 +387,107 @@ void SkinMesh::SetVertex() {
 		for (UINT i = 0; i < numMaterial; i++) {
 			//マテリアル情報取得
 			//拡散反射光
-			dpara[m].material[i].Kd.x = (float)mesh->getDiffuseColor(0, 0);
-			dpara[m].material[i].Kd.y = (float)mesh->getDiffuseColor(0, 1);
-			dpara[m].material[i].Kd.z = (float)mesh->getDiffuseColor(0, 2);
-			dpara[m].material[i].Kd.w = 0.0f;//使用してない
+			dpara[m].material[i].diffuse.x = (float)mesh->getDiffuseColor(0, 0);
+			dpara[m].material[i].diffuse.y = (float)mesh->getDiffuseColor(0, 1);
+			dpara[m].material[i].diffuse.z = (float)mesh->getDiffuseColor(0, 2);
+			dpara[m].material[i].diffuse.w = 0.0f;//使用してない
 			//スペキュラー
-			dpara[m].material[i].Ks.x = (float)mesh->getSpecularColor(0, 0);
-			dpara[m].material[i].Ks.y = (float)mesh->getSpecularColor(0, 1);
-			dpara[m].material[i].Ks.z = (float)mesh->getSpecularColor(0, 2);
-			dpara[m].material[i].Ks.w = 0.0f;//使用してない
+			dpara[m].material[i].specular.x = (float)mesh->getSpecularColor(0, 0);
+			dpara[m].material[i].specular.y = (float)mesh->getSpecularColor(0, 1);
+			dpara[m].material[i].specular.z = (float)mesh->getSpecularColor(0, 2);
+			dpara[m].material[i].specular.w = 0.0f;//使用してない
 			//アンビエント
-			dpara[m].material[i].Ka.x = (float)mesh->getAmbientColor(0, 0);
-			dpara[m].material[i].Ka.y = (float)mesh->getAmbientColor(0, 1);
-			dpara[m].material[i].Ka.z = (float)mesh->getAmbientColor(0, 2);
-			dpara[m].material[i].Ka.w = 0.0f;//使用してない
+			dpara[m].material[i].ambient.x = (float)mesh->getAmbientColor(0, 0);
+			dpara[m].material[i].ambient.y = (float)mesh->getAmbientColor(0, 1);
+			dpara[m].material[i].ambient.z = (float)mesh->getAmbientColor(0, 2);
+			dpara[m].material[i].ambient.w = 0.0f;//使用してない
 
-			//テクスチャー
-			if (mesh->getNormalTextureName(i)) {
-				strcpy_s(dpara[m].material[i].norTextureName, mesh->getNormalTextureName(i));
-				//ファイル名を元にテクスチャ番号を読み込む
-				dpara[m].material[i].nortex_no = dx->GetTexNumber(dpara[m].material[i].norTextureName);
+			//ディフェーズテクスチャId取得
+			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
+				textureType type = mesh->getDiffuseTextureType(i, tNo);
+				if (type.DiffuseColor && !type.SpecularColor ||
+					mesh->getNumDiffuseTexture(i) == 1) {
+					auto diffName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
+					dpara[m].material[i].diftex_no = dx->GetTexNumber(diffName);
+					auto str = mesh->getDiffuseTextureUVName(i, tNo);
+					strcpy(dpara[m].material[i].difUvName, str);
+					break;
+				}
 			}
-			if (mesh->getDiffuseTextureName(i)) {
-				strcpy_s(dpara[m].material[i].szTextureName, mesh->getDiffuseTextureName(i));
-				//ファイル名を元にテクスチャ番号を読み込む
-				dpara[m].material[i].tex_no = dx->GetTexNumber(dpara[m].material[i].szTextureName);
+			//スペキュラテクスチャId取得
+			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
+				textureType type = mesh->getDiffuseTextureType(i, tNo);
+				if (type.SpecularColor) {
+					auto speName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
+					dpara[m].material[i].spetex_no = dx->GetTexNumber(speName);
+					auto str = mesh->getDiffuseTextureUVName(i, tNo);
+					strcpy(dpara[m].material[i].speUvName, str);
+					break;
+				}
+			}
+			//ノーマルテクスチャId取得
+			for (int tNo = 0; tNo < mesh->getNumNormalTexture(i); tNo++) {
+				//ディフェーズテクスチャ用のノーマルマップしか使用しないので
+				//取得済みのディフェーズテクスチャUV名と同じUV名のノーマルマップを探す
+				if (!strcmp(dpara[m].material[i].difUvName, mesh->getNormalTextureUVName(i, tNo)) ||
+					mesh->getNumNormalTexture(i) == 1) {
+					auto norName = dx->GetNameFromPass(mesh->getNormalTextureName(i, tNo));
+					dpara[m].material[i].nortex_no = dx->GetTexNumber(norName);
+					auto str = mesh->getNormalTextureUVName(i, tNo);
+					strcpy(dpara[m].material[i].norUvName, str);
+					break;
+				}
+			}
+			float uvSw = 0.0f;
+			if (uv0Name != nullptr) {
+				char* difName = dpara[m].material[i].difUvName;
+				char* speName = dpara[m].material[i].speUvName;
+				//uv逆転
+				if (!strcmp(difName, uv1Name) &&
+					(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
+					uvSw = 1.0f;
+				//どちらもuv0
+				if (!strcmp(difName, uv0Name) &&
+					(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
+					uvSw = 2.0f;
+				//どちらもuv1
+				if (!strcmp(difName, uv1Name) &&
+					(!strcmp(speName, "") || !strcmp(speName, uv1Name)))
+					uvSw = 3.0f;
 			}
 
 			CONSTANT_BUFFER2 sg;
-			dpara[m].material[i].Kd.x += addDiffuse;
-			dpara[m].material[i].Kd.y += addDiffuse;
-			dpara[m].material[i].Kd.z += addDiffuse;
-			dpara[m].material[i].Ks.x += addSpecular;
-			dpara[m].material[i].Ks.y += addSpecular;
-			dpara[m].material[i].Ks.z += addSpecular;
-			dpara[m].material[i].Ka.x += addAmbient;
-			dpara[m].material[i].Ka.y += addAmbient;
-			dpara[m].material[i].Ka.z += addAmbient;
-			sg.vDiffuse = dpara[m].material[i].Kd;//ディフューズカラーをシェーダーに渡す
-			sg.vSpeculer = dpara[m].material[i].Ks;//スペキュラーをシェーダーに渡す
-			sg.vAmbient = dpara[m].material[i].Ka;//アンビエントをシェーダーに渡す
+			dpara[m].material[i].diffuse.x += addDiffuse;
+			dpara[m].material[i].diffuse.y += addDiffuse;
+			dpara[m].material[i].diffuse.z += addDiffuse;
+			dpara[m].material[i].specular.x += addSpecular;
+			dpara[m].material[i].specular.y += addSpecular;
+			dpara[m].material[i].specular.z += addSpecular;
+			dpara[m].material[i].ambient.x += addAmbient;
+			dpara[m].material[i].ambient.y += addAmbient;
+			dpara[m].material[i].ambient.z += addAmbient;
+			sg.vDiffuse = dpara[m].material[i].diffuse;//ディフューズカラーをシェーダーに渡す
+			sg.vSpeculer = dpara[m].material[i].specular;//スペキュラーをシェーダーに渡す
+			sg.vAmbient = dpara[m].material[i].ambient;//アンビエントをシェーダーに渡す
+			sg.uvSwitch.x = uvSw;
 			mObjectCB1[m]->CopyData(i, sg);
 		}
 	}
 }
 
 void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
-	if (dpara[meshIndex].material[materialIndex].tex_no != -1)return;//既に設定済みの場合無効
-	strcpy_s(dpara[meshIndex].material[materialIndex].szTextureName, textureName);
-	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
-	dpara[meshIndex].material[materialIndex].tex_no = dx->GetTexNumber(dpara[meshIndex].material[materialIndex].szTextureName);
+	if (dpara[meshIndex].material[materialIndex].diftex_no != -1)return;//既に設定済みの場合無効
+	dpara[meshIndex].material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
 	if (dpara[meshIndex].material[materialIndex].nortex_no != -1)return;
-	strcpy_s(dpara[meshIndex].material[materialIndex].norTextureName, textureName);
-	//ファイル名を元に既にデコード済みのテクスチャ番号を読み込む
-	dpara[meshIndex].material[materialIndex].nortex_no = dx->GetTexNumber(dpara[meshIndex].material[materialIndex].norTextureName);
+	dpara[meshIndex].material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
+}
+
+void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
+	if (dpara[meshIndex].material[materialIndex].spetex_no != -1)return;
+	dpara[meshIndex].material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
 }
 
 bool SkinMesh::CreateFromFBX(bool disp) {
@@ -452,16 +510,18 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	}
 	ps = dx->pPixelShader_3D.Get();
 
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable;
+	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//このDescriptorRangeはシェーダーリソースビュー,Descriptor 1個, shader内registerIndex
 	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);//DescriptorRangeの数は1つ, DescriptorRangeの先頭アドレス
 	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[2].InitAsConstantBufferView(0);
-	slotRootParameter[3].InitAsConstantBufferView(1);
-	slotRootParameter[4].InitAsConstantBufferView(2);
+	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[3].InitAsConstantBufferView(0);
+	slotRootParameter[4].InitAsConstantBufferView(1);
+	slotRootParameter[5].InitAsConstantBufferView(2);
 
 	for (int i = 0; i < numMesh; i++) {
 		dpara[i].Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB[i],
@@ -476,7 +536,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 			ARR_DELETE(newIndex[i][i1]);
 		}
 		ARR_DELETE(newIndex[i]);
-		dpara[i].rootSignature = CreateRs(5, slotRootParameter);
+		dpara[i].rootSignature = CreateRs(6, slotRootParameter);
 		if (dpara[i].rootSignature == nullptr)return false;
 
 		//パイプラインステートオブジェクト生成
@@ -701,15 +761,22 @@ bool SkinMesh::GetTexture() {
 		TextureNo* te = new TextureNo[dpara[m].NumMaterial];
 		int tCnt = 0;
 		for (int i = 0; i < dpara[m].NumMaterial; i++) {
-			if (dpara[m].material[i].tex_no < 0)te[tCnt].diffuse = 0; else
-				te[tCnt].diffuse = dpara[m].material[i].tex_no;
-			if (dpara[m].material[i].nortex_no < 0)te[tCnt].normal = 0; else
+			if (dpara[m].material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
+			else
+				te[tCnt].diffuse = dpara[m].material[i].diftex_no;
+
+			if (dpara[m].material[i].nortex_no < 0)te[tCnt].normal = dx->GetTexNumber("dummyNor.");
+			else
 				te[tCnt].normal = dpara[m].material[i].nortex_no;
+
+			if (dpara[m].material[i].spetex_no < 0)te[tCnt].specular = dx->GetTexNumber("dummyDifSpe.");
+			else
+				te[tCnt].specular = dpara[m].material[i].spetex_no;
 			tCnt++;
 		}
 		createTextureResource(stIndex, tCnt, te);
-		int numTex = tCnt * 2;
-		dpara[m].srvHeap = CreateSrvHeap(stIndex, numTex, te);
+		int numTex = tCnt * 3;
+		dpara[m].srvHeap = CreateSrvHeap(stIndex, numTex);
 		stIndex += numTex;
 		ARR_DELETE(te);
 		if (dpara[m].srvHeap == nullptr)return false;

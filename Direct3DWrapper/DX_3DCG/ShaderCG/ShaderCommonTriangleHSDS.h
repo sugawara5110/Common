@@ -15,7 +15,8 @@ char *ShaderCommonTriangleHSDS =
 "    float4 Pos   : POSITION;\n"
 "    float3 Nor   : NORMAL;\n"
 "    float3 GNor  : GEO_NORMAL;\n"
-"    float2 Tex        : TEXCOORD;\n"
+"    float2 Tex0  : TEXCOORD0;\n"
+"    float2 Tex1  : TEXCOORD1;\n"
 "    uint   instanceID : SV_InstanceID;\n"
 "};\n"
 
@@ -57,7 +58,8 @@ char *ShaderCommonTriangleHSDS =
 "	output.Pos = ip[cpid].Pos;\n"
 "	output.Nor = ip[cpid].Nor;\n"
 "	output.GNor = ip[cpid].GNor;\n"
-"	output.Tex = ip[cpid].Tex;\n"
+"	output.Tex0 = ip[cpid].Tex0;\n"
+"	output.Tex1 = ip[cpid].Tex1;\n"
 "   output.instanceID = ip[cpid].instanceID;\n"
 "	return output;\n"
 "}\n"
@@ -71,10 +73,11 @@ char *ShaderCommonTriangleHSDS =
 "	GS_Mesh_INPUT output = (GS_Mesh_INPUT)0;\n"
 
 //UV座標計算
-"   output.Tex = patch[0].Tex * UV.x + patch[1].Tex * UV.y + patch[2].Tex * UV.z;\n"
+"   output.Tex0 = patch[0].Tex0 * UV.x + patch[1].Tex0 * UV.y + patch[2].Tex0 * UV.z;\n"
+"   output.Tex1 = patch[0].Tex1 * UV.x + patch[1].Tex1 * UV.y + patch[2].Tex1 * UV.z;\n"
 
 //画像から高さを算出
-"   float4 height = g_texDiffuse.SampleLevel(g_samLinear, output.Tex, 0);\n"
+"   float4 height = g_texDiffuse.SampleLevel(g_samLinear, output.Tex0, 0);\n"
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
 //法線ベクトル

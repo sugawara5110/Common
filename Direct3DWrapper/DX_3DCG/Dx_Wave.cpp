@@ -158,31 +158,40 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	mObjectCB1->CopyData(0, sg);
 
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable;
+	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//このDescriptorRangeはシェーダーリソースビュー,Descriptor 1個, 開始Index 0番
 	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);//(t0)DescriptorRangeの数は1つ, DescriptorRangeの先頭アドレス
 	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);//(t1)
-	slotRootParameter[2].InitAsConstantBufferView(0);//(b0)
-	slotRootParameter[3].InitAsConstantBufferView(1);//(b1)
-	slotRootParameter[4].InitAsConstantBufferView(2);//mObjectCB_WAVE(b2)
-	slotRootParameter[5].InitAsShaderResourceView(2);//StructuredBuffer(t2)
+	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[3].InitAsConstantBufferView(0);//(b0)
+	slotRootParameter[4].InitAsConstantBufferView(1);//(b1)
+	slotRootParameter[5].InitAsConstantBufferView(2);//mObjectCB_WAVE(b2)
+	slotRootParameter[6].InitAsShaderResourceView(2);//StructuredBuffer(t2)
 
-	dpara.rootSignature = CreateRs(6, slotRootParameter);
+	dpara.rootSignature = CreateRs(7, slotRootParameter);
 	if (dpara.rootSignature == nullptr)return false;
 
-	dpara.material[0].tex_no = texNo;
+	dpara.material[0].diftex_no = texNo;
 	dpara.material[0].nortex_no = nortNo;
+	dpara.material[0].spetex_no = dx->GetTexNumber("dummyDifSpe.");
+
 	TextureNo te;
-	if (texNo < 0)te.diffuse = 0; else
+	if (texNo < 0)te.diffuse = dx->GetTexNumber("dummyDifSpe.");
+	else
 		te.diffuse = texNo;
-	if (nortNo < 0)te.normal = 0; else
+
+	if (nortNo < 0)te.normal = dx->GetTexNumber("dummyNor.");
+	else
 		te.normal = nortNo;
 
+	te.specular = dx->GetTexNumber("dummyDifSpe.");
+
 	createTextureResource(0, 1, &te);
-	dpara.srvHeap = CreateSrvHeap(0, 2, &te);
+	dpara.srvHeap = CreateSrvHeap(0, 3);
 	if (dpara.srvHeap == nullptr)return false;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
@@ -212,7 +221,7 @@ bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float div
 bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide) {
 	cbw.wHei_divide.as(waveHeight, divide, 0.0f, 0.0f);
 	mObjectCB_WAVE->CopyData(0, cbw);
-	dpara.material[0].tex_no = texNo;
+	dpara.material[0].diftex_no = texNo;
 	dpara.material[0].nortex_no = nortNo;
 	GetShaderByteCode();
 	if (!ComCreate())return false;

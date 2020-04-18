@@ -133,7 +133,7 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 }
 
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
-	dpara.material[0].tex_no = tNo;
+	dpara.material[0].diftex_no = tNo;
 	bool disp = false;
 	if (primType_create == CONTROL_POINT)disp = true;
 	if (tNo == -1 && movOn[0].m_on == false) {
@@ -187,42 +187,51 @@ void PolygonData::SetCol(float difR, float difG, float difB, float speR, float s
 }
 
 bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
-	return Create(light, tNo, -1, blend, alpha);
+	return Create(light, tNo, -1, -1, blend, alpha);
 }
 
-bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha) {
+bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha) {
 
 	GetShaderByteCode(light, tNo);
 
 	mObjectCB1->CopyData(0, sg);
 
 	//BuildRootSignature
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable;
+	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//このDescriptorRangeはシェーダーリソースビュー,Descriptor 1個, 開始Index 0番
 	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
 
 	//BuildRootSignatureParameter
-	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);// DescriptorRangeの数は1つ, DescriptorRangeの先頭アドレス
 	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[2].InitAsConstantBufferView(0);
-	slotRootParameter[3].InitAsConstantBufferView(1);
+	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[3].InitAsConstantBufferView(0);
+	slotRootParameter[4].InitAsConstantBufferView(1);
 
-	dpara.rootSignature = CreateRs(4, slotRootParameter);
+	dpara.rootSignature = CreateRs(5, slotRootParameter);
 	if (dpara.rootSignature == nullptr)return false;
 
-	//SRVのデスクリプターヒープ生成
-	dpara.material[0].tex_no = tNo;
+	dpara.material[0].diftex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
+	dpara.material[0].spetex_no = spetNo;
 
 	TextureNo te;
-	if (tNo < 0)te.diffuse = 0; else
+	if (tNo < 0)te.diffuse = dx->GetTexNumber("dummyDifSpe.");
+	else
 		te.diffuse = tNo;
-	if (nortNo < 0)te.normal = 0; else
+
+	if (nortNo < 0)te.normal = dx->GetTexNumber("dummyNor.");
+	else
 		te.normal = nortNo;
 
+	if (spetNo < 0)te.specular = dx->GetTexNumber("dummyDifSpe.");
+	else
+		te.specular = spetNo;
+
 	createTextureResource(0, 1, &te);
-	dpara.srvHeap = CreateSrvHeap(0, 2, &te);
+	dpara.srvHeap = CreateSrvHeap(0, 3);
 	if (dpara.srvHeap == nullptr)return false;
 
 	UINT VertexSize;

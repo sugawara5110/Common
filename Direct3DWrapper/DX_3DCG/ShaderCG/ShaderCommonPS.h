@@ -9,8 +9,9 @@ char *ShaderCommonPS =
 "float4 PS_L(PS_INPUT input) : SV_Target\n"
 "{\n"
 //テクスチャ
-"    float4 Tdif = g_texDiffuse.Sample(g_samLinear, input.Tex);\n"
-"    float4 Tnor = g_texNormal.Sample(g_samLinear, input.Tex);\n"
+"    float4 Tdif = g_texDiffuse.Sample(g_samLinear, input.Tex0);\n"
+"    float4 Tnor = g_texNormal.Sample(g_samLinear, input.Tex0);\n"
+"    float4 Tspe = g_texSpecular.Sample(g_samLinear, input.Tex1);\n"
 
 //法線の再計算
 "    float3 N = GetNormal(Tnor.xyz, input.Nor, input.tangent);\n"
@@ -40,7 +41,7 @@ char *ShaderCommonPS =
 //最後にテクスチャの色を掛け合わせる
 "    float alpha = Tdif.w;\n"
 "    float3 dif = Out.Diffuse * Tdif.xyz;\n"
-"    float3 spe = Out.Speculer;\n"//後でスペキュラテクスチャ追加
+"    float3 spe = Out.Speculer * Tspe.xyz;\n"
 "    return float4(dif + spe, alpha) + g_ObjCol;\n"
 "}\n"
 /////////////////////////////////////////ライト有////////////////////////////////////////////////////////////
@@ -49,7 +50,7 @@ char *ShaderCommonPS =
 "float4 PS(PS_INPUT input) : SV_Target\n"
 "{\n"
 //テクスチャ
-"    float4 Tdif = g_texDiffuse.Sample(g_samLinear, input.Tex);\n"
+"    float4 Tdif = g_texDiffuse.Sample(g_samLinear, input.Tex0);\n"
 
 //フォグ計算テクスチャに対して計算
 "    Tdif = FogCom(g_FogColor, g_FogAmo_Density, g_C_Pos, input.wPos, Tdif);\n"

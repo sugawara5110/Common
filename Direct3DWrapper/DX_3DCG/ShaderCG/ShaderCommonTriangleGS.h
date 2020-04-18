@@ -10,8 +10,8 @@ char* ShaderCommonTriangleGS =
 
 "   output.wPos = mul(input.Pos, g_World[input.instanceID]);\n"
 "   output.Pos = mul(input.Pos, g_WVP[input.instanceID]);\n"
-"   output.Tex = input.Tex;\n"
-
+"   output.Tex0 = input.Tex0;\n"
+"   output.Tex1 = input.Tex1;\n"
 "   return output;\n"
 "}\n"
 //**************************************ジオメトリシェーダー********************************************************//

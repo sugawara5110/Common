@@ -102,6 +102,7 @@ public:
 	void SetVertex();
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
+	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);
 	bool CreateFromFBX(bool disp);
 	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);

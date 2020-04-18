@@ -48,7 +48,11 @@ protected:
 	float addSpecular = 0.0f;
 	float addAmbient = 0.0f;
 
-	PrimitiveType          primType_create;
+	CHAR szName[255] = {};//マテリアル名
+	CHAR szTextureName[255] = {};//テクスチャーファイル名
+	CHAR norTextureName[255] = {};//ノーマルマップ名
+
+	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
 	drawPara dpara = {};

@@ -448,7 +448,7 @@ protected:
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
-	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int resourceStartIndex, int texNum, TextureNo* to);
+	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int resourceStartIndex, int texNum);
 	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//íºê⁄égópã÷é~
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
@@ -568,7 +568,7 @@ public:
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 	bool Create(bool light, int tNo, bool blend, bool alpha);
-	bool Create(bool light, int tNo, int nortNo, bool blend, bool alpha);
+	bool Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha);
 	void SetVertex(int I1, int I2, int i,
 		float vx, float vy, float vz,
 		float nx, float ny, float nz,

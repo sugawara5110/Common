@@ -202,8 +202,9 @@ bool Dx12Process::CreateShaderByteCode() {
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "GEO_NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "BONE_INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "BONE_WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 60, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BONE_INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 52, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BONE_WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 68, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 	pVertexShader_SKIN = CompileShader(Skin.str, Skin.size, "VSSkin", "vs_5_0");
 	//テセレーター有
@@ -389,18 +390,25 @@ void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texNa
 	int width, LONG_PTR RowPitch, int height) {
 
 	if (!texture) {
-		texNum = numTexArr + 1;
+		texNum = numTexArr + 2;//dummyNor,dummyDifSpe分
 		texture = new InternalTexture[texNum];
 		UCHAR dm[8 * 4 * 8] = {};
-		UCHAR sdm[4] = { 128,128,255,0 };
+		UCHAR ndm[4] = { 128,128,255,0 };
+		for (int i = 0; i < 8 * 4 * 8; i += 4)
+			memcpy(&dm[i], ndm, sizeof(UCHAR) * 4);
+		texture[0].setParameter(DXGI_FORMAT_R8G8B8A8_UNORM, 8, 8 * 4, 8);
+		texture[0].setName("dummyNor.");
+		texture[0].setData(dm);
+
+		UCHAR sdm[4] = { 255,255,255,255 };
 		for (int i = 0; i < 8 * 4 * 8; i += 4)
 			memcpy(&dm[i], sdm, sizeof(UCHAR) * 4);
-		texture[0].setParameter(DXGI_FORMAT_R8G8B8A8_UNORM, 8, 8 * 4, 8);
-		texture[0].setName("dummy");
-		texture[0].setData(dm);
+		texture[1].setParameter(DXGI_FORMAT_R8G8B8A8_UNORM, 8, 8 * 4, 8);
+		texture[1].setName("dummyDifSpe.");
+		texture[1].setData(dm);
 	}
 
-	InternalTexture* tex = &texture[resourceIndex + 1];
+	InternalTexture* tex = &texture[resourceIndex + 2];
 	tex->setParameter(format, width, RowPitch, height);
 	tex->setName(texName);
 	tex->setData(byteArr);

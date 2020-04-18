@@ -105,7 +105,8 @@ char *ShaderWaveDraw =
 "   float2 top_uv = lerp(patch[0].Tex, patch[1].Tex, UV.x);\n"
 "   float2 bottom_uv = lerp(patch[3].Tex, patch[2].Tex, UV.x);\n"
 "   float2 uv = float2(lerp(top_uv, bottom_uv, UV.y));\n"
-"   output.Tex = uv;\n"
+"   output.Tex0 = uv;\n"
+"   output.Tex1 = uv;\n"
 
 //‰æ‘œ‚©‚ç‚‚³‚ğZo
 "   float4 texheight = g_texDiffuse.SampleLevel(g_samLinear, uv, 0);\n"

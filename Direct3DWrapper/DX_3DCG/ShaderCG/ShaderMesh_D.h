@@ -12,7 +12,8 @@ char *ShaderMesh_D =
 "    output.Pos = float4(Pos, 1);\n"
 "    output.Nor = Nor;\n"
 "    output.GNor = GNor;\n"
-"    output.Tex = Tex;\n"
+"    output.Tex0 = Tex;\n"
+"    output.Tex1 = Tex;\n"
 "    output.instanceID = instanceID;\n"
 
 "    return output;\n"

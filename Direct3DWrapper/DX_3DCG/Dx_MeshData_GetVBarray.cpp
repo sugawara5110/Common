@@ -88,37 +88,37 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 		{
 			iMCount++;
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));//lineの7要素目(newmtl)の直後から1個目の文字列をkeyに格納
-			strcpy_s(dpara.material[iMCount].szName, key);
+			strcpy_s(szName, key);
 		}
 		//Kd　ディフューズ
 		if (strcmp(key, "Kd") == 0)
 		{
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
-			dpara.material[iMCount].Kd = v;
+			dpara.material[iMCount].diffuse = v;
 		}
 		//Ks　スペキュラー
 		if (strcmp(key, "Ks") == 0)
 		{
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
-			dpara.material[iMCount].Ks = v;
+			dpara.material[iMCount].specular = v;
 		}
 		//Ka　アンビエント
 		if (strcmp(key, "Ka") == 0)
 		{
 			sscanf_s(&line[3], "%f %f %f", &v.x, &v.y, &v.z);
-			dpara.material[iMCount].Ka = v;
+			dpara.material[iMCount].ambient = v;
 		}
 		//map_Kd　テクスチャー
 		if (strcmp(key, "map_Kd") == 0)
 		{
-			sscanf_s(&line[7], "%s", &dpara.material[iMCount].szTextureName, (unsigned int)sizeof(dpara.material[iMCount].szTextureName));
-			dpara.material[iMCount].tex_no = dx->GetTexNumber(dpara.material[iMCount].szTextureName);
+			sscanf_s(&line[7], "%s", &szTextureName, (unsigned int)sizeof(szTextureName));
+			dpara.material[iMCount].diftex_no = dx->GetTexNumber(szTextureName);
 		}
 		//map_bump　テクスチャー
 		if (strcmp(key, "map_bump") == 0)
 		{
-			sscanf_s(&line[7], "%s", &dpara.material[iMCount].norTextureName, (unsigned int)sizeof(dpara.material[iMCount].norTextureName));
-			dpara.material[iMCount].nortex_no = dx->GetTexNumber(dpara.material[iMCount].norTextureName);
+			sscanf_s(&line[7], "%s", &norTextureName, (unsigned int)sizeof(norTextureName));
+			dpara.material[iMCount].nortex_no = dx->GetTexNumber(norTextureName);
 		}
 	}
 	fclose(fp);
@@ -281,18 +281,18 @@ bool MeshData::SetVertex() {
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		CONSTANT_BUFFER2 sg;
-		dpara.material[i].Kd.x += addDiffuse;
-		dpara.material[i].Kd.y += addDiffuse;
-		dpara.material[i].Kd.z += addDiffuse;
-		dpara.material[i].Ks.x += addSpecular;
-		dpara.material[i].Ks.y += addSpecular;
-		dpara.material[i].Ks.z += addSpecular;
-		dpara.material[i].Ka.x += addAmbient;
-		dpara.material[i].Ka.y += addAmbient;
-		dpara.material[i].Ka.z += addAmbient;
-		sg.vDiffuse = dpara.material[i].Kd;//ディフューズカラーをシェーダーに渡す
-		sg.vDiffuse = dpara.material[i].Ks;//スペキュラーをシェーダーに渡す
-		sg.vAmbient = dpara.material[i].Ka;//アンビエントをシェーダーに渡す
+		dpara.material[i].diffuse.x += addDiffuse;
+		dpara.material[i].diffuse.y += addDiffuse;
+		dpara.material[i].diffuse.z += addDiffuse;
+		dpara.material[i].specular.x += addSpecular;
+		dpara.material[i].specular.y += addSpecular;
+		dpara.material[i].specular.z += addSpecular;
+		dpara.material[i].ambient.x += addAmbient;
+		dpara.material[i].ambient.y += addAmbient;
+		dpara.material[i].ambient.z += addAmbient;
+		sg.vDiffuse = dpara.material[i].diffuse;//ディフューズカラーをシェーダーに渡す
+		sg.vDiffuse = dpara.material[i].specular;//スペキュラーをシェーダーに渡す
+		sg.vAmbient = dpara.material[i].ambient;//アンビエントをシェーダーに渡す
 		mObject_MESHCB->CopyData(i, sg);
 	}
 
@@ -317,7 +317,7 @@ bool MeshData::SetVertex() {
 			if (strcmp(key, "usemtl") == 0)
 			{
 				sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-				if (strcmp(key, dpara.material[i].szName) == 0)
+				if (strcmp(key, szName) == 0)
 				{
 					boFlag = true;
 				}
@@ -328,7 +328,7 @@ bool MeshData::SetVertex() {
 			}
 			if (strcmp(key, "f") == 0 && boFlag == true)
 			{
-				if (dpara.material[i].tex_no != -1)//テクスチャーありサーフェイス
+				if (dpara.material[i].diftex_no != -1)//テクスチャーありサーフェイス
 				{
 					sscanf_s(&line[2], "%d/%d/%d %d/%d/%d %d/%d/%d", &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
 				}
@@ -425,17 +425,19 @@ bool MeshData::CreateMesh() {
 
 	GetShaderByteCode(disp);
 
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable;
+	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);
 	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[2].InitAsConstantBufferView(0);
-	slotRootParameter[3].InitAsConstantBufferView(1);
+	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[3].InitAsConstantBufferView(0);
+	slotRootParameter[4].InitAsConstantBufferView(1);
 
-	dpara.rootSignature = CreateRs(4, slotRootParameter);
+	dpara.rootSignature = CreateRs(5, slotRootParameter);
 	if (dpara.rootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
@@ -449,15 +451,20 @@ bool MeshData::GetTexture() {
 
 	TextureNo* te = new TextureNo[dpara.NumMaterial];
 	for (int i = 0; i < dpara.NumMaterial; i++) {
-		if (dpara.material[i].tex_no < 0)te[i].diffuse = 0; else
-			te[i].diffuse = dpara.material[i].tex_no;
-		if (dpara.material[i].nortex_no < 0)te[i].normal = 0; else
+		if (dpara.material[i].diftex_no < 0)te[i].diffuse = dx->GetTexNumber("dummyDifSpe.");
+		else
+			te[i].diffuse = dpara.material[i].diftex_no;
+
+		if (dpara.material[i].nortex_no < 0)te[i].normal = dx->GetTexNumber("dummyNor.");
+		else
 			te[i].normal = dpara.material[i].nortex_no;
+
+		te[i].specular = dx->GetTexNumber("dummyDifSpe.");
 	}
 
 	createTextureResource(0, dpara.NumMaterial, te);
-	int numTex = dpara.NumMaterial * 2;
-	dpara.srvHeap = CreateSrvHeap(0, numTex, te);
+	int numTex = dpara.NumMaterial * 3;
+	dpara.srvHeap = CreateSrvHeap(0, numTex);
 	if (dpara.srvHeap == nullptr)return false;
 
 	for (int i = 0; i < dpara.NumMaterial; i++)

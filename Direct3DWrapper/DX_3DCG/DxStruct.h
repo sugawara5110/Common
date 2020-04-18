@@ -63,6 +63,7 @@ struct CONSTANT_BUFFER2 {
 	VECTOR4 vDiffuse;//ディフューズ色
 	VECTOR4 vSpeculer;//スぺキュラ色
 	VECTOR4 vAmbient;//アンビエント
+	VECTOR4 uvSwitch;
 };
 
 //コンスタントバッファ2D用
@@ -140,28 +141,26 @@ struct VertexM {
 };
 
 //以下スキンメッシュ
-struct MY_VERTEX_S{
-	VECTOR3 vPos;//頂点
-	VECTOR3 vNorm;//法線
-	VECTOR3 vGeoNorm;//ジオメトリ法線
-	VECTOR2 vTex;//UV座標
-	UINT bBoneIndex[4];//ボーン　番号
-	float bBoneWeight[4];//ボーン　重み
-	MY_VERTEX_S()
-	{
-		ZeroMemory(this, sizeof(MY_VERTEX_S));
-	}
+struct MY_VERTEX_S {
+	VECTOR3 vPos = {};//頂点
+	VECTOR3 vNorm = {};//法線
+	VECTOR3 vGeoNorm = {};//ジオメトリ法線
+	VECTOR2 vTex0 = {};//UV座標0
+	VECTOR2 vTex1 = {};//UV座標1
+	UINT bBoneIndex[4] = {};//ボーン　番号
+	float bBoneWeight[4] = {};//ボーン　重み
 };
 
 struct MY_MATERIAL_S {
-	CHAR szName[255] = {};
-	VECTOR4 Kd = {};//ディフューズ
-	VECTOR4 Ks = {};//スペキュラー
-	VECTOR4 Ka = {};//アンビエント
-	CHAR szTextureName[255] = {};//テクスチャーファイル名
-	CHAR norTextureName[255] = {};//ノーマルマップ
-	int tex_no = 0;
-	int nortex_no = 0;
+	VECTOR4 diffuse = {};
+	VECTOR4 specular = {};
+	VECTOR4 ambient = {};
+	CHAR difUvName[255] = {};
+	CHAR norUvName[255] = {};
+	CHAR speUvName[255] = {};
+	int diftex_no = -1;
+	int nortex_no = -1;
+	int spetex_no = -1;
 };
 
 struct BONE{
@@ -255,6 +254,7 @@ public:
 struct TextureNo {
 	int diffuse;
 	int normal;
+	int specular;
 };
 
 struct MovieTexture {

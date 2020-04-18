@@ -22,7 +22,8 @@ char *ShaderSkinMesh_D =
 "   float3 Pos : POSITION;\n"//頂点   
 "   float3 Nor : NORMAL;\n"//法線
 "   float3 GNor : GEO_NORMAL;\n"//ジオメトリ法線
-"   float2 Tex : TEXCOORD;\n"//テクスチャー座標
+"   float2 Tex0 : TEXCOORD0;\n"//テクスチャー座標0
+"   float2 Tex1 : TEXCOORD1;\n"//テクスチャー座標1
 "   uint4  Bones : BONE_INDEX;\n"//ボーンのインデックス
 "   float4 Weights : BONE_WEIGHT;\n"//ボーンの重み
 "};\n"
@@ -83,8 +84,28 @@ char *ShaderSkinMesh_D =
 "    output.Pos = vSkinned.Pos;\n"
 "    output.Nor = vSkinned.Nor;\n"
 "    output.GNor = vSkinned.GNor;\n"
-"    output.Tex = input.Tex;\n"
 "    output.instanceID = instanceID;\n"
+
+"   if(g_uvSw.x == 0.0f)\n"//切り替え無
+"   {\n"
+"      output.Tex0 = input.Tex0;\n"
+"      output.Tex1 = input.Tex1;\n"
+"   }\n"
+"   if(g_uvSw.x == 1.0f)\n"//逆転
+"   {\n"
+"      output.Tex0 = input.Tex1;\n"
+"      output.Tex1 = input.Tex0;\n"
+"   }\n"
+"   if(g_uvSw.x == 2.0f)\n"//どちらもuv0
+"   {\n"
+"      output.Tex0 = input.Tex0;\n"
+"      output.Tex1 = input.Tex0;\n"
+"   }\n"
+"   if(g_uvSw.x == 3.0f)\n"//どちらもuv1
+"   {\n"
+"      output.Tex0 = input.Tex1;\n"
+"      output.Tex1 = input.Tex1;\n"
+"   }\n"
 
 "    return output;\n"
 "}\n";

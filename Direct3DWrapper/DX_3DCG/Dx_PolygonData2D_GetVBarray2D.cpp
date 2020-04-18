@@ -297,9 +297,10 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	TextureNo te;
 	te.diffuse = -1;
 	te.normal = -1;
+	te.specular = -1;
 
 	createTextureResource(0, 1, &te);
-	mSrvHeap = CreateSrvHeap(0, 1, &te);
+	mSrvHeap = CreateSrvHeap(0, 1);
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);

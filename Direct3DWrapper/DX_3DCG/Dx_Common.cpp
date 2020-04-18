@@ -52,7 +52,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 	HRESULT hr = S_OK;
 	int resCnt = resourceStartIndex - 1;
 	for (int i = 0; i < MaterialNum; i++) {
-		//diffuse
+		//diffuse, 動画テクスチャ
 		if (to[i].diffuse < 0 || movOn[i].m_on) {
 			hr = dx->textureInit(movOn[i].width, movOn[i].height,
 				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
@@ -82,11 +82,22 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 			ErrorMessage("Common::createTextureResource Error!!");
 			return hr;
 		}
+		//specularMapが存在する場合
+		if (to[i].specular >= 0) {
+			InternalTexture* tex = &dx->texture[to[i].specular];
+			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
+				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				tex->width, tex->RowPitch, tex->height);
+		}
+		if (FAILED(hr)) {
+			ErrorMessage("Common::createTextureResource Error!!");
+			return hr;
+		}
 	}
 	return S_OK;
 }
 
-ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int resourceStartIndex, int texNum, TextureNo* to)
+ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int resourceStartIndex, int texNum)
 {
 	ComPtr <ID3D12DescriptorHeap>srv;
 
@@ -376,17 +387,20 @@ void Common::drawsub(drawPara& para) {
 
 		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
 
-		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex(shader内registerIndex), DESCRIPTOR_HANDLE)
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
-		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		mCommandList->SetPipelineState(para.PSO.Get());
 
-		mCommandList->SetGraphicsRootConstantBufferView(2, para.cbRes0.Get()->GetGPUVirtualAddress());
+		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
+		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
+		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
+		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+		mCommandList->SetGraphicsRootDescriptorTable(2, tex);
+		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+
+		mCommandList->SetGraphicsRootConstantBufferView(3, para.cbRes0.Get()->GetGPUVirtualAddress());
 		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
-		mCommandList->SetGraphicsRootConstantBufferView(3, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
-		UINT viewIndex = 4;
+		mCommandList->SetGraphicsRootConstantBufferView(4, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
+		UINT viewIndex = 5;
 		if (para.cbRes2 != nullptr)
 			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2.Get()->GetGPUVirtualAddress());
 		if (para.sRes0 != nullptr)

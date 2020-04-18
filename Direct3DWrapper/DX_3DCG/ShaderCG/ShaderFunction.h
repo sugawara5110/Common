@@ -6,6 +6,7 @@ char *ShaderFunction =
 //////////////////////////////////共通パラメーター////////////////////////////////////////////////////////
 "Texture2D g_texDiffuse : register(t0);\n"
 "Texture2D g_texNormal : register(t1);\n"
+"Texture2D g_texSpecular : register(t2);\n"
 "SamplerState g_samLinear : register(s0);\n"
 
 "cbuffer global : register(b0)\n"
@@ -52,6 +53,7 @@ char *ShaderFunction =
 "    float4 g_Diffuse;\n"
 "    float4 g_Speculer; \n"
 "    float4 g_Ambient;\n"
+"    float4 g_uvSw;\n"
 "};\n"
 
 "struct VS_OUTPUT\n"
@@ -59,7 +61,8 @@ char *ShaderFunction =
 "    float4 Pos    : POSITION;\n"
 "    float3 Nor    : NORMAL;\n"
 "    float3 GNor   : GEO_NORMAL;\n"
-"    float2 Tex        : TEXCOORD;\n"
+"    float2 Tex0   : TEXCOORD0;\n"
+"    float2 Tex1   : TEXCOORD1;\n"
 "    uint   instanceID : SV_InstanceID;\n"
 "};\n"
 
@@ -67,7 +70,8 @@ char *ShaderFunction =
 "{\n"
 "    float4 Pos   : POSITION;\n"
 "    float3 Nor   : NORMAL;\n"
-"    float2 Tex        : TEXCOORD;\n"
+"    float2 Tex0  : TEXCOORD0;\n"
+"    float2 Tex1  : TEXCOORD1;\n"
 "    uint   instanceID : SV_InstanceID;\n"
 "};\n"
 
@@ -76,7 +80,8 @@ char *ShaderFunction =
 "    float4 Pos      : SV_POSITION;\n"
 "    float4 wPos     : POSITION;\n"
 "    float3 Nor      : NORMAL;\n"
-"    float2 Tex      : TEXCOORD;\n"
+"    float2 Tex0     : TEXCOORD0;\n"
+"    float2 Tex1     : TEXCOORD1;\n"
 "    float3 tangent  : TANGENT;\n"
 "};\n"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////

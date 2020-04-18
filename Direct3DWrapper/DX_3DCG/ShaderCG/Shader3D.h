@@ -17,8 +17,9 @@ char *Shader3D =
 
 "    output.Pos = float4(Pos, 1);\n"
 "    output.Nor = Nor;\n"
-"    output.Tex.x = Tex.x * g_pXpYmXmY.x + g_pXpYmXmY.x * g_pXpYmXmY.z;\n"
-"    output.Tex.y = Tex.y * g_pXpYmXmY.y + g_pXpYmXmY.y * g_pXpYmXmY.w;\n"
+"    output.Tex0.x = Tex.x * g_pXpYmXmY.x + g_pXpYmXmY.x * g_pXpYmXmY.z;\n"
+"    output.Tex0.y = Tex.y * g_pXpYmXmY.y + g_pXpYmXmY.y * g_pXpYmXmY.w;\n"
+"    output.Tex1 = output.Tex0;\n"
 "    output.instanceID = instanceID;\n"
 
 "    return output;\n"
