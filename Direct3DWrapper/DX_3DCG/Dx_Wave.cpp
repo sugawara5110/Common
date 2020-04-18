@@ -175,7 +175,6 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	dpara.material[0].tex_no = texNo;
 	dpara.material[0].nortex_no = nortNo;
-	dpara.material[0].numPolygon = 1;
 	TextureNo te;
 	if (texNo < 0)te.diffuse = 0; else
 		te.diffuse = texNo;

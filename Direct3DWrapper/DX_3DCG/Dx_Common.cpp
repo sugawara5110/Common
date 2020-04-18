@@ -372,10 +372,8 @@ void Common::drawsub(drawPara& para) {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.srvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
 		//使用されていないマテリアル対策
-		if (para.material[i].numPolygon == 0)
-		{
-			continue;
-		}
+		if (para.Iview[i].IndexCount <= 0)continue;
+
 		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
 
 		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex(shader内registerIndex), DESCRIPTOR_HANDLE)

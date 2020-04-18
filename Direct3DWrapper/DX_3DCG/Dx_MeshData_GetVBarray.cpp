@@ -365,7 +365,6 @@ bool MeshData::SetVertex() {
 				FCount++;
 			}
 		}
-		dpara.material[i].numPolygon = (UINT)dwPartFCount;
 		if (dwPartFCount == 0)//使用されていないマテリアル対策が必要な場合処理追加。Drawにも
 		{
 			continue;

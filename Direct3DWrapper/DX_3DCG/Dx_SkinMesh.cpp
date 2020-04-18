@@ -301,10 +301,10 @@ void SkinMesh::SetVertex() {
 		ARR_DELETE(svList);
 
 		auto numMaterial = mesh->getNumMaterial();
+		dpara[m].NumMaterial = numMaterial;
 		dpara[m].material = std::make_unique<MY_MATERIAL_S[]>(numMaterial);
 
 		//4頂点ポリゴン分割後のIndex数カウント
-		dpara[m].NumMaterial = numMaterial;
 		UINT* numNewIndex = new UINT[numMaterial];
 		memset(numNewIndex, 0, sizeof(UINT) * numMaterial);
 		UINT currentMatNo = -1;
@@ -314,11 +314,9 @@ void SkinMesh::SetVertex() {
 			}
 			if (mesh->getPolygonSize(i) == 3) {
 				numNewIndex[currentMatNo] += 3;
-				dpara[m].material[currentMatNo].numPolygon++;
 			}
 			if (mesh->getPolygonSize(i) == 4) {
 				numNewIndex[currentMatNo] += 6;
-				dpara[m].material[currentMatNo].numPolygon += 2;
 			}
 		}
 
@@ -326,7 +324,7 @@ void SkinMesh::SetVertex() {
 		newIndex[m] = new UINT * [numMaterial];
 		for (UINT ind1 = 0; ind1 < numMaterial; ind1++) {
 			if (numNewIndex[ind1] <= 0) {
-				newIndex[ind1] = nullptr;
+				newIndex[m][ind1] = nullptr;
 				continue;
 			}
 			newIndex[m][ind1] = new UINT[numNewIndex[ind1]];
@@ -472,6 +470,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		if (pvVB_delete_f)ARR_DELETE(pvVB[i]);//使わない場合解放
 
 		for (int i1 = 0; i1 < dpara[i].NumMaterial; i1++) {
+			if (dpara[i].Iview[i1].IndexCount <= 0)continue;
 			dpara[i].Iview[i1].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, newIndex[i][i1],
 				dpara[i].Iview[i1].IndexBufferByteSize, dpara[i].Iview[i1].IndexBufferUploader);
 			ARR_DELETE(newIndex[i][i1]);
@@ -650,7 +649,6 @@ MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 	MATRIX ret;
 	MatrixIdentity(&ret);
 	MatrixMultiply(&ret, &inv, &m_BoneArray[index].mNewPose);//バインドポーズの逆行列とフレーム姿勢行列をかける
-
 	return ret;
 }
 
@@ -701,16 +699,18 @@ bool SkinMesh::GetTexture() {
 	int stIndex = 0;
 	for (int m = 0; m < numMesh; m++) {
 		TextureNo* te = new TextureNo[dpara[m].NumMaterial];
+		int tCnt = 0;
 		for (int i = 0; i < dpara[m].NumMaterial; i++) {
-			if (dpara[m].material[i].tex_no < 0)te[i].diffuse = 0; else
-				te[i].diffuse = dpara[m].material[i].tex_no;
-			if (dpara[m].material[i].nortex_no < 0)te[i].normal = 0; else
-				te[i].normal = dpara[m].material[i].nortex_no;
+			if (dpara[m].material[i].tex_no < 0)te[tCnt].diffuse = 0; else
+				te[tCnt].diffuse = dpara[m].material[i].tex_no;
+			if (dpara[m].material[i].nortex_no < 0)te[tCnt].normal = 0; else
+				te[tCnt].normal = dpara[m].material[i].nortex_no;
+			tCnt++;
 		}
-		createTextureResource(stIndex, dpara[m].NumMaterial, te);
-		int numTex = dpara[m].NumMaterial * 2;
+		createTextureResource(stIndex, tCnt, te);
+		int numTex = tCnt * 2;
 		dpara[m].srvHeap = CreateSrvHeap(stIndex, numTex, te);
-		stIndex += dpara[m].NumMaterial * 2;
+		stIndex += numTex;
 		ARR_DELETE(te);
 		if (dpara[m].srvHeap == nullptr)return false;
 	}

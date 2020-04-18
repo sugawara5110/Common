@@ -214,7 +214,6 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, bool blend, bool alpha
 	//SRVのデスクリプターヒープ生成
 	dpara.material[0].tex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
-	dpara.material[0].numPolygon = 1;
 
 	TextureNo te;
 	if (tNo < 0)te.diffuse = 0; else

@@ -160,7 +160,6 @@ struct MY_MATERIAL_S {
 	VECTOR4 Ka = {};//アンビエント
 	CHAR szTextureName[255] = {};//テクスチャーファイル名
 	CHAR norTextureName[255] = {};//ノーマルマップ
-	UINT numPolygon = 0;//マテリアル毎のポリゴン数
 	int tex_no = 0;
 	int nortex_no = 0;
 };
