@@ -450,6 +450,7 @@ protected:
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
 	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int resourceStartIndex, int texNum);
 	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//íºê⁄égópã÷é~
+	ComPtr <ID3D12RootSignature> CreateRootSignature(char* className);
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);

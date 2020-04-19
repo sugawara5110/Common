@@ -72,7 +72,8 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 		}
 	}
 
-	dpara.material = std::make_unique< MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	mMat = std::make_unique<meshMaterial[]>(dpara.NumMaterial);
 
 	//本読み込み	
 	fseek(fp, 0, SEEK_SET);
@@ -88,7 +89,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 		{
 			iMCount++;
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));//lineの7要素目(newmtl)の直後から1個目の文字列をkeyに格納
-			strcpy_s(szName, key);
+			strcpy_s(mMat[iMCount].szName, key);
 		}
 		//Kd　ディフューズ
 		if (strcmp(key, "Kd") == 0)
@@ -111,14 +112,14 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 		//map_Kd　テクスチャー
 		if (strcmp(key, "map_Kd") == 0)
 		{
-			sscanf_s(&line[7], "%s", &szTextureName, (unsigned int)sizeof(szTextureName));
-			dpara.material[iMCount].diftex_no = dx->GetTexNumber(szTextureName);
+			sscanf_s(&line[7], "%s", &mMat[iMCount].szTextureName, (unsigned int)sizeof(mMat[iMCount].szTextureName));
+			dpara.material[iMCount].diftex_no = dx->GetTexNumber(mMat[iMCount].szTextureName);
 		}
 		//map_bump　テクスチャー
 		if (strcmp(key, "map_bump") == 0)
 		{
-			sscanf_s(&line[7], "%s", &norTextureName, (unsigned int)sizeof(norTextureName));
-			dpara.material[iMCount].nortex_no = dx->GetTexNumber(norTextureName);
+			sscanf_s(&line[7], "%s", &mMat[iMCount].norTextureName, (unsigned int)sizeof(mMat[iMCount].norTextureName));
+			dpara.material[iMCount].nortex_no = dx->GetTexNumber(mMat[iMCount].norTextureName);
 		}
 	}
 	fclose(fp);
@@ -317,7 +318,7 @@ bool MeshData::SetVertex() {
 			if (strcmp(key, "usemtl") == 0)
 			{
 				sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-				if (strcmp(key, szName) == 0)
+				if (strcmp(key, mMat[i].szName) == 0)
 				{
 					boFlag = true;
 				}
@@ -425,19 +426,7 @@ bool MeshData::CreateMesh() {
 
 	GetShaderByteCode(disp);
 
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
-	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
-
-	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
-	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[3].InitAsConstantBufferView(0);
-	slotRootParameter[4].InitAsConstantBufferView(1);
-
-	dpara.rootSignature = CreateRs(5, slotRootParameter);
+	dpara.rootSignature = CreateRootSignature("MeshData");
 	if (dpara.rootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成

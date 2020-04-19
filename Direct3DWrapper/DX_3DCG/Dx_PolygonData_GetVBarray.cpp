@@ -196,21 +196,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 
 	mObjectCB1->CopyData(0, sg);
 
-	//BuildRootSignature
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//このDescriptorRangeはシェーダーリソースビュー,Descriptor 1個, 開始Index 0番
-	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
-	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
-
-	//BuildRootSignatureParameter
-	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
-	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);// DescriptorRangeの数は1つ, DescriptorRangeの先頭アドレス
-	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[3].InitAsConstantBufferView(0);
-	slotRootParameter[4].InitAsConstantBufferView(1);
-
-	dpara.rootSignature = CreateRs(5, slotRootParameter);
+	dpara.rootSignature = CreateRootSignature("PolygonData");
 	if (dpara.rootSignature == nullptr)return false;
 
 	dpara.material[0].diftex_no = tNo;

@@ -162,6 +162,37 @@ ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* 
 	return rs;
 }
 
+ComPtr <ID3D12RootSignature> Common::CreateRootSignature(char* className) {
+
+	int numParameter = 5;
+	//BuildRootSignature
+	CD3DX12_DESCRIPTOR_RANGE diftexTable, nortexTable, spetexTable;
+	diftexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//Descriptor 1ŒÂ, ŠJŽnIndex 0”Ô
+	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
+
+	//BuildRootSignatureParameter
+	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
+	slotRootParameter[0].InitAsDescriptorTable(1, &diftexTable, D3D12_SHADER_VISIBILITY_ALL);//(t0)
+	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);//(t1)
+	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);//(t2)
+	slotRootParameter[3].InitAsConstantBufferView(0);//(b0)
+	slotRootParameter[4].InitAsConstantBufferView(1);//(b1)
+	//PolygonData, MeshData‚Í‚±‚±‚Ü‚Å
+
+	if (!strcmp(className, "SkinMesh")) {
+		numParameter = 6;
+		slotRootParameter[5].InitAsConstantBufferView(2);//(b2)
+	}
+	if (!strcmp(className, "Wave")) {
+		numParameter = 7;
+		slotRootParameter[5].InitAsConstantBufferView(2);//(b2)
+		slotRootParameter[6].InitAsShaderResourceView(3);//(t3)
+	}
+
+	return CreateRs(numParameter, slotRootParameter);
+}
+
 ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
 {
 	const CD3DX12_STATIC_SAMPLER_DESC linearWrap(

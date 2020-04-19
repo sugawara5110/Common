@@ -17,11 +17,7 @@ using namespace std;
 
 SkinMesh_sub::SkinMesh_sub() {
 	fbxL = new FbxLoader();
-	current_frame = 0.0f;
-	centering = true;
-	offset = false;
-	cx = cy = cz = 0.0f;
-	connect_step = 3000.0f;
+	MatrixIdentity(&rotZYX);
 }
 
 SkinMesh_sub::~SkinMesh_sub() {
@@ -37,15 +33,6 @@ SkinMesh::SkinMesh() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	fbx = new SkinMesh_sub[FBX_PCS];
-	m_ppSubAnimationBone = nullptr;
-	AnimLastInd = -1;
-	BoneConnect = -1.0f;
-	pvVB_delete_f = true;
-	pvVB = nullptr;
-	addDiffuse = 0.0f;
-	addSpecular = 0.0f;
-	addAmbient = 0.0f;
-
 	divArr[0].distance = 1000.0f;
 	divArr[0].divide = 2;
 	divArr[1].distance = 500.0f;
@@ -476,17 +463,14 @@ void SkinMesh::SetVertex() {
 }
 
 void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
-	if (dpara[meshIndex].material[materialIndex].diftex_no != -1)return;//既に設定済みの場合無効
 	dpara[meshIndex].material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
-	if (dpara[meshIndex].material[materialIndex].nortex_no != -1)return;
 	dpara[meshIndex].material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
-	if (dpara[meshIndex].material[materialIndex].spetex_no != -1)return;
 	dpara[meshIndex].material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
 }
 
@@ -510,19 +494,6 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	}
 	ps = dx->pPixelShader_3D.Get();
 
-	CD3DX12_DESCRIPTOR_RANGE texTable, nortexTable, spetexTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//このDescriptorRangeはシェーダーリソースビュー,Descriptor 1個, shader内registerIndex
-	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
-	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
-
-	CD3DX12_ROOT_PARAMETER slotRootParameter[6];
-	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);//DescriptorRangeの数は1つ, DescriptorRangeの先頭アドレス
-	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[3].InitAsConstantBufferView(0);
-	slotRootParameter[4].InitAsConstantBufferView(1);
-	slotRootParameter[5].InitAsConstantBufferView(2);
-
 	for (int i = 0; i < numMesh; i++) {
 		dpara[i].Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB[i],
 			dpara[i].Vview->VertexBufferByteSize,
@@ -536,7 +507,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 			ARR_DELETE(newIndex[i][i1]);
 		}
 		ARR_DELETE(newIndex[i]);
-		dpara[i].rootSignature = CreateRs(6, slotRootParameter);
+		dpara[i].rootSignature = CreateRootSignature("SkinMesh");
 		if (dpara[i].rootSignature == nullptr)return false;
 
 		//パイプラインステートオブジェクト生成

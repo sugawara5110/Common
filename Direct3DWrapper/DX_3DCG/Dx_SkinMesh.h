@@ -14,16 +14,20 @@ class SkinMesh_sub {
 
 protected:
 	friend SkinMesh;
-	FbxLoader *fbxL = nullptr;
-	float end_frame, current_frame;
-	bool centering, offset;
-	float cx, cy, cz;
-	MATRIX rotZYX;
-	float connect_step;
+	FbxLoader* fbxL = nullptr;
+	float end_frame = 0.0f;
+	float current_frame = 0.0f;
+	bool centering = false;
+	bool offset = false;
+	float cx = 0.0f;
+	float cy = 0.0f;
+	float cz = 0.0f;
+	float connect_step = 3000.0f;
+	MATRIX rotZYX = {};
 
 	SkinMesh_sub();
 	~SkinMesh_sub();
-	bool Create(CHAR *szFileName);
+	bool Create(CHAR* szFileName);
 };
 
 class SkinMesh :public Common {
@@ -50,8 +54,8 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB0 = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>** mObjectCB1 = nullptr;
 	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
-	CONSTANT_BUFFER cb[2];
-	SHADER_GLOBAL_BONES sgb[2];
+	CONSTANT_BUFFER cb[2] = {};
+	SHADER_GLOBAL_BONES sgb[2] = {};
 	//UpLoadカウント
 	int upCount = 0;
 	//初回Up終了
@@ -59,9 +63,9 @@ protected:
 	//DrawOn
 	bool DrawOn = false;
 
-	MY_VERTEX_S** pvVB = nullptr;;//使用後保持するか破棄するかフラグで決める,通常は破棄
+	MY_VERTEX_S** pvVB = nullptr;//使用後保持するか破棄するかフラグで決める,通常は破棄
 	UINT*** newIndex = nullptr;
-	bool pvVB_delete_f;
+	bool pvVB_delete_f = true;
 
 	//ボーン
 	int numBone = 0;
@@ -70,11 +74,11 @@ protected:
 
 	//FBX
 	int numMesh = 0;
-	SkinMesh_sub* fbx;
+	SkinMesh_sub* fbx = nullptr;
 	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
-	MATRIX* m_pLastBoneMatrix;
-	int AnimLastInd;
-	float BoneConnect;
+	MATRIX* m_pLastBoneMatrix = nullptr;
+	int AnimLastInd = -1;
+	float BoneConnect = -1.0f;
 	drawPara* dpara = nullptr;
 
 	void DestroyFBX();

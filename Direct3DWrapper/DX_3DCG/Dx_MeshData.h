@@ -48,9 +48,12 @@ protected:
 	float addSpecular = 0.0f;
 	float addAmbient = 0.0f;
 
-	CHAR szName[255] = {};//マテリアル名
-	CHAR szTextureName[255] = {};//テクスチャーファイル名
-	CHAR norTextureName[255] = {};//ノーマルマップ名
+	struct meshMaterial {
+		CHAR szName[255] = {};//マテリアル名
+		CHAR szTextureName[255] = {};//テクスチャーファイル名
+		CHAR norTextureName[255] = {};//ノーマルマップ名
+	};
+	std::unique_ptr<meshMaterial[]>mMat = nullptr;
 
 	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
