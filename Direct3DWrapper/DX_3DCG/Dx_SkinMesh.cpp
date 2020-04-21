@@ -747,10 +747,12 @@ bool SkinMesh::GetTexture() {
 		}
 		createTextureResource(stIndex, tCnt, te);
 		int numTex = tCnt * 3;
-		dpara[m].srvHeap = CreateSrvHeap(stIndex, numTex);
-		stIndex += numTex;
+		dpara[m].numSrv = 3;
+		dpara[m].srvHeap = CreateDescHeap(numTex);
 		ARR_DELETE(te);
 		if (dpara[m].srvHeap == nullptr)return false;
+		CreateSrv(dpara[m].srvHeap.Get(), texture[stIndex].GetAddressOf(), numTex);
+		stIndex += numTex;
 	}
 	return true;
 }

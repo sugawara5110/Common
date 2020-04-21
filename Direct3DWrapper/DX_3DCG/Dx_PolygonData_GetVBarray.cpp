@@ -217,8 +217,10 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 		te.specular = spetNo;
 
 	createTextureResource(0, 1, &te);
-	dpara.srvHeap = CreateSrvHeap(0, 3);
+	dpara.srvHeap = CreateDescHeap(3);
 	if (dpara.srvHeap == nullptr)return false;
+	CreateSrv(dpara.srvHeap.Get(), texture->GetAddressOf(), 3);
+	dpara.numSrv = 3;
 
 	UINT VertexSize;
 	if (tNo == -1 && !movOn[0].m_on)

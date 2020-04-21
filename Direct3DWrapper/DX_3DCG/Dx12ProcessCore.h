@@ -431,7 +431,7 @@ protected:
 	friend SkinMesh;
 	friend Wave;
 	friend PostEffect;
-	Common() {}//外部からのオブジェクト生成禁止
+	Common() {};//外部からのオブジェクト生成禁止
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
 
@@ -440,15 +440,16 @@ protected:
 	int com_no = 0;
 
 	//テクスチャ
-	ComPtr <ID3D12Resource> textureUp[256] = {};
-	ComPtr <ID3D12Resource> texture[256] = {};
+	ComPtr<ID3D12Resource> textureUp[256] = {};
+	ComPtr<ID3D12Resource> texture[256] = {};
 	MovieTexture movOn[256] = {};
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
-	ComPtr <ID3D12DescriptorHeap> CreateSrvHeap(int resourceStartIndex, int texNum);
+	void CreateSrv(ID3D12DescriptorHeap* heap, ID3D12Resource** texture, int texNum);
+	ComPtr <ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
 	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//直接使用禁止
 	ComPtr <ID3D12RootSignature> CreateRootSignature(char* className);
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
@@ -495,6 +496,7 @@ protected:
 
 	struct drawPara {
 		int NumMaterial = 0;
+		int numSrv = 0;
 		ComPtr<ID3D12DescriptorHeap> srvHeap = nullptr;
 		ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 		std::unique_ptr<VertexView> Vview = nullptr;

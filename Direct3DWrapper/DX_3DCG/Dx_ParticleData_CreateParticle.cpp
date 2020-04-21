@@ -170,8 +170,9 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	te.specular = -1;
 
 	createTextureResource(0, 1, &te);
-	mSrvHeap = CreateSrvHeap(0, 1);
+	mSrvHeap = CreateDescHeap(1);
 	if (mSrvHeap == nullptr)return false;
+	CreateSrv(mSrvHeap.Get(), texture->GetAddressOf(), 1);
 
 	//パイプラインステートオブジェクト生成(Draw)
 	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, true, true);

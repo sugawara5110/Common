@@ -453,8 +453,10 @@ bool MeshData::GetTexture() {
 
 	createTextureResource(0, dpara.NumMaterial, te);
 	int numTex = dpara.NumMaterial * 3;
-	dpara.srvHeap = CreateSrvHeap(0, numTex);
+	dpara.numSrv = 3;
+	dpara.srvHeap = CreateDescHeap(numTex);
 	if (dpara.srvHeap == nullptr)return false;
+	CreateSrv(dpara.srvHeap.Get(), texture->GetAddressOf(), numTex);
 
 	for (int i = 0; i < dpara.NumMaterial; i++)
 		dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, &piFaceBuffer[FaceCount * 3 * i],

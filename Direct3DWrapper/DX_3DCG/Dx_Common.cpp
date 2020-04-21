@@ -97,36 +97,36 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 	return S_OK;
 }
 
-ComPtr <ID3D12DescriptorHeap> Common::CreateSrvHeap(int resourceStartIndex, int texNum)
+void Common::CreateSrv(ID3D12DescriptorHeap* heap, ID3D12Resource** tex, int texNum)
 {
-	ComPtr <ID3D12DescriptorHeap>srv;
-
-	//使用テクスチャ数だけDescriptorを用意する
-	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = texNum;
-	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-	HRESULT hr;
-	hr = dx->md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv));
-	if (FAILED(hr)) {
-		ErrorMessage("Common::CreateSrvHeap Error!!"); return nullptr;
-	}
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(srv->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	for (int i = resourceStartIndex; i < texNum + resourceStartIndex; i++) {
-		srvDesc.Format = texture[i].Get()->GetDesc().Format;
-		srvDesc.Texture2D.MipLevels = texture[i].Get()->GetDesc().MipLevels;
-		dx->md3dDevice->CreateShaderResourceView(texture[i].Get(), &srvDesc, hDescriptor);
+	for (int i = 0; i < texNum; i++) {
+		srvDesc.Format = tex[i]->GetDesc().Format;
+		srvDesc.Texture2D.MipLevels = tex[i]->GetDesc().MipLevels;
+		dx->md3dDevice->CreateShaderResourceView(tex[i], &srvDesc, hDescriptor);
 		hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
-
 	}
-	return srv;
+}
+
+ComPtr <ID3D12DescriptorHeap> Common::CreateDescHeap(int numDesc) {
+	ComPtr <ID3D12DescriptorHeap>heap;
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.NumDescriptors = numDesc;
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	HRESULT hr;
+	hr = dx->md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
+	if (FAILED(hr)) {
+		ErrorMessage("Common::CreateDescHeap Error!!"); return nullptr;
+	}
+	return heap;
 }
 
 ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc)
@@ -421,17 +421,17 @@ void Common::drawsub(drawPara& para) {
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCommandList->SetPipelineState(para.PSO.Get());
 
-		mCommandList->SetGraphicsRootDescriptorTable(0, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);//デスクリプタヒープのアドレス位置オフセットで次のテクスチャを読み込ませる
-		mCommandList->SetGraphicsRootDescriptorTable(1, tex);
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
-		mCommandList->SetGraphicsRootDescriptorTable(2, tex);
-		tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+		int srvInd = 0;
+		for (srvInd = 0; srvInd < para.numSrv; srvInd++) {
+			mCommandList->SetGraphicsRootDescriptorTable(srvInd, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
+			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+		}
 
-		mCommandList->SetGraphicsRootConstantBufferView(3, para.cbRes0.Get()->GetGPUVirtualAddress());
+		UINT viewIndex = srvInd;
+		mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes0.Get()->GetGPUVirtualAddress());
 		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
-		mCommandList->SetGraphicsRootConstantBufferView(4, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
-		UINT viewIndex = 5;
+		mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
+
 		if (para.cbRes2 != nullptr)
 			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2.Get()->GetGPUVirtualAddress());
 		if (para.sRes0 != nullptr)

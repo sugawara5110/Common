@@ -177,8 +177,10 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	createTextureResource(0, 1, &te);
-	dpara.srvHeap = CreateSrvHeap(0, 3);
+	dpara.srvHeap = CreateDescHeap(3);
 	if (dpara.srvHeap == nullptr)return false;
+	CreateSrv(dpara.srvHeap.Get(), texture->GetAddressOf(), 3);
+	dpara.numSrv = 3;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
