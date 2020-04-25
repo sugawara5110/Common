@@ -217,10 +217,10 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 		te.specular = spetNo;
 
 	createTextureResource(0, 1, &te);
-	dpara.srvHeap = CreateDescHeap(3);
-	if (dpara.srvHeap == nullptr)return false;
-	CreateSrv(dpara.srvHeap.Get(), texture->GetAddressOf(), 3);
-	dpara.numSrv = 3;
+	dpara.descHeap = CreateDescHeap(3);
+	if (dpara.descHeap == nullptr)return false;
+	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), 3);
+	dpara.numDesc = 3;
 
 	UINT VertexSize;
 	if (tNo == -1 && !movOn[0].m_on)
@@ -293,8 +293,6 @@ void PolygonData::Draw() {
 	dpara.cbRes0 = mObjectCB->Resource();
 	dpara.cbRes1 = mObjectCB1->Resource();
 	dpara.cbRes2 = nullptr;
-	dpara.sRes0 = nullptr;
-	dpara.sRes1 = nullptr;
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(dpara);
 }

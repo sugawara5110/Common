@@ -448,9 +448,11 @@ protected:
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
-	void CreateSrv(ID3D12DescriptorHeap* heap, ID3D12Resource** texture, int texNum);
+	void CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** texture, int texNum);
+	void CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** buffer, int bufNum,
+		UINT StructureByteStride);
+
 	ComPtr <ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
-	ComPtr <ID3D12RootSignature> CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc);//íºê⁄égópã÷é~
 	ComPtr <ID3D12RootSignature> CreateRootSignature(char* className);
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
@@ -496,8 +498,8 @@ protected:
 
 	struct drawPara {
 		int NumMaterial = 0;
-		int numSrv = 0;
-		ComPtr<ID3D12DescriptorHeap> srvHeap = nullptr;
+		int numDesc = 0;
+		ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
 		ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 		std::unique_ptr<VertexView> Vview = nullptr;
 		std::unique_ptr<IndexView[]> Iview = nullptr;
@@ -507,8 +509,6 @@ protected:
 		ComPtr<ID3D12Resource> cbRes0 = nullptr;
 		ComPtr<ID3D12Resource> cbRes1 = nullptr;
 		ComPtr<ID3D12Resource> cbRes2 = nullptr;
-		ComPtr<ID3D12Resource> sRes0 = nullptr;
-		ComPtr<ID3D12Resource> sRes1 = nullptr;
 		UINT insNum = 1;
 	};
 	void drawsub(drawPara& para);

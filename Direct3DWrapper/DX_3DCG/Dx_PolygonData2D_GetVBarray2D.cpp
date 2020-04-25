@@ -301,7 +301,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 
 	createTextureResource(0, 1, &te);
 	mSrvHeap = CreateDescHeap(1);
-	CreateSrv(mSrvHeap.Get(), texture->GetAddressOf(), 1);
+	CreateSrvTexture(mSrvHeap.Get(), 0, texture->GetAddressOf(), 1);
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);

@@ -747,11 +747,11 @@ bool SkinMesh::GetTexture() {
 		}
 		createTextureResource(stIndex, tCnt, te);
 		int numTex = tCnt * 3;
-		dpara[m].numSrv = 3;
-		dpara[m].srvHeap = CreateDescHeap(numTex);
+		dpara[m].numDesc = 3;
+		dpara[m].descHeap = CreateDescHeap(numTex);
 		ARR_DELETE(te);
-		if (dpara[m].srvHeap == nullptr)return false;
-		CreateSrv(dpara[m].srvHeap.Get(), texture[stIndex].GetAddressOf(), numTex);
+		if (dpara[m].descHeap == nullptr)return false;
+		CreateSrvTexture(dpara[m].descHeap.Get(), 0, texture[stIndex].GetAddressOf(), numTex);
 		stIndex += numTex;
 	}
 	return true;
@@ -797,8 +797,6 @@ void SkinMesh::Draw() {
 		dpara[i].cbRes0 = mObjectCB0->Resource();
 		dpara[i].cbRes1 = mObjectCB1[i]->Resource();
 		dpara[i].cbRes2 = mObject_BONES->Resource();
-		dpara[i].sRes0 = nullptr;
-		dpara[i].sRes1 = nullptr;
 		dpara[i].insNum = 1;
 		drawsub(dpara[i]);
 	}

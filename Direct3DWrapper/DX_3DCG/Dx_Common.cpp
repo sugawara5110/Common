@@ -97,9 +97,10 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 	return S_OK;
 }
 
-void Common::CreateSrv(ID3D12DescriptorHeap* heap, ID3D12Resource** tex, int texNum)
+void Common::CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** tex, int texNum)
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
+	hDescriptor.Offset(offsetHeap, dx->mCbvSrvUavDescriptorSize);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -109,6 +110,25 @@ void Common::CreateSrv(ID3D12DescriptorHeap* heap, ID3D12Resource** tex, int tex
 		srvDesc.Format = tex[i]->GetDesc().Format;
 		srvDesc.Texture2D.MipLevels = tex[i]->GetDesc().MipLevels;
 		dx->md3dDevice->CreateShaderResourceView(tex[i], &srvDesc, hDescriptor);
+		hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
+	}
+}
+
+void Common::CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** buffer, int bufNum,
+	UINT StructureByteStride)
+{
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
+	hDescriptor.Offset(offsetHeap, dx->mCbvSrvUavDescriptorSize);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Buffer.StructureByteStride = StructureByteStride;
+	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+	for (int i = 0; i < bufNum; i++) {
+		srvDesc.Buffer.NumElements = (UINT)buffer[i]->GetDesc().Width / StructureByteStride;
+		dx->md3dDevice->CreateShaderResourceView(buffer[i], &srvDesc, hDescriptor);
 		hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
 	}
 }
@@ -129,7 +149,7 @@ ComPtr <ID3D12DescriptorHeap> Common::CreateDescHeap(int numDesc) {
 	return heap;
 }
 
-ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc)
+static ComPtr <ID3D12RootSignature>CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc, ID3D12Device* dev)
 {
 	ComPtr <ID3D12RootSignature>rs;
 
@@ -149,7 +169,7 @@ ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* 
 	}
 
 	//RootSignature生成
-	hr = dx->md3dDevice->CreateRootSignature(
+	hr = dev->CreateRootSignature(
 		0,
 		serializedRootSig->GetBufferPointer(),
 		serializedRootSig->GetBufferSize(),
@@ -164,33 +184,27 @@ ComPtr <ID3D12RootSignature>Common::CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* 
 
 ComPtr <ID3D12RootSignature> Common::CreateRootSignature(char* className) {
 
-	int numParameter = 5;
-	//BuildRootSignature
-	CD3DX12_DESCRIPTOR_RANGE diftexTable, nortexTable, spetexTable;
-	diftexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//Descriptor 1個, 開始Index 0番
-	nortexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
-	spetexTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
+	int pCnt = 0;
+	CD3DX12_DESCRIPTOR_RANGE Table[4];
+	Table[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//Descriptor 1個, 開始Index 0番
+	Table[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	Table[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
+	Table[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3);
 
-	//BuildRootSignatureParameter
 	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
-	slotRootParameter[0].InitAsDescriptorTable(1, &diftexTable, D3D12_SHADER_VISIBILITY_ALL);//(t0)
-	slotRootParameter[1].InitAsDescriptorTable(1, &nortexTable, D3D12_SHADER_VISIBILITY_ALL);//(t1)
-	slotRootParameter[2].InitAsDescriptorTable(1, &spetexTable, D3D12_SHADER_VISIBILITY_ALL);//(t2)
-	slotRootParameter[3].InitAsConstantBufferView(0);//(b0)
-	slotRootParameter[4].InitAsConstantBufferView(1);//(b1)
-	//PolygonData, MeshDataはここまで
+	slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[0], D3D12_SHADER_VISIBILITY_ALL);//(t0)
+	slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[1], D3D12_SHADER_VISIBILITY_ALL);//(t1)
+	slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[2], D3D12_SHADER_VISIBILITY_ALL);//(t2)
+	if (!strcmp(className, "Wave"))
+		slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[3], D3D12_SHADER_VISIBILITY_ALL);//(t3)
 
-	if (!strcmp(className, "SkinMesh")) {
-		numParameter = 6;
-		slotRootParameter[5].InitAsConstantBufferView(2);//(b2)
-	}
-	if (!strcmp(className, "Wave")) {
-		numParameter = 7;
-		slotRootParameter[5].InitAsConstantBufferView(2);//(b2)
-		slotRootParameter[6].InitAsShaderResourceView(3);//(t3)
-	}
+	slotRootParameter[pCnt++].InitAsConstantBufferView(0);//(b0)
+	slotRootParameter[pCnt++].InitAsConstantBufferView(1);//(b1)
 
-	return CreateRs(numParameter, slotRootParameter);
+	if (!strcmp(className, "SkinMesh") || !strcmp(className, "Wave"))
+		slotRootParameter[pCnt++].InitAsConstantBufferView(2);//(b2)
+
+	return CreateRs(pCnt, slotRootParameter);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
@@ -206,7 +220,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMET
 		1, &linearWrap,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	return CreateRsCommon(&rootSigDesc);
+	return CreateRsCommon(&rootSigDesc, dx->md3dDevice.Get());
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
@@ -216,7 +230,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, CD3DX12_
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	return CreateRsCommon(&rootSigDesc);
+	return CreateRsCommon(&rootSigDesc, dx->md3dDevice.Get());
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
@@ -225,7 +239,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_
 		0, nullptr,
 		D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
-	return CreateRsCommon(&rootSigDesc);
+	return CreateRsCommon(&rootSigDesc, dx->md3dDevice.Get());
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
@@ -404,14 +418,14 @@ void Common::drawsub(drawPara& para) {
 	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { para.srvHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	mCommandList->SetGraphicsRootSignature(para.rootSignature.Get());
 
 	mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.srvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
 		//使用されていないマテリアル対策
 		if (para.Iview[i].IndexCount <= 0)continue;
@@ -421,23 +435,19 @@ void Common::drawsub(drawPara& para) {
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCommandList->SetPipelineState(para.PSO.Get());
 
-		int srvInd = 0;
-		for (srvInd = 0; srvInd < para.numSrv; srvInd++) {
-			mCommandList->SetGraphicsRootDescriptorTable(srvInd, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
+		int descInd = 0;
+		for (descInd = 0; descInd < para.numDesc; descInd++) {
+			mCommandList->SetGraphicsRootDescriptorTable(descInd, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
 			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		}
 
-		UINT viewIndex = srvInd;
+		UINT viewIndex = descInd;
 		mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes0.Get()->GetGPUVirtualAddress());
 		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
 		mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
 
 		if (para.cbRes2 != nullptr)
 			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2.Get()->GetGPUVirtualAddress());
-		if (para.sRes0 != nullptr)
-			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes0.Get()->GetGPUVirtualAddress());
-		if (para.sRes1 != nullptr)
-			mCommandList->SetGraphicsRootShaderResourceView(viewIndex++, para.sRes1.Get()->GetGPUVirtualAddress());
 
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}

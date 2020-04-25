@@ -453,10 +453,10 @@ bool MeshData::GetTexture() {
 
 	createTextureResource(0, dpara.NumMaterial, te);
 	int numTex = dpara.NumMaterial * 3;
-	dpara.numSrv = 3;
-	dpara.srvHeap = CreateDescHeap(numTex);
-	if (dpara.srvHeap == nullptr)return false;
-	CreateSrv(dpara.srvHeap.Get(), texture->GetAddressOf(), numTex);
+	dpara.numDesc = 3;
+	dpara.descHeap = CreateDescHeap(numTex);
+	if (dpara.descHeap == nullptr)return false;
+	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), numTex);
 
 	for (int i = 0; i < dpara.NumMaterial; i++)
 		dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, &piFaceBuffer[FaceCount * 3 * i],
@@ -510,8 +510,6 @@ void MeshData::Draw() {
 	dpara.cbRes0 = mObjectCB->Resource();
 	dpara.cbRes1 = mObject_MESHCB->Resource();
 	dpara.cbRes2 = nullptr;
-	dpara.sRes0 = nullptr;
-	dpara.sRes1 = nullptr;
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(dpara);
 }

@@ -177,10 +177,11 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	createTextureResource(0, 1, &te);
-	dpara.srvHeap = CreateDescHeap(3);
-	if (dpara.srvHeap == nullptr)return false;
-	CreateSrv(dpara.srvHeap.Get(), texture->GetAddressOf(), 3);
-	dpara.numSrv = 3;
+	dpara.descHeap = CreateDescHeap(4);
+	if (dpara.descHeap == nullptr)return false;
+	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), 3);
+	CreateSrvBuffer(dpara.descHeap.Get(), 3, mOutputBuffer.GetAddressOf(), 1, sizeof(WaveData));
+	dpara.numDesc = 4;
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
@@ -275,8 +276,6 @@ void Wave::DrawSub() {
 	dpara.cbRes0 = mObjectCB->Resource();
 	dpara.cbRes1 = mObjectCB1->Resource();
 	dpara.cbRes2 = mObjectCB_WAVE->Resource();
-	dpara.sRes0 = mOutputBuffer.Get();
-	dpara.sRes1 = nullptr;
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(dpara);
 }
