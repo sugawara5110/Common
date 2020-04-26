@@ -507,7 +507,9 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 			ARR_DELETE(newIndex[i][i1]);
 		}
 		ARR_DELETE(newIndex[i]);
-		dpara[i].rootSignature = CreateRootSignature("SkinMesh");
+		const int numTex = 3;
+		const int numCB = 3;
+		dpara[i].rootSignature = CreateRootSignature(numTex, numCB);
 		if (dpara[i].rootSignature == nullptr)return false;
 
 		//パイプラインステートオブジェクト生成
@@ -727,32 +729,47 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 
 bool SkinMesh::GetTexture() {
 
-	int stIndex = 0;
+	int resStIndex = 0;
 	for (int m = 0; m < numMesh; m++) {
-		TextureNo* te = new TextureNo[dpara[m].NumMaterial];
+		drawPara* para = &dpara[m];
+		TextureNo* te = new TextureNo[para->NumMaterial];
 		int tCnt = 0;
-		for (int i = 0; i < dpara[m].NumMaterial; i++) {
-			if (dpara[m].material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
+		for (int i = 0; i < para->NumMaterial; i++) {
+			if (para->material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
 			else
-				te[tCnt].diffuse = dpara[m].material[i].diftex_no;
+				te[tCnt].diffuse = para->material[i].diftex_no;
 
-			if (dpara[m].material[i].nortex_no < 0)te[tCnt].normal = dx->GetTexNumber("dummyNor.");
+			if (para->material[i].nortex_no < 0)te[tCnt].normal = dx->GetTexNumber("dummyNor.");
 			else
-				te[tCnt].normal = dpara[m].material[i].nortex_no;
+				te[tCnt].normal = para->material[i].nortex_no;
 
-			if (dpara[m].material[i].spetex_no < 0)te[tCnt].specular = dx->GetTexNumber("dummyDifSpe.");
+			if (para->material[i].spetex_no < 0)te[tCnt].specular = dx->GetTexNumber("dummyDifSpe.");
 			else
-				te[tCnt].specular = dpara[m].material[i].spetex_no;
+				te[tCnt].specular = para->material[i].spetex_no;
 			tCnt++;
 		}
-		createTextureResource(stIndex, tCnt, te);
-		int numTex = tCnt * 3;
-		dpara[m].numDesc = 3;
-		dpara[m].descHeap = CreateDescHeap(numTex);
+		createTextureResource(resStIndex, tCnt, te);
+		const int numTex = 3;
+		const int numCB = 3;
+		para->numDesc = numTex + numCB;
+		int numHeap = para->NumMaterial * para->numDesc;
+		para->descHeap = CreateDescHeap(numHeap);
 		ARR_DELETE(te);
-		if (dpara[m].descHeap == nullptr)return false;
-		CreateSrvTexture(dpara[m].descHeap.Get(), 0, texture[stIndex].GetAddressOf(), numTex);
-		stIndex += numTex;
+		if (para->descHeap == nullptr)return false;
+
+		UINT cbSize[numCB] = {};
+		cbSize[0] = mObjectCB0->getSizeInBytes();
+		cbSize[1] = mObjectCB1[m]->getSizeInBytes();
+		cbSize[2] = mObject_BONES->getSizeInBytes();
+		for (int i = 0; i < para->NumMaterial; i++) {
+			CreateSrvTexture(para->descHeap.Get(), para->numDesc * i, texture[resStIndex + numTex * i].GetAddressOf(), numTex);
+			D3D12_GPU_VIRTUAL_ADDRESS ad[numCB];
+			ad[0] = mObjectCB0->Resource()->GetGPUVirtualAddress();
+			ad[1] = mObjectCB1[m]->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
+			ad[2] = mObject_BONES->Resource()->GetGPUVirtualAddress();
+			CreateCbv(para->descHeap.Get(), para->numDesc * i + numTex, ad, cbSize, numCB);
+		}
+		resStIndex += numTex;
 	}
 	return true;
 }
@@ -794,9 +811,6 @@ void SkinMesh::Draw() {
 	mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
 
 	for (int i = 0; i < numMesh; i++) {
-		dpara[i].cbRes0 = mObjectCB0->Resource();
-		dpara[i].cbRes1 = mObjectCB1[i]->Resource();
-		dpara[i].cbRes2 = mObject_BONES->Resource();
 		dpara[i].insNum = 1;
 		drawsub(dpara[i]);
 	}

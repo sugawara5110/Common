@@ -133,6 +133,21 @@ void Common::CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12R
 	}
 }
 
+void Common::CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
+	D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum)
+{
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
+	hDescriptor.Offset(offsetHeap, dx->mCbvSrvUavDescriptorSize);
+	D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
+
+	for (int i = 0; i < bufNum; i++) {
+		bufferDesc.SizeInBytes = sizeInBytes[i];
+		bufferDesc.BufferLocation = virtualAddress[i];
+		dx->md3dDevice->CreateConstantBufferView(&bufferDesc, hDescriptor);
+		hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
+	}
+}
+
 ComPtr <ID3D12DescriptorHeap> Common::CreateDescHeap(int numDesc) {
 	ComPtr <ID3D12DescriptorHeap>heap;
 
@@ -182,29 +197,25 @@ static ComPtr <ID3D12RootSignature>CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* r
 	return rs;
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRootSignature(char* className) {
+ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv) {
 
-	int pCnt = 0;
-	CD3DX12_DESCRIPTOR_RANGE Table[4];
-	Table[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);//Descriptor 1ŒÂ, ŠJŽnIndex 0”Ô
-	Table[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
-	Table[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
-	Table[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3);
+	UINT numPara = numSrv + numCbv;
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
-	slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[0], D3D12_SHADER_VISIBILITY_ALL);//(t0)
-	slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[1], D3D12_SHADER_VISIBILITY_ALL);//(t1)
-	slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[2], D3D12_SHADER_VISIBILITY_ALL);//(t2)
-	if (!strcmp(className, "Wave"))
-		slotRootParameter[pCnt++].InitAsDescriptorTable(1, &Table[3], D3D12_SHADER_VISIBILITY_ALL);//(t3)
+	std::unique_ptr<CD3DX12_DESCRIPTOR_RANGE[]>Table = nullptr;
+	Table = std::make_unique<CD3DX12_DESCRIPTOR_RANGE[]>(numPara);
+	int cnt = 0;
+	for (UINT i = 0; i < numSrv; i++)
+		Table[cnt++].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, i);//Descriptor 1ŒÂ,(ti)
+	for (UINT i = 0; i < numCbv; i++)
+		Table[cnt++].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, i);//Descriptor 1ŒÂ,(bi)
 
-	slotRootParameter[pCnt++].InitAsConstantBufferView(0);//(b0)
-	slotRootParameter[pCnt++].InitAsConstantBufferView(1);//(b1)
+	std::unique_ptr<CD3DX12_ROOT_PARAMETER[]>slotRootParameter = nullptr;
+	slotRootParameter = std::make_unique<CD3DX12_ROOT_PARAMETER[]>(numPara);
 
-	if (!strcmp(className, "SkinMesh") || !strcmp(className, "Wave"))
-		slotRootParameter[pCnt++].InitAsConstantBufferView(2);//(b2)
+	for (UINT i = 0; i < numPara; i++)
+		slotRootParameter[i].InitAsDescriptorTable(1, &Table[i], D3D12_SHADER_VISIBILITY_ALL);
 
-	return CreateRs(pCnt, slotRootParameter);
+	return CreateRs(numPara, slotRootParameter.get());
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
@@ -435,19 +446,10 @@ void Common::drawsub(drawPara& para) {
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCommandList->SetPipelineState(para.PSO.Get());
 
-		int descInd = 0;
-		for (descInd = 0; descInd < para.numDesc; descInd++) {
+		for (int descInd = 0; descInd < para.numDesc; descInd++) {
 			mCommandList->SetGraphicsRootDescriptorTable(descInd, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
 			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		}
-
-		UINT viewIndex = descInd;
-		mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes0.Get()->GetGPUVirtualAddress());
-		UINT mElementByteSize = (sizeof(CONSTANT_BUFFER2) + 255) & ~255;
-		mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes1.Get()->GetGPUVirtualAddress() + mElementByteSize * i);
-
-		if (para.cbRes2 != nullptr)
-			mCommandList->SetGraphicsRootConstantBufferView(viewIndex++, para.cbRes2.Get()->GetGPUVirtualAddress());
 
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}

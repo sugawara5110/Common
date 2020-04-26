@@ -417,6 +417,10 @@ public:
 	void CopyData(int elementIndex, const T& data) {
 		memcpy(&mMappedData[elementIndex * mElementByteSize], &data, sizeof(T));
 	}
+
+	UINT getSizeInBytes() {
+		return mElementByteSize;
+	}
 };
 
 //**********************************CommonƒNƒ‰ƒX*************************************//
@@ -448,12 +452,17 @@ protected:
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
+
 	void CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** texture, int texNum);
+
 	void CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** buffer, int bufNum,
 		UINT StructureByteStride);
 
+	void CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
+		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
+
 	ComPtr <ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
-	ComPtr <ID3D12RootSignature> CreateRootSignature(char* className);
+	ComPtr <ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv);
 	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr <ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
@@ -506,9 +515,6 @@ protected:
 		std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
 		D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
 		ComPtr<ID3D12PipelineState> PSO = nullptr;
-		ComPtr<ID3D12Resource> cbRes0 = nullptr;
-		ComPtr<ID3D12Resource> cbRes1 = nullptr;
-		ComPtr<ID3D12Resource> cbRes2 = nullptr;
 		UINT insNum = 1;
 	};
 	void drawsub(drawPara& para);

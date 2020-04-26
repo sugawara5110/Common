@@ -157,8 +157,10 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 
 	mObjectCB1->CopyData(0, sg);
-
-	dpara.rootSignature = CreateRootSignature("Wave");
+	const int numTex = 3;
+	const int numBuf = 1;
+	const int numCB = 3;
+	dpara.rootSignature = CreateRootSignature(numTex + numBuf, numCB);
 	if (dpara.rootSignature == nullptr)return false;
 
 	dpara.material[0].diftex_no = texNo;
@@ -177,11 +179,22 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	createTextureResource(0, 1, &te);
-	dpara.descHeap = CreateDescHeap(4);
+	dpara.numDesc = numTex + numBuf + numCB;
+	int numHeap = dpara.NumMaterial * dpara.numDesc;
+	dpara.descHeap = CreateDescHeap(numHeap);
 	if (dpara.descHeap == nullptr)return false;
-	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), 3);
-	CreateSrvBuffer(dpara.descHeap.Get(), 3, mOutputBuffer.GetAddressOf(), 1, sizeof(WaveData));
-	dpara.numDesc = 4;
+
+	UINT cbSize[numCB] = {};
+	cbSize[0] = mObjectCB->getSizeInBytes();
+	cbSize[1] = mObjectCB1->getSizeInBytes();
+	cbSize[2] = mObjectCB_WAVE->getSizeInBytes();
+	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), numTex);
+	CreateSrvBuffer(dpara.descHeap.Get(), numTex, mOutputBuffer.GetAddressOf(), numBuf, sizeof(WaveData));
+	D3D12_GPU_VIRTUAL_ADDRESS ad[numCB];
+	ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
+	ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress();
+	ad[2] = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
+	CreateCbv(dpara.descHeap.Get(), numTex + numBuf, ad, cbSize, numCB);
 
 	const UINT vbByteSize = ver * sizeof(Vertex);
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
@@ -273,9 +286,6 @@ void Wave::Compute() {
 void Wave::DrawSub() {
 
 	dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
-	dpara.cbRes0 = mObjectCB->Resource();
-	dpara.cbRes1 = mObjectCB1->Resource();
-	dpara.cbRes2 = mObjectCB_WAVE->Resource();
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(dpara);
 }

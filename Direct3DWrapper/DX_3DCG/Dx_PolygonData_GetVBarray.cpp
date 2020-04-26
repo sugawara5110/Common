@@ -195,8 +195,9 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	GetShaderByteCode(light, tNo);
 
 	mObjectCB1->CopyData(0, sg);
-
-	dpara.rootSignature = CreateRootSignature("PolygonData");
+	const int numTex = 3;
+	const int numCB = 2;
+	dpara.rootSignature = CreateRootSignature(numTex, numCB);
 	if (dpara.rootSignature == nullptr)return false;
 
 	dpara.material[0].diftex_no = tNo;
@@ -217,10 +218,19 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 		te.specular = spetNo;
 
 	createTextureResource(0, 1, &te);
-	dpara.descHeap = CreateDescHeap(3);
+	dpara.numDesc = numTex + numCB;
+	int numHeap = dpara.NumMaterial * dpara.numDesc;
+	dpara.descHeap = CreateDescHeap(numHeap);
 	if (dpara.descHeap == nullptr)return false;
-	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), 3);
-	dpara.numDesc = 3;
+
+	UINT cbSize[numCB] = {};
+	cbSize[0] = mObjectCB->getSizeInBytes();
+	cbSize[1] = mObjectCB1->getSizeInBytes();
+	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), numTex);
+	D3D12_GPU_VIRTUAL_ADDRESS ad[numCB];
+	ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
+	ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress();
+	CreateCbv(dpara.descHeap.Get(), numTex, ad, cbSize, numCB);
 
 	UINT VertexSize;
 	if (tNo == -1 && !movOn[0].m_on)
@@ -289,10 +299,6 @@ void PolygonData::Draw() {
 	if (!UpOn | !DrawOn)return;
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
-
-	dpara.cbRes0 = mObjectCB->Resource();
-	dpara.cbRes1 = mObjectCB1->Resource();
-	dpara.cbRes2 = nullptr;
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(dpara);
 }

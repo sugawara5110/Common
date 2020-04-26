@@ -425,8 +425,9 @@ bool MeshData::SetVertex() {
 bool MeshData::CreateMesh() {
 
 	GetShaderByteCode(disp);
-
-	dpara.rootSignature = CreateRootSignature("MeshData");
+	const int numTex = 3;
+	const int numCB = 2;
+	dpara.rootSignature = CreateRootSignature(numTex, numCB);
 	if (dpara.rootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
@@ -452,15 +453,26 @@ bool MeshData::GetTexture() {
 	}
 
 	createTextureResource(0, dpara.NumMaterial, te);
-	int numTex = dpara.NumMaterial * 3;
-	dpara.numDesc = 3;
-	dpara.descHeap = CreateDescHeap(numTex);
+	const int numTex = 3;
+	const int numCB = 2;
+	dpara.numDesc = numTex + numCB;
+	int numHeap = dpara.NumMaterial * dpara.numDesc;
+	dpara.descHeap = CreateDescHeap(numHeap);
 	if (dpara.descHeap == nullptr)return false;
-	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), numTex);
 
-	for (int i = 0; i < dpara.NumMaterial; i++)
+	UINT cbSize[numCB] = {};
+	cbSize[0] = mObjectCB->getSizeInBytes();
+	cbSize[1] = mObject_MESHCB->getSizeInBytes();
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		CreateSrvTexture(dpara.descHeap.Get(), dpara.numDesc * i, texture[numTex * i].GetAddressOf(), numTex);
+		D3D12_GPU_VIRTUAL_ADDRESS ad[numCB];
+		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
+		ad[1] = mObject_MESHCB->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
+		CreateCbv(dpara.descHeap.Get(), dpara.numDesc * i + numTex, ad, cbSize, numCB);
+
 		dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, &piFaceBuffer[FaceCount * 3 * i],
 			dpara.Iview[i].IndexBufferByteSize, dpara.Iview[i].IndexBufferUploader);
+	}
 
 	ARR_DELETE(te);
 	ARR_DELETE(piFaceBuffer);
@@ -506,10 +518,6 @@ void MeshData::Draw() {
 	if (!UpOn | !DrawOn)return;
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
-
-	dpara.cbRes0 = mObjectCB->Resource();
-	dpara.cbRes1 = mObject_MESHCB->Resource();
-	dpara.cbRes2 = nullptr;
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	drawsub(dpara);
 }
