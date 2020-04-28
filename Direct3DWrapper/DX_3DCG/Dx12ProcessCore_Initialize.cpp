@@ -183,6 +183,7 @@ bool Dx12Process::CreateShaderByteCode() {
 
 	//CommonPS
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
+	pPixelShader_3D_NoNormalMap = CompileShader(ComPS.str, ComPS.size, "PS_L_NoNormalMap", "ps_5_0");
 	pPixelShader_Emissive = CompileShader(ComPS.str, ComPS.size, "PS", "ps_5_0");
 	//CommonHSDS(Triangle)
 	pHullShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "HS", "hs_5_0");
@@ -190,6 +191,8 @@ bool Dx12Process::CreateShaderByteCode() {
 	//CommonGS
 	pGeometryShader_Before_ds = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds", "gs_5_0");
 	pGeometryShader_Before_vs = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs", "gs_5_0");
+	pGeometryShader_Before_ds_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap", "gs_5_0");
+	pGeometryShader_Before_vs_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs_NoNormalMap", "gs_5_0");
 
 	//ポストエフェクト
 	pComputeShader_Post[0] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "MosaicCS", "cs_5_0");

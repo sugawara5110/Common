@@ -140,6 +140,8 @@ private:
 	ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
 
 	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
@@ -169,6 +171,7 @@ private:
 
 	ComPtr<ID3DBlob> pPixelShader_P = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_3D = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_3D_NoNormalMap = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_Emissive = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_BC = nullptr;
 	ComPtr<ID3DBlob> pPixelShader_2D = nullptr;
@@ -514,7 +517,7 @@ protected:
 		std::unique_ptr<IndexView[]> Iview = nullptr;
 		std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
 		D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
-		ComPtr<ID3D12PipelineState> PSO = nullptr;
+		std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
 		UINT insNum = 1;
 	};
 	void drawsub(drawPara& para);
@@ -535,9 +538,11 @@ protected:
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
+	ID3DBlob* ps_NoMap = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* gs = nullptr;
+	ID3DBlob* gs_NoMap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;

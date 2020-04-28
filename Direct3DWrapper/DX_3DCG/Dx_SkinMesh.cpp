@@ -304,6 +304,7 @@ void SkinMesh::SetVertex() {
 		auto numMaterial = mesh->getNumMaterial();
 		dpara[m].NumMaterial = numMaterial;
 		dpara[m].material = std::make_unique<MY_MATERIAL_S[]>(numMaterial);
+		dpara[m].PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(numMaterial);
 
 		//4頂点ポリゴン分割後のIndex数カウント
 		UINT* numNewIndex = new UINT[numMaterial];
@@ -481,6 +482,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->pDomainShaderTriangle.Get();
 		gs = dx->pGeometryShader_Before_ds.Get();
+		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 		primType_create = CONTROL_POINT;
 		for (int i = 0; i < numMesh; i++)
 			dpara[i].TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
@@ -488,11 +490,13 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	else {
 		vs = dx->pVertexShader_SKIN.Get();
 		gs = dx->pGeometryShader_Before_vs.Get();
+		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
 		primType_create = SQUARE;
 		for (int i = 0; i < numMesh; i++)
 			dpara[i].TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 	ps = dx->pPixelShader_3D.Get();
+	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 
 	for (int i = 0; i < numMesh; i++) {
 		dpara[i].Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB[i],
@@ -513,9 +517,16 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		if (dpara[i].rootSignature == nullptr)return false;
 
 		//パイプラインステートオブジェクト生成
-		dpara[i].PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara[i].rootSignature.Get(),
-			dx->pVertexLayout_SKIN, alpha, blend, primType_create);
-		if (dpara[i].PSO == nullptr)return false;
+		for (int i1 = 0; i1 < dpara[i].NumMaterial; i1++) {
+			if (dpara[i].material[i1].nortex_no < 0)
+				dpara[i].PSO[i1] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara[i].rootSignature.Get(),
+					dx->pVertexLayout_SKIN, alpha, blend, primType_create);
+			else
+				dpara[i].PSO[i1] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara[i].rootSignature.Get(),
+					dx->pVertexLayout_SKIN, alpha, blend, primType_create);
+
+			if (dpara[i].PSO[i1] == nullptr)return false;
+		}
 	}
 	ARR_DELETE(newIndex);
 	if (pvVB_delete_f)ARR_DELETE(pvVB);

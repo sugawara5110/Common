@@ -26,8 +26,8 @@ MeshData::~MeshData() {
 	S_DELETE(mObject_MESHCB);
 }
 
-ID3D12PipelineState* MeshData::GetPipelineState() {
-	return dpara.PSO.Get();
+ID3D12PipelineState* MeshData::GetPipelineState(int index) {
+	return dpara.PSO[index].Get();
 }
 
 void MeshData::GetShaderByteCode(bool disp) {
@@ -37,12 +37,15 @@ void MeshData::GetShaderByteCode(bool disp) {
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->pDomainShaderTriangle.Get();
 		gs = dx->pGeometryShader_Before_ds.Get();
+		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 	}
 	else {
 		vs = dx->pVertexShader_MESH.Get();
 		gs = dx->pGeometryShader_Before_vs.Get();
+		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
 	}
 	ps = dx->pPixelShader_3D.Get();
+	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName) {
@@ -73,6 +76,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 	}
 
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	mMat = std::make_unique<meshMaterial[]>(dpara.NumMaterial);
 
 	//本読み込み	
@@ -431,9 +435,15 @@ bool MeshData::CreateMesh() {
 	if (dpara.rootSignature == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成
-	dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
-	if (dpara.PSO == nullptr)return false;
-
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.material[i].nortex_no < 0)
+			dpara.PSO[i] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara.rootSignature.Get(),
+				dx->pVertexLayout_MESH, alpha, blend, primType_create);
+		else
+			dpara.PSO[i] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
+				dx->pVertexLayout_MESH, alpha, blend, primType_create);
+		if (dpara.PSO[i] == nullptr)return false;
+	}
 	return true;
 }
 

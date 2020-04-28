@@ -57,6 +57,7 @@ void Wave::GetVBarray(int v) {
 	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
 	dpara.NumMaterial = 1;
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	dpara.Vview = std::make_unique<VertexView>();
 	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 }
@@ -65,9 +66,11 @@ void Wave::GetShaderByteCode() {
 	cs = dx->pComputeShader_Wave.Get();
 	vs = dx->pVertexShader_Wave.Get();
 	ps = dx->pPixelShader_3D.Get();
+	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 	hs = dx->pHullShader_Wave.Get();
 	ds = dx->pDomainShader_Wave.Get();
 	gs = dx->pGeometryShader_Before_ds.Get();
+	gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 }
 
 bool Wave::ComCreate() {
@@ -210,8 +213,13 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	dpara.Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
-	dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
-	if (dpara.PSO == nullptr)return false;
+	if (dpara.material[0].nortex_no < 0)
+		dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara.rootSignature.Get(),
+			dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
+	else
+		dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
+			dx->pVertexLayout_3D, alpha, blend, CONTROL_POINT);
+	if (dpara.PSO[0] == nullptr)return false;
 
 	return true;
 }

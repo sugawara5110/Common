@@ -39,7 +39,10 @@ protected:
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* ps = nullptr;
+	ID3DBlob* ps_NoMap = nullptr;
 	ID3DBlob* gs = nullptr;
+	ID3DBlob* gs_NoMap = nullptr;
+
 	bool alpha = false;
 	bool blend = false;
 	float addDiffuse = 0.0f;

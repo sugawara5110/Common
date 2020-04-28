@@ -14,9 +14,11 @@ class MeshData :public Common {
 protected:
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
+	ID3DBlob* ps_NoMap = nullptr;
 	ID3DBlob* hs = nullptr;
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* gs = nullptr;
+	ID3DBlob* gs_NoMap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
@@ -72,7 +74,7 @@ public:
 	bool SetVertex();
 	bool CreateMesh();
 	bool GetTexture();
-	ID3D12PipelineState* GetPipelineState();
+	ID3D12PipelineState* GetPipelineState(int index);
 	//複数Update
 	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);
 	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f);

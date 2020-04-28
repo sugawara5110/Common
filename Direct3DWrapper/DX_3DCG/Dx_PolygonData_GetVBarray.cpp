@@ -49,7 +49,7 @@ PolygonData::~PolygonData() {
 }
 
 ID3D12PipelineState* PolygonData::GetPipelineState() {
-	return dpara.PSO.Get();
+	return dpara.PSO[0].Get();
 }
 
 void PolygonData::SetVertex(int I1, int I2, int i,
@@ -128,6 +128,7 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
 	dpara.NumMaterial = 1;
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	dpara.Vview = std::make_unique<VertexView>();
 	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 }
@@ -144,29 +145,37 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 	if (!disp && light) {
 		vs = dx->pVertexShader_TC.Get();
 		gs = dx->pGeometryShader_Before_vs.Get();
+		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
 		ps = dx->pPixelShader_3D.Get();
+		ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 		return;
 	}
 	if (!disp && !light) {
 		vs = dx->pVertexShader_TC.Get();
 		gs = dx->pGeometryShader_Before_vs.Get();
+		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
 		ps = dx->pPixelShader_Emissive.Get();
+		ps_NoMap = dx->pPixelShader_Emissive.Get();
 		return;
 	}
 	if (disp && light) {
 		vs = dx->pVertexShader_MESH_D.Get();
 		ps = dx->pPixelShader_3D.Get();
+		ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->dx->pDomainShaderTriangle.Get();
 		gs = dx->pGeometryShader_Before_ds.Get();
+		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 		return;
 	}
 	if (disp && !light) {
 		vs = dx->pVertexShader_MESH_D.Get();
 		ps = dx->pPixelShader_Emissive.Get();
+		ps_NoMap = dx->pPixelShader_Emissive.Get();
 		hs = dx->pHullShaderTriangle.Get();
 		ds = dx->dx->pDomainShaderTriangle.Get();
 		gs = dx->pGeometryShader_Before_ds.Get();
+		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 		return;
 	}
 }
@@ -242,9 +251,11 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	const UINT ibByteSize = verI * sizeof(std::uint16_t);
 
 	if (tNo == -1 && !movOn[0].m_on)
-		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayBC, vbByteSize, dpara.Vview->VertexBufferUploader);
+		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayBC, vbByteSize,
+			dpara.Vview->VertexBufferUploader);
 	else
-		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize, dpara.Vview->VertexBufferUploader);
+		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize,
+			dpara.Vview->VertexBufferUploader);
 
 	dpara.Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, dpara.Iview[0].IndexBufferUploader);
 
@@ -255,12 +266,19 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	dpara.Iview[0].IndexCount = verI;
 
 	//パイプラインステートオブジェクト生成
-	if (tNo == -1 && !movOn[0].m_on)
-		dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_3DBC, alpha, blend, primType_create);
-	else
-		dpara.PSO = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(), dx->pVertexLayout_MESH, alpha, blend, primType_create);
-
-	if (dpara.PSO == nullptr)return false;
+	if (tNo == -1 && !movOn[0].m_on) {
+		dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
+			dx->pVertexLayout_3DBC, alpha, blend, primType_create);
+	}
+	else {
+		if (dpara.material[0].nortex_no < 0)
+			dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara.rootSignature.Get(),
+				dx->pVertexLayout_MESH, alpha, blend, primType_create);
+		else
+			dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
+				dx->pVertexLayout_MESH, alpha, blend, primType_create);
+	}
+	if (dpara.PSO[0] == nullptr)return false;
 
 	return true;
 }

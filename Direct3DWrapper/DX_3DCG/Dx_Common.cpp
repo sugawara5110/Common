@@ -125,7 +125,6 @@ void Common::CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12R
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Buffer.StructureByteStride = StructureByteStride;
 	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
 	for (int i = 0; i < bufNum; i++) {
 		srvDesc.Buffer.NumElements = (UINT)buffer[i]->GetDesc().Width / StructureByteStride;
 		dx->md3dDevice->CreateShaderResourceView(buffer[i], &srvDesc, hDescriptor);
@@ -139,7 +138,6 @@ void Common::CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
 	hDescriptor.Offset(offsetHeap, dx->mCbvSrvUavDescriptorSize);
 	D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
-
 	for (int i = 0; i < bufNum; i++) {
 		bufferDesc.SizeInBytes = sizeInBytes[i];
 		bufferDesc.BufferLocation = virtualAddress[i];
@@ -436,7 +434,7 @@ void Common::drawsub(drawPara& para) {
 
 	mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	CD3DX12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
 		//使用されていないマテリアル対策
 		if (para.Iview[i].IndexCount <= 0)continue;
@@ -444,11 +442,11 @@ void Common::drawsub(drawPara& para) {
 		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
 
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
-		mCommandList->SetPipelineState(para.PSO.Get());
+		mCommandList->SetPipelineState(para.PSO[i].Get());
 
 		for (int descInd = 0; descInd < para.numDesc; descInd++) {
-			mCommandList->SetGraphicsRootDescriptorTable(descInd, tex);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
-			tex.Offset(1, dx->mCbvSrvUavDescriptorSize);
+			mCommandList->SetGraphicsRootDescriptorTable(descInd, heap);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
+			heap.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		}
 
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
