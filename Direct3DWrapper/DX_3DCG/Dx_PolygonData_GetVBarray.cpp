@@ -10,9 +10,6 @@
 PolygonData::PolygonData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
-	d3varray = nullptr;
-	d3varrayBC = nullptr;
-	d3varrayI = nullptr;
 
 	sg.vDiffuse.x = 0.7f;
 	sg.vDiffuse.y = 0.7f;
@@ -38,12 +35,6 @@ PolygonData::PolygonData() {
 }
 
 PolygonData::~PolygonData() {
-	free(d3varray);
-	d3varray = nullptr;
-	free(d3varrayBC);
-	d3varrayBC = nullptr;
-	free(d3varrayI);
-	d3varrayI = nullptr;
 	S_DELETE(mObjectCB);
 	S_DELETE(mObjectCB1);
 }
@@ -56,40 +47,85 @@ void PolygonData::SetVertex(int I1, int I2, int i,
 	float vx, float vy, float vz,
 	float nx, float ny, float nz,
 	float u, float v) {
-	d3varrayI[I1] = i;
-	d3varrayI[I2] = i;
-	d3varray[i].Pos.as(vx, vy, vz);
-	d3varray[i].normal.as(nx, ny, nz);
-	d3varray[i].geoNormal.as(nx, ny, nz);
-	d3varray[i].tex.as(u, v);
+	if (!ver) {
+		ver = new VertexM[numVer];
+		bcOn = false;
+		getVertexBuffer(1);
+		index = new UINT * [dpara.NumMaterial];
+		index[0] = new UINT[numInd];
+	}
+	VertexM* vm = (VertexM*)ver;
+	index[0][I1] = i;
+	index[0][I2] = i;
+	vm[i].Pos.as(vx, vy, vz);
+	vm[i].normal.as(nx, ny, nz);
+	vm[i].geoNormal.as(nx, ny, nz);
+	vm[i].tex.as(u, v);
 }
 
 void PolygonData::SetVertex(int I1, int i,
 	float vx, float vy, float vz,
 	float nx, float ny, float nz,
 	float u, float v) {
-	d3varrayI[I1] = i;
-	d3varray[i].Pos.as(vx, vy, vz);
-	d3varray[i].normal.as(nx, ny, nz);
-	d3varray[i].geoNormal.as(nx, ny, nz);
-	d3varray[i].tex.as(u, v);
+	if (!ver) {
+		ver = new VertexM[numVer];
+		bcOn = false;
+		getVertexBuffer(1);
+		index = new UINT * [dpara.NumMaterial];
+		index[0] = new UINT[numInd];
+	}
+	VertexM* vm = (VertexM*)ver;
+	index[0][I1] = i;
+	vm[i].Pos.as(vx, vy, vz);
+	vm[i].normal.as(nx, ny, nz);
+	vm[i].geoNormal.as(nx, ny, nz);
+	vm[i].tex.as(u, v);
 }
 
 void PolygonData::SetVertexBC(int I1, int I2, int i,
 	float vx, float vy, float vz,
 	float r, float g, float b, float a) {
-	d3varrayI[I1] = i;
-	d3varrayI[I2] = i;
-	d3varrayBC[i].Pos.as(vx, vy, vz);
-	d3varrayBC[i].color.as(r, g, b, a);
+	if (!ver) {
+		ver = new VertexBC[numVer];
+		bcOn = true;
+		getVertexBuffer(1);
+		index = new UINT * [dpara.NumMaterial];
+		index[0] = new UINT[numInd];
+	}
+	VertexBC* v = (VertexBC*)ver;
+	index[0][I1] = i;
+	index[0][I2] = i;
+	v[i].Pos.as(vx, vy, vz);
+	v[i].color.as(r, g, b, a);
 }
 
 void PolygonData::SetVertexBC(int I1, int i,
 	float vx, float vy, float vz,
 	float r, float g, float b, float a) {
-	d3varrayI[I1] = i;
-	d3varrayBC[i].Pos.as(vx, vy, vz);
-	d3varrayBC[i].color.as(r, g, b, a);
+	if (!ver) {
+		ver = new VertexBC[numVer];
+		bcOn = true;
+		getVertexBuffer(1);
+		index = new UINT * [dpara.NumMaterial];
+		index[0] = new UINT[numInd];
+	}
+	VertexBC* v = (VertexBC*)ver;
+	index[0][I1] = i;
+	v[i].Pos.as(vx, vy, vz);
+	v[i].color.as(r, g, b, a);
+}
+
+void PolygonData::getBuffer() {
+	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
+}
+
+void PolygonData::getVertexBuffer(int numMaterial) {
+	dpara.NumMaterial = numMaterial;
+	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
+	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
+	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
+	dpara.Vview = std::make_unique<VertexView>();
+	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 }
 
 void PolygonData::GetVBarray(PrimitiveType type, int v) {
@@ -97,49 +133,40 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 	primType_create = type;
 	if (type == SQUARE) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		ver = v * 4;//v==四角形の個数
-		verI = v * 6;
+		numVer = v * 4;//v==四角形の個数
+		numInd = v * 6;
 	}
 	if (type == POINt) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
-		ver = v;//v==点の個数
-		verI = v;
+		numVer = v;//v==点の個数
+		numInd = v;
 	}
 	if (type == LINE_L) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
-		ver = v * 2;//v==線の個数
-		verI = v * 2;
+		numVer = v * 2;//v==線の個数
+		numInd = v * 2;
 	}
 	if (type == LINE_S) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
-		ver = v * 2;//v==線の個数
-		verI = v * 2;
+		numVer = v * 2;//v==線の個数
+		numInd = v * 2;
 	}
 	if (type == CONTROL_POINT) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
-		ver = v * 4;//v==パッチの個数
-		verI = v * 6;
+		numVer = v * 4;//v==パッチの個数
+		numInd = v * 6;
 	}
 
-	d3varray = (VertexM*)malloc(sizeof(VertexM) * ver);
-	d3varrayBC = (VertexBC*)malloc(sizeof(VertexBC) * ver);
-	d3varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * verI);
-	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
-	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(1);
-	dpara.NumMaterial = 1;
-	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
-	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
-	dpara.Vview = std::make_unique<VertexView>();
-	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
+	getBuffer();
 }
 
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
-	dpara.material[0].diftex_no = tNo;
 	bool disp = false;
 	if (primType_create == CONTROL_POINT)disp = true;
 	if (tNo == -1 && movOn[0].m_on == false) {
 		vs = dx->pVertexShader_BC.Get();
 		ps = dx->pPixelShader_BC.Get();
+		ps_NoMap = dx->pPixelShader_BC.Get();
 		return;
 	}
 	if (!disp && light) {
@@ -199,88 +226,96 @@ bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
 	return Create(light, tNo, -1, -1, blend, alpha);
 }
 
-bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha) {
+bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
+	const int numSrv, const int numCbv, bool blend, bool alpha) {
 
-	GetShaderByteCode(light, tNo);
-
-	mObjectCB1->CopyData(0, sg);
-	const int numTex = 3;
-	const int numCB = 2;
-	dpara.rootSignature = CreateRootSignature(numTex, numCB);
+	dpara.rootSignature = CreateRootSignature(numSrv, numCbv);
 	if (dpara.rootSignature == nullptr)return false;
 
+	//パイプラインステートオブジェクト生成
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.material[i].nortex_no < 0)
+			dpara.PSO[i] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara.rootSignature.Get(),
+				vertexLayout, alpha, blend, primType_create);
+		else
+			dpara.PSO[i] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
+				vertexLayout, alpha, blend, primType_create);
+
+		if (dpara.PSO[i] == nullptr)return false;
+	}
+	return true;
+}
+
+bool PolygonData::setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
+	TextureNo* te = new TextureNo[dpara.NumMaterial];
+	int tCnt = 0;
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
+		else
+			te[tCnt].diffuse = dpara.material[i].diftex_no;
+
+		if (dpara.material[i].nortex_no < 0)te[tCnt].normal = dx->GetTexNumber("dummyNor.");
+		else
+			te[tCnt].normal = dpara.material[i].nortex_no;
+
+		if (dpara.material[i].spetex_no < 0)te[tCnt].specular = dx->GetTexNumber("dummyDifSpe.");
+		else
+			te[tCnt].specular = dpara.material[i].spetex_no;
+		tCnt++;
+	}
+	createTextureResource(0, tCnt, te);
+	dpara.numDesc = numSrv + numCbv;
+	int numHeap = dpara.NumMaterial * dpara.numDesc;
+	dpara.descHeap = CreateDescHeap(numHeap);
+	ARR_DELETE(te);
+	if (dpara.descHeap == nullptr)return false;
+	const int numMaxCB = 3;
+	UINT cbSize[numMaxCB] = {};
+	cbSize[0] = mObjectCB->getSizeInBytes();
+	cbSize[1] = mObjectCB1->getSizeInBytes();
+	cbSize[2] = ad3Size;
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		CreateSrvTexture(dpara.descHeap.Get(), dpara.numDesc * i, texture[numSrv * i].GetAddressOf(), numSrv);
+		D3D12_GPU_VIRTUAL_ADDRESS ad[numMaxCB];
+		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
+		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
+		ad[2] = ad3;
+		CreateCbv(dpara.descHeap.Get(), dpara.numDesc * i + numSrv, ad, cbSize, numCbv);
+	}
+	return true;
+}
+
+bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha) {
 	dpara.material[0].diftex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
 	dpara.material[0].spetex_no = spetNo;
-
-	TextureNo te;
-	if (tNo < 0)te.diffuse = dx->GetTexNumber("dummyDifSpe.");
-	else
-		te.diffuse = tNo;
-
-	if (nortNo < 0)te.normal = dx->GetTexNumber("dummyNor.");
-	else
-		te.normal = nortNo;
-
-	if (spetNo < 0)te.specular = dx->GetTexNumber("dummyDifSpe.");
-	else
-		te.specular = spetNo;
-
-	createTextureResource(0, 1, &te);
-	dpara.numDesc = numTex + numCB;
-	int numHeap = dpara.NumMaterial * dpara.numDesc;
-	dpara.descHeap = CreateDescHeap(numHeap);
-	if (dpara.descHeap == nullptr)return false;
-
-	UINT cbSize[numCB] = {};
-	cbSize[0] = mObjectCB->getSizeInBytes();
-	cbSize[1] = mObjectCB1->getSizeInBytes();
-	CreateSrvTexture(dpara.descHeap.Get(), 0, texture->GetAddressOf(), numTex);
-	D3D12_GPU_VIRTUAL_ADDRESS ad[numCB];
-	ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
-	ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress();
-	CreateCbv(dpara.descHeap.Get(), numTex, ad, cbSize, numCB);
-
+	GetShaderByteCode(light, tNo);
+	mObjectCB1->CopyData(0, sg);
 	UINT VertexSize;
 	if (tNo == -1 && !movOn[0].m_on)
 		VertexSize = sizeof(VertexBC);
 	else
 		VertexSize = sizeof(VertexM);
-
-	const UINT vbByteSize = VertexSize * ver;
-	const UINT ibByteSize = verI * sizeof(std::uint16_t);
-
-	if (tNo == -1 && !movOn[0].m_on)
-		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayBC, vbByteSize,
-			dpara.Vview->VertexBufferUploader);
-	else
-		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varray, vbByteSize,
-			dpara.Vview->VertexBufferUploader);
-
-	dpara.Iview[0].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d3varrayI, ibByteSize, dpara.Iview[0].IndexBufferUploader);
-
+	const UINT vbByteSize = VertexSize * numVer;
+	const UINT ibByteSize = numInd * sizeof(UINT);
 	dpara.Vview->VertexByteStride = VertexSize;
 	dpara.Vview->VertexBufferByteSize = vbByteSize;
-	dpara.Iview[0].IndexFormat = DXGI_FORMAT_R16_UINT;
+	dpara.Iview[0].IndexFormat = DXGI_FORMAT_R32_UINT;
 	dpara.Iview[0].IndexBufferByteSize = ibByteSize;
-	dpara.Iview[0].IndexCount = verI;
+	dpara.Iview[0].IndexCount = numInd;
 
-	//パイプラインステートオブジェクト生成
+	createDefaultBuffer(ver, index, true);
+	const int numSrv = 3;
+	const int numCbv = 2;
+
 	if (tNo == -1 && !movOn[0].m_on) {
-		dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
-			dx->pVertexLayout_3DBC, alpha, blend, primType_create);
+		if (!createPSO(dx->pVertexLayout_3DBC, numSrv, numCbv, blend, alpha))return false;
 	}
 	else {
-		if (dpara.material[0].nortex_no < 0)
-			dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara.rootSignature.Get(),
-				dx->pVertexLayout_MESH, alpha, blend, primType_create);
-		else
-			dpara.PSO[0] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
-				dx->pVertexLayout_MESH, alpha, blend, primType_create);
+		if (!createPSO(dx->pVertexLayout_MESH, numSrv, numCbv, blend, alpha))return false;
 	}
-	if (dpara.PSO[0] == nullptr)return false;
 
-	return true;
+	return setDescHeap(numSrv, numCbv, 0, 0);
 }
 
 void PolygonData::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
@@ -305,6 +340,15 @@ void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp,
 void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess, float size, float px, float py, float mx, float my) {
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, size);
 	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, divArr, numDiv, shininess);
+	CbSwap();
+}
+
+void PolygonData::update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
+	float thetaZ, float thetaY, float thetaX, float size,
+	DivideArr* divArr, int numDiv,
+	float disp, float shininess) {
+	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
 	CbSwap();
 }
 

@@ -535,6 +535,7 @@ public:
 class PolygonData :public Common {
 
 protected:
+	friend SkinMesh;
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -560,19 +561,48 @@ protected:
 	int ins_no = 0;
 	int insNum[2] = {};
 
-	VertexM* d3varray;  //頂点配列
-	VertexBC* d3varrayBC;//頂点配列基本色
-	std::uint16_t* d3varrayI;//頂点インデックス
-	int ver;      //頂点個数
-	int verI;    //頂点インデックス
+	void* ver = nullptr;  //頂点配列
+	bool bcOn = false;
+	UINT** index = nullptr;//頂点インデックス
+	int numVer;      //頂点個数
+	int numInd;    //頂点インデックス数
 
-	PrimitiveType          primType_create;
+	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
 	drawPara dpara = {};
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
+	void getBuffer();
+	void getVertexBuffer(int numMaterial);
+
+	template<typename T>
+	void createDefaultBuffer(T* vertexArr, UINT** indexArr, bool verDelete_f) {
+		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, vertexArr,
+			dpara.Vview->VertexBufferByteSize,
+			dpara.Vview->VertexBufferUploader);
+		if (verDelete_f)ARR_DELETE(vertexArr);//使わない場合解放
+
+		for (int i = 0; i < dpara.NumMaterial; i++) {
+			if (dpara.Iview[i].IndexCount <= 0)continue;
+			dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, indexArr[i],
+				dpara.Iview[i].IndexBufferByteSize,
+				dpara.Iview[i].IndexBufferUploader);
+			ARR_DELETE(indexArr[i]);
+		}
+		ARR_DELETE(indexArr);
+	}
+
+	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
+		const int numSrv, const int numCbv, bool blend, bool alpha);
+
+	bool setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
+
+	void update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
+		float thetaZ, float thetaY, float thetaX, float size,
+		DivideArr* divArr, int numDiv,
+		float disp = 1.0f, float shininess = 4.0f);
 
 public:
 	PolygonData();

@@ -54,17 +54,8 @@ protected:
 	int numDiv = 3;
 
 	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB0 = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2>** mObjectCB1 = nullptr;
 	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
-	CONSTANT_BUFFER cb[2] = {};
 	SHADER_GLOBAL_BONES sgb[2] = {};
-	//UpLoadカウント
-	int upCount = 0;
-	//初回Up終了
-	bool UpOn = false;
-	//DrawOn
-	bool DrawOn = false;
 
 	MY_VERTEX_S** pvVB = nullptr;//使用後保持するか破棄するかフラグで決める,通常は破棄
 	UINT*** newIndex = nullptr;
@@ -82,17 +73,16 @@ protected:
 	MATRIX* m_pLastBoneMatrix = nullptr;
 	int AnimLastInd = -1;
 	float BoneConnect = -1.0f;
-	drawPara* dpara = nullptr;
+	PolygonData* mObj = nullptr;
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
 	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB);
 	MATRIX GetCurrentPoseMatrix(int index);
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
-	bool GetTexture();
 	bool SetNewPoseMatrices(float time, int ind);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
-	void CbSwap();
+	void GetShaderByteCode(bool disp);
 
 public:
 	SkinMesh();

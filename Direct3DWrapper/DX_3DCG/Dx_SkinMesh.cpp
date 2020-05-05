@@ -52,12 +52,7 @@ SkinMesh::~SkinMesh() {
 	ARR_DELETE(m_ppSubAnimationBone);
 	ARR_DELETE(m_pLastBoneMatrix);
 	ARR_DELETE(m_BoneArray);
-	ARR_DELETE(dpara);
-
-	S_DELETE(mObjectCB0);
-	for (int i = 0; i < numMesh; i++)
-		S_DELETE(mObjectCB1[i]);
-	ARR_DELETE(mObjectCB1);
+	ARR_DELETE(mObj);
 	S_DELETE(mObject_BONES);
 
 	DestroyFBX();
@@ -175,12 +170,9 @@ void SkinMesh::GetBuffer(float end_frame) {
 	fbx[0].end_frame = end_frame;
 	FbxLoader* fbL = fbx[0].fbxL;
 	numMesh = fbL->getNumFbxMeshNode();
-	dpara = new drawPara[numMesh];
 	newIndex = new UINT * *[numMesh];
 
-	mObjectCB0 = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
-	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2> * [numMesh];
 
 	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);//ボーンはどのメッシュでも取得できるようだ
 	numBone = mesh->getNumDeformer();
@@ -204,6 +196,8 @@ void SkinMesh::GetBuffer(float end_frame) {
 	}
 
 	pvVB = new MY_VERTEX_S * [numMesh];
+	mObj = new PolygonData[numMesh];
+	for (int i = 0; i < numMesh; i++)mObj[i].getBuffer();
 }
 
 void SkinMesh::SetVertex() {
@@ -294,17 +288,17 @@ void SkinMesh::SetVertex() {
 		}
 
 		//頂点バッファ
-		dpara[m].Vview = std::make_unique<VertexView>();
+		mObj[m].dpara.Vview = std::make_unique<VertexView>();
 		const UINT verSize = mesh->getNumPolygonVertices() * sizeof(MY_VERTEX_S);
-		dpara[m].Vview->VertexByteStride = sizeof(MY_VERTEX_S);
-		dpara[m].Vview->VertexBufferByteSize = verSize;
+		mObj[m].dpara.Vview->VertexByteStride = sizeof(MY_VERTEX_S);
+		mObj[m].dpara.Vview->VertexBufferByteSize = verSize;
 
 		ARR_DELETE(svList);
 
 		auto numMaterial = mesh->getNumMaterial();
-		dpara[m].NumMaterial = numMaterial;
-		dpara[m].material = std::make_unique<MY_MATERIAL_S[]>(numMaterial);
-		dpara[m].PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(numMaterial);
+		mObj[m].dpara.NumMaterial = numMaterial;
+		mObj[m].dpara.material = std::make_unique<MY_MATERIAL_S[]>(numMaterial);
+		mObj[m].dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(numMaterial);
 
 		//4頂点ポリゴン分割後のIndex数カウント
 		UINT* numNewIndex = new UINT[numMaterial];
@@ -362,33 +356,33 @@ void SkinMesh::SetVertex() {
 		}
 
 		//インデックスバッファ
-		dpara[m].Iview = std::make_unique<IndexView[]>(numMaterial);
+		mObj[m].dpara.Iview = std::make_unique<IndexView[]>(numMaterial);
 		for (UINT i = 0; i < numMaterial; i++) {
 			const UINT indexSize = numNewIndex[i] * sizeof(UINT);
-			dpara[m].Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
-			dpara[m].Iview[i].IndexBufferByteSize = indexSize;
-			dpara[m].Iview[i].IndexCount = numNewIndex[i];
+			mObj[m].dpara.Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
+			mObj[m].dpara.Iview[i].IndexBufferByteSize = indexSize;
+			mObj[m].dpara.Iview[i].IndexCount = numNewIndex[i];
 		}
 		ARR_DELETE(numNewIndex);
 
-		mObjectCB1[m] = new ConstantBuffer<CONSTANT_BUFFER2>(numMaterial);
+		mObj[m].mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(numMaterial);
 		for (UINT i = 0; i < numMaterial; i++) {
 			//マテリアル情報取得
 			//拡散反射光
-			dpara[m].material[i].diffuse.x = (float)mesh->getDiffuseColor(0, 0);
-			dpara[m].material[i].diffuse.y = (float)mesh->getDiffuseColor(0, 1);
-			dpara[m].material[i].diffuse.z = (float)mesh->getDiffuseColor(0, 2);
-			dpara[m].material[i].diffuse.w = 0.0f;//使用してない
+			mObj[m].dpara.material[i].diffuse.x = (float)mesh->getDiffuseColor(0, 0);
+			mObj[m].dpara.material[i].diffuse.y = (float)mesh->getDiffuseColor(0, 1);
+			mObj[m].dpara.material[i].diffuse.z = (float)mesh->getDiffuseColor(0, 2);
+			mObj[m].dpara.material[i].diffuse.w = 0.0f;//使用してない
 			//スペキュラー
-			dpara[m].material[i].specular.x = (float)mesh->getSpecularColor(0, 0);
-			dpara[m].material[i].specular.y = (float)mesh->getSpecularColor(0, 1);
-			dpara[m].material[i].specular.z = (float)mesh->getSpecularColor(0, 2);
-			dpara[m].material[i].specular.w = 0.0f;//使用してない
+			mObj[m].dpara.material[i].specular.x = (float)mesh->getSpecularColor(0, 0);
+			mObj[m].dpara.material[i].specular.y = (float)mesh->getSpecularColor(0, 1);
+			mObj[m].dpara.material[i].specular.z = (float)mesh->getSpecularColor(0, 2);
+			mObj[m].dpara.material[i].specular.w = 0.0f;//使用してない
 			//アンビエント
-			dpara[m].material[i].ambient.x = (float)mesh->getAmbientColor(0, 0);
-			dpara[m].material[i].ambient.y = (float)mesh->getAmbientColor(0, 1);
-			dpara[m].material[i].ambient.z = (float)mesh->getAmbientColor(0, 2);
-			dpara[m].material[i].ambient.w = 0.0f;//使用してない
+			mObj[m].dpara.material[i].ambient.x = (float)mesh->getAmbientColor(0, 0);
+			mObj[m].dpara.material[i].ambient.y = (float)mesh->getAmbientColor(0, 1);
+			mObj[m].dpara.material[i].ambient.z = (float)mesh->getAmbientColor(0, 2);
+			mObj[m].dpara.material[i].ambient.w = 0.0f;//使用してない
 
 			//ディフェーズテクスチャId取得
 			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
@@ -396,9 +390,9 @@ void SkinMesh::SetVertex() {
 				if (type.DiffuseColor && !type.SpecularColor ||
 					mesh->getNumDiffuseTexture(i) == 1) {
 					auto diffName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
-					dpara[m].material[i].diftex_no = dx->GetTexNumber(diffName);
+					mObj[m].dpara.material[i].diftex_no = dx->GetTexNumber(diffName);
 					auto str = mesh->getDiffuseTextureUVName(i, tNo);
-					strcpy(dpara[m].material[i].difUvName, str);
+					strcpy(mObj[m].dpara.material[i].difUvName, str);
 					break;
 				}
 			}
@@ -407,9 +401,9 @@ void SkinMesh::SetVertex() {
 				textureType type = mesh->getDiffuseTextureType(i, tNo);
 				if (type.SpecularColor) {
 					auto speName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
-					dpara[m].material[i].spetex_no = dx->GetTexNumber(speName);
+					mObj[m].dpara.material[i].spetex_no = dx->GetTexNumber(speName);
 					auto str = mesh->getDiffuseTextureUVName(i, tNo);
-					strcpy(dpara[m].material[i].speUvName, str);
+					strcpy(mObj[m].dpara.material[i].speUvName, str);
 					break;
 				}
 			}
@@ -417,19 +411,19 @@ void SkinMesh::SetVertex() {
 			for (int tNo = 0; tNo < mesh->getNumNormalTexture(i); tNo++) {
 				//ディフェーズテクスチャ用のノーマルマップしか使用しないので
 				//取得済みのディフェーズテクスチャUV名と同じUV名のノーマルマップを探す
-				if (!strcmp(dpara[m].material[i].difUvName, mesh->getNormalTextureUVName(i, tNo)) ||
+				if (!strcmp(mObj[m].dpara.material[i].difUvName, mesh->getNormalTextureUVName(i, tNo)) ||
 					mesh->getNumNormalTexture(i) == 1) {
 					auto norName = dx->GetNameFromPass(mesh->getNormalTextureName(i, tNo));
-					dpara[m].material[i].nortex_no = dx->GetTexNumber(norName);
+					mObj[m].dpara.material[i].nortex_no = dx->GetTexNumber(norName);
 					auto str = mesh->getNormalTextureUVName(i, tNo);
-					strcpy(dpara[m].material[i].norUvName, str);
+					strcpy(mObj[m].dpara.material[i].norUvName, str);
 					break;
 				}
 			}
 			float uvSw = 0.0f;
 			if (uv0Name != nullptr) {
-				char* difName = dpara[m].material[i].difUvName;
-				char* speName = dpara[m].material[i].speUvName;
+				char* difName = mObj[m].dpara.material[i].difUvName;
+				char* speName = mObj[m].dpara.material[i].speUvName;
 				//uv逆転
 				if (!strcmp(difName, uv1Name) &&
 					(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
@@ -445,38 +439,37 @@ void SkinMesh::SetVertex() {
 			}
 
 			CONSTANT_BUFFER2 sg;
-			dpara[m].material[i].diffuse.x += addDiffuse;
-			dpara[m].material[i].diffuse.y += addDiffuse;
-			dpara[m].material[i].diffuse.z += addDiffuse;
-			dpara[m].material[i].specular.x += addSpecular;
-			dpara[m].material[i].specular.y += addSpecular;
-			dpara[m].material[i].specular.z += addSpecular;
-			dpara[m].material[i].ambient.x += addAmbient;
-			dpara[m].material[i].ambient.y += addAmbient;
-			dpara[m].material[i].ambient.z += addAmbient;
-			sg.vDiffuse = dpara[m].material[i].diffuse;//ディフューズカラーをシェーダーに渡す
-			sg.vSpeculer = dpara[m].material[i].specular;//スペキュラーをシェーダーに渡す
-			sg.vAmbient = dpara[m].material[i].ambient;//アンビエントをシェーダーに渡す
+			mObj[m].dpara.material[i].diffuse.x += addDiffuse;
+			mObj[m].dpara.material[i].diffuse.y += addDiffuse;
+			mObj[m].dpara.material[i].diffuse.z += addDiffuse;
+			mObj[m].dpara.material[i].specular.x += addSpecular;
+			mObj[m].dpara.material[i].specular.y += addSpecular;
+			mObj[m].dpara.material[i].specular.z += addSpecular;
+			mObj[m].dpara.material[i].ambient.x += addAmbient;
+			mObj[m].dpara.material[i].ambient.y += addAmbient;
+			mObj[m].dpara.material[i].ambient.z += addAmbient;
+			sg.vDiffuse = mObj[m].dpara.material[i].diffuse;//ディフューズカラーをシェーダーに渡す
+			sg.vSpeculer = mObj[m].dpara.material[i].specular;//スペキュラーをシェーダーに渡す
+			sg.vAmbient = mObj[m].dpara.material[i].ambient;//アンビエントをシェーダーに渡す
 			sg.uvSwitch.x = uvSw;
-			mObjectCB1[m]->CopyData(i, sg);
+			mObj[m].mObjectCB1->CopyData(i, sg);
 		}
 	}
 }
 
 void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
-	dpara[meshIndex].material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
+	mObj[meshIndex].dpara.material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
-	dpara[meshIndex].material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
+	mObj[meshIndex].dpara.material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
-	dpara[meshIndex].material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
+	mObj[meshIndex].dpara.material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
 }
 
-bool SkinMesh::CreateFromFBX(bool disp) {
-
+void SkinMesh::GetShaderByteCode(bool disp) {
 	if (disp) {
 		vs = dx->pVertexShader_SKIN_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
@@ -485,7 +478,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 		primType_create = CONTROL_POINT;
 		for (int i = 0; i < numMesh; i++)
-			dpara[i].TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+			mObj[i].dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
 		vs = dx->pVertexShader_SKIN.Get();
@@ -493,44 +486,33 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
 		primType_create = SQUARE;
 		for (int i = 0; i < numMesh; i++)
-			dpara[i].TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			mObj[i].dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 	ps = dx->pPixelShader_3D.Get();
 	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
+}
 
+bool SkinMesh::CreateFromFBX(bool disp) {
+	GetShaderByteCode(disp);
+	const int numSrv = 3;
+	const int numCbv = 3;
 	for (int i = 0; i < numMesh; i++) {
-		dpara[i].Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, pvVB[i],
-			dpara[i].Vview->VertexBufferByteSize,
-			dpara[i].Vview->VertexBufferUploader);
-		if (pvVB_delete_f)ARR_DELETE(pvVB[i]);//使わない場合解放
-
-		for (int i1 = 0; i1 < dpara[i].NumMaterial; i1++) {
-			if (dpara[i].Iview[i1].IndexCount <= 0)continue;
-			dpara[i].Iview[i1].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, newIndex[i][i1],
-				dpara[i].Iview[i1].IndexBufferByteSize, dpara[i].Iview[i1].IndexBufferUploader);
-			ARR_DELETE(newIndex[i][i1]);
-		}
-		ARR_DELETE(newIndex[i]);
-		const int numTex = 3;
-		const int numCB = 3;
-		dpara[i].rootSignature = CreateRootSignature(numTex, numCB);
-		if (dpara[i].rootSignature == nullptr)return false;
-
-		//パイプラインステートオブジェクト生成
-		for (int i1 = 0; i1 < dpara[i].NumMaterial; i1++) {
-			if (dpara[i].material[i1].nortex_no < 0)
-				dpara[i].PSO[i1] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara[i].rootSignature.Get(),
-					dx->pVertexLayout_SKIN, alpha, blend, primType_create);
-			else
-				dpara[i].PSO[i1] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara[i].rootSignature.Get(),
-					dx->pVertexLayout_SKIN, alpha, blend, primType_create);
-
-			if (dpara[i].PSO[i1] == nullptr)return false;
-		}
+		mObj[i].com_no = com_no;
+		mObj[i].primType_create = primType_create;
+		mObj[i].vs = vs;
+		mObj[i].hs = hs;
+		mObj[i].ds = ds;
+		mObj[i].ps = ps;
+		mObj[i].ps_NoMap = ps_NoMap;
+		mObj[i].gs = gs;
+		mObj[i].gs_NoMap = gs_NoMap;
+		mObj[i].createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
+		if (!mObj[i].createPSO(dx->pVertexLayout_SKIN, numSrv, numCbv, blend, alpha))return false;
+		UINT cbSize = mObject_BONES->getSizeInBytes();
+		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
+		if (!mObj[i].setDescHeap(numSrv, numCbv, ad, cbSize))return false;
 	}
-	ARR_DELETE(newIndex);
-	if (pvVB_delete_f)ARR_DELETE(pvVB);
-	return GetTexture();
+	return true;
 }
 
 bool SkinMesh::CreateFromFBX() {
@@ -738,61 +720,6 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 	}
 }
 
-bool SkinMesh::GetTexture() {
-
-	int resStIndex = 0;
-	for (int m = 0; m < numMesh; m++) {
-		drawPara* para = &dpara[m];
-		TextureNo* te = new TextureNo[para->NumMaterial];
-		int tCnt = 0;
-		for (int i = 0; i < para->NumMaterial; i++) {
-			if (para->material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
-			else
-				te[tCnt].diffuse = para->material[i].diftex_no;
-
-			if (para->material[i].nortex_no < 0)te[tCnt].normal = dx->GetTexNumber("dummyNor.");
-			else
-				te[tCnt].normal = para->material[i].nortex_no;
-
-			if (para->material[i].spetex_no < 0)te[tCnt].specular = dx->GetTexNumber("dummyDifSpe.");
-			else
-				te[tCnt].specular = para->material[i].spetex_no;
-			tCnt++;
-		}
-		createTextureResource(resStIndex, tCnt, te);
-		const int numTex = 3;
-		const int numCB = 3;
-		para->numDesc = numTex + numCB;
-		int numHeap = para->NumMaterial * para->numDesc;
-		para->descHeap = CreateDescHeap(numHeap);
-		ARR_DELETE(te);
-		if (para->descHeap == nullptr)return false;
-
-		UINT cbSize[numCB] = {};
-		cbSize[0] = mObjectCB0->getSizeInBytes();
-		cbSize[1] = mObjectCB1[m]->getSizeInBytes();
-		cbSize[2] = mObject_BONES->getSizeInBytes();
-		for (int i = 0; i < para->NumMaterial; i++) {
-			CreateSrvTexture(para->descHeap.Get(), para->numDesc * i, texture[resStIndex + numTex * i].GetAddressOf(), numTex);
-			D3D12_GPU_VIRTUAL_ADDRESS ad[numCB];
-			ad[0] = mObjectCB0->Resource()->GetGPUVirtualAddress();
-			ad[1] = mObjectCB1[m]->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
-			ad[2] = mObject_BONES->Resource()->GetGPUVirtualAddress();
-			CreateCbv(para->descHeap.Get(), para->numDesc * i + numTex, ad, cbSize, numCB);
-		}
-		resStIndex += numTex;
-	}
-	return true;
-}
-
-void SkinMesh::CbSwap() {
-	if (!UpOn) {
-		upCount++;
-		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
-	}
-	DrawOn = true;
-}
-
 bool SkinMesh::Update(float time, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size) {
 	return Update(0, time, x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size);
 }
@@ -802,28 +729,27 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 
 	bool frame_end = false;
 	int insnum = 0;
-	dx->InstancedMap(insnum, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
 	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
-	CbSwap();
+
+	for (int i = 0; i < numMesh; i++)
+		mObj[i].update(ind, ti, x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, divArr, numDiv, disp, shininess);
+
 	return frame_end;
 }
 
 void SkinMesh::DrawOff() {
-	DrawOn = false;
+	for (int i = 0; i < numMesh; i++)
+		mObj[i].DrawOn = false;
 }
 
 void SkinMesh::Draw() {
 
-	if (!UpOn | !DrawOn)return;
-
-	mObjectCB0->CopyData(0, cb[dx->cBuffSwap[1]]);
 	mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
 
 	for (int i = 0; i < numMesh; i++) {
-		dpara[i].insNum = 1;
-		drawsub(dpara[i]);
+		mObj[i].com_no = com_no;
+		mObj[i].Draw();
 	}
 }
 
