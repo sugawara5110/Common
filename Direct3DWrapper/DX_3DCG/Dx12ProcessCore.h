@@ -575,7 +575,8 @@ protected:
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
 	void getBuffer();
-	void getVertexBuffer(int numMaterial);
+	void getVertexBuffer(int numMaterial, UINT VertexByteStride, UINT numVertex);
+	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
 
 	template<typename T>
 	void createDefaultBuffer(T* vertexArr, UINT** indexArr, bool verDelete_f) {

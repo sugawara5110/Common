@@ -288,17 +288,10 @@ void SkinMesh::SetVertex() {
 		}
 
 		//頂点バッファ
-		mObj[m].dpara.Vview = std::make_unique<VertexView>();
-		const UINT verSize = mesh->getNumPolygonVertices() * sizeof(MY_VERTEX_S);
-		mObj[m].dpara.Vview->VertexByteStride = sizeof(MY_VERTEX_S);
-		mObj[m].dpara.Vview->VertexBufferByteSize = verSize;
+		auto numMaterial = mesh->getNumMaterial();
+		mObj[m].getVertexBuffer(numMaterial, sizeof(MY_VERTEX_S), mesh->getNumPolygonVertices());
 
 		ARR_DELETE(svList);
-
-		auto numMaterial = mesh->getNumMaterial();
-		mObj[m].dpara.NumMaterial = numMaterial;
-		mObj[m].dpara.material = std::make_unique<MY_MATERIAL_S[]>(numMaterial);
-		mObj[m].dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(numMaterial);
 
 		//4頂点ポリゴン分割後のIndex数カウント
 		UINT* numNewIndex = new UINT[numMaterial];
@@ -356,34 +349,13 @@ void SkinMesh::SetVertex() {
 		}
 
 		//インデックスバッファ
-		mObj[m].dpara.Iview = std::make_unique<IndexView[]>(numMaterial);
 		for (UINT i = 0; i < numMaterial; i++) {
 			const UINT indexSize = numNewIndex[i] * sizeof(UINT);
-			mObj[m].dpara.Iview[i].IndexFormat = DXGI_FORMAT_R32_UINT;
-			mObj[m].dpara.Iview[i].IndexBufferByteSize = indexSize;
-			mObj[m].dpara.Iview[i].IndexCount = numNewIndex[i];
+			mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
 		}
 		ARR_DELETE(numNewIndex);
 
-		mObj[m].mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(numMaterial);
 		for (UINT i = 0; i < numMaterial; i++) {
-			//マテリアル情報取得
-			//拡散反射光
-			mObj[m].dpara.material[i].diffuse.x = (float)mesh->getDiffuseColor(0, 0);
-			mObj[m].dpara.material[i].diffuse.y = (float)mesh->getDiffuseColor(0, 1);
-			mObj[m].dpara.material[i].diffuse.z = (float)mesh->getDiffuseColor(0, 2);
-			mObj[m].dpara.material[i].diffuse.w = 0.0f;//使用してない
-			//スペキュラー
-			mObj[m].dpara.material[i].specular.x = (float)mesh->getSpecularColor(0, 0);
-			mObj[m].dpara.material[i].specular.y = (float)mesh->getSpecularColor(0, 1);
-			mObj[m].dpara.material[i].specular.z = (float)mesh->getSpecularColor(0, 2);
-			mObj[m].dpara.material[i].specular.w = 0.0f;//使用してない
-			//アンビエント
-			mObj[m].dpara.material[i].ambient.x = (float)mesh->getAmbientColor(0, 0);
-			mObj[m].dpara.material[i].ambient.y = (float)mesh->getAmbientColor(0, 1);
-			mObj[m].dpara.material[i].ambient.z = (float)mesh->getAmbientColor(0, 2);
-			mObj[m].dpara.material[i].ambient.w = 0.0f;//使用してない
-
 			//ディフェーズテクスチャId取得
 			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
 				textureType type = mesh->getDiffuseTextureType(i, tNo);
@@ -439,18 +411,28 @@ void SkinMesh::SetVertex() {
 			}
 
 			CONSTANT_BUFFER2 sg;
-			mObj[m].dpara.material[i].diffuse.x += addDiffuse;
-			mObj[m].dpara.material[i].diffuse.y += addDiffuse;
-			mObj[m].dpara.material[i].diffuse.z += addDiffuse;
-			mObj[m].dpara.material[i].specular.x += addSpecular;
-			mObj[m].dpara.material[i].specular.y += addSpecular;
-			mObj[m].dpara.material[i].specular.z += addSpecular;
-			mObj[m].dpara.material[i].ambient.x += addAmbient;
-			mObj[m].dpara.material[i].ambient.y += addAmbient;
-			mObj[m].dpara.material[i].ambient.z += addAmbient;
-			sg.vDiffuse = mObj[m].dpara.material[i].diffuse;//ディフューズカラーをシェーダーに渡す
-			sg.vSpeculer = mObj[m].dpara.material[i].specular;//スペキュラーをシェーダーに渡す
-			sg.vAmbient = mObj[m].dpara.material[i].ambient;//アンビエントをシェーダーに渡す
+			//拡散反射光
+			VECTOR4* diffuse = &mObj[m].dpara.material[i].diffuse;
+			diffuse->x = (float)mesh->getDiffuseColor(0, 0) + addDiffuse;
+			diffuse->y = (float)mesh->getDiffuseColor(0, 1) + addDiffuse;
+			diffuse->z = (float)mesh->getDiffuseColor(0, 2) + addDiffuse;
+			diffuse->w = 0.0f;//使用してない
+			//スペキュラー
+			VECTOR4* specular = &mObj[m].dpara.material[i].specular;
+			specular->x = (float)mesh->getSpecularColor(0, 0) + addSpecular;
+			specular->y = (float)mesh->getSpecularColor(0, 1) + addSpecular;
+			specular->z = (float)mesh->getSpecularColor(0, 2) + addSpecular;
+			specular->w = 0.0f;//使用してない
+			//アンビエント
+			VECTOR4* ambient = &mObj[m].dpara.material[i].ambient;
+			ambient->x = (float)mesh->getAmbientColor(0, 0) + addAmbient;
+			ambient->y = (float)mesh->getAmbientColor(0, 1) + addAmbient;
+			ambient->z = (float)mesh->getAmbientColor(0, 2) + addAmbient;
+			ambient->w = 0.0f;//使用してない
+
+			sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
+			sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
+			sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 			sg.uvSwitch.x = uvSw;
 			mObj[m].mObjectCB1->CopyData(i, sg);
 		}
@@ -512,6 +494,8 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
 		if (!mObj[i].setDescHeap(numSrv, numCbv, ad, cbSize))return false;
 	}
+	if (pvVB_delete_f)ARR_DELETE(pvVB);
+	ARR_DELETE(newIndex);
 	return true;
 }
 
@@ -752,5 +736,3 @@ void SkinMesh::Draw() {
 		mObj[i].Draw();
 	}
 }
-
-

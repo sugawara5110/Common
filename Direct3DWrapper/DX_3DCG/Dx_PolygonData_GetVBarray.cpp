@@ -50,7 +50,7 @@ void PolygonData::SetVertex(int I1, int I2, int i,
 	if (!ver) {
 		ver = new VertexM[numVer];
 		bcOn = false;
-		getVertexBuffer(1);
+		getVertexBuffer(1, sizeof(VertexM), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -70,7 +70,7 @@ void PolygonData::SetVertex(int I1, int i,
 	if (!ver) {
 		ver = new VertexM[numVer];
 		bcOn = false;
-		getVertexBuffer(1);
+		getVertexBuffer(1, sizeof(VertexM), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -88,7 +88,7 @@ void PolygonData::SetVertexBC(int I1, int I2, int i,
 	if (!ver) {
 		ver = new VertexBC[numVer];
 		bcOn = true;
-		getVertexBuffer(1);
+		getVertexBuffer(1, sizeof(VertexBC), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -105,7 +105,7 @@ void PolygonData::SetVertexBC(int I1, int i,
 	if (!ver) {
 		ver = new VertexBC[numVer];
 		bcOn = true;
-		getVertexBuffer(1);
+		getVertexBuffer(1, sizeof(VertexBC), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -119,13 +119,22 @@ void PolygonData::getBuffer() {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 }
 
-void PolygonData::getVertexBuffer(int numMaterial) {
+void PolygonData::getVertexBuffer(int numMaterial, UINT VertexByteStride, UINT numVertex) {
 	dpara.NumMaterial = numMaterial;
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
 	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	dpara.Vview = std::make_unique<VertexView>();
+	const UINT byteSize = VertexByteStride * numVertex;
+	dpara.Vview->VertexByteStride = VertexByteStride;
+	dpara.Vview->VertexBufferByteSize = byteSize;
 	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
+}
+
+void PolygonData::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex) {
+	dpara.Iview[materialIndex].IndexFormat = DXGI_FORMAT_R32_UINT;
+	dpara.Iview[materialIndex].IndexBufferByteSize = IndexBufferByteSize;
+	dpara.Iview[materialIndex].IndexCount = numIndex;
 }
 
 void PolygonData::GetVBarray(PrimitiveType type, int v) {
@@ -291,18 +300,9 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	dpara.material[0].spetex_no = spetNo;
 	GetShaderByteCode(light, tNo);
 	mObjectCB1->CopyData(0, sg);
-	UINT VertexSize;
-	if (tNo == -1 && !movOn[0].m_on)
-		VertexSize = sizeof(VertexBC);
-	else
-		VertexSize = sizeof(VertexM);
-	const UINT vbByteSize = VertexSize * numVer;
+
 	const UINT ibByteSize = numInd * sizeof(UINT);
-	dpara.Vview->VertexByteStride = VertexSize;
-	dpara.Vview->VertexBufferByteSize = vbByteSize;
-	dpara.Iview[0].IndexFormat = DXGI_FORMAT_R32_UINT;
-	dpara.Iview[0].IndexBufferByteSize = ibByteSize;
-	dpara.Iview[0].IndexCount = numInd;
+	getIndexBuffer(0, ibByteSize, numInd);
 
 	createDefaultBuffer(ver, index, true);
 	const int numSrv = 3;
