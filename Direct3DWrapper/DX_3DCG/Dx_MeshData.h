@@ -20,22 +20,10 @@ protected:
 	ID3DBlob* gs = nullptr;
 	ID3DBlob* gs_NoMap = nullptr;
 
-	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2>* mObject_MESHCB = nullptr;//マテリアル渡し用(1回しか更新しない)
-	//UpLoad用
-	CONSTANT_BUFFER cb[2];
-	//UpLoadカウント
-	int upCount = 0;
-	//初回Up終了
-	bool UpOn = false;
-	//DrawOn
-	bool DrawOn = false;
-
-	int* piFaceBuffer;
-	VertexM* pvVertexBuffer;
-	int FaceCount;  //ポリゴン数カウンター
-	char mFileName[255];
+	UINT** piFaceBuffer = nullptr;
+	VertexM* pvVertexBuffer = nullptr;
+	int FaceCount = 0;  //ポリゴン数カウンター
+	char mFileName[255] = {};
 	//一時保管
 	VECTOR3* pvCoord;
 	VECTOR3* pvNormal;
@@ -60,11 +48,10 @@ protected:
 	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
-	drawPara dpara = {};
+	PolygonData mObj;
 
 	bool LoadMaterialFromFile(char* FileName);
 	void GetShaderByteCode(bool disp);
-	void CbSwap();
 
 public:
 	MeshData();
@@ -73,7 +60,6 @@ public:
 	bool GetBuffer(char* FileName);
 	bool SetVertex();
 	bool CreateMesh();
-	bool GetTexture();
 	ID3D12PipelineState* GetPipelineState(int index);
 	//複数Update
 	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);

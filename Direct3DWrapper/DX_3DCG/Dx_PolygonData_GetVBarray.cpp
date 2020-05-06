@@ -50,7 +50,7 @@ void PolygonData::SetVertex(int I1, int I2, int i,
 	if (!ver) {
 		ver = new VertexM[numVer];
 		bcOn = false;
-		getVertexBuffer(1, sizeof(VertexM), numVer);
+		getVertexBuffer(sizeof(VertexM), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -70,7 +70,7 @@ void PolygonData::SetVertex(int I1, int i,
 	if (!ver) {
 		ver = new VertexM[numVer];
 		bcOn = false;
-		getVertexBuffer(1, sizeof(VertexM), numVer);
+		getVertexBuffer(sizeof(VertexM), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -88,7 +88,7 @@ void PolygonData::SetVertexBC(int I1, int I2, int i,
 	if (!ver) {
 		ver = new VertexBC[numVer];
 		bcOn = true;
-		getVertexBuffer(1, sizeof(VertexBC), numVer);
+		getVertexBuffer(sizeof(VertexBC), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -105,7 +105,7 @@ void PolygonData::SetVertexBC(int I1, int i,
 	if (!ver) {
 		ver = new VertexBC[numVer];
 		bcOn = true;
-		getVertexBuffer(1, sizeof(VertexBC), numVer);
+		getVertexBuffer(sizeof(VertexBC), numVer);
 		index = new UINT * [dpara.NumMaterial];
 		index[0] = new UINT[numInd];
 	}
@@ -115,20 +115,20 @@ void PolygonData::SetVertexBC(int I1, int i,
 	v[i].color.as(r, g, b, a);
 }
 
-void PolygonData::getBuffer() {
+void PolygonData::getBuffer(int numMaterial) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
-}
-
-void PolygonData::getVertexBuffer(int numMaterial, UINT VertexByteStride, UINT numVertex) {
 	dpara.NumMaterial = numMaterial;
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
 	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
+	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
+}
+
+void PolygonData::getVertexBuffer(UINT VertexByteStride, UINT numVertex) {
 	dpara.Vview = std::make_unique<VertexView>();
 	const UINT byteSize = VertexByteStride * numVertex;
 	dpara.Vview->VertexByteStride = VertexByteStride;
 	dpara.Vview->VertexBufferByteSize = byteSize;
-	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
 }
 
 void PolygonData::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex) {
@@ -166,7 +166,7 @@ void PolygonData::GetVBarray(PrimitiveType type, int v) {
 		numInd = v * 6;
 	}
 
-	getBuffer();
+	getBuffer(1);
 }
 
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
@@ -318,8 +318,10 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	return setDescHeap(numSrv, numCbv, 0, 0);
 }
 
-void PolygonData::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
-	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
+void PolygonData::InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX,
+	float sizeX, float sizeY, float sizeZ) {
+
+	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, sizeX, sizeY, sizeZ);
 }
 
 void PolygonData::CbSwap() {
@@ -343,10 +345,18 @@ void PolygonData::Update(float x, float y, float z, float r, float g, float b, f
 	CbSwap();
 }
 
-void PolygonData::update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
+void PolygonData::instanceUpdate(float r, float g, float b, float a, DivideArr* divArr, int numDiv,
+	float disp, float shininess) {
+
+	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
+	CbSwap();
+}
+
+void PolygonData::update(float x, float y, float z, float r, float g, float b, float a,
 	float thetaZ, float thetaY, float thetaX, float size,
 	DivideArr* divArr, int numDiv,
 	float disp, float shininess) {
+
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
 	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
 	CbSwap();

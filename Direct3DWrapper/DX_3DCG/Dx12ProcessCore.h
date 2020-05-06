@@ -536,6 +536,7 @@ class PolygonData :public Common {
 
 protected:
 	friend SkinMesh;
+	friend MeshData;
 	//ƒ|ƒCƒ“ƒ^‚ÅŽó‚¯Žæ‚é
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -574,8 +575,8 @@ protected:
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
-	void getBuffer();
-	void getVertexBuffer(int numMaterial, UINT VertexByteStride, UINT numVertex);
+	void getBuffer(int numMaterial);
+	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
 	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
 
 	template<typename T>
@@ -600,7 +601,10 @@ protected:
 
 	bool setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
+	void instanceUpdate(float r, float g, float b, float a, DivideArr* divArr, int numDiv,
+		float disp = 1.0f, float shininess = 4.0f);
+
+	void update(float x, float y, float z, float r, float g, float b, float a,
 		float thetaZ, float thetaY, float thetaX, float size,
 		DivideArr* divArr, int numDiv,
 		float disp = 1.0f, float shininess = 4.0f);
@@ -628,7 +632,8 @@ public:
 	void SetVertexBC(int I1, int i,
 		float vx, float vy, float vz,
 		float r, float g, float b, float a);
-	void InstancedMap(float x, float y, float z, float theta, float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
+	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX,
+		float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
 	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess = 4.0f,
 		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);

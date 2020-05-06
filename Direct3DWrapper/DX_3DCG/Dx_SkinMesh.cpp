@@ -197,7 +197,8 @@ void SkinMesh::GetBuffer(float end_frame) {
 
 	pvVB = new MY_VERTEX_S * [numMesh];
 	mObj = new PolygonData[numMesh];
-	for (int i = 0; i < numMesh; i++)mObj[i].getBuffer();
+	for (int i = 0; i < numMesh; i++)
+		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial());
 }
 
 void SkinMesh::SetVertex() {
@@ -289,7 +290,7 @@ void SkinMesh::SetVertex() {
 
 		//頂点バッファ
 		auto numMaterial = mesh->getNumMaterial();
-		mObj[m].getVertexBuffer(numMaterial, sizeof(MY_VERTEX_S), mesh->getNumPolygonVertices());
+		mObj[m].getVertexBuffer(sizeof(MY_VERTEX_S), mesh->getNumPolygonVertices());
 
 		ARR_DELETE(svList);
 
@@ -717,14 +718,14 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
 
 	for (int i = 0; i < numMesh; i++)
-		mObj[i].update(ind, ti, x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, divArr, numDiv, disp, shininess);
+		mObj[i].update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, divArr, numDiv, disp, shininess);
 
 	return frame_end;
 }
 
 void SkinMesh::DrawOff() {
 	for (int i = 0; i < numMesh; i++)
-		mObj[i].DrawOn = false;
+		mObj[i].DrawOff();
 }
 
 void SkinMesh::Draw() {
