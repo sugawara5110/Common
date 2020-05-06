@@ -43,78 +43,6 @@ ID3D12PipelineState* PolygonData::GetPipelineState() {
 	return dpara.PSO[0].Get();
 }
 
-void PolygonData::SetVertex(int I1, int I2, int i,
-	float vx, float vy, float vz,
-	float nx, float ny, float nz,
-	float u, float v) {
-	if (!ver) {
-		ver = new VertexM[numVer];
-		bcOn = false;
-		getVertexBuffer(sizeof(VertexM), numVer);
-		index = new UINT * [dpara.NumMaterial];
-		index[0] = new UINT[numInd];
-	}
-	VertexM* vm = (VertexM*)ver;
-	index[0][I1] = i;
-	index[0][I2] = i;
-	vm[i].Pos.as(vx, vy, vz);
-	vm[i].normal.as(nx, ny, nz);
-	vm[i].geoNormal.as(nx, ny, nz);
-	vm[i].tex.as(u, v);
-}
-
-void PolygonData::SetVertex(int I1, int i,
-	float vx, float vy, float vz,
-	float nx, float ny, float nz,
-	float u, float v) {
-	if (!ver) {
-		ver = new VertexM[numVer];
-		bcOn = false;
-		getVertexBuffer(sizeof(VertexM), numVer);
-		index = new UINT * [dpara.NumMaterial];
-		index[0] = new UINT[numInd];
-	}
-	VertexM* vm = (VertexM*)ver;
-	index[0][I1] = i;
-	vm[i].Pos.as(vx, vy, vz);
-	vm[i].normal.as(nx, ny, nz);
-	vm[i].geoNormal.as(nx, ny, nz);
-	vm[i].tex.as(u, v);
-}
-
-void PolygonData::SetVertexBC(int I1, int I2, int i,
-	float vx, float vy, float vz,
-	float r, float g, float b, float a) {
-	if (!ver) {
-		ver = new VertexBC[numVer];
-		bcOn = true;
-		getVertexBuffer(sizeof(VertexBC), numVer);
-		index = new UINT * [dpara.NumMaterial];
-		index[0] = new UINT[numInd];
-	}
-	VertexBC* v = (VertexBC*)ver;
-	index[0][I1] = i;
-	index[0][I2] = i;
-	v[i].Pos.as(vx, vy, vz);
-	v[i].color.as(r, g, b, a);
-}
-
-void PolygonData::SetVertexBC(int I1, int i,
-	float vx, float vy, float vz,
-	float r, float g, float b, float a) {
-	if (!ver) {
-		ver = new VertexBC[numVer];
-		bcOn = true;
-		getVertexBuffer(sizeof(VertexBC), numVer);
-		index = new UINT * [dpara.NumMaterial];
-		index[0] = new UINT[numInd];
-	}
-	VertexBC* v = (VertexBC*)ver;
-	index[0][I1] = i;
-	v[i].Pos.as(vx, vy, vz);
-	v[i].color.as(r, g, b, a);
-}
-
 void PolygonData::getBuffer(int numMaterial) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	dpara.NumMaterial = numMaterial;
@@ -137,33 +65,23 @@ void PolygonData::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UI
 	dpara.Iview[materialIndex].IndexCount = numIndex;
 }
 
-void PolygonData::GetVBarray(PrimitiveType type, int v) {
+void PolygonData::GetVBarray(PrimitiveType type) {
 
 	primType_create = type;
 	if (type == SQUARE) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		numVer = v * 4;//v==四角形の個数
-		numInd = v * 6;
 	}
 	if (type == POINt) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
-		numVer = v;//v==点の個数
-		numInd = v;
 	}
 	if (type == LINE_L) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
-		numVer = v * 2;//v==線の個数
-		numInd = v * 2;
 	}
 	if (type == LINE_S) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
-		numVer = v * 2;//v==線の個数
-		numInd = v * 2;
 	}
 	if (type == CONTROL_POINT) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
-		numVer = v * 4;//v==パッチの個数
-		numInd = v * 6;
 	}
 
 	getBuffer(1);
@@ -301,8 +219,8 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	GetShaderByteCode(light, tNo);
 	mObjectCB1->CopyData(0, sg);
 
-	const UINT ibByteSize = numInd * sizeof(UINT);
-	getIndexBuffer(0, ibByteSize, numInd);
+	const UINT ibByteSize = numIndex * sizeof(UINT);
+	getIndexBuffer(0, ibByteSize, numIndex);
 
 	createDefaultBuffer(ver, index, true);
 	const int numSrv = 3;

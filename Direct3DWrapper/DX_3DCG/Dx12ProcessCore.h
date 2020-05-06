@@ -28,6 +28,7 @@
 #include <Process.h>
 #include <mutex>
 #include <new>
+#include <typeinfo>
 
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
@@ -563,10 +564,8 @@ protected:
 	int insNum[2] = {};
 
 	void* ver = nullptr;  //頂点配列
-	bool bcOn = false;
 	UINT** index = nullptr;//頂点インデックス
-	int numVer;      //頂点個数
-	int numInd;    //頂点インデックス数
+	int numIndex;    //頂点インデックス数
 
 	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
@@ -613,25 +612,42 @@ public:
 	PolygonData();
 	~PolygonData();
 	ID3D12PipelineState* GetPipelineState();
-	void GetVBarray(PrimitiveType type, int v);
+	void GetVBarray(PrimitiveType type);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 	bool Create(bool light, int tNo, bool blend, bool alpha);
 	bool Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha);
-	void SetVertex(int I1, int I2, int i,
-		float vx, float vy, float vz,
-		float nx, float ny, float nz,
-		float u, float v);
-	void SetVertex(int I1, int i,
-		float vx, float vy, float vz,
-		float nx, float ny, float nz,
-		float u, float v);
-	void SetVertexBC(int I1, int I2, int i,
-		float vx, float vy, float vz,
-		float r, float g, float b, float a);
-	void SetVertexBC(int I1, int i,
-		float vx, float vy, float vz,
-		float r, float g, float b, float a);
+
+	template<typename T>
+	void setVertex(T* vertexArr, int numVer, UINT* ind, int numInd) {
+		if (typeid(Vertex) == typeid(T)) {
+			ver = new VertexM[numVer];
+			VertexM* verM = (VertexM*)ver;
+			Vertex* v = (Vertex*)vertexArr;
+			for (int i = 0; i < numVer; i++) {
+				verM[i].Pos.as(v[i].Pos.x, v[i].Pos.y, v[i].Pos.z);
+				verM[i].normal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
+				verM[i].geoNormal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
+				verM[i].tex.as(v[i].tex.x, v[i].tex.y);
+			}
+			getVertexBuffer(sizeof(VertexM), numVer);
+		}
+		if (typeid(VertexBC) == typeid(T)) {
+			ver = new VertexBC[numVer];
+			VertexBC* v = (VertexBC*)vertexArr;
+			memcpy(ver, v, sizeof(VertexBC) * numVer);
+			getVertexBuffer(sizeof(VertexBC), numVer);
+		}
+		if (typeid(VertexBC) != typeid(T) && typeid(Vertex) != typeid(T)) {
+			ErrorMessage("PolygonData::setVertex Error!!");
+			return;
+		}
+		index = new UINT * [dpara.NumMaterial];
+		index[0] = new UINT[numInd];
+		memcpy(index[0], ind, sizeof(UINT) * numInd);
+		numIndex = numInd;
+	}
+
 	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX,
 		float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
 	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
