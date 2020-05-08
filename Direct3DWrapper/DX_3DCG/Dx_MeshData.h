@@ -9,7 +9,7 @@
 
 #include "Dx12ProcessCore.h"
 
-class MeshData :public Common {
+class MeshData {
 
 protected:
 	ID3DBlob* vs = nullptr;
@@ -69,6 +69,11 @@ public:
 	//•`‰æ
 	void DrawOff();
 	void Draw();
+
+	void SetCommandList(int no);
+	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
+	void TextureInit(int width, int height, int index = 0);
+	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
 };
 
 #endif

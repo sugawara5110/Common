@@ -9,7 +9,7 @@
 
 #include "Dx12ProcessCore.h"
 
-class Wave :public Common {
+class Wave {
 
 protected:
 	ID3DBlob* cs = nullptr;
@@ -22,42 +22,25 @@ protected:
 	ID3DBlob* gs_NoMap = nullptr;
 
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-
-	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER_WAVE>* mObjectCB_WAVE = nullptr;
-	CONSTANT_BUFFER cb[2];
-	CONSTANT_BUFFER2 sg;
 	CONSTANT_BUFFER_WAVE cbw;
-	//UpLoadカウント
-	int upCount = 0;
-	//初回Up終了
-	bool UpOn = false;
-	//DrawOn
-	bool DrawOn = false;
-
-	//テクスチャ番号(通常テクスチャ用)
-	int ins_no = 0;
-	int insNum[2] = {};
+	CONSTANT_BUFFER2 sg;
 
 	int div;//分割数
-
-	Vertex* d3varray;  //頂点配列
-	std::uint16_t* d3varrayI;//頂点インデックス
-	int ver;      //頂点個数
-	int verI;    //頂点インデックス
+	Vertex* ver = nullptr;  //頂点配列
+	UINT** index = nullptr;//頂点インデックス
+	int numVer;      //頂点個数
+	int numIndex;    //頂点インデックス数
 
 	ComPtr<ID3D12PipelineState> mPSOCom = nullptr;
 	ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
 	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
-
-	drawPara dpara = {};
+	PolygonData mObj;
 
 	void GetShaderByteCode();
 	bool ComCreate();
 	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha);
-	void CbSwap();
 	void Compute();
 	void DrawSub();
 
@@ -81,6 +64,11 @@ public:
 		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
 	void Draw();
+
+	void SetCommandList(int no);
+	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
+	void TextureInit(int width, int height, int index = 0);
+	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
 };
 
 #endif

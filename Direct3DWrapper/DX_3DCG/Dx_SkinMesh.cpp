@@ -30,8 +30,6 @@ bool SkinMesh_sub::Create(CHAR *szFileName) {
 
 SkinMesh::SkinMesh() {
 	ZeroMemory(this, sizeof(SkinMesh));
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	fbx = new SkinMesh_sub[FBX_PCS];
 	divArr[0].distance = 1000.0f;
 	divArr[0].divide = 2;
@@ -197,8 +195,10 @@ void SkinMesh::GetBuffer(float end_frame) {
 
 	pvVB = new MY_VERTEX_S * [numMesh];
 	mObj = new PolygonData[numMesh];
-	for (int i = 0; i < numMesh; i++)
+	for (int i = 0; i < numMesh; i++) {
+		mObj[i].SetCommandList(com_no);
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial());
+	}
 }
 
 void SkinMesh::SetVertex() {
@@ -355,7 +355,7 @@ void SkinMesh::SetVertex() {
 			mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
 		}
 		ARR_DELETE(numNewIndex);
-
+		Dx12Process* dx = mObj[0].dx;
 		for (UINT i = 0; i < numMaterial; i++) {
 			//ディフェーズテクスチャId取得
 			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
@@ -441,18 +441,19 @@ void SkinMesh::SetVertex() {
 }
 
 void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
-	mObj[meshIndex].dpara.material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
+	mObj[meshIndex].dpara.material[materialIndex].diftex_no = mObj[0].dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
-	mObj[meshIndex].dpara.material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
+	mObj[meshIndex].dpara.material[materialIndex].nortex_no = mObj[0].dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
-	mObj[meshIndex].dpara.material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
+	mObj[meshIndex].dpara.material[materialIndex].spetex_no = mObj[0].dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::GetShaderByteCode(bool disp) {
+	Dx12Process* dx = mObj[0].dx;
 	if (disp) {
 		vs = dx->pVertexShader_SKIN_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
@@ -477,7 +478,7 @@ void SkinMesh::GetShaderByteCode(bool disp) {
 
 bool SkinMesh::CreateFromFBX(bool disp) {
 	GetShaderByteCode(disp);
-	const int numSrv = 3;
+	const int numSrvTex = 3;
 	const int numCbv = 3;
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].com_no = com_no;
@@ -490,10 +491,10 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		mObj[i].gs = gs;
 		mObj[i].gs_NoMap = gs_NoMap;
 		mObj[i].createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
-		if (!mObj[i].createPSO(dx->pVertexLayout_SKIN, numSrv, numCbv, blend, alpha))return false;
+		if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, blend, alpha))return false;
 		UINT cbSize = mObject_BONES->getSizeInBytes();
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
-		if (!mObj[i].setDescHeap(numSrv, numCbv, ad, cbSize))return false;
+		if (!mObj[i].setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
 	}
 	if (pvVB_delete_f)ARR_DELETE(pvVB);
 	ARR_DELETE(newIndex);
@@ -715,7 +716,7 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 	bool frame_end = false;
 	int insnum = 0;
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
-	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
+	MatrixMap_Bone(&sgb[mObj[0].dx->cBuffSwap[0]]);
 
 	for (int i = 0; i < numMesh; i++)
 		mObj[i].update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, divArr, numDiv, disp, shininess);
@@ -730,10 +731,31 @@ void SkinMesh::DrawOff() {
 
 void SkinMesh::Draw() {
 
-	mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
+	mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].com_no = com_no;
 		mObj[i].Draw();
 	}
+}
+
+void SkinMesh::SetCommandList(int no) {
+	com_no = no;
+	if (mObj) {
+		for (int i = 0; i < numMesh; i++) {
+			mObj[i].SetCommandList(com_no);
+		}
+	}
+}
+
+void SkinMesh::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex, int meshIndex) {
+	mObj[meshIndex].CopyResource(texture, res, texIndex);
+}
+
+void SkinMesh::TextureInit(int width, int height, int texIndex, int meshIndex) {
+	mObj[meshIndex].TextureInit(width, height, texIndex);
+}
+
+HRESULT SkinMesh::SetTextureMPixel(BYTE* frame, int texIndex, int meshIndex) {
+	return mObj[meshIndex].SetTextureMPixel(frame, texIndex);
 }

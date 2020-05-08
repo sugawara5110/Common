@@ -432,12 +432,9 @@ public:
 class Common {
 
 protected:
-	friend MeshData;
 	friend PolygonData;
 	friend PolygonData2D;
 	friend ParticleData;
-	friend SkinMesh;
-	friend Wave;
 	friend PostEffect;
 	Common() {};//外部からのオブジェクト生成禁止
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
@@ -460,7 +457,7 @@ protected:
 	void CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** texture, int texNum);
 
 	void CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** buffer, int bufNum,
-		UINT StructureByteStride);
+		UINT* StructureByteStride);
 
 	void CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
@@ -538,6 +535,7 @@ class PolygonData :public Common {
 protected:
 	friend SkinMesh;
 	friend MeshData;
+	friend Wave;
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -598,7 +596,9 @@ protected:
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, bool blend, bool alpha);
 
-	bool setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
+	bool setDescHeap(const int numSrvTex,
+		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
+		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
 	void instanceUpdate(float r, float g, float b, float a, DivideArr* divArr, int numDiv,
 		float disp = 1.0f, float shininess = 4.0f);

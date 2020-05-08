@@ -30,7 +30,7 @@ protected:
 	bool Create(CHAR* szFileName);
 };
 
-class SkinMesh :public Common {
+class SkinMesh {
 
 protected:
 	friend SkinMesh_sub;
@@ -74,6 +74,7 @@ protected:
 	int AnimLastInd = -1;
 	float BoneConnect = -1.0f;
 	PolygonData* mObj = nullptr;
+	int com_no = 0;
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
@@ -113,6 +114,11 @@ public:
 	void Draw();
 	VECTOR3 GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
 		float thetaZ, float thetaY, float thetaX, float scale);
+
+	void SetCommandList(int no);
+	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0, int meshIndex = 0);
+	void TextureInit(int width, int height, int texIndex = 0, int meshIndex = 0);
+	HRESULT SetTextureMPixel(BYTE* frame, int texIndex = 0, int meshIndex = 0);
 };
 
 #endif

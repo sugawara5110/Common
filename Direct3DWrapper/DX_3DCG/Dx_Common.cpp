@@ -115,7 +115,7 @@ void Common::CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12
 }
 
 void Common::CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** buffer, int bufNum,
-	UINT StructureByteStride)
+	UINT* StructureByteStride)
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
 	hDescriptor.Offset(offsetHeap, dx->mCbvSrvUavDescriptorSize);
@@ -123,10 +123,10 @@ void Common::CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12R
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Buffer.StructureByteStride = StructureByteStride;
 	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 	for (int i = 0; i < bufNum; i++) {
-		srvDesc.Buffer.NumElements = (UINT)buffer[i]->GetDesc().Width / StructureByteStride;
+		srvDesc.Buffer.StructureByteStride = StructureByteStride[i];
+		srvDesc.Buffer.NumElements = (UINT)buffer[i]->GetDesc().Width / StructureByteStride[i];
 		dx->md3dDevice->CreateShaderResourceView(buffer[i], &srvDesc, hDescriptor);
 		hDescriptor.Offset(1, dx->mCbvSrvUavDescriptorSize);
 	}

@@ -7,8 +7,6 @@
 #include "Dx_MeshData.h"
 
 MeshData::MeshData() {
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	addDiffuse = 0.0f;
 	addSpecular = 0.0f;
 	addAmbient = 0.0f;
@@ -30,7 +28,7 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 }
 
 void MeshData::GetShaderByteCode(bool disp) {
-
+	Dx12Process* dx = mObj.dx;
 	if (disp) {
 		vs = dx->pVertexShader_MESH_D.Get();
 		hs = dx->pHullShaderTriangle.Get();
@@ -48,7 +46,7 @@ void MeshData::GetShaderByteCode(bool disp) {
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName) {
-
+	Dx12Process* dx = mObj.dx;
 	//マテリアルファイルを開いて内容を読み込む
 	errno_t error;
 	FILE* fp = nullptr;
@@ -417,10 +415,10 @@ bool MeshData::SetVertex() {
 }
 
 bool MeshData::CreateMesh() {
+	Dx12Process* dx = mObj.dx;
 	GetShaderByteCode(disp);
-	const int numSrv = 3;
+	const int numSrvTex = 3;
 	const int numCbv = 2;
-	mObj.com_no = com_no;
 	mObj.primType_create = primType_create;
 	mObj.vs = vs;
 	mObj.hs = hs;
@@ -430,8 +428,8 @@ bool MeshData::CreateMesh() {
 	mObj.gs = gs;
 	mObj.gs_NoMap = gs_NoMap;
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
-	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrv, numCbv, blend, alpha))return false;
-	if (!mObj.setDescHeap(numSrv, numCbv, 0, 0))return false;
+	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, blend, alpha))return false;
+	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
 }
 
@@ -452,6 +450,21 @@ void MeshData::DrawOff() {
 }
 
 void MeshData::Draw() {
-	mObj.com_no = com_no;
 	mObj.Draw();
+}
+
+void MeshData::SetCommandList(int no) {
+	mObj.SetCommandList(no);
+}
+
+void MeshData::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
+	mObj.CopyResource(texture, res, index);
+}
+
+void MeshData::TextureInit(int width, int height, int index) {
+	mObj.TextureInit(width, height, index);
+}
+
+HRESULT MeshData::SetTextureMPixel(BYTE* frame, int index) {
+	return mObj.SetTextureMPixel(frame, index);
 }

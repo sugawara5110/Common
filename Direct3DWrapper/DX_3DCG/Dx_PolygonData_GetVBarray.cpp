@@ -173,7 +173,10 @@ bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 	return true;
 }
 
-bool PolygonData::setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
+bool PolygonData::setDescHeap(const int numSrvTex,
+	const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
+	const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
+
 	TextureNo* te = new TextureNo[dpara.NumMaterial];
 	int tCnt = 0;
 	for (int i = 0; i < dpara.NumMaterial; i++) {
@@ -191,7 +194,7 @@ bool PolygonData::setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRT
 		tCnt++;
 	}
 	createTextureResource(0, tCnt, te);
-	dpara.numDesc = numSrv + numCbv;
+	dpara.numDesc = numSrvTex + numSrvBuf + numCbv;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
 	dpara.descHeap = CreateDescHeap(numHeap);
 	ARR_DELETE(te);
@@ -202,12 +205,13 @@ bool PolygonData::setDescHeap(const int numSrv, const int numCbv, D3D12_GPU_VIRT
 	cbSize[1] = mObjectCB1->getSizeInBytes();
 	cbSize[2] = ad3Size;
 	for (int i = 0; i < dpara.NumMaterial; i++) {
-		CreateSrvTexture(dpara.descHeap.Get(), dpara.numDesc * i, texture[numSrv * i].GetAddressOf(), numSrv);
+		CreateSrvTexture(dpara.descHeap.Get(), dpara.numDesc * i, texture[numSrvTex * i].GetAddressOf(), numSrvTex);
+		CreateSrvBuffer(dpara.descHeap.Get(), dpara.numDesc * i + numSrvTex, buffer, numSrvBuf, StructureByteStride);
 		D3D12_GPU_VIRTUAL_ADDRESS ad[numMaxCB];
 		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
 		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
 		ad[2] = ad3;
-		CreateCbv(dpara.descHeap.Get(), dpara.numDesc * i + numSrv, ad, cbSize, numCbv);
+		CreateCbv(dpara.descHeap.Get(), dpara.numDesc * i + numSrvTex + numSrvBuf, ad, cbSize, numCbv);
 	}
 	return true;
 }
@@ -223,17 +227,17 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	getIndexBuffer(0, ibByteSize, numIndex);
 
 	createDefaultBuffer(ver, index, true);
-	const int numSrv = 3;
+	const int numSrvTex = 3;
 	const int numCbv = 2;
 
 	if (tNo == -1 && !movOn[0].m_on) {
-		if (!createPSO(dx->pVertexLayout_3DBC, numSrv, numCbv, blend, alpha))return false;
+		if (!createPSO(dx->pVertexLayout_3DBC, numSrvTex, numCbv, blend, alpha))return false;
 	}
 	else {
-		if (!createPSO(dx->pVertexLayout_MESH, numSrv, numCbv, blend, alpha))return false;
+		if (!createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, blend, alpha))return false;
 	}
 
-	return setDescHeap(numSrv, numCbv, 0, 0);
+	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
 
 void PolygonData::InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX,
@@ -257,7 +261,9 @@ void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp,
 	CbSwap();
 }
 
-void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess, float size, float px, float py, float mx, float my) {
+void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a,
+	float theta, float disp, float shininess, float size, float px, float py, float mx, float my) {
+
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, size);
 	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, divArr, numDiv, shininess);
 	CbSwap();
