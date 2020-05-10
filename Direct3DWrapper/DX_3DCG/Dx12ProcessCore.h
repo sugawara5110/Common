@@ -232,6 +232,7 @@ private:
 	~Dx12Process();
 
 	bool CreateShaderByteCode();
+	UINT64 getRequiredIntermediateSize(ID3D12Resource* res);
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 		const void* initData, LONG_PTR RowPitch);
 
@@ -250,6 +251,17 @@ private:
 
 	void FenceSetEvent();
 	void WaitFence(bool mode);
+
+	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
+		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState);
+
+	HRESULT createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height);
+
+	HRESULT createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize);
+
+	HRESULT createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize);
+
+	HRESULT createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize);
 
 	HRESULT textureInit(int width, int height,
 		ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
@@ -389,15 +401,8 @@ public:
 		//コンスタントバッファサイズは256バイト単位にしておく(アライメント)
 		mElementByteSize = (sizeof(T) + 255) & ~255;//255を足して255の補数の論理積を取る
 
-		if (FAILED(dx->md3dDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(mElementByteSize * elementCount),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&mUploadBuffer)))) {
-			char* str = "ConstantBufferエラー";
-			throw str;
+		if (FAILED(dx->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
+			ErrorMessage("ConstantBufferエラー");
 		}
 
 		mUploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mMappedData));

@@ -311,45 +311,83 @@ int Dx12Process::GetTexNumber(CHAR* fileName) {
 	return -1;
 }
 
-HRESULT Dx12Process::textureInit(int width, int height,
-	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
+static HRESULT createDefaultResourceCommon(ID3D12Device* dev, ID3D12Resource** def,
+	D3D12_RESOURCE_DIMENSION dimension, UINT64 width, UINT height,
+	DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags,
 	D3D12_RESOURCE_STATES firstState) {
 
-	D3D12_RESOURCE_DESC texDesc = {};
-	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	texDesc.Width = width;
-	texDesc.Height = height;
-	texDesc.DepthOrArraySize = 1;
-	texDesc.MipLevels = 1;
-	texDesc.Format = format;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.SampleDesc.Quality = 0;
-	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = dimension;
+	desc.Width = width;
+	desc.Height = height;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = format;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	if (dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = flags;
 
-	D3D12_HEAP_PROPERTIES HeapProps;
+	D3D12_HEAP_PROPERTIES HeapProps = {};
 	HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 	HeapProps.CreationNodeMask = 1;
 	HeapProps.VisibleNodeMask = 1;
 
-	HRESULT hr = md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
-		firstState, nullptr, IID_PPV_ARGS(def));
-	if (FAILED(hr)) {
-		return hr;
-	}
+	//デフォルトバッファ生成
+	return dev->CreateCommittedResource(
+		&HeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		firstState,
+		nullptr,
+		IID_PPV_ARGS(def));
+}
 
-	//upload
-	UINT64 uploadBufferSize = GetRequiredIntermediateSize(*def, 0, 1);
-	D3D12_HEAP_PROPERTIES HeapPropsUp;
+HRESULT Dx12Process::createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
+	DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState) {
+
+	return createDefaultResourceCommon(md3dDevice.Get(), def,
+		D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height,
+		format, D3D12_RESOURCE_FLAG_NONE, firstState);
+}
+
+HRESULT Dx12Process::createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height) {
+
+	return createDefaultResourceCommon(md3dDevice.Get(), def,
+		D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height,
+		DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_COMMON);
+}
+
+HRESULT Dx12Process::createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize) {
+
+	return createDefaultResourceCommon(md3dDevice.Get(), def,
+		D3D12_RESOURCE_DIMENSION_BUFFER, bufferSize, 1,
+		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE,
+		D3D12_RESOURCE_STATE_COMMON);
+}
+
+HRESULT Dx12Process::createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize) {
+
+	return createDefaultResourceCommon(md3dDevice.Get(), def,
+		D3D12_RESOURCE_DIMENSION_BUFFER, bufferSize, 1,
+		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_COMMON);
+}
+
+HRESULT Dx12Process::createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize) {
+	D3D12_HEAP_PROPERTIES HeapPropsUp = {};
 	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
 	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 	HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 	HeapPropsUp.CreationNodeMask = 1;
 	HeapPropsUp.VisibleNodeMask = 1;
 
-	D3D12_RESOURCE_DESC BufferDesc;
+	D3D12_RESOURCE_DESC BufferDesc = {};
 	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	BufferDesc.Alignment = 0;
 	BufferDesc.Width = uploadBufferSize;
@@ -362,12 +400,25 @@ HRESULT Dx12Process::textureInit(int width, int height,
 	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	hr = md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
+	return md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
 		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(up));
+}
+
+HRESULT Dx12Process::textureInit(int width, int height,
+	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
+	D3D12_RESOURCE_STATES firstState) {
+
+	HRESULT hr = createDefaultResourceTEXTURE2D(def, width, height, format, firstState);
 	if (FAILED(hr)) {
 		return hr;
 	}
 
+	//upload
+	UINT64 uploadBufferSize = getRequiredIntermediateSize(*def);
+	hr = createUploadResource(up, uploadBufferSize);
+	if (FAILED(hr)) {
+		return hr;
+	}
 	return S_OK;
 }
 
@@ -516,7 +567,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	mSwapChain.Reset();
 
 	//スワップチェイン生成
-	DXGI_SWAP_CHAIN_DESC sd;
+	DXGI_SWAP_CHAIN_DESC sd = {};
 	sd.BufferDesc.Width = mClientWidth;
 	sd.BufferDesc.Height = mClientHeight;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
@@ -543,7 +594,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	//Descriptor:何のバッファかを記述される
 	//スワップチェインをRenderTargetとして使用するためのDescriptorHeapを作成(Descriptorの記録場所)
-	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;   //RenderTargetView
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; //シェーダからアクセスしないのでNONEでOK
@@ -555,7 +606,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 
 	//深度ステンシルビュ-DescriptorHeapを作成
-	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors = 1;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -581,7 +632,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 
 	//デプスステンシルビューDESC
-	D3D12_RESOURCE_DESC depthStencilDesc;
+	D3D12_RESOURCE_DESC depthStencilDesc = {};
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
 	depthStencilDesc.Width = mClientWidth;
@@ -775,6 +826,13 @@ void Dx12Process::Fog(float r, float g, float b, float amount, float density, bo
 	fog.Density = density;
 }
 
+UINT64 Dx12Process::getRequiredIntermediateSize(ID3D12Resource* res) {
+	D3D12_RESOURCE_DESC desc = res->GetDesc();
+	UINT64  total_bytes = 0;
+	dx->md3dDevice->GetCopyableFootprints(&desc, 0, 1, 0, nullptr, nullptr, nullptr, &total_bytes);
+	return total_bytes;
+}
+
 HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 	const void* initData, LONG_PTR RowPitch) {
 
@@ -854,66 +912,13 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 
-	D3D12_RESOURCE_DESC BufferDesc = {};
-	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	BufferDesc.Width = byteSize;
-	BufferDesc.Height = 1;
-	BufferDesc.DepthOrArraySize = 1;
-	BufferDesc.MipLevels = 1;
-	BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-	BufferDesc.SampleDesc.Count = 1;
-	BufferDesc.SampleDesc.Quality = 0;
-	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	D3D12_HEAP_PROPERTIES HeapProps;
-	HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	HeapProps.CreationNodeMask = 1;
-	HeapProps.VisibleNodeMask = 1;
-
-	//デフォルトバッファ生成
-	HRESULT hr = md3dDevice->CreateCommittedResource(
-		&HeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&BufferDesc,
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(defaultBuffer.GetAddressOf()));
+	HRESULT hr = createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
 	if (FAILED(hr)) {
 		return nullptr;
 	}
 
-	UINT64 uploadBufferSize = GetRequiredIntermediateSize(defaultBuffer.Get(), 0, 1);
-	D3D12_HEAP_PROPERTIES HeapPropsUp;
-	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
-	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	HeapPropsUp.CreationNodeMask = 1;
-	HeapPropsUp.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC BufferDescUp;
-	BufferDescUp.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	BufferDescUp.Alignment = 0;
-	BufferDescUp.Width = uploadBufferSize;
-	BufferDescUp.Height = 1;
-	BufferDescUp.DepthOrArraySize = 1;
-	BufferDescUp.MipLevels = 1;
-	BufferDescUp.Format = DXGI_FORMAT_UNKNOWN;
-	BufferDescUp.SampleDesc.Count = 1;
-	BufferDescUp.SampleDesc.Quality = 0;
-	BufferDescUp.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	BufferDescUp.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	//デフォルトバッファにCPUメモリデータをコピーするための中間バッファ生成
-	hr = md3dDevice->CreateCommittedResource(
-		&HeapPropsUp,
-		D3D12_HEAP_FLAG_NONE,
-		&BufferDescUp,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(uploadBuffer.GetAddressOf()));
+	UINT64 uploadBufferSize = getRequiredIntermediateSize(defaultBuffer.Get());
+	hr = createUploadResource(uploadBuffer.GetAddressOf(), uploadBufferSize);
 	if (FAILED(hr)) {
 		return nullptr;
 	}
@@ -932,14 +937,10 @@ ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(UINT64 byteSize)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 
-	//ストリームバッファ生成
-	md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),
-		D3D12_RESOURCE_STATE_STREAM_OUT,
-		nullptr,
-		IID_PPV_ARGS(defaultBuffer.GetAddressOf()));
+	createDefaultResourceCommon(md3dDevice.Get(), defaultBuffer.GetAddressOf(),
+		D3D12_RESOURCE_DIMENSION_BUFFER, byteSize, 1,
+		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE,
+		D3D12_RESOURCE_STATE_STREAM_OUT);
 
 	return defaultBuffer;
 }

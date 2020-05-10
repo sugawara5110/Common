@@ -76,30 +76,16 @@ bool Wave::ComCreate() {
 	}
 	Dx12Process* dx = mObj.dx;
 	UINT64 byteSize = wdata.size() * sizeof(WaveData);
-	//RWStructuredBuffer—p
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mOutputBuffer));
 
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr,
-		IID_PPV_ARGS(&mInputBuffer));
-	//UpLoad—p
-	dx->md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(byteSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&mInputUploadBuffer));
+	if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(&mOutputBuffer, byteSize))) {
+		ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(&mInputBuffer, byteSize))) {
+		ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	if (FAILED(dx->createUploadResource(&mInputUploadBuffer, byteSize))) {
+		ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
 
 	D3D12_SUBRESOURCE_DATA subResourceData = {};
 	subResourceData.pData = wdata.data();
@@ -109,7 +95,10 @@ bool Wave::ComCreate() {
 	dx->dx_sub[mObj.com_no].ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	dx->CopyResourcesToGPU(mObj.com_no, mInputUploadBuffer.Get(), mInputBuffer.Get(), subResourceData.pData, subResourceData.RowPitch);
+	if (FAILED(dx->CopyResourcesToGPU(mObj.com_no, mInputUploadBuffer.Get(), mInputBuffer.Get(),
+		subResourceData.pData, subResourceData.RowPitch))) {
+		ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
 
 	dx->dx_sub[mObj.com_no].ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

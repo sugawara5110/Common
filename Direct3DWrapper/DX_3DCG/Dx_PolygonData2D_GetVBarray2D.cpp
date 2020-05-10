@@ -95,56 +95,15 @@ void PolygonData2D::SetText() {
 	texture[0].Reset();
 	textureUp[0].Reset();
 
-	D3D12_RESOURCE_DESC texDesc = {};
-	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	texDesc.Width = Twidth;
-	texDesc.Height = Theight;
-	texDesc.DepthOrArraySize = 1;
-	texDesc.MipLevels = 1;
-	texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.SampleDesc.Quality = 0;
-	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	dx->createDefaultResourceTEXTURE2D(texture[0].GetAddressOf(), Twidth, Theight,
+		DXGI_FORMAT_B8G8R8A8_UNORM, D3D12_RESOURCE_STATE_COMMON);
 
-	D3D12_HEAP_PROPERTIES HeapProps;
-	HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	HeapProps.CreationNodeMask = 1;
-	HeapProps.VisibleNodeMask = 1;
-
-	dx->md3dDevice->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
-		D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(texture[0].GetAddressOf()));
-
-	//upload
-	UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture[0].Get(), 0, 1);
-	D3D12_HEAP_PROPERTIES HeapPropsUp;
-	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
-	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	HeapPropsUp.CreationNodeMask = 1;
-	HeapPropsUp.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC BufferDesc;
-	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	BufferDesc.Alignment = 0;
-	BufferDesc.Width = uploadBufferSize;
-	BufferDesc.Height = 1;
-	BufferDesc.DepthOrArraySize = 1;
-	BufferDesc.MipLevels = 1;
-	BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-	BufferDesc.SampleDesc.Count = 1;
-	BufferDesc.SampleDesc.Quality = 0;
-	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	dx->md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
-		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr, IID_PPV_ARGS(textureUp[0].GetAddressOf()));
+	UINT64 uploadBufferSize = dx->getRequiredIntermediateSize(texture[0].Get());
+	dx->createUploadResource(textureUp[0].GetAddressOf(), uploadBufferSize);
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT  footprint;
 	UINT64  total_bytes = 0;
+	D3D12_RESOURCE_DESC texDesc = texture[0].Get()->GetDesc();
 	dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
 
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
