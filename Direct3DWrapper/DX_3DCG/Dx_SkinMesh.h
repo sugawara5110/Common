@@ -65,6 +65,7 @@ protected:
 	int numBone = 0;
 	BONE* m_BoneArray = nullptr;
 	char* boneName = nullptr;
+	int InternalAnimationIndex = 0;
 
 	//FBX
 	int numMesh = 0;
@@ -106,6 +107,7 @@ public:
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
 	void CreateFromFBX_SubAnimation(int ind);
+	void setInternalAnimationIndex(int index) { InternalAnimationIndex = index; }
 	bool Update(float time, float x, float y, float z, float r, float g, float b, float a,
 		float thetaZ, float thetaY, float thetaX, float size);
 	bool Update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,

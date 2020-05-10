@@ -598,7 +598,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	else {
 		defo = m_ppSubAnimationBone[(ind - 1) * numBone];
 	}
-	defo->EvaluateGlobalTransform(time);
+	defo->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
 	MATRIX mat0_mov;
 	MatrixIdentity(&mat0_mov);
@@ -620,7 +620,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 		else {
 			de = m_ppSubAnimationBone[(ind - 1) * numBone + i];
 		}
-		de->EvaluateGlobalTransform(time);
+		de->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
 		for (int x = 0; x < 4; x++) {
 			for (int y = 0; y < 4; y++) {
