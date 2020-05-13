@@ -98,7 +98,7 @@ public:
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
 	void GetBuffer(float end_frame);
-	void SetVertex();
+	void SetVertex(bool lclOn = false);
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);

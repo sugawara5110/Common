@@ -201,9 +201,10 @@ void SkinMesh::GetBuffer(float end_frame) {
 	}
 }
 
-void SkinMesh::SetVertex() {
+void SkinMesh::SetVertex(bool lclOn) {
 
 	FbxLoader* fbL = fbx[0].fbxL;
+	GlobalSettings gSet = fbL->getGlobalSettings();
 
 	for (int m = 0; m < numMesh; m++) {
 
@@ -238,9 +239,21 @@ void SkinMesh::SetVertex() {
 		for (UINT i = 0; i < mesh->getNumPolygonVertices(); i++) {
 			//index‡‚Å’¸“_‚ð®—ñ‚µ‚È‚ª‚ç’¸“_Ši”[
 			MY_VERTEX_S* v = &vb[i];
-			v->vPos.x = (float)ver[index[i] * 3];
-			v->vPos.y = (float)ver[index[i] * 3 + 1];
-			v->vPos.z = (float)ver[index[i] * 3 + 2];
+			if (lclOn) {
+				float tmpv[3] = {
+					(float)ver[index[i] * 3] * gSet.CoordAxisSign,
+					(float)ver[index[i] * 3 + 1] * -gSet.FrontAxisSign,
+					(float)ver[index[i] * 3 + 2] * gSet.UpAxisSign
+				};
+				v->vPos.x = tmpv[gSet.CoordAxis] * (float)mesh->getLcl().Scaling[0];
+				v->vPos.y = tmpv[gSet.FrontAxis] * (float)mesh->getLcl().Scaling[1];
+				v->vPos.z = tmpv[gSet.UpAxis] * (float)mesh->getLcl().Scaling[2];
+			}
+			else {
+				v->vPos.x = (float)ver[index[i] * 3];
+				v->vPos.y = (float)ver[index[i] * 3 + 1];
+				v->vPos.z = (float)ver[index[i] * 3 + 2];
+			}
 			v->vNorm.x = (float)nor[i * 3];
 			v->vNorm.y = (float)nor[i * 3 + 1];
 			v->vNorm.z = (float)nor[i * 3 + 2];
