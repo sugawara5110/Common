@@ -1038,7 +1038,7 @@ float Dx12Process::GetFarPlane() {
 	return FarPlane;
 }
 
-char *Dx12Process::GetNameFromPass(char *pass) {
+char* Dx12Process::GetNameFromPass(char* pass) {
 
 	CHAR temp[255];
 	strcpy_s(temp, pass);

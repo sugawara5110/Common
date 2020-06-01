@@ -114,6 +114,7 @@ void SkinMesh::ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB) {
 	//各Boneのウエイト,インデックスを調べ頂点配列に加える
 	for (int i = 0; i < numBone; i++) {
 		Deformer* defo = mesh->getDeformer(i);
+		if (!defo)return;
 		int iNumIndex = defo->getIndicesCount();//このボーンに影響を受ける頂点インデックス数
 		int* piIndex = defo->getIndices();     //このボーンに影響を受ける頂点のインデックス配列
 		double* pdWeight = defo->getWeights();//このボーンに影響を受ける頂点のウエイト配列
@@ -378,7 +379,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 					auto diffName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
 					mObj[m].dpara.material[i].diftex_no = dx->GetTexNumber(diffName);
 					auto str = mesh->getDiffuseTextureUVName(i, tNo);
-					strcpy(mObj[m].dpara.material[i].difUvName, str);
+					if (str)strcpy(mObj[m].dpara.material[i].difUvName, str);
 					break;
 				}
 			}
@@ -389,7 +390,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 					auto speName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
 					mObj[m].dpara.material[i].spetex_no = dx->GetTexNumber(speName);
 					auto str = mesh->getDiffuseTextureUVName(i, tNo);
-					strcpy(mObj[m].dpara.material[i].speUvName, str);
+					if (str)strcpy(mObj[m].dpara.material[i].speUvName, str);
 					break;
 				}
 			}
@@ -397,12 +398,13 @@ void SkinMesh::SetVertex(bool lclOn) {
 			for (int tNo = 0; tNo < mesh->getNumNormalTexture(i); tNo++) {
 				//ディフェーズテクスチャ用のノーマルマップしか使用しないので
 				//取得済みのディフェーズテクスチャUV名と同じUV名のノーマルマップを探す
-				if (!strcmp(mObj[m].dpara.material[i].difUvName, mesh->getNormalTextureUVName(i, tNo)) ||
-					mesh->getNumNormalTexture(i) == 1) {
+				auto uvNorName = mesh->getNormalTextureUVName(i, tNo);
+				if (mesh->getNumNormalTexture(i) == 1 ||
+					uvNorName && !strcmp(mObj[m].dpara.material[i].difUvName, uvNorName)) {
 					auto norName = dx->GetNameFromPass(mesh->getNormalTextureName(i, tNo));
 					mObj[m].dpara.material[i].nortex_no = dx->GetTexNumber(norName);
 					auto str = mesh->getNormalTextureUVName(i, tNo);
-					strcpy(mObj[m].dpara.material[i].norUvName, str);
+					if (str)strcpy(mObj[m].dpara.material[i].norUvName, str);
 					break;
 				}
 			}
