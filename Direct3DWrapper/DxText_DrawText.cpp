@@ -9,6 +9,7 @@
 #include <string.h>
 #include <tchar.h>
 #include <stdarg.h>
+#include <locale.h>
 
 DxText *DxText::textobj = nullptr;
 
