@@ -259,7 +259,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	te.specular = -1;
 
 	createTextureResource(0, 1, &te);
-	mSrvHeap = CreateDescHeap(1);
+	mSrvHeap = dx->CreateDescHeap(1);
 	CreateSrvTexture(mSrvHeap.Get(), 0, texture->GetAddressOf(), 1);
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);

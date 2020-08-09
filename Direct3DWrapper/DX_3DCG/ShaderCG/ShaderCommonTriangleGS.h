@@ -56,9 +56,9 @@ char* ShaderCommonTriangleGS =
 "   Normal3 n3 = NormalRecalculation(Input);\n"
 
 //接ベクトル計算
-"   tan[0] = GetTangent(n3.nor0, Input[0].instanceID);\n"
-"   tan[1] = GetTangent(n3.nor1, Input[1].instanceID);\n"
-"   tan[2] = GetTangent(n3.nor2, Input[2].instanceID);\n"
+"   tan[0] = GetTangent(n3.nor0, g_World[Input[0].instanceID], g_viewUp);\n"
+"   tan[1] = GetTangent(n3.nor1, g_World[Input[1].instanceID], g_viewUp);\n"
+"   tan[2] = GetTangent(n3.nor2, g_World[Input[2].instanceID], g_viewUp);\n"
 
 "   Stream(p, Input, triStream, tan);\n"
 "}\n"
@@ -72,9 +72,9 @@ char* ShaderCommonTriangleGS =
 "   Normal3 n3 = NormalRecalculation(Input);\n"
 
 //接ベクトル計算無し
-"   tan[0].normal = n3.nor0;\n"
-"   tan[1].normal = n3.nor1;\n"
-"   tan[2].normal = n3.nor2;\n"
+"   tan[0].normal = mul(n3.nor0, (float3x3)g_World[Input[0].instanceID]);\n"
+"   tan[1].normal = mul(n3.nor1, (float3x3)g_World[Input[1].instanceID]);\n"
+"   tan[2].normal = mul(n3.nor2, (float3x3)g_World[Input[2].instanceID]);\n"
 "   tan[0].tangent = float3(0.0f, 0.0f, 0.0f);\n"
 "   tan[1].tangent = float3(0.0f, 0.0f, 0.0f);\n"
 "   tan[2].tangent = float3(0.0f, 0.0f, 0.0f);\n"
@@ -89,9 +89,9 @@ char* ShaderCommonTriangleGS =
 "   NormalTangent tan[3];\n"
 
 //接ベクトル計算
-"   tan[0] = GetTangent(Input[0].Nor, Input[0].instanceID);\n"
-"   tan[1] = GetTangent(Input[1].Nor, Input[1].instanceID);\n"
-"   tan[2] = GetTangent(Input[2].Nor, Input[2].instanceID);\n"
+"   tan[0] = GetTangent(Input[0].Nor, g_World[Input[0].instanceID], g_viewUp);\n"
+"   tan[1] = GetTangent(Input[1].Nor, g_World[Input[1].instanceID], g_viewUp);\n"
+"   tan[2] = GetTangent(Input[2].Nor, g_World[Input[2].instanceID], g_viewUp);\n"
 
 "   Stream(p, Input, triStream, tan);\n"
 "}\n"
@@ -103,9 +103,9 @@ char* ShaderCommonTriangleGS =
 "   NormalTangent tan[3];\n"
 
 //接ベクトル計算無し
-"   tan[0].normal = Input[0].Nor;\n"
-"   tan[1].normal = Input[1].Nor;\n"
-"   tan[2].normal = Input[2].Nor;\n"
+"   tan[0].normal = mul(Input[0].Nor, (float3x3)g_World[Input[0].instanceID]);\n"
+"   tan[1].normal = mul(Input[1].Nor, (float3x3)g_World[Input[1].instanceID]);\n"
+"   tan[2].normal = mul(Input[2].Nor, (float3x3)g_World[Input[2].instanceID]);\n"
 "   tan[0].tangent = float3(0.0f, 0.0f, 0.0f);\n"
 "   tan[1].tangent = float3(0.0f, 0.0f, 0.0f);\n"
 "   tan[2].tangent = float3(0.0f, 0.0f, 0.0f);\n"

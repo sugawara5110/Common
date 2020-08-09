@@ -11,6 +11,7 @@
 #include <windows.h>
 #include <wrl.h>//Microsoft::WRL
 #include <dxgi1_4.h>
+#include <string.h>
 
 #define LIGHT_PCS 256
 #define INSTANCE_PCS_3D 256
@@ -19,6 +20,8 @@
 #define RELEASE(p)    if(p){p->Release();  p=nullptr;}
 #define S_DELETE(p)   if(p){delete p;      p=nullptr;}
 #define ARR_DELETE(p) if(p){delete[] p;    p=nullptr;}
+#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+#define ALIGNMENT_TO(alignment, val) ((val + alignment - 1) & ~(alignment - 1))
 
 //シェーダー受け渡し用バッファ3D用
 struct CONSTANT_BUFFER {

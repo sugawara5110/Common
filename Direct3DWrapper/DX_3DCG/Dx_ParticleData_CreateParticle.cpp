@@ -170,7 +170,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	te.specular = -1;
 
 	createTextureResource(0, 1, &te);
-	mSrvHeap = CreateDescHeap(1);
+	mSrvHeap = dx->CreateDescHeap(1);
 	if (mSrvHeap == nullptr)return false;
 	CreateSrvTexture(mSrvHeap.Get(), 0, texture->GetAddressOf(), 1);
 

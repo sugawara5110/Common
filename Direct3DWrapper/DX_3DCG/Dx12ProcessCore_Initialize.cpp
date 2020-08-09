@@ -7,7 +7,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
 #include <WindowsX.h>
-#include "./ShaderCG/ShaderFunction.h"
+#include "./ShaderCG/ShaderCommonParameters.h"
+#include "./ShaderCG/ShaderNormalTangent.h"
 #include "./ShaderCG/Shader2D.h"
 #include "./ShaderCG/Shader3D.h"
 #include "./ShaderCG/ShaderMesh.h"
@@ -150,36 +151,24 @@ void Dx12Process::WaitFencePast() {
 	Unlock();
 }
 
-class addShader {
-
-public:
-	char *str = nullptr;
-	size_t size;
-
-	void addStr(char *str1, size_t size1, char *str2, size_t size2) {
-		size = size1 + size2 + 1;
-		str = new char[size];
-		memcpy(str, str1, size1 + 1);
-		strncat(str, str2, size2 + 1);
-	}
-
-	~addShader() {
-		S_DELETE(str);
-	}
-};
-
 bool Dx12Process::CreateShaderByteCode() {
 
-	addShader D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS;
-	D3.addStr(ShaderFunction, strlen(ShaderFunction), Shader3D, strlen(Shader3D));
-	Mesh.addStr(ShaderFunction, strlen(ShaderFunction), ShaderMesh, strlen(ShaderMesh));
-	MeshD.addStr(ShaderFunction, strlen(ShaderFunction), ShaderMesh_D, strlen(ShaderMesh_D));
-	Skin.addStr(ShaderFunction, strlen(ShaderFunction), ShaderSkinMesh, strlen(ShaderSkinMesh));
-	SkinD.addStr(ShaderFunction, strlen(ShaderFunction), ShaderSkinMesh_D, strlen(ShaderSkinMesh_D));
-	Wave.addStr(ShaderFunction, strlen(ShaderFunction), ShaderWaveDraw, strlen(ShaderWaveDraw));
-	ComPS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonPS, strlen(ShaderCommonPS));
-	ComHSDS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonTriangleHSDS, strlen(ShaderCommonTriangleHSDS));
-	ComGS.addStr(ShaderFunction, strlen(ShaderFunction), ShaderCommonTriangleGS, strlen(ShaderCommonTriangleGS));
+	size_t norS_size = strlen(ShaderNormalTangent) + 1;
+	ShaderNormalTangentCopy = std::make_unique<char[]>(norS_size);
+	memcpy(ShaderNormalTangentCopy.get(), ShaderNormalTangent, norS_size);
+
+	addChar D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS, ParaNor;
+	char* com = ShaderCommonParameters;
+	ParaNor.addStr(com, ShaderNormalTangent);
+	D3.addStr(com, Shader3D);
+	Mesh.addStr(com, ShaderMesh);
+	MeshD.addStr(com, ShaderMesh_D);
+	Skin.addStr(com, ShaderSkinMesh);
+	SkinD.addStr(com, ShaderSkinMesh_D);
+	Wave.addStr(com, ShaderWaveDraw);
+	ComPS.addStr(ParaNor.str, ShaderCommonPS);
+	ComHSDS.addStr(com, ShaderCommonTriangleHSDS);
+	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS);
 
 	//CommonPS
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
@@ -355,28 +344,31 @@ HRESULT Dx12Process::createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64
 		format, D3D12_RESOURCE_FLAG_NONE, firstState);
 }
 
-HRESULT Dx12Process::createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height) {
+HRESULT Dx12Process::createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height,
+	D3D12_RESOURCE_STATES firstState) {
 
 	return createDefaultResourceCommon(md3dDevice.Get(), def,
 		D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height,
 		DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		D3D12_RESOURCE_STATE_COMMON);
+		firstState);
 }
 
-HRESULT Dx12Process::createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize) {
+HRESULT Dx12Process::createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize,
+	D3D12_RESOURCE_STATES firstState) {
 
 	return createDefaultResourceCommon(md3dDevice.Get(), def,
 		D3D12_RESOURCE_DIMENSION_BUFFER, bufferSize, 1,
 		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE,
-		D3D12_RESOURCE_STATE_COMMON);
+		firstState);
 }
 
-HRESULT Dx12Process::createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize) {
+HRESULT Dx12Process::createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize,
+	D3D12_RESOURCE_STATES firstState) {
 
 	return createDefaultResourceCommon(md3dDevice.Get(), def,
 		D3D12_RESOURCE_DIMENSION_BUFFER, bufferSize, 1,
 		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		D3D12_RESOURCE_STATE_COMMON);
+		firstState);
 }
 
 HRESULT Dx12Process::createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize) {
@@ -420,6 +412,71 @@ HRESULT Dx12Process::textureInit(int width, int height,
 		return hr;
 	}
 	return S_OK;
+}
+
+ComPtr<ID3D12RootSignature> Dx12Process::CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC* rootSigDesc)
+{
+	ComPtr<ID3D12RootSignature>rs;
+
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
+
+	HRESULT hr = D3D12SerializeRootSignature(rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+	if (FAILED(hr)) {
+		ErrorMessage("Dx12Process::CreateRsCommon Error!!");
+		ErrorMessage((char*)errorBlob.Get()->GetBufferPointer());
+		return nullptr;
+	}
+
+	//RootSignature生成
+	hr = md3dDevice.Get()->CreateRootSignature(
+		0,
+		serializedRootSig->GetBufferPointer(),
+		serializedRootSig->GetBufferSize(),
+		IID_PPV_ARGS(rs.GetAddressOf()));
+
+	if (FAILED(hr)) {
+		ErrorMessage("Dx12Process::CreateRsCommon Error!!"); return nullptr;
+	}
+
+	return rs;
+}
+
+ComPtr <ID3D12DescriptorHeap> Dx12Process::CreateDescHeap(int numDesc) {
+	ComPtr <ID3D12DescriptorHeap>heap;
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.NumDescriptors = numDesc;
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	HRESULT hr;
+	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
+	if (FAILED(hr)) {
+		ErrorMessage("Dx12Process::CreateDescHeap Error!!"); return nullptr;
+	}
+	return heap;
+}
+
+ComPtr<ID3D12DescriptorHeap> Dx12Process::CreateSamplerDescHeap(D3D12_SAMPLER_DESC& descSampler) {
+	ComPtr <ID3D12DescriptorHeap>heap;
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.NumDescriptors = 1;
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	HRESULT hr;
+	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
+	if (FAILED(hr)) {
+		ErrorMessage("Dx12Process::CreateSamplerDescHeap Error!!"); return nullptr;
+	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = heap.Get()->GetCPUDescriptorHandleForHeapStart();
+	md3dDevice->CreateSampler(&descSampler, handle);
+	return heap;
 }
 
 HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
@@ -494,7 +551,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		return false;
 	}
 
-	//ハードウエア処理可能か,ハードウエア処理デバイス生成
+	//デバイス生成
 	HRESULT hardwareResult = D3D12CreateDevice(
 		nullptr,             // default adapter
 		D3D_FEATURE_LEVEL_11_0,
@@ -514,6 +571,16 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&md3dDevice)))) {
 			ErrorMessage("D3D12CreateDevice Error");
+			return false;
+		}
+	}
+	else if (DXR_ON) {
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5;
+		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+		{
+			ErrorMessage("DXR not supported");
+			DXR_ON = false;
 			return false;
 		}
 	}
@@ -567,30 +634,31 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	mSwapChain.Reset();
 
 	//スワップチェイン生成
-	DXGI_SWAP_CHAIN_DESC sd = {};
-	sd.BufferDesc.Width = mClientWidth;
-	sd.BufferDesc.Height = mClientHeight;
-	sd.BufferDesc.RefreshRate.Numerator = 60;
-	sd.BufferDesc.RefreshRate.Denominator = 1;
-	sd.BufferDesc.Format = mBackBufferFormat;
-	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	sd.SampleDesc.Count = m4xMsaaState ? 4 : 1;
-	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	DXGI_SWAP_CHAIN_DESC1 sd = {};
+	sd.Width = mClientWidth;
+	sd.Height = mClientHeight;
+	sd.Format = mBackBufferFormat;
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SwapChainBufferCount;
-	sd.OutputWindow = hWnd;
-	sd.Windowed = true;
+	sd.SampleDesc.Count = m4xMsaaState ? 4 : 1;
+	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	sd.Scaling = DXGI_SCALING_STRETCH;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	sd.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-	if (FAILED(mdxgiFactory->CreateSwapChain(
+	ComPtr<IDXGISwapChain1> swapChain;
+	if (FAILED(mdxgiFactory->CreateSwapChainForHwnd(
 		mCommandQueue.Get(),
+		hWnd,
 		&sd,
-		mSwapChain.GetAddressOf()))) {
+		nullptr,
+		nullptr,
+		swapChain.GetAddressOf()))) {
 		ErrorMessage("CreateSwapChain Error");
 		return false;
 	}
+	swapChain->QueryInterface(IID_PPV_ARGS(mSwapChain.GetAddressOf()));
 
 	//Descriptor:何のバッファかを記述される
 	//スワップチェインをRenderTargetとして使用するためのDescriptorHeapを作成(Descriptorの記録場所)
@@ -752,7 +820,7 @@ void Dx12Process::End(int com_no) {
 void Dx12Process::DrawScreen() {
 	// swap the back and front buffers
 	mSwapChain->Present(0, 0);
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = mSwapChain->GetCurrentBackBufferIndex();
 }
 
 void Dx12Process::Cameraset(float pos_X, float pos_Y, float pos_Z,
@@ -957,7 +1025,7 @@ ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR
 	}
 
 	if (errors != nullptr)
-		OutputDebugStringA((char*)errors->GetBufferPointer());
+		ErrorMessage((char*)errors->GetBufferPointer());
 
 	return byteCode;
 }
@@ -1057,6 +1125,15 @@ char* Dx12Process::GetNameFromPass(char* pass) {
 	}
 
 	return pass;//ポインタ操作してるので返り値を使用させる
+}
+
+void addChar::addStr(char* str1, char* str2) {
+	size_t size1 = strlen(str1);
+	size_t size2 = strlen(str2);
+	size = size1 + size2 + 1;
+	str = new char[size];
+	memcpy(str, str1, size1 + 1);
+	strncat(str, str2, size2 + 1);
 }
 
 //移動量一定化

@@ -196,7 +196,7 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 	createTextureResource(0, tCnt, te);
 	dpara.numDesc = numSrvTex + numSrvBuf + numCbv;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
-	dpara.descHeap = CreateDescHeap(numHeap);
+	dpara.descHeap = dx->CreateDescHeap(numHeap);
 	ARR_DELETE(te);
 	if (dpara.descHeap == nullptr)return false;
 	const int numMaxCB = 3;

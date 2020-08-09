@@ -58,6 +58,7 @@ class SearchPixel;
 class DxGradCAM;
 class DxActivation;
 class DxOptimizer;
+class DXR_Basic;
 //前方宣言
 
 class Dx12Process_sub final {
@@ -80,9 +81,10 @@ private:
 	friend DxGradCAM;
 	friend DxActivation;
 	friend DxOptimizer;
+	friend DXR_Basic;
 
 	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
-	ComPtr<ID3D12GraphicsCommandList> mCommandList;
+	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
 	int mAloc_Num = 0;
 	volatile ComListState mComState;
 
@@ -114,12 +116,14 @@ private:
 	friend DxGradCAM;
 	friend DxActivation;
 	friend DxOptimizer;
+	friend DXR_Basic;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
-	ComPtr<ID3D12Device> md3dDevice;
-	ComPtr<IDXGISwapChain> mSwapChain;
+	ComPtr<ID3D12Device5> md3dDevice;
+	ComPtr<IDXGISwapChain3> mSwapChain;
 	ComPtr<ID3D12Fence> mFence;
 	UINT64 mCurrentFence = 0;
+	bool DXR_ON = false;
 
 	//MultiSampleレベルチェック
 	bool m4xMsaaState = false;
@@ -180,6 +184,8 @@ private:
 
 	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
+
+	std::unique_ptr<char[]> ShaderNormalTangentCopy = nullptr;
 
 	bool CreateShaderByteCodeBool = true;
 
@@ -253,13 +259,16 @@ private:
 	void WaitFence(bool mode);
 
 	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
-		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState);
+		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
 
-	HRESULT createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height);
+	HRESULT createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height,
+		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
 
-	HRESULT createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize);
+	HRESULT createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize,
+		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
 
-	HRESULT createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize);
+	HRESULT createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize,
+		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
 
 	HRESULT createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize);
 
@@ -271,6 +280,10 @@ private:
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
 
+	ComPtr<ID3D12RootSignature> CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC* rootSigDesc);
+	ComPtr<ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
+	ComPtr<ID3D12DescriptorHeap> CreateSamplerDescHeap(D3D12_SAMPLER_DESC& descSampler);
+
 public:
 	static void InstanceCreate();
 	static Dx12Process* GetInstance();
@@ -279,8 +292,9 @@ public:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
+	void dxrOn() { DXR_ON = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
-	ID3D12Device* getDevice() { return md3dDevice.Get(); }
+	ID3D12Device5* getDevice() { return md3dDevice.Get(); }
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
@@ -348,7 +362,7 @@ struct IndexView {
 	ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
 	//バッファのサイズ等
-	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
+	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R32_UINT;
 	UINT IndexBufferByteSize = 0;
 	//DrawIndexedInstancedの引数で使用
 	UINT IndexCount = 0;
@@ -398,8 +412,8 @@ public:
 	ConstantBuffer(UINT elementCount) {
 
 		dx = Dx12Process::GetInstance();
-		//コンスタントバッファサイズは256バイト単位にしておく(アライメント)
-		mElementByteSize = (sizeof(T) + 255) & ~255;//255を足して255の補数の論理積を取る
+		//コンスタントバッファサイズは256バイトでアライメント
+		mElementByteSize = ALIGNMENT_TO(256, sizeof(T));
 
 		if (FAILED(dx->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
 			ErrorMessage("ConstantBufferエラー");
@@ -423,12 +437,20 @@ public:
 		return mUploadBuffer.Get();
 	}
 
+	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress(UINT elementIndex) {
+		return mUploadBuffer.Get()->GetGPUVirtualAddress() + 256 * elementIndex;
+	}
+
 	void CopyData(int elementIndex, const T& data) {
 		memcpy(&mMappedData[elementIndex * mElementByteSize], &data, sizeof(T));
 	}
 
 	UINT getSizeInBytes() {
 		return mElementByteSize;
+	}
+
+	UINT getElementByteSize() {
+		return 256;
 	}
 };
 
@@ -467,13 +489,12 @@ protected:
 	void CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
 
-	ComPtr <ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
-	ComPtr <ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv);
-	ComPtr <ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr <ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr <ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv);
+	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 
-	ComPtr <ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
+	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
@@ -481,29 +502,29 @@ protected:
 		bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
 		PrimitiveType type);
 
-	ComPtr <ID3D12PipelineState> CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
+	ComPtr<ID3D12PipelineState> CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type);
 
-	ComPtr <ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
+	ComPtr<ID3D12PipelineState> CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend,
 		PrimitiveType type);
 
-	ComPtr <ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+	ComPtr<ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize);
 
-	ComPtr <ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
+	ComPtr<ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		bool alpha, bool blend);
 
-	ComPtr <ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
+	ComPtr<ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
 		ID3D12RootSignature* mRootSignature);
 
 	ID3D12Resource* GetSwapChainBuffer();
@@ -531,6 +552,7 @@ public:
 	void TextureInit(int width, int height, int index = 0);
 	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
 	InternalTexture* getInternalTexture(int index) { return &dx->texture[index]; }
+	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
 };
 
 //*********************************PolygonDataクラス*************************************//
@@ -541,6 +563,7 @@ protected:
 	friend SkinMesh;
 	friend MeshData;
 	friend Wave;
+	friend DXR_Basic;
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -741,6 +764,20 @@ public:
 	void Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void DrawOff();
 	void Draw();
+};
+
+//************************************addCharクラス****************************************//
+class addChar {
+
+public:
+	char* str = nullptr;
+	size_t size;
+
+	void addStr(char* str1, char* str2);
+
+	~addChar() {
+		S_DELETE(str);
+	}
 };
 
 class T_float {

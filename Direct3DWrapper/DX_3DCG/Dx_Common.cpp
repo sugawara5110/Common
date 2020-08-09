@@ -146,55 +146,6 @@ void Common::CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 	}
 }
 
-ComPtr <ID3D12DescriptorHeap> Common::CreateDescHeap(int numDesc) {
-	ComPtr <ID3D12DescriptorHeap>heap;
-
-	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-	desc.NumDescriptors = numDesc;
-	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-	HRESULT hr;
-	hr = dx->md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
-	if (FAILED(hr)) {
-		ErrorMessage("Common::CreateDescHeap Error!!"); return nullptr;
-	}
-	return heap;
-}
-
-static ComPtr <ID3D12RootSignature>CreateRsCommon(CD3DX12_ROOT_SIGNATURE_DESC* rootSigDesc, ID3D12Device* dev)
-{
-	ComPtr <ID3D12RootSignature>rs;
-
-	ComPtr<ID3DBlob> serializedRootSig = nullptr;
-	ComPtr<ID3DBlob> errorBlob = nullptr;
-
-	HRESULT hr;
-	hr = D3D12SerializeRootSignature(rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
-
-	if (errorBlob != nullptr)
-	{
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-	}
-	if (FAILED(hr)) {
-		ErrorMessage("Common::CreateRsCommon Error!!"); return nullptr;
-	}
-
-	//RootSignature¶¬
-	hr = dev->CreateRootSignature(
-		0,
-		serializedRootSig->GetBufferPointer(),
-		serializedRootSig->GetBufferSize(),
-		IID_PPV_ARGS(&rs));
-
-	if (FAILED(hr)) {
-		ErrorMessage("Common::CreateRsCommon Error!!"); return nullptr;
-	}
-
-	return rs;
-}
-
 ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv) {
 
 	UINT numPara = numSrv + numCbv;
@@ -229,7 +180,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, CD3DX12_ROOT_PARAMET
 		1, &linearWrap,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	return CreateRsCommon(&rootSigDesc, dx->md3dDevice.Get());
+	return dx->CreateRsCommon(&rootSigDesc);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
@@ -239,7 +190,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, CD3DX12_
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	return CreateRsCommon(&rootSigDesc, dx->md3dDevice.Get());
+	return dx->CreateRsCommon(&rootSigDesc);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter)
@@ -248,7 +199,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_
 		0, nullptr,
 		D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
-	return CreateRsCommon(&rootSigDesc, dx->md3dDevice.Get());
+	return dx->CreateRsCommon(&rootSigDesc);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
