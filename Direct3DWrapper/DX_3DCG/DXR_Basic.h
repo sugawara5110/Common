@@ -23,13 +23,20 @@ struct DxrConstantBuffer
 	MATRIX viewInv;
 	VECTOR4 cameraUp;
 	VECTOR4 cameraPosition;
-	VECTOR4 lightPosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
-	VECTOR4 lightAmbientColor;
-	VECTOR4 lightDiffuseColor;
+	VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
+	VECTOR4 numEmissive;//.xのみ
+	VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
+	VECTOR4 GlobalAmbientColor;
 };
 
-struct DxrTransformCB {
-	MATRIX m;
+enum MaterialType {
+	METALLIC,
+	EMISSIVE
+};
+
+struct DxrInstanceCB {
+	MATRIX world = {};
+	UINT materialNo = 0;//0:metallic, 1:emissive
 };
 
 class DXR_Basic {
@@ -43,7 +50,8 @@ private:
 
 	DxrConstantBuffer cb = {};
 	ConstantBuffer<DxrConstantBuffer>* sCB;
-	ConstantBuffer<DxrTransformCB>* world;
+	std::unique_ptr<DxrInstanceCB[]> insCb;
+	ConstantBuffer<DxrInstanceCB>* instance;
 	ComPtr<ID3D12Resource> mpTopLevelAS;
 	std::unique_ptr<ComPtr<ID3D12Resource>[]> mpBottomLevelAS;
 	uint64_t mTlasSize = 0;
@@ -67,7 +75,6 @@ private:
 		uint32_t** index, UINT* numIndex) {
 
 		Dx12Process* dx = Dx12Process::GetInstance();
-		world = new ConstantBuffer<DxrTransformCB>(numInstance);
 		pVertexBuffer = std::make_unique<VertexView[]>(numInstance);
 		pIndexBuffer = std::make_unique<IndexView[]>(numInstance);
 
@@ -106,20 +113,30 @@ public:
 	void initDXR(int comNo, UINT numinstance,
 		T** vertices, UINT* numVertices,
 		uint32_t** index, UINT* numIndex,
-		ID3D12Resource** difTexture, ID3D12Resource** norTexture) {
+		ID3D12Resource** difTexture, ID3D12Resource** norTexture,
+		MaterialType* type) {
 
-		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 		Dx12Process* dx = Dx12Process::GetInstance();
 
 		if (dx->DXR_ON) {
 			numInstance = numinstance;
+			instance = new ConstantBuffer<DxrInstanceCB>(numInstance);
+			insCb = std::make_unique<DxrInstanceCB[]>(numInstance);
+			sCB = new ConstantBuffer<DxrConstantBuffer>(1);
+
 			dx->dx_sub[comNo].Bigin();
 			createTriangleVB(comNo, vertices, numVertices, index, numIndex);
 			createAccelerationStructures(comNo);
 			dx->dx_sub[comNo].End();
 			dx->WaitFenceCurrent();
-			for (UINT i = 0; i < numInstance; i++)
+			for (UINT i = 0; i < numInstance; i++) {
 				mpBottomLevelAS[i] = bottomLevelBuffers[i].pResult;
+				if (type[i] == METALLIC)
+					insCb[i].materialNo = 0;
+				else
+					if (type[i] == EMISSIVE)
+						insCb[i].materialNo = 1;
+			}
 			mpTopLevelAS = topLevelBuffers.pResult;
 
 			createRtPipelineState();
@@ -130,7 +147,7 @@ public:
 
 	void updateTransform(UINT InstanceNo, VECTOR3 pos, VECTOR3 theta, VECTOR3 size);
 	void raytrace(int comNo);
-	~DXR_Basic() { S_DELETE(sCB); S_DELETE(world); }
+	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); }
 };
 
 #endif

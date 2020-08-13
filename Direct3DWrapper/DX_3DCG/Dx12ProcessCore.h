@@ -186,6 +186,7 @@ private:
 	ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
 
 	std::unique_ptr<char[]> ShaderNormalTangentCopy = nullptr;
+	std::unique_ptr<char[]> ShaderCalculateLightingCopy = nullptr;
 
 	bool CreateShaderByteCodeBool = true;
 

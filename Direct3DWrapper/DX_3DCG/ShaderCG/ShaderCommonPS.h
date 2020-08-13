@@ -18,14 +18,14 @@ char *ShaderCommonPS =
 "    LightOut tmp;\n"
 "    for (int i = 0; i < g_numLight.x; i++){\n"
 "        tmp = PointLightCom(g_Speculer.xyz, g_Diffuse.xyz, g_Ambient.xyz, N, \n"
-"                            g_LightPos[i], input.wPos.xyz, g_Lightst[i], g_LightColor[i].xyz, g_C_Pos.xyz);\n"
+"                            g_LightPos[i], input.wPos.xyz, g_Lightst[i], g_LightColor[i].xyz, g_C_Pos.xyz, g_DispAmount.z);\n"
 "        Out.Diffuse += tmp.Diffuse;\n"
 "        Out.Speculer += tmp.Speculer;\n"
 "    }\n"
 
 //平行光源計算
 "    tmp = DirectionalLightCom(g_Speculer.xyz, g_Diffuse.xyz, g_Ambient.xyz, N, \n"
-"                                   g_DLightst, g_DLightDirection.xyz, g_DLightColor.xyz, input.wPos.xyz, g_C_Pos.xyz);\n"
+"                              g_DLightst, g_DLightDirection.xyz, g_DLightColor.xyz, input.wPos.xyz, g_C_Pos.xyz, g_DispAmount.z);\n"
 "    Out.Diffuse += tmp.Diffuse;\n"
 "    Out.Speculer += tmp.Speculer;\n"
 //グローバルアンビエントを足す

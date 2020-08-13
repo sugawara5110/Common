@@ -17,14 +17,16 @@ char* ShaderBasicDXR =
 "    matrix viewInv;\n"
 "    float4 cameraUp;"
 "    float4 cameraPosition;\n"
-"    float4 lightPosition[256];\n"
-"    float4 lightAmbientColor;\n"
-"    float4 lightDiffuseColor;\n"
+"    float4 emissivePosition[256];\n"
+"    float4 numEmissive;\n"//.xのみ
+"    float4 lightst[256];\n"//レンジ, 減衰1, 減衰2, 減衰3
+"    float4 GlobalAmbientColor;\n"
 "};\n"
-"struct Transform {\n"
-"    matrix m;\n"
+"struct Instance {\n"
+"    matrix world;\n"
+"    uint materialNo;\n"//0:metallic, 1:emissive
 "};\n"
-"ConstantBuffer<Transform> world[] : register(b1, space3);\n"
+"ConstantBuffer<Instance> instance[] : register(b1, space3);\n"
 
 "Texture2D g_texDiffuse[] : register(t0, space10);\n"
 "Texture2D g_texNormal[] : register(t1, space11);\n"
@@ -43,6 +45,7 @@ char* ShaderBasicDXR =
 "struct RayPayload\n"
 "{\n"
 "    float3 color;\n"
+"    bool hit;\n"
 "};\n"
 
 //**************************************rayGen_Shader*******************************************************************//
@@ -55,7 +58,7 @@ char* ShaderBasicDXR =
 "    float2 screenPos = (index + 0.5f) / dim * 2.0f - 1.0f;\n"
 
 "    RayDesc ray;\n"
-     //光線の原点
+     //光線の原点, ここが光線スタート, 視線から始まる
 "    ray.Origin = cameraPosition.xyz;\n"
      //光線の方向
 "    float4 target = mul(projectionInv, float4(screenPos.x, -screenPos.y, 1, 1));\n"
@@ -104,45 +107,63 @@ char* ShaderBasicDXR =
 "        attr.barycentrics.y * (vertexUV[2] - vertexUV[0]);\n"
 "}\n"
 
-// Diffuse lighting calculation.
-"float4 CalculateDiffuseLighting(float3 hitPosition, float3 normal)\n"
-"{\n"
-"    float3 pixelToLight = normalize(lightPosition[0].xyz - hitPosition);\n"
-
-     //Diffuse contribution.
-"    float fNDotL = max(0.0f, dot(pixelToLight, normal));\n"
-
-"    return lightDiffuseColor * fNDotL;\n"
-"}\n"
-
 //**************************************camMiss_Shader*******************************************************************//
-//ヒットしなかった場合起動される
+//視線がヒットしなかった場合起動される
 "[shader(\"miss\")]\n"
 "void camMiss(inout RayPayload payload)\n"
 "{\n"
-"    payload.color = float3(0.1, 0.1, 0.1);\n"
+"    payload.color = float3(0.0, 0.0, 0.0);\n"
 "}\n"
 //**************************************camMiss_Shader*******************************************************************//
 
-"struct MetallicPayload\n"
-"{\n"
-"    float3 color;\n"
-"    bool hit;\n"
-"};\n"
- 
 "float3 getNormalMap(float3 normal, float2 uv, uint instanceID)\n"
 "{\n"
 "    NormalTangent tan;\n"
 //接ベクトル計算
-"    tan = GetTangent(normal, world[instanceID].m, cameraUp);\n"
+"    tan = GetTangent(normal, instance[instanceID].world, cameraUp);\n"
 //法線テクスチャ
 "    float4 Tnor = g_texNormal[instanceID].SampleLevel(g_samLinear, uv, 0.0);\n"
 //ノーマルマップでの法線出力
 "    return GetNormal(Tnor.xyz, tan.normal, tan.tangent);\n"
 "}\n"
 
+//光源へ光線を飛ばす, ヒットした場合明るさが加算
+"float3 EmissivePayloadCalculate(in float3 hitPosition, in float3 difTexColor, float3 normal)\n"
+"{\n"
+"    RayPayload emissivePayload;\n"
+"    LightOut emissiveColor = (LightOut)0;\n"
+"    LightOut Out;\n"
+"    RayDesc ray;\n"
+//ヒットした位置がスタート
+"    ray.Origin = hitPosition;\n"
+"    ray.TMin = 0.01;\n"
+"    ray.TMax = 100000;\n"
+"    for(uint i = 0; i < numEmissive.x; i++) {\n"
+"        float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
+"        ray.Direction = lightVec;\n"
+"        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES |\n"
+"            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 2, 0, 2, ray, emissivePayload);\n"
+
+//光源計算
+"        float3 SpeculerCol = float3(0.5f, 0.5f, 0.5f);\n"
+"        float3 Diffuse = float3(0.5f, 0.5f, 0.5f);\n"
+"        float3 Ambient = float3(0.1f, 0.1f, 0.1f);\n"
+"        Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"
+"                            hitPosition, lightst[i], emissivePayload.color, cameraPosition.xyz, 4.0f);\n"
+
+"        emissiveColor.Diffuse += Out.Diffuse;\n"
+"        emissiveColor.Speculer += Out.Speculer;\n"
+"    }\n"
+
+"    difTexColor *= emissiveColor.Diffuse;\n"
+"    float3 speCol = float3(1.0f, 1.0f, 1.0f);\n"
+"    speCol *= emissiveColor.Speculer;\n"
+
+"    return difTexColor + speCol;\n"
+"}\n"
+
 //**************************************camHit_Shader*******************************************************************//
-//ヒットした場合起動される
+//視線がヒットした場合起動される
 "[shader(\"closesthit\")]\n"
 "void camHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
@@ -170,12 +191,12 @@ char* ShaderBasicDXR =
 //ノーマルマップからの法線出力, world変換
 "    float3 normalMap = getNormalMap(triangleNormal, triangleUV, instanceID);\n"
 //ベーステクスチャ
-"    float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV, 0.0);\n"
+"    float4 color = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV, 0.0);\n"
 
-"    float4 diffuseColor = CalculateDiffuseLighting(hitPosition, normalMap);\n"
-"    float4 color = lightAmbientColor + diffuseColor;\n"//自身のテクスチャの色
-"    color = difTex;\n"
-"    MetallicPayload metallicPayload;\n"
+//光源への光線
+"    color.xyz = EmissivePayloadCalculate(hitPosition, color.xyz, normalMap);\n"
+
+"    RayPayload metallicPayload;\n"
 "    if (!(RayFlags() & RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH))\n"
 "    {\n"
 "        RayDesc ray;\n"
@@ -191,9 +212,8 @@ char* ShaderBasicDXR =
 "        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES |\n"
 "            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 1, 0, 1, ray, metallicPayload);\n"
 "    }\n"
-//metallicPayload.colorにはヒットしたジオメトリのテクスチャの色が格納されてる
 "    if (metallicPayload.hit) {\n"
-"        payload.color = color.xyz * metallicPayload.color;\n"
+"        payload.color = color.xyz * metallicPayload.color;\n"//ヒットした場合映り込みとして加算
 "    }\n"
 "    else {\n"
 "        payload.color = color;\n"
@@ -202,15 +222,21 @@ char* ShaderBasicDXR =
 //**************************************camHit_Shader*******************************************************************//
 
 //***********************************metallicHit_Shader*****************************************************************//
-//camHitから飛ばされたRayがヒットした場合起動される
+//camHitから飛ばされた光線がヒットした場合起動される
 "[shader(\"closesthit\")]\n"
-"void metallicHit(inout MetallicPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"void metallicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    uint instanceID = InstanceID();\n"
+"    float3 hitPosition = HitWorldPosition();\n"
 
 "    uint indicesPerTriangle = 3;\n"
 "    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
 
+"    float3 vertexNormals[3] = {\n"
+"        Vertices[instanceID][Indices[instanceID][baseIndex + 0]].normal,\n"
+"        Vertices[instanceID][Indices[instanceID][baseIndex + 1]].normal,\n"
+"        Vertices[instanceID][Indices[instanceID][baseIndex + 2]].normal\n"
+"    };\n"
 "    float2 vertexUVs[3] = {\n"
 "        Vertices[instanceID][Indices[instanceID][baseIndex + 0]].tex,\n"
 "        Vertices[instanceID][Indices[instanceID][baseIndex + 1]].tex,\n"
@@ -218,17 +244,64 @@ char* ShaderBasicDXR =
 "    };\n"
 //UV計算
 "    float2 triangleUV = getCenterUV(vertexUVs, attr);\n"
-"    float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV, 0.0);\n"
+//法線の計算
+"    float3 triangleNormal = getCenterNormal(vertexNormals, attr);\n"
+//ノーマルマップからの法線出力, world変換
+"    float3 normalMap = getNormalMap(triangleNormal, triangleUV, instanceID);\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
+"    float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV, 0.0);\n"
 "    payload.color = difTex.xyz;\n"
+"    payload.color = EmissivePayloadCalculate(hitPosition, payload.color, normalMap);\n"
 "    payload.hit = true;\n"
 "}\n"
 //***********************************metallicHit_Shader*****************************************************************//
 
 //***********************************metallicMiss_Shader****************************************************************//
+//camHitから飛ばされた光線がヒットしなかった場合起動される
 "[shader(\"miss\")]\n"
-"void metallicMiss(inout MetallicPayload payload)\n"
+"void metallicMiss(inout RayPayload payload)\n"
 "{\n"
 "    payload.hit = false;\n"
-"}\n";
+"}\n"
 //***********************************metallicMiss_Shader****************************************************************//
+
+//***********************************emissiveHit_Shader*****************************************************************//
+//camHitから飛ばされた光源への光線がヒットした場合起動される
+"[shader(\"closesthit\")]\n"
+"void emissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"{\n"
+"    uint instanceID = InstanceID();\n"
+"    uint mNo = instance[instanceID].materialNo;\n"
+
+"    if(mNo == 1) {\n"//マテリアルがエミッシブの場合のみ処理
+"       uint indicesPerTriangle = 3;\n"
+"       uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
+
+"       float2 vertexUVs[3] = {\n"
+"           Vertices[instanceID][Indices[instanceID][baseIndex + 0]].tex,\n"
+"           Vertices[instanceID][Indices[instanceID][baseIndex + 1]].tex,\n"
+"           Vertices[instanceID][Indices[instanceID][baseIndex + 2]].tex\n"
+"       };\n"
+//UV計算
+"       float2 triangleUV = getCenterUV(vertexUVs, attr);\n"
+"       float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV, 0.0);\n"
+//ヒットした位置のテクスチャの色をpayload.color格納する
+"       payload.color = difTex.xyz;\n"
+"       payload.hit = true;\n"
+"    }\n"
+"    else {\n"//エミッシブではなかった場合影になる
+"       payload.color = GlobalAmbientColor.xyz;\n"
+"       payload.hit = false;\n"
+"    }\n"
+"}\n"
+//***********************************emissiveHit_Shader*****************************************************************//
+
+//***********************************emissiveMiss_Shader****************************************************************//
+//camHitから飛ばされた光源への光線がヒットしなかった場合起動される
+"[shader(\"miss\")]\n"
+"void emissiveMiss(inout RayPayload payload)\n"
+"{\n"
+"    payload.color = GlobalAmbientColor.xyz;\n"
+"    payload.hit = false;\n"
+"}\n";
+//***********************************emissiveMiss_Shader****************************************************************//

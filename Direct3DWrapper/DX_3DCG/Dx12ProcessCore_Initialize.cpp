@@ -22,6 +22,7 @@
 #include "./ShaderCG/ShaderCommonTriangleGS.h"
 #include "./ShaderCG/ShaderCommonTriangleHSDS.h"
 #include "./ShaderCG/ShaderPostEffect.h"
+#include "./ShaderCG/ShaderCalculateLighting.h"
 #include <locale.h>
 
 bool Dx12Process_sub::ListCreate() {
@@ -154,19 +155,24 @@ void Dx12Process::WaitFencePast() {
 bool Dx12Process::CreateShaderByteCode() {
 
 	size_t norS_size = strlen(ShaderNormalTangent) + 1;
+	size_t norL_size = strlen(ShaderCalculateLighting) + 1;
 	ShaderNormalTangentCopy = std::make_unique<char[]>(norS_size);
+	ShaderCalculateLightingCopy = std::make_unique<char[]>(norL_size);
 	memcpy(ShaderNormalTangentCopy.get(), ShaderNormalTangent, norS_size);
+	memcpy(ShaderCalculateLightingCopy.get(), ShaderCalculateLighting, norL_size);
 
-	addChar D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS, ParaNor;
+	//äeShaderåãçá
+	addChar D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS, ParaNor, Lighting;
 	char* com = ShaderCommonParameters;
 	ParaNor.addStr(com, ShaderNormalTangent);
+	Lighting.addStr(ParaNor.str, ShaderCalculateLighting);
 	D3.addStr(com, Shader3D);
 	Mesh.addStr(com, ShaderMesh);
 	MeshD.addStr(com, ShaderMesh_D);
 	Skin.addStr(com, ShaderSkinMesh);
 	SkinD.addStr(com, ShaderSkinMesh_D);
 	Wave.addStr(com, ShaderWaveDraw);
-	ComPS.addStr(ParaNor.str, ShaderCommonPS);
+	ComPS.addStr(Lighting.str, ShaderCommonPS);
 	ComHSDS.addStr(com, ShaderCommonTriangleHSDS);
 	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS);
 
