@@ -10,6 +10,12 @@
 #include "Dx12ProcessCore.h"
 #include "../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
 
+struct VERTEX_DXR {
+	VECTOR3 Pos = {};//頂点
+	VECTOR3 Nor = {};//法線
+	VECTOR2 Tex[2] = {};//UV座標
+};
+
 struct AccelerationStructureBuffers
 {
 	ComPtr<ID3D12Resource> pScratch;
@@ -27,6 +33,14 @@ struct DxrConstantBuffer
 	VECTOR4 numEmissive;//.xのみ
 	VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	VECTOR4 GlobalAmbientColor;
+};
+
+struct DxrMaterialCB {
+	VECTOR4 vDiffuse = { 0.8f,0.8f,0.8f,1.0f };//ディフューズ色
+	VECTOR4 vSpeculer = { 0.6f,0.6f,0.6f,1.0f };//スぺキュラ色
+	VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
+	float shininess = 4.0f;//スペキュラ強さ
+	float alphaTest = 0.0f;//1.0f:on, 0.0f:off 
 };
 
 enum MaterialType {
@@ -52,6 +66,8 @@ private:
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	std::unique_ptr<DxrInstanceCB[]> insCb;
 	ConstantBuffer<DxrInstanceCB>* instance;
+	std::unique_ptr<DxrMaterialCB[]> matCb;
+	ConstantBuffer<DxrMaterialCB>* material;
 	ComPtr<ID3D12Resource> mpTopLevelAS;
 	std::unique_ptr<ComPtr<ID3D12Resource>[]> mpBottomLevelAS;
 	uint64_t mTlasSize = 0;
@@ -103,7 +119,7 @@ private:
 
 	void createAccelerationStructures(int comNo);
 	void createRtPipelineState();
-	void createShaderResources(ID3D12Resource** difTexture, ID3D12Resource** norTexture);
+	void createShaderResources(ID3D12Resource** difTexture, ID3D12Resource** norTexture, ID3D12Resource** speTexture);
 	void createShaderTable();
 
 	void setCB();
@@ -113,13 +129,15 @@ public:
 	void initDXR(int comNo, UINT numinstance,
 		T** vertices, UINT* numVertices,
 		uint32_t** index, UINT* numIndex,
-		ID3D12Resource** difTexture, ID3D12Resource** norTexture,
+		ID3D12Resource** difTexture, ID3D12Resource** norTexture, ID3D12Resource** speTexture,
 		MaterialType* type) {
 
 		Dx12Process* dx = Dx12Process::GetInstance();
 
 		if (dx->DXR_ON) {
 			numInstance = numinstance;
+			material = new ConstantBuffer<DxrMaterialCB>(numInstance);
+			matCb = std::make_unique<DxrMaterialCB[]>(numInstance);
 			instance = new ConstantBuffer<DxrInstanceCB>(numInstance);
 			insCb = std::make_unique<DxrInstanceCB[]>(numInstance);
 			sCB = new ConstantBuffer<DxrConstantBuffer>(1);
@@ -140,14 +158,15 @@ public:
 			mpTopLevelAS = topLevelBuffers.pResult;
 
 			createRtPipelineState();
-			createShaderResources(difTexture, norTexture);
+			createShaderResources(difTexture, norTexture, speTexture);
 			createShaderTable();
 		}
 	}
 
 	void updateTransform(UINT InstanceNo, VECTOR3 pos, VECTOR3 theta, VECTOR3 size);
+	void updateMaterial(UINT InstanceNo, VECTOR3 Diffuse, VECTOR3 Speculer, VECTOR3 Ambient, float shininess, bool alphaTest);
 	void raytrace(int comNo);
-	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); }
+	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); S_DELETE(material); }
 };
 
 #endif

@@ -66,7 +66,7 @@ struct CONSTANT_BUFFER2 {
 	VECTOR4 vDiffuse;//ディフューズ色
 	VECTOR4 vSpeculer;//スぺキュラ色
 	VECTOR4 vAmbient;//アンビエント
-	VECTOR4 uvSwitch;
+	VECTOR4 uvSwitch;//.xのみ
 };
 
 //コンスタントバッファ2D用

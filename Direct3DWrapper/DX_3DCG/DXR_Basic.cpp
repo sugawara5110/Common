@@ -7,6 +7,8 @@
 #include "DXR_Basic.h"
 #include <fstream>
 #include <sstream>
+#include "./ShaderDXR/ShaderParametersDXR.h"
+#include "./ShaderDXR/ShaderCommonDXR.h"
 #include "./ShaderDXR/ShaderBasicDXR.h"
 
 static dxc::DxcDllSupport gDxcDllHelper;
@@ -236,10 +238,12 @@ struct DxilLibrary {
 };
 
 static DxilLibrary createDxilLibrary(char* add_shader) {
-	addChar dxrShader;
-	dxrShader.addStr(add_shader, ShaderBasicDXR);
+	addChar dxrShader[3];
+	dxrShader[0].addStr(add_shader, ShaderParametersDXR);
+	dxrShader[1].addStr(dxrShader[0].str, ShaderCommonDXR);
+	dxrShader[2].addStr(dxrShader[1].str, ShaderBasicDXR);
 	//シェーダーのコンパイル
-	ComPtr<ID3DBlob> pDxilLib = CompileLibrary(dxrShader.str, L"ShaderBasicDXR", L"lib_6_3");
+	ComPtr<ID3DBlob> pDxilLib = CompileLibrary(dxrShader[2].str, L"ShaderBasicDXR", L"lib_6_3");
 	const WCHAR* entryPoints[] = { kRayGenShader,
 		kCamMissShader, kCamClosestHitShader,
 		kMetallicMiss, kMetallicHitShader,
@@ -353,7 +357,7 @@ struct RootSignatureDesc {
 static RootSignatureDesc createRayGenRootDesc(UINT numInstance) {
 
 	RootSignatureDesc desc = {};
-	int numDescriptorRanges = 6;
+	int numDescriptorRanges = 7;
 	desc.range.resize(numDescriptorRanges);
 	UINT descCnt = 0;
 	//gOutput(u0)
@@ -393,12 +397,20 @@ static RootSignatureDesc createRayGenRootDesc(UINT numInstance) {
 	desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 	desc.range[4].OffsetInDescriptorsFromTableStart = descCnt++;
 
-	//world(b1)
+	//instance(b1)
 	desc.range[5].BaseShaderRegister = 1;
 	desc.range[5].NumDescriptors = numInstance;
 	desc.range[5].RegisterSpace = 3;
 	desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 	desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
+	descCnt += numInstance;
+
+	//material(b2)
+	desc.range[6].BaseShaderRegister = 2;
+	desc.range[6].NumDescriptors = numInstance;
+	desc.range[6].RegisterSpace = 4;
+	desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
 	descCnt += numInstance;
 
 	desc.rootParams.resize(1);
@@ -417,7 +429,7 @@ static RootSignatureDesc createRayGenRootDesc(UINT numInstance) {
 static RootSignatureDesc createGlobalRootDesc(UINT numInstance) {
 
 	RootSignatureDesc desc = {};
-	int numDescriptorRanges = 3;
+	int numDescriptorRanges = 4;
 	desc.range.resize(numDescriptorRanges);
 	UINT descCnt = 0;
 	//g_texDiffuse(t0)
@@ -436,22 +448,30 @@ static RootSignatureDesc createGlobalRootDesc(UINT numInstance) {
 	desc.range[1].OffsetInDescriptorsFromTableStart = descCnt;
 	descCnt += numInstance;
 
-	//g_samLinear(s0)
-	desc.range[2].BaseShaderRegister = 0;
-	desc.range[2].NumDescriptors = 1;
+	//g_texSpecular(t2)
+	desc.range[2].BaseShaderRegister = 2;
+	desc.range[2].NumDescriptors = numInstance;
 	desc.range[2].RegisterSpace = 12;
-	desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-	desc.range[2].OffsetInDescriptorsFromTableStart = 0;
+	desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	desc.range[2].OffsetInDescriptorsFromTableStart = descCnt;
+	descCnt += numInstance;
+
+	//g_samLinear(s0)
+	desc.range[3].BaseShaderRegister = 0;
+	desc.range[3].NumDescriptors = 1;
+	desc.range[3].RegisterSpace = 13;
+	desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+	desc.range[3].OffsetInDescriptorsFromTableStart = 0;
 
 	desc.rootParams.resize(2);
 	desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
+	desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 3;
 	desc.rootParams[0].DescriptorTable.pDescriptorRanges = desc.range.data();
 	desc.rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-	desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[2];
+	desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[3];
 	desc.rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	desc.desc.NumParameters = 2;
@@ -529,7 +549,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 4;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 5;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects[index] = shaderConfig.subobject;
 
@@ -564,7 +584,7 @@ void DXR_Basic::createRtPipelineState() {
 	}
 }
 
-void DXR_Basic::createShaderResources(ID3D12Resource** difTexture, ID3D12Resource** norTexture) {
+void DXR_Basic::createShaderResources(ID3D12Resource** difTexture, ID3D12Resource** norTexture, ID3D12Resource** speTexture) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	//出力リソースを作成します。寸法と形式はスワップチェーンと一致している必要があります
@@ -582,11 +602,13 @@ void DXR_Basic::createShaderResources(ID3D12Resource** difTexture, ID3D12Resourc
 	int num_t2 = numInstance;
 	int num_b0 = 1;
 	int num_b1 = numInstance;
-	numSkipLocalHeap = num_u0 + num_t0 + num_t1 + num_t2 + num_b0 + num_b1;
+	int num_b2 = numInstance;
+	numSkipLocalHeap = num_u0 + num_t0 + num_t1 + num_t2 + num_b0 + num_b1 + num_b2;
 	//Global
-	int num_t3 = numInstance;
-	int num_t4 = numInstance;
-	int numHeap = numSkipLocalHeap + num_t3 + num_t4;
+	int num_t00 = numInstance;
+	int num_t01 = numInstance;
+	int num_t02 = numInstance;
+	int numHeap = numSkipLocalHeap + num_t00 + num_t01 + num_t02;
 
 	//Local
 	mpSrvUavCbvHeap = dx->CreateDescHeap(numHeap);
@@ -639,7 +661,7 @@ void DXR_Basic::createShaderResources(ID3D12Resource** difTexture, ID3D12Resourc
 	srvHandle.ptr += offsetSize;
 	dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
 
-	//CBVを作成 world(b1)
+	//CBVを作成 instance(b1)
 	for (UINT i = 0; i < numInstance; i++) {
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
 		bufferDesc.SizeInBytes = instance->getElementByteSize();
@@ -648,8 +670,17 @@ void DXR_Basic::createShaderResources(ID3D12Resource** difTexture, ID3D12Resourc
 		dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
 	}
 
+	//CBVを作成 material(b2)
+	for (UINT i = 0; i < numInstance; i++) {
+		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
+		bufferDesc.SizeInBytes = material->getElementByteSize();
+		bufferDesc.BufferLocation = material->getGPUVirtualAddress(i);
+		srvHandle.ptr += offsetSize;
+		dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
+	}
+
 	//Global
-	//SRVを作成 g_texDiffuse(t3)
+	//SRVを作成 g_texDiffuse(t0)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3 = {};
 	for (UINT i = 0; i < numInstance; i++) {
 		srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -662,12 +693,20 @@ void DXR_Basic::createShaderResources(ID3D12Resource** difTexture, ID3D12Resourc
 		dx->getDevice()->CreateShaderResourceView(difTexture[i], &srvDesc3, srvHandle);
 	}
 
-	//SRVを作成 g_texNormal(t4)
+	//SRVを作成 g_texNormal(t1)
 	for (UINT i = 0; i < numInstance; i++) {
 		srvDesc3.Format = norTexture[i]->GetDesc().Format;
 		srvDesc3.Texture2D.MipLevels = norTexture[i]->GetDesc().MipLevels;
 		srvHandle.ptr += offsetSize;
 		dx->getDevice()->CreateShaderResourceView(norTexture[i], &srvDesc3, srvHandle);
+	}
+
+	//SRVを作成 g_texSpecular(t2)
+	for (UINT i = 0; i < numInstance; i++) {
+		srvDesc3.Format = speTexture[i]->GetDesc().Format;
+		srvDesc3.Texture2D.MipLevels = speTexture[i]->GetDesc().MipLevels;
+		srvHandle.ptr += offsetSize;
+		dx->getDevice()->CreateShaderResourceView(speTexture[i], &srvDesc3, srvHandle);
 	}
 
 	//g_samLinear(s0)
@@ -762,6 +801,19 @@ void DXR_Basic::updateTransform(UINT InstanceNo, VECTOR3 pos, VECTOR3 theta, VEC
 	MatrixMultiply(&Transform[InstanceNo], &scro, &mov);
 }
 
+void DXR_Basic::updateMaterial(UINT InstanceNo, VECTOR3 Diffuse, VECTOR3 Speculer, VECTOR3 Ambient,
+	float shininess, bool alphaTest) {
+
+	matCb[InstanceNo].vDiffuse.as(Diffuse.x, Diffuse.y, Diffuse.z, 0.0f);
+	matCb[InstanceNo].vSpeculer.as(Speculer.x, Speculer.y, Speculer.z, 0.0f);
+	matCb[InstanceNo].vAmbient.as(Ambient.x, Ambient.y, Ambient.z, 0.0f);
+	matCb[InstanceNo].shininess = shininess;
+	if (alphaTest)
+		matCb[InstanceNo].alphaTest = 1.0f;
+	else
+		matCb[InstanceNo].alphaTest = 0.0f;
+}
+
 void DXR_Basic::setCB() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MatrixInverse(&cb.projectionInv, &dx->mProj);
@@ -788,8 +840,10 @@ void DXR_Basic::setCB() {
 	memcpy(&cb.GlobalAmbientColor, &dx->GlobalAmbientLight, sizeof(VECTOR4));
 	sCB->CopyData(0, cb);
 	for (UINT i = 0; i < numInstance; i++) {
-		memcpy(&insCb[i].world, &Transform[i], sizeof(MATRIX));
+		MatrixIdentity(&insCb[i].world);//いらないかも・・検証中・・・
+		//memcpy(&insCb[i].world, &Transform[i], sizeof(MATRIX));
 		instance->CopyData(i, insCb[i]);
+		material->CopyData(i, matCb[i]);
 	}
 }
 
