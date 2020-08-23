@@ -4,6 +4,20 @@
 
 char* ShaderCommonDXR =
 
+///////////////////////////////////////////MaterialID取得//////////////////////////////////////////
+"uint getMaterialID()\n"
+"{\n"
+"    uint instanceID = InstanceID();\n"
+"    return (instanceID >> 16) & 0x0000ffff;\n"
+"}\n"
+
+////////////////////////////////////////InstancingID取得///////////////////////////////////////////
+"uint getInstancingID()\n"
+"{\n"
+"    uint instanceID = InstanceID();\n"
+"    return instanceID & 0x0000ffff;\n"
+"}\n"
+
 /////////////////////////////////////RGB → sRGBに変換/////////////////////////////////////////////
 "float3 linearToSrgb(float3 c)\n"
 "{\n"
@@ -30,15 +44,16 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////法線取得//////////////////////////////////////////////////////////
-"float3 getNormal(uint instanceID, BuiltInTriangleIntersectionAttributes attr)\n"
+"float3 getNormal(BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    uint indicesPerTriangle = 3;\n"
 "    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
+"    uint materialID = getMaterialID();\n"
 
 "    float3 vertexNormals[3] = {\n"
-"        Vertices[instanceID][Indices[instanceID][baseIndex + 0]].normal,\n"
-"        Vertices[instanceID][Indices[instanceID][baseIndex + 1]].normal,\n"
-"        Vertices[instanceID][Indices[instanceID][baseIndex + 2]].normal\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 0]].normal,\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 1]].normal,\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 2]].normal\n"
 "    };\n"
 "    return getCenterNormal(vertexNormals, attr);\n"
 "}\n"
@@ -52,27 +67,30 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////UV取得//////////////////////////////////////////////////////////
-"float2 getUV(uint instanceID, BuiltInTriangleIntersectionAttributes attr, uint uvNo)\n"
+"float2 getUV(BuiltInTriangleIntersectionAttributes attr, uint uvNo)\n"
 "{\n"
 "    uint indicesPerTriangle = 3;\n"
 "    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
+"    uint materialID = getMaterialID();\n"
 
 "    float2 vertexUVs[3] = {\n"
-"        Vertices[instanceID][Indices[instanceID][baseIndex + 0]].tex[uvNo],\n"
-"        Vertices[instanceID][Indices[instanceID][baseIndex + 1]].tex[uvNo],\n"
-"        Vertices[instanceID][Indices[instanceID][baseIndex + 2]].tex[uvNo]\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 0]].tex[uvNo],\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 1]].tex[uvNo],\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 2]].tex[uvNo]\n"
 "    };\n"
 "    return getCenterUV(vertexUVs, attr);\n"
 "}\n"
 
 /////////////////////////////ノーマルテクスチャから法線取得/////////////////////////////////////
-"float3 getNormalMap(float3 normal, float2 uv, uint instanceID)\n"
+"float3 getNormalMap(float3 normal, float2 uv)\n"
 "{\n"
 "    NormalTangent tan;\n"
+"    uint instancingID = getInstancingID();\n"
+"    uint materialID = getMaterialID();\n"
 //接ベクトル計算
-"    tan = GetTangent(normal, instance[instanceID].world, cameraUp);\n"//ShaderCG内関数
+"    tan = GetTangent(normal, instance[instancingID].world, cameraUp);\n"//ShaderCG内関数
 //法線テクスチャ
-"    float4 Tnor = g_texNormal[instanceID].SampleLevel(g_samLinear, uv, 0.0);\n"
+"    float4 Tnor = g_texNormal[materialID].SampleLevel(g_samLinear, uv, 0.0);\n"
 //ノーマルマップでの法線出力
 "    return GetNormal(Tnor.xyz, tan.normal, tan.tangent);\n"//ShaderCG内関数
 "}\n"
@@ -81,7 +99,7 @@ char* ShaderCommonDXR =
 "float3 EmissivePayloadCalculate(in float3 hitPosition, in float3 difTexColor, float3 speTexColor, float3 normal)\n"
 "{\n"
 "    RayPayload emissivePayload;\n"
-"    uint instanceID = InstanceID();\n"
+"    uint materialID = getMaterialID();\n"
 "    LightOut emissiveColor = (LightOut)0;\n"
 "    LightOut Out;\n"
 "    RayDesc ray;\n"
@@ -96,10 +114,10 @@ char* ShaderCommonDXR =
 "            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 2, 0, 2, ray, emissivePayload);\n"
 
 //光源計算
-"        float3 SpeculerCol = material[instanceID].Speculer.xyz;\n"
-"        float3 Diffuse = material[instanceID].Diffuse.xyz;\n"
-"        float3 Ambient = material[instanceID].Ambient.xyz;\n"
-"        float shininess = material[instanceID].shininess;\n"
+"        float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
+"        float3 Diffuse = material[materialID].Diffuse.xyz;\n"
+"        float3 Ambient = material[materialID].Ambient.xyz;\n"
+"        float shininess = material[materialID].shininess;\n"
 "        Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"//ShaderCG内関数
 "                            hitPosition, lightst[i], emissivePayload.color, cameraPosition.xyz, shininess);\n"
 

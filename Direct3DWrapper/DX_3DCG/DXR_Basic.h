@@ -10,12 +10,6 @@
 #include "Dx12ProcessCore.h"
 #include "../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
 
-struct VERTEX_DXR {
-	VECTOR3 Pos = {};//頂点
-	VECTOR3 Nor = {};//法線
-	VECTOR2 Tex[2] = {};//UV座標
-};
-
 struct AccelerationStructureBuffers
 {
 	ComPtr<ID3D12Resource> pScratch;
@@ -25,8 +19,7 @@ struct AccelerationStructureBuffers
 
 struct DxrConstantBuffer
 {
-	MATRIX projectionInv;
-	MATRIX viewInv;
+	MATRIX projectionToWorld;
 	VECTOR4 cameraUp;
 	VECTOR4 cameraPosition;
 	VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
@@ -41,6 +34,7 @@ struct DxrMaterialCB {
 	VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
 	float shininess = 4.0f;//スペキュラ強さ
 	float alphaTest = 0.0f;//1.0f:on, 0.0f:off 
+	UINT materialNo = 0;//0:metallic, 1:emissive
 };
 
 enum MaterialType {
@@ -50,17 +44,30 @@ enum MaterialType {
 
 struct DxrInstanceCB {
 	MATRIX world = {};
-	UINT materialNo = 0;//0:metallic, 1:emissive
+};
+
+struct VertexObj {
+	ID3D12Resource* VertexBufferGPU = nullptr;
+	//バッファのサイズ等
+	UINT VertexByteStride = 0;
+	UINT VertexBufferByteSize = 0;
+};
+
+struct IndexObj {
+	ID3D12Resource* IndexBufferGPU = nullptr;
+	//バッファのサイズ等
+	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R32_UINT;
+	UINT IndexBufferByteSize = 0;
+	//DrawIndexedInstancedの引数で使用
+	UINT IndexCount = 0;
 };
 
 class DXR_Basic {
 
 private:
-	std::unique_ptr<VertexView[]> pVertexBuffer;
-	std::unique_ptr<IndexView[]> pIndexBuffer;
-
-	VECTOR4 lightAmbientColor = { 0.1f,0.1f,0.1f,0.0f };
-	VECTOR4 lightDiffuseColor = { 0.5f,0.5f,0.5f,0.0f };
+	Common::ParameterDXR** PD;
+	std::unique_ptr<VertexObj[]> pVertexBuffer;
+	std::unique_ptr<IndexObj[]> pIndexBuffer;
 
 	DxrConstantBuffer cb = {};
 	ConstantBuffer<DxrConstantBuffer>* sCB;
@@ -68,9 +75,13 @@ private:
 	ConstantBuffer<DxrInstanceCB>* instance;
 	std::unique_ptr<DxrMaterialCB[]> matCb;
 	ConstantBuffer<DxrMaterialCB>* material;
-	ComPtr<ID3D12Resource> mpTopLevelAS;
+
 	std::unique_ptr<ComPtr<ID3D12Resource>[]> mpBottomLevelAS;
+	ComPtr<ID3D12Resource> mpTopLevelAS;
 	uint64_t mTlasSize = 0;
+	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
+	AccelerationStructureBuffers topLevelBuffers;
+
 	ComPtr<ID3D12StateObject> mpPipelineState;
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;
 	ComPtr<ID3D12Resource> mpShaderTable;
@@ -80,91 +91,24 @@ private:
 	uint32_t numSkipLocalHeap = 0;
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
 
-	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
-	AccelerationStructureBuffers topLevelBuffers;
+	UINT numParameter = 0;//PD数
+	UINT numMaterial = 0;//全マテリアル数
+	UINT maxNumInstancing = 0;//INSTANCE_PCS_3D(256) * numParameter
 
-	UINT numInstance = 0;
-	std::unique_ptr<MATRIX[]> Transform = nullptr;
-
-	template<typename T>
-	void createTriangleVB(int comNo, T** vertices, UINT* numVertices,
-		uint32_t** index, UINT* numIndex) {
-
-		Dx12Process* dx = Dx12Process::GetInstance();
-		pVertexBuffer = std::make_unique<VertexView[]>(numInstance);
-		pIndexBuffer = std::make_unique<IndexView[]>(numInstance);
-
-		for (UINT i = 0; i < numInstance; i++) {
-			const uint32_t byteSize = sizeof(T) * numVertices[i];
-			pVertexBuffer[i].VertexByteStride = sizeof(T);
-			pVertexBuffer[i].VertexBufferByteSize = byteSize;
-			pVertexBuffer[i].VertexBufferGPU = dx->CreateDefaultBuffer(comNo, vertices[i],
-				pVertexBuffer[i].VertexBufferByteSize,
-				pVertexBuffer[i].VertexBufferUploader);
-
-			pIndexBuffer[i].IndexFormat = DXGI_FORMAT_R32_UINT;
-			pIndexBuffer[i].IndexBufferByteSize = sizeof(uint32_t) * numIndex[i];
-			pIndexBuffer[i].IndexCount = numIndex[i];
-			pIndexBuffer[i].IndexBufferGPU = dx->CreateDefaultBuffer(comNo, index[i],
-				pIndexBuffer[i].IndexBufferByteSize,
-				pIndexBuffer[i].IndexBufferUploader);
-		}
-	}
-
-	AccelerationStructureBuffers createBottomLevelAS(int comNo, UINT InstanceID);
-
+	void createTriangleVB(int comNo, UINT numMaterial);
+	void createBottomLevelAS(int comNo, UINT MaterialNo, bool update);
 	void createTopLevelAS(int comNo, uint64_t& tlasSize, bool update);
-
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
-
 	void createAccelerationStructures(int comNo);
 	void createRtPipelineState();
-	void createShaderResources(ID3D12Resource** difTexture, ID3D12Resource** norTexture, ID3D12Resource** speTexture);
+	void createShaderResources();
 	void createShaderTable();
 
+	void updateMaterial();
 	void setCB();
 
 public:
-	template<typename T>
-	void initDXR(int comNo, UINT numinstance,
-		T** vertices, UINT* numVertices,
-		uint32_t** index, UINT* numIndex,
-		ID3D12Resource** difTexture, ID3D12Resource** norTexture, ID3D12Resource** speTexture,
-		MaterialType* type) {
-
-		Dx12Process* dx = Dx12Process::GetInstance();
-
-		if (dx->DXR_ON) {
-			numInstance = numinstance;
-			material = new ConstantBuffer<DxrMaterialCB>(numInstance);
-			matCb = std::make_unique<DxrMaterialCB[]>(numInstance);
-			instance = new ConstantBuffer<DxrInstanceCB>(numInstance);
-			insCb = std::make_unique<DxrInstanceCB[]>(numInstance);
-			sCB = new ConstantBuffer<DxrConstantBuffer>(1);
-
-			dx->dx_sub[comNo].Bigin();
-			createTriangleVB(comNo, vertices, numVertices, index, numIndex);
-			createAccelerationStructures(comNo);
-			dx->dx_sub[comNo].End();
-			dx->WaitFenceCurrent();
-			for (UINT i = 0; i < numInstance; i++) {
-				mpBottomLevelAS[i] = bottomLevelBuffers[i].pResult;
-				if (type[i] == METALLIC)
-					insCb[i].materialNo = 0;
-				else
-					if (type[i] == EMISSIVE)
-						insCb[i].materialNo = 1;
-			}
-			mpTopLevelAS = topLevelBuffers.pResult;
-
-			createRtPipelineState();
-			createShaderResources(difTexture, norTexture, speTexture);
-			createShaderTable();
-		}
-	}
-
-	void updateTransform(UINT InstanceNo, VECTOR3 pos, VECTOR3 theta, VECTOR3 size);
-	void updateMaterial(UINT InstanceNo, VECTOR3 Diffuse, VECTOR3 Speculer, VECTOR3 Ambient, float shininess, bool alphaTest);
+	void initDXR(int comNo, UINT numParameter, Common::ParameterDXR** pd, MaterialType* type);
 	void raytrace(int comNo);
 	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); S_DELETE(material); }
 };

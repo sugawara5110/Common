@@ -23,6 +23,7 @@
 #include "./ShaderCG/ShaderCommonTriangleHSDS.h"
 #include "./ShaderCG/ShaderPostEffect.h"
 #include "./ShaderCG/ShaderCalculateLighting.h"
+#include "./ShaderCG/ShaderGsOutput.h"
 #include <locale.h>
 
 bool Dx12Process_sub::ListCreate() {
@@ -162,7 +163,7 @@ bool Dx12Process::CreateShaderByteCode() {
 	memcpy(ShaderCalculateLightingCopy.get(), ShaderCalculateLighting, norL_size);
 
 	//äeShaderåãçá
-	addChar D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS, ParaNor, Lighting;
+	addChar D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS, ParaNor, Lighting, GsOut;
 	char* com = ShaderCommonParameters;
 	ParaNor.addStr(com, ShaderNormalTangent);
 	Lighting.addStr(ParaNor.str, ShaderCalculateLighting);
@@ -175,6 +176,7 @@ bool Dx12Process::CreateShaderByteCode() {
 	ComPS.addStr(Lighting.str, ShaderCommonPS);
 	ComHSDS.addStr(com, ShaderCommonTriangleHSDS);
 	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS);
+	GsOut.addStr(com, ShaderGsOutput);
 
 	//CommonPS
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
@@ -284,6 +286,16 @@ bool Dx12Process::CreateShaderByteCode() {
 	//2D
 	pVertexShader_2D = CompileShader(Shader2D, strlen(Shader2D), "VSBaseColor", "vs_5_0");
 	pPixelShader_2D = CompileShader(Shader2D, strlen(Shader2D), "PSBaseColor", "ps_5_0");
+
+	//DXRÇ÷ÇÃOutput
+	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_0");
+	pDeclaration_Output =
+	{
+		{ 0, "POSITION", 0, 0, 3, 0 },
+		{ 0, "NORMAL",   0, 0, 3, 0 },
+		{ 0, "TEXCOORD", 0, 0, 2, 0 },
+		{ 0, "TEXCOORD", 1, 0, 2, 0 }
+	};
 
 	return CreateShaderByteCodeBool;
 }

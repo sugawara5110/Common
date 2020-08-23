@@ -50,6 +50,7 @@ void PolygonData::getBuffer(int numMaterial) {
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
 	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
+	if (dx->DXR_ON)createBufferDXR(dpara.NumMaterial);
 }
 
 void PolygonData::getVertexBuffer(UINT VertexByteStride, UINT numVertex) {
@@ -156,10 +157,10 @@ bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
 bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 	const int numSrv, const int numCbv, bool blend, bool alpha) {
 
+	//パイプラインステートオブジェクト生成
 	dpara.rootSignature = CreateRootSignature(numSrv, numCbv);
 	if (dpara.rootSignature == nullptr)return false;
 
-	//パイプラインステートオブジェクト生成
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.material[i].nortex_no < 0)
 			dpara.PSO[i] = CreatePsoVsHsDsPs(vs, hs, ds, ps_NoMap, gs_NoMap, dpara.rootSignature.Get(),
@@ -170,7 +171,31 @@ bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 
 		if (dpara.PSO[i] == nullptr)return false;
 	}
+
 	return true;
+}
+
+bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
+	const int numSrv, const int numCbv) {
+
+	gs = dx->pGeometryShader_Before_vs_Output.Get();
+	dpara.rootSignature = CreateRootSignatureStreamOutput(numSrv, numCbv);
+	if (dpara.rootSignature == nullptr)return false;
+
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		dpara.PSO[i] = CreatePsoStreamOutput(vs, gs, dpara.rootSignature.Get(),
+			vertexLayout, dx->pDeclaration_Output, dxrPara.SviewDXR[i].StreamByteStride, primType_create);
+	}
+
+	return true;
+}
+
+void PolygonData::setTextureDXR() {
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		dxrPara.difTex[i] = texture[i * 3 + 0].Get();
+		dxrPara.norTex[i] = texture[i * 3 + 1].Get();
+		dxrPara.speTex[i] = texture[i * 3 + 2].Get();
+	}
 }
 
 bool PolygonData::setDescHeap(const int numSrvTex,
@@ -194,6 +219,9 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 		tCnt++;
 	}
 	createTextureResource(0, tCnt, te);
+	if (dx->DXR_ON) {
+		setTextureDXR();
+	}
 	dpara.numDesc = numSrvTex + numSrvBuf + numCbv;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
 	dpara.descHeap = dx->CreateDescHeap(numHeap);
@@ -216,6 +244,67 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 	return true;
 }
 
+void PolygonData::createBufferDXR(int numMaterial) {
+	dxrPara.NumMaterial = numMaterial;
+	dxrPara.difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+	dxrPara.norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+	dxrPara.speTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+	dxrPara.diffuse = std::make_unique<VECTOR4[]>(numMaterial);
+	dxrPara.specular = std::make_unique<VECTOR4[]>(numMaterial);
+	dxrPara.ambient = std::make_unique<VECTOR4[]>(numMaterial);
+	dxrPara.VviewDXR = std::make_unique<VertexView[]>(numMaterial);
+	dxrPara.IviewDXR = std::make_unique<IndexView[]>(numMaterial);
+	dxrPara.SviewDXR = std::make_unique<StreamView[]>(numMaterial);
+	dxrPara.SizeLocation = std::make_unique<StreamView[]>(numMaterial);
+}
+
+void PolygonData::createParameterDXR(bool alpha) {
+	dxrPara.alphaTest = alpha;
+	int NumMaterial = dxrPara.NumMaterial;
+
+	for (int i = 0; i < NumMaterial; i++) {
+		IndexView& dxI = dxrPara.IviewDXR[i];
+		if (dpara.Iview[i].IndexCount <= 0)continue;
+		UINT bytesize = dpara.Iview[i].IndexBufferByteSize;
+		UINT indCnt = dpara.Iview[i].IndexCount;
+		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+		dxI.IndexBufferByteSize = bytesize;
+		dxI.IndexCount = indCnt;
+		UINT* ind = new UINT[indCnt];
+		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
+		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+			bytesize, dxI.IndexBufferUploader);
+		ARR_DELETE(ind);
+
+		VertexView& dxV = dxrPara.VviewDXR[i];
+		bytesize = indCnt * sizeof(VERTEX_DXR);
+		dxV.VertexByteStride = sizeof(VERTEX_DXR);
+		dxV.VertexBufferByteSize = bytesize;
+		dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+			dxV.VertexBufferByteSize);
+		dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+		StreamView& dxS = dxrPara.SviewDXR[i];
+		dxS.StreamByteStride = sizeof(VERTEX_DXR);
+		dxS.StreamBufferByteSize = bytesize;
+		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
+
+		StreamView& dxL = dxrPara.SizeLocation[i];
+		dxL.StreamByteStride = sizeof(VERTEX_DXR);
+		dxL.StreamBufferByteSize = bytesize;
+		dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
+
+		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
+	}
+}
+
+void PolygonData::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
+	dxrPara.diffuse[materialIndex].as(sg.vDiffuse.x, sg.vDiffuse.y, sg.vDiffuse.z, sg.vDiffuse.w);
+	dxrPara.specular[materialIndex].as(sg.vSpeculer.x, sg.vSpeculer.y, sg.vSpeculer.z, sg.vSpeculer.w);
+	dxrPara.ambient[materialIndex].as(sg.vAmbient.x, sg.vAmbient.y, sg.vAmbient.z, sg.vAmbient.w);
+}
+
 bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha) {
 	dpara.material[0].diftex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
@@ -227,14 +316,28 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	getIndexBuffer(0, ibByteSize, numIndex);
 
 	createDefaultBuffer(ver, index, true);
+	if (dx->DXR_ON) {
+		createParameterDXR(alpha);
+		setColorDXR(0, sg);
+	}
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 
-	if (tNo == -1 && !movOn[0].m_on) {
-		if (!createPSO(dx->pVertexLayout_3DBC, numSrvTex, numCbv, blend, alpha))return false;
+	if (!dx->DXR_ON) {
+		if (tNo == -1 && !movOn[0].m_on) {
+			if (!createPSO(dx->pVertexLayout_3DBC, numSrvTex, numCbv, blend, alpha))return false;
+		}
+		else {
+			if (!createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, blend, alpha))return false;
+		}
 	}
 	else {
-		if (!createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, blend, alpha))return false;
+		if (tNo == -1 && !movOn[0].m_on) {
+			if (!createPSO_DXR(dx->pVertexLayout_3DBC, numSrvTex, numCbv))return false;
+		}
+		else {
+			if (!createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv))return false;
+		}
 	}
 
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
@@ -290,11 +393,18 @@ void PolygonData::DrawOff() {
 	DrawOn = false;
 }
 
+void PolygonData::ParameterDXR_Update() {
+	dxrPara.NumInstance = dpara.insNum;
+	dxrPara.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
+	memcpy(dxrPara.Transform, &cb[dx->cBuffSwap[1]].World, sizeof(MATRIX) * dxrPara.NumInstance);
+}
+
 void PolygonData::Draw() {
 
 	if (!UpOn | !DrawOn)return;
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
-	drawsub(dpara);
+	if (dx->DXR_ON)ParameterDXR_Update();
+	drawsub(dpara, dxrPara);
 }

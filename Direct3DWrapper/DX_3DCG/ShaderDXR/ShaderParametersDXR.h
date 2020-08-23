@@ -12,7 +12,6 @@ char* ShaderParametersDXR =
 
 "struct Instance {\n"
 "    matrix world;\n"
-"    uint materialNo;\n"//0:metallic, 1:emissive
 "};\n"
 
 "struct MaterialCB {\n"
@@ -21,6 +20,7 @@ char* ShaderParametersDXR =
 "    float4 Ambient;\n"
 "    float shininess;\n"
 "    float alphaTest;\n"//1.0f:on, 0.0f:off 
+"    uint materialNo;\n"//0:metallic, 1:emissive
 "};\n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
@@ -30,8 +30,7 @@ char* ShaderParametersDXR =
 
 "cbuffer global : register(b0, space0)\n"
 "{\n"
-"    matrix projectionInv;\n"
-"    matrix viewInv;\n"
+"    matrix projectionToWorld;\n"
 "    float4 cameraUp;"
 "    float4 cameraPosition;\n"
 "    float4 emissivePosition[256];\n"

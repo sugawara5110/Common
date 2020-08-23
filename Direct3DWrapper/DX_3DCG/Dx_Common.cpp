@@ -202,6 +202,27 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, CD3DX12_ROOT_
 	return dx->CreateRsCommon(&rootSigDesc);
 }
 
+ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv) {
+
+	UINT numPara = numSrv + numCbv;
+
+	std::unique_ptr<CD3DX12_DESCRIPTOR_RANGE[]>Table = nullptr;
+	Table = std::make_unique<CD3DX12_DESCRIPTOR_RANGE[]>(numPara);
+	int cnt = 0;
+	for (UINT i = 0; i < numSrv; i++)
+		Table[cnt++].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, i);//Descriptor 1ŒÂ,(ti)
+	for (UINT i = 0; i < numCbv; i++)
+		Table[cnt++].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, i);//Descriptor 1ŒÂ,(bi)
+
+	std::unique_ptr<CD3DX12_ROOT_PARAMETER[]>slotRootParameter = nullptr;
+	slotRootParameter = std::make_unique<CD3DX12_ROOT_PARAMETER[]>(numPara);
+
+	for (UINT i = 0; i < numPara; i++)
+		slotRootParameter[i].InitAsDescriptorTable(1, &Table[i], D3D12_SHADER_VISIBILITY_ALL);
+
+	return CreateRsStreamOutput(numPara, slotRootParameter.get());
+}
+
 ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
@@ -322,9 +343,9 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* h
 ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
-	std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize)
+	std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize, PrimitiveType type)
 {
-	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout, &pDeclaration, true, StreamSize, true, true, POINt);
+	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout, &pDeclaration, true, StreamSize, true, true, type);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
@@ -374,7 +395,7 @@ ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFu
 	return dx->CompileShader(szFileName, size, szFuncName, szProfileName);
 }
 
-void Common::drawsub(drawPara& para) {
+void Common::drawsub(drawPara& para, ParameterDXR& dxr) {
 	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
@@ -400,7 +421,25 @@ void Common::drawsub(drawPara& para) {
 			heap.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		}
 
+		if (dx->DXR_ON)mCommandList->SOSetTargets(0, 1, &dxr.SviewDXR[i].StreamBufferView());
+
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
+
+		if (dx->DXR_ON) {
+			dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+			dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+			mCommandList->CopyResource(dxr.VviewDXR[i].VertexBufferGPU.Get(), dxr.SviewDXR[i].StreamBufferGPU.Get());
+
+			dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+			dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+
+			mCommandList->SOSetTargets(0, 1, nullptr);
+		}
 	}
 
 	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),

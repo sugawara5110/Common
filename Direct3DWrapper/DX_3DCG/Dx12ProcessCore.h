@@ -147,6 +147,7 @@ private:
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
 
 	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
@@ -156,6 +157,7 @@ private:
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_SKIN;
 	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_PSO;
+	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_Output;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_P;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_MESH;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3D;
@@ -456,8 +458,26 @@ public:
 };
 
 //**********************************Commonクラス*************************************//
-
 class Common {
+
+public:
+	struct ParameterDXR {
+		int NumMaterial = 0;
+		UINT NumInstance = 1;
+		std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
+		std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
+		std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
+		std::unique_ptr<VECTOR4[]> diffuse = nullptr;
+		std::unique_ptr<VECTOR4[]> specular = nullptr;
+		std::unique_ptr<VECTOR4[]> ambient = nullptr;
+		std::unique_ptr<VertexView[]> VviewDXR = nullptr;
+		std::unique_ptr<IndexView[]> IviewDXR = nullptr;
+		std::unique_ptr<StreamView[]> SviewDXR = nullptr;
+		std::unique_ptr<StreamView[]> SizeLocation = nullptr;
+		MATRIX Transform[INSTANCE_PCS_3D] = {};
+		float shininess;
+		bool alphaTest;
+	};
 
 protected:
 	friend PolygonData;
@@ -494,6 +514,7 @@ protected:
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv);
 
 	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
@@ -518,7 +539,7 @@ protected:
 	ComPtr<ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
-		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize);
+		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize, PrimitiveType type);
 
 	ComPtr<ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
@@ -540,12 +561,13 @@ protected:
 		ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 		std::unique_ptr<VertexView> Vview = nullptr;
 		std::unique_ptr<IndexView[]> Iview = nullptr;
+
 		std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
 		D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
 		std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
 		UINT insNum = 1;
 	};
-	void drawsub(drawPara& para);
+	void drawsub(drawPara& para, ParameterDXR& dxr);
 
 public:
 	void SetCommandList(int no);
@@ -557,7 +579,6 @@ public:
 };
 
 //*********************************PolygonDataクラス*************************************//
-
 class PolygonData :public Common {
 
 protected:
@@ -598,6 +619,7 @@ protected:
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
 	drawPara dpara = {};
+	ParameterDXR dxrPara = {};
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
@@ -622,6 +644,17 @@ protected:
 		ARR_DELETE(indexArr);
 	}
 
+	void createBufferDXR(int numMaterial);
+
+	void createParameterDXR(bool alpha);
+
+	void setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg);
+
+	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
+		const int numSrv, const int numCbv);
+
+	void setTextureDXR();
+
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, bool blend, bool alpha);
 
@@ -636,6 +669,8 @@ protected:
 		float thetaZ, float thetaY, float thetaX, float size,
 		DivideArr* divArr, int numDiv,
 		float disp = 1.0f, float shininess = 4.0f);
+
+	void ParameterDXR_Update();
 
 public:
 	PolygonData();
@@ -684,10 +719,10 @@ public:
 		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
 	void Draw();
+	ParameterDXR* getParameter() { return &dxrPara; }
 };
 
 //*********************************PolygonData2Dクラス*************************************//
-
 class PolygonData2D :public Common {
 
 protected:

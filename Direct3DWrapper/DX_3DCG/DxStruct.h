@@ -278,4 +278,10 @@ struct DivideArr {
 	float divide;
 };
 
+struct VERTEX_DXR {
+	VECTOR3 Pos = {};//í∏ì_
+	VECTOR3 Nor = {};//ñ@ê¸
+	VECTOR2 Tex[2] = {};//UVç¿ïW
+};
+
 #endif

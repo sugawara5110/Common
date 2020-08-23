@@ -17,8 +17,9 @@ char* ShaderBasicDXR =
      //光線の原点, ここが光線スタート, 視線から始まる
 "    ray.Origin = cameraPosition.xyz;\n"
      //光線の方向
-"    float4 target = mul(projectionInv, float4(screenPos.x, -screenPos.y, 1, 1));\n"
-"    ray.Direction = mul(viewInv, float4(target.xyz, 0));\n"
+"    float4 world = mul(float4(screenPos.x, -screenPos.y, 0, 1), projectionToWorld);\n"
+"    world.xyz /= world.w;\n"
+"    ray.Direction = normalize(world.xyz - ray.Origin);\n"
      //光線の最小範囲
 "    ray.TMin = 0.001;\n"
      //光線の最大範囲
@@ -56,18 +57,18 @@ char* ShaderBasicDXR =
 "void camHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    float3 hitPosition = HitWorldPosition();\n"
-"    uint instanceID = InstanceID();\n"
-"    uint mNo = instance[instanceID].materialNo;\n"
+"    uint materialID = getMaterialID();\n"
+"    uint mNo = material[materialID].materialNo;\n"
 //UV計算
-"    float2 triangleUV0 = getUV(instanceID, attr, 0);\n"
-"    float2 triangleUV1 = getUV(instanceID, attr, 1);\n"
+"    float2 triangleUV0 = getUV(attr, 0);\n"
+"    float2 triangleUV1 = getUV(attr, 1);\n"
 //法線の計算
-"    float3 triangleNormal = getNormal(instanceID, attr);\n"
+"    float3 triangleNormal = getNormal(attr);\n"
 //ノーマルマップからの法線出力
-"    float3 normalMap = getNormalMap(triangleNormal, triangleUV0, instanceID);\n"
+"    float3 normalMap = getNormalMap(triangleNormal, triangleUV0);\n"
 //テクスチャ
-"    float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
-"    float4 speTex = g_texSpecular[instanceID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
+"    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
+"    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
 
 "    if(mNo == 0) {\n"//マテリアルがメタリックの場合
 //光源への光線
@@ -76,7 +77,7 @@ char* ShaderBasicDXR =
 "       difTex.xyz = MetallicPayloadCalculate(hitPosition, difTex.xyz, normalMap);\n"
 "    }\n"
 //アルファテスト
-"    if(material[instanceID].alphaTest == 1.0f) {\n"
+"    if(material[materialID].alphaTest == 1.0f) {\n"
 "       difTex.xyz = AlphaTest(hitPosition, difTex.xyz, difTex.w, 0);\n"
 "    }\n"
 "    payload.color = difTex.xyz;\n"
@@ -88,22 +89,22 @@ char* ShaderBasicDXR =
 "[shader(\"closesthit\")]\n"
 "void metallicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
-"    uint instanceID = InstanceID();\n"
+"    uint materialID = getMaterialID();\n"
 "    float3 hitPosition = HitWorldPosition();\n"
 //UV計算
-"    float2 triangleUV0 = getUV(instanceID, attr, 0);\n"
-"    float2 triangleUV1 = getUV(instanceID, attr, 1);\n"
+"    float2 triangleUV0 = getUV(attr, 0);\n"
+"    float2 triangleUV1 = getUV(attr, 1);\n"
 //法線の計算
-"    float3 triangleNormal = getNormal(instanceID, attr);\n"
+"    float3 triangleNormal = getNormal(attr);\n"
 //ノーマルマップからの法線出力
-"    float3 normalMap = getNormalMap(triangleNormal, triangleUV0, instanceID);\n"
+"    float3 normalMap = getNormalMap(triangleNormal, triangleUV0);\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
-"    float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
-"    float4 speTex = g_texSpecular[instanceID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
+"    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
+"    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
 //光源への光線
 "    difTex.xyz = EmissivePayloadCalculate(hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
 //アルファテスト
-"    if(material[instanceID].alphaTest == 1.0f) {\n"
+"    if(material[materialID].alphaTest == 1.0f) {\n"
 "       difTex.xyz = AlphaTest(hitPosition, difTex.xyz, difTex.w, 1);\n"
 "    }\n"
 "    payload.color = difTex.xyz;\n"
@@ -126,13 +127,13 @@ char* ShaderBasicDXR =
 "[shader(\"closesthit\")]\n"
 "void emissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
-"    uint instanceID = InstanceID();\n"
-"    uint mNo = instance[instanceID].materialNo;\n"
+"    uint materialID = getMaterialID();\n"
+"    uint mNo = material[materialID].materialNo;\n"
 
 "    if(mNo == 1) {\n"//マテリアルがエミッシブの場合のみ処理
 //UV計算
-"       float2 triangleUV0 = getUV(instanceID, attr, 0);\n"
-"       float4 difTex = g_texDiffuse[instanceID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
+"       float2 triangleUV0 = getUV(attr, 0);\n"
+"       float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
 "       payload.color = difTex.xyz;\n"
 "       payload.hit = true;\n"
