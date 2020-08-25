@@ -73,7 +73,8 @@ protected:
 	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
 	MATRIX* m_pLastBoneMatrix = nullptr;
 	int AnimLastInd = -1;
-	float BoneConnect = -1.0f;
+	bool firstSetNewPoseMatrices = false;
+	float BoneConnect;
 	PolygonData* mObj = nullptr;
 	int com_no = 0;
 
@@ -121,6 +122,8 @@ public:
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0, int meshIndex = 0);
 	void TextureInit(int width, int height, int texIndex = 0, int meshIndex = 0);
 	HRESULT SetTextureMPixel(BYTE* frame, int texIndex = 0, int meshIndex = 0);
+	int getNumMesh() { return numMesh; }
+	Common::ParameterDXR* getParameter(int meshIndex) { return &mObj[meshIndex].dxrPara; }
 };
 
 #endif

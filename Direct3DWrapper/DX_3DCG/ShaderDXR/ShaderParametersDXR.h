@@ -20,7 +20,7 @@ char* ShaderParametersDXR =
 "    float4 Ambient;\n"
 "    float shininess;\n"
 "    float alphaTest;\n"//1.0f:on, 0.0f:off 
-"    uint materialNo;\n"//0:metallic, 1:emissive
+"    uint materialNo;\n"//0:metallic, 1:emissive, 2:nonReflection
 "};\n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"

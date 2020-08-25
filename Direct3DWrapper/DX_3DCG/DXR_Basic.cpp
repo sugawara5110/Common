@@ -40,11 +40,18 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, Common::ParameterDXR** pd,
 		dx->WaitFenceCurrent();
 		for (UINT i = 0; i < numMaterial; i++) {
 			mpBottomLevelAS[i] = bottomLevelBuffers[i].pResult;
-			if (type[i] == METALLIC)
+
+			switch (type[i]) {
+			case METALLIC:
 				matCb[i].materialNo = 0;
-			else
-				if (type[i] == EMISSIVE)
-					matCb[i].materialNo = 1;
+				break;
+			case EMISSIVE:
+				matCb[i].materialNo = 1;
+				break;
+			case NONREFLECTION:
+				matCb[i].materialNo = 2;
+				break;
+			}
 		}
 		mpTopLevelAS = topLevelBuffers.pResult;
 
@@ -101,7 +108,8 @@ void DXR_Basic::createBottomLevelAS(int comNo, UINT MaterialNo, bool update) {
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
 	inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-	inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+	inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE |
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
 	inputs.NumDescs = 1;
 	inputs.pGeometryDescs = &geomDesc;
 	inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
@@ -132,8 +140,9 @@ void DXR_Basic::createBottomLevelAS(int comNo, UINT MaterialNo, bool update) {
 	asDesc.ScratchAccelerationStructureData = bLB.pScratch->GetGPUVirtualAddress();
 
 	if (update) {
-		asDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
-		asDesc.SourceAccelerationStructureData = bLB.pResult->GetGPUVirtualAddress();
+		asDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE |
+			D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
+		asDesc.SourceAccelerationStructureData = 0; //ALLOW_UPDATE‚Ìê‡0‚É‚·‚é
 	}
 
 	//bottom-level ASì¬, ‘æOˆø”‚Íì¬Œã‚Ìî•ñ, •s—v‚Ìê‡nullptr

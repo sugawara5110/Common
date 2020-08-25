@@ -39,7 +39,8 @@ struct DxrMaterialCB {
 
 enum MaterialType {
 	METALLIC,
-	EMISSIVE
+	EMISSIVE,
+	NONREFLECTION
 };
 
 struct DxrInstanceCB {

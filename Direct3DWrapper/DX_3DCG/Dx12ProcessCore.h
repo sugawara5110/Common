@@ -567,6 +567,8 @@ protected:
 		std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
 		UINT insNum = 1;
 	};
+	void drawsubNonSOS(drawPara& para, ParameterDXR& dxr);
+	void drawsubSOS(drawPara& para, ParameterDXR& dxr);
 	void drawsub(drawPara& para, ParameterDXR& dxr);
 
 public:

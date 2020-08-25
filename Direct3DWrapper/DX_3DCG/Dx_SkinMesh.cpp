@@ -37,6 +37,7 @@ SkinMesh::SkinMesh() {
 	divArr[1].divide = 5;
 	divArr[2].distance = 300.0f;
 	divArr[2].divide = 10;
+	BoneConnect = -1.0f;
 }
 
 SkinMesh::~SkinMesh() {
@@ -451,6 +452,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 			sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 			sg.uvSwitch.x = uvSw;
 			mObj[m].mObjectCB1->CopyData(i, sg);
+			if (dx->DXR_ON)mObj[m].setColorDXR(i, sg);
 		}
 	}
 }
@@ -506,7 +508,15 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		mObj[i].gs = gs;
 		mObj[i].gs_NoMap = gs_NoMap;
 		mObj[i].createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
-		if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, blend, alpha))return false;
+		Dx12Process* dx = mObj[i].dx;
+		if (dx->DXR_ON)mObj[i].createParameterDXR(alpha);
+
+		if (!dx->DXR_ON) {
+			if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, blend, alpha))return false;
+		}
+		else {
+			if (!mObj[i].createPSO_DXR(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv))return false;
+		}
 		UINT cbSize = mObject_BONES->getSizeInBytes();
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
 		if (!mObj[i].setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;

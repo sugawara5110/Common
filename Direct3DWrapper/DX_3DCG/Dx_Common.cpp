@@ -395,15 +395,13 @@ ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFu
 	return dx->CompileShader(szFileName, size, szFuncName, szProfileName);
 }
 
-void Common::drawsub(drawPara& para, ParameterDXR& dxr) {
+void Common::drawsubNonSOS(drawPara& para, ParameterDXR& dxr) {
 	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
 	mCommandList->SetGraphicsRootSignature(para.rootSignature.Get());
-
 	mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
@@ -412,7 +410,37 @@ void Common::drawsub(drawPara& para, ParameterDXR& dxr) {
 		if (para.Iview[i].IndexCount <= 0)continue;
 
 		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
+		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
+		mCommandList->SetPipelineState(para.PSO[i].Get());
 
+		for (int descInd = 0; descInd < para.numDesc; descInd++) {
+			mCommandList->SetGraphicsRootDescriptorTable(descInd, heap);//(slotRootParameterIndex, DESCRIPTOR_HANDLE)
+			heap.Offset(1, dx->mCbvSrvUavDescriptorSize);
+		}
+		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
+	}
+
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+}
+
+void Common::drawsubSOS(drawPara& para, ParameterDXR& dxr) {
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	for (int i = 0; i < para.NumMaterial; i++) {
+		//使用されていないマテリアル対策
+		if (para.Iview[i].IndexCount <= 0)continue;
+
+		dx->Bigin(com_no);
+
+		dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
+		mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+		mCommandList->SetGraphicsRootSignature(para.rootSignature.Get());
+		mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
+		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
 		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCommandList->SetPipelineState(para.PSO[i].Get());
 
@@ -421,27 +449,37 @@ void Common::drawsub(drawPara& para, ParameterDXR& dxr) {
 			heap.Offset(1, dx->mCbvSrvUavDescriptorSize);
 		}
 
-		if (dx->DXR_ON)mCommandList->SOSetTargets(0, 1, &dxr.SviewDXR[i].StreamBufferView());
+		mCommandList->SOSetTargets(0, 1, &dxr.SviewDXR[i].StreamBufferView());
 
 		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 
-		if (dx->DXR_ON) {
-			dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-			dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+		dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-			mCommandList->CopyResource(dxr.VviewDXR[i].VertexBufferGPU.Get(), dxr.SviewDXR[i].StreamBufferGPU.Get());
+		mCommandList->CopyResource(dxr.VviewDXR[i].VertexBufferGPU.Get(), dxr.SviewDXR[i].StreamBufferGPU.Get());
 
-			dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-			dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+		dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
-			mCommandList->SOSetTargets(0, 1, nullptr);
-		}
+		mCommandList->SOSetTargets(0, 1, nullptr);
+
+		dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+		dx->End(com_no);
+		dx->WaitFenceCurrent();
 	}
+}
 
-	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+void Common::drawsub(drawPara& para, ParameterDXR& dxr) {
+	if (dx->DXR_ON) {
+		drawsubSOS(para, dxr);
+	}
+	else {
+		drawsubNonSOS(para, dxr);
+	}
 }

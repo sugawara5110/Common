@@ -70,12 +70,11 @@ char* ShaderBasicDXR =
 "    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
 "    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
 
-"    if(mNo == 0) {\n"//マテリアルがメタリックの場合
-//光源への光線
-"       difTex.xyz = EmissivePayloadCalculate(hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
-//反射方向への光線
-"       difTex.xyz = MetallicPayloadCalculate(hitPosition, difTex.xyz, normalMap);\n"
-"    }\n"
+//光源への光線(emissive以外)
+"    if(mNo != 1)difTex.xyz = EmissivePayloadCalculate(hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
+//反射方向への光線(metallicのみ)
+"    if(mNo == 0)difTex.xyz = MetallicPayloadCalculate(hitPosition, difTex.xyz, normalMap);\n"
+
 //アルファテスト
 "    if(material[materialID].alphaTest == 1.0f) {\n"
 "       difTex.xyz = AlphaTest(hitPosition, difTex.xyz, difTex.w, 0);\n"
@@ -130,7 +129,7 @@ char* ShaderBasicDXR =
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
 
-"    if(mNo == 1) {\n"//マテリアルがエミッシブの場合のみ処理
+"    if(mNo == 1) {\n"//(emissiveのみ)
 //UV計算
 "       float2 triangleUV0 = getUV(attr, 0);\n"
 "       float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
