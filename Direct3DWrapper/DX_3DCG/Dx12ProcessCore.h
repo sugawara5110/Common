@@ -457,27 +457,39 @@ public:
 	}
 };
 
+struct drawPara {
+	int NumMaterial = 0;
+	int numDesc = 0;
+	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
+	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
+	std::unique_ptr<VertexView> Vview = nullptr;
+	std::unique_ptr<IndexView[]> Iview = nullptr;
+	std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
+	D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
+	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
+	UINT insNum = 1;
+};
+
+struct ParameterDXR {
+	int NumMaterial = 0;
+	UINT NumInstance = 1;
+	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
+	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
+	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
+	std::unique_ptr<VECTOR4[]> diffuse = nullptr;
+	std::unique_ptr<VECTOR4[]> specular = nullptr;
+	std::unique_ptr<VECTOR4[]> ambient = nullptr;
+	std::unique_ptr<VertexView[]> VviewDXR = nullptr;
+	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
+	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
+	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
+	MATRIX Transform[INSTANCE_PCS_3D] = {};
+	float shininess;
+	bool alphaTest;
+};
+
 //**********************************Commonクラス*************************************//
 class Common {
-
-public:
-	struct ParameterDXR {
-		int NumMaterial = 0;
-		UINT NumInstance = 1;
-		std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
-		std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
-		std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
-		std::unique_ptr<VECTOR4[]> diffuse = nullptr;
-		std::unique_ptr<VECTOR4[]> specular = nullptr;
-		std::unique_ptr<VECTOR4[]> ambient = nullptr;
-		std::unique_ptr<VertexView[]> VviewDXR = nullptr;
-		std::unique_ptr<IndexView[]> IviewDXR = nullptr;
-		std::unique_ptr<StreamView[]> SviewDXR = nullptr;
-		std::unique_ptr<StreamView[]> SizeLocation = nullptr;
-		MATRIX Transform[INSTANCE_PCS_3D] = {};
-		float shininess;
-		bool alphaTest;
-	};
 
 protected:
 	friend PolygonData;
@@ -511,9 +523,9 @@ protected:
 		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
 
 	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv);
-	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, CD3DX12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv);
 
 	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
@@ -553,23 +565,6 @@ protected:
 	ID3D12Resource* GetDepthStencilBuffer();
 	D3D12_RESOURCE_STATES GetTextureStates();
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-
-	struct drawPara {
-		int NumMaterial = 0;
-		int numDesc = 0;
-		ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
-		ComPtr<ID3D12RootSignature> rootSignature = nullptr;
-		std::unique_ptr<VertexView> Vview = nullptr;
-		std::unique_ptr<IndexView[]> Iview = nullptr;
-
-		std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
-		D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
-		std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
-		UINT insNum = 1;
-	};
-	void drawsubNonSOS(drawPara& para, ParameterDXR& dxr);
-	void drawsubSOS(drawPara& para, ParameterDXR& dxr);
-	void drawsub(drawPara& para, ParameterDXR& dxr);
 
 public:
 	void SetCommandList(int no);
@@ -672,6 +667,10 @@ protected:
 		DivideArr* divArr, int numDiv,
 		float disp = 1.0f, float shininess = 4.0f);
 
+	void drawsubNonSOS(drawPara& para, ParameterDXR& dxr);
+	void drawsubSOS(drawPara& para, ParameterDXR& dxr);
+	void drawsub(drawPara& para, ParameterDXR& dxr);
+
 	void ParameterDXR_Update();
 
 public:
@@ -721,7 +720,7 @@ public:
 		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
 	void Draw();
-	ParameterDXR* getParameter() { return &dxrPara; }
+	ParameterDXR* getParameter();
 };
 
 //*********************************PolygonData2Dクラス*************************************//

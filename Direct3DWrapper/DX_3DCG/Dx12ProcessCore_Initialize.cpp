@@ -704,7 +704,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 
 	//レンダーターゲットビューデスクリプターヒープの開始ハンドル取得
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		//スワップチェインバッファ取得
 		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])))) {
@@ -714,7 +714,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		//レンダーターゲットビュー(Descriptor)生成,DescriptorHeapにDescriptorが記録される
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		//ヒープ位置オフセット(2個あるので2個目記録位置にDescriptorSize分オフセット)
-		rtvHeapHandle.Offset(1, mRtvDescriptorSize);
+		rtvHeapHandle.ptr += mRtvDescriptorSize;
 	}
 
 	//デプスステンシルビューDESC
@@ -731,13 +731,20 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
+	D3D12_HEAP_PROPERTIES depthStencilHeapProps = {};
+	depthStencilHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+	depthStencilHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	depthStencilHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	depthStencilHeapProps.CreationNodeMask = 1;
+	depthStencilHeapProps.VisibleNodeMask = 1;
+
 	D3D12_CLEAR_VALUE optClear;
 	optClear.Format = mDepthStencilFormat;
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 	//深度ステンシルバッファ領域確保
 	if (FAILED(md3dDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		&depthStencilHeapProps,
 		D3D12_HEAP_FLAG_NONE,
 		&depthStencilDesc,
 		D3D12_RESOURCE_STATE_COMMON,
@@ -748,7 +755,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
-	CD3DX12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
+	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 	//深度ステンシルビュー生成
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(), nullptr, mDsvHeapHeapHandle);
 

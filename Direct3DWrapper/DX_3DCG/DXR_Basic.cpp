@@ -13,7 +13,7 @@
 
 static dxc::DxcDllSupport gDxcDllHelper;
 
-void DXR_Basic::initDXR(int comNo, UINT numparameter, Common::ParameterDXR** pd, MaterialType* type) {
+void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, MaterialType* type) {
 
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();

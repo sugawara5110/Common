@@ -183,6 +183,7 @@ bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLay
 	if (dpara.rootSignature == nullptr)return false;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.Iview[i].IndexCount <= 0)continue;
 		dpara.PSO[i] = CreatePsoStreamOutput(vs, gs, dpara.rootSignature.Get(),
 			vertexLayout, dx->pDeclaration_Output, dxrPara.SviewDXR[i].StreamByteStride, primType_create);
 	}
@@ -393,6 +394,87 @@ void PolygonData::DrawOff() {
 	DrawOn = false;
 }
 
+void PolygonData::drawsubNonSOS(drawPara& para, ParameterDXR& dxr) {
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	mCommandList->SetGraphicsRootSignature(para.rootSignature.Get());
+	mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
+
+	D3D12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	for (int i = 0; i < para.NumMaterial; i++) {
+		//使用されていないマテリアル対策
+		if (para.Iview[i].IndexCount <= 0)continue;
+
+		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
+		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
+		mCommandList->SetPipelineState(para.PSO[i].Get());
+		mCommandList->SetGraphicsRootDescriptorTable(0, heap);
+		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
+	}
+
+	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+}
+
+void PolygonData::drawsubSOS(drawPara& para, ParameterDXR& dxr) {
+
+	D3D12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	for (int i = 0; i < para.NumMaterial; i++) {
+		//使用されていないマテリアル対策
+		if (para.Iview[i].IndexCount <= 0)continue;
+
+		dx->Bigin(com_no);
+
+		dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
+		mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+		mCommandList->SetGraphicsRootSignature(para.rootSignature.Get());
+		mCommandList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
+		mCommandList->IASetIndexBuffer(&(para.Iview[i]).IndexBufferView());
+		mCommandList->IASetPrimitiveTopology(para.TOPOLOGY);
+		mCommandList->SetPipelineState(para.PSO[i].Get());
+		mCommandList->SetGraphicsRootDescriptorTable(0, heap);
+
+		mCommandList->SOSetTargets(0, 1, &dxr.SviewDXR[i].StreamBufferView());
+
+		mCommandList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
+
+		dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+		dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		mCommandList->CopyResource(dxr.VviewDXR[i].VertexBufferGPU.Get(), dxr.SviewDXR[i].StreamBufferGPU.Get());
+
+		dx->dx_sub[com_no].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		dx->dx_sub[com_no].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+
+		mCommandList->SOSetTargets(0, 1, nullptr);
+
+		dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+		dx->End(com_no);
+		dx->WaitFenceCurrent();
+	}
+}
+
+void PolygonData::drawsub(drawPara& para, ParameterDXR& dxr) {
+	if (dx->DXR_ON) {
+		drawsubSOS(para, dxr);
+	}
+	else {
+		drawsubNonSOS(para, dxr);
+	}
+}
+
 void PolygonData::ParameterDXR_Update() {
 	dxrPara.NumInstance = dpara.insNum;
 	dxrPara.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
@@ -407,4 +489,14 @@ void PolygonData::Draw() {
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	if (dx->DXR_ON)ParameterDXR_Update();
 	drawsub(dpara, dxrPara);
+}
+
+ParameterDXR* PolygonData::getParameter() {
+	for (int i = 0; i < dxrPara.NumMaterial; i++) {
+		if (dxrPara.IviewDXR[i].IndexCount <= 0) {
+			dxrPara.NumMaterial = i;
+			break;
+		}
+	}
+	return &dxrPara;
 }

@@ -66,7 +66,7 @@ struct IndexObj {
 class DXR_Basic {
 
 private:
-	Common::ParameterDXR** PD;
+	ParameterDXR** PD;
 	std::unique_ptr<VertexObj[]> pVertexBuffer;
 	std::unique_ptr<IndexObj[]> pIndexBuffer;
 
@@ -109,7 +109,7 @@ private:
 	void setCB();
 
 public:
-	void initDXR(int comNo, UINT numParameter, Common::ParameterDXR** pd, MaterialType* type);
+	void initDXR(int comNo, UINT numParameter, ParameterDXR** pd, MaterialType* type);
 	void raytrace(int comNo);
 	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); S_DELETE(material); }
 };
