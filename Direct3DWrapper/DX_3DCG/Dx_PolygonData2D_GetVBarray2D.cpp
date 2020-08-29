@@ -317,10 +317,6 @@ void PolygonData2D::Draw() {
 
 	mCommandList->SetPipelineState(mPSO.Get());
 
-	//mSwapChainBuffer PRESENT¨RENDER_TARGET
-	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
@@ -334,10 +330,6 @@ void PolygonData2D::Draw() {
 	mCommandList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
 
 	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum[dx->cBuffSwap[1]], 0, 0, 0);
-
-	//mSwapChainBuffer RENDER_TARGET¨PRESENT
-	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 

@@ -137,7 +137,7 @@ void DxPooling::ForwardPropagation() {
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * PoolNum / shaderThreadNum[1], inputSetNumCur);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 
 	dx->Bigin(com_no);
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
@@ -146,7 +146,7 @@ void DxPooling::ForwardPropagation() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxPooling::BackPropagation() {
@@ -160,7 +160,7 @@ void DxPooling::BackPropagation() {
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * PoolNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 
 	dx->Bigin(com_no);
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
@@ -169,7 +169,7 @@ void DxPooling::BackPropagation() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxPooling::Query() {
@@ -206,7 +206,7 @@ void DxPooling::InputResourse() {
 	dx->Bigin(com_no);
 	SubresourcesUp(input, input_outerrOneNum * PoolNum * inputSetNum, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 	firstIn = false;
 }
 
@@ -214,7 +214,7 @@ void DxPooling::InputErrResourse() {
 	dx->Bigin(com_no);
 	SubresourcesUp(inerror, output_inerrOneNum * PoolNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxPooling::CopyOutputResourse() {

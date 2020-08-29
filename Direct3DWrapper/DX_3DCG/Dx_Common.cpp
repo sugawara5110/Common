@@ -243,8 +243,12 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
+	bool STREAM_OUTPUT,
 	std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
-	bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
+	UINT numDECLARATION,
+	UINT* StreamSizeArr,
+	UINT NumStrides,
+	bool alpha, bool blend,
 	PrimitiveType type)
 {
 	ComPtr <ID3D12PipelineState> pso;
@@ -288,9 +292,9 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	}
 	if (STREAM_OUTPUT) {
 		psoDesc.StreamOutput.pSODeclaration = pDeclaration->data();
-		psoDesc.StreamOutput.NumEntries = 4;  //D3D12_SO_DECLARATION_ENTRYの個数
-		psoDesc.StreamOutput.pBufferStrides = &StreamSize;
-		psoDesc.StreamOutput.NumStrides = 1;//バッファの数？
+		psoDesc.StreamOutput.NumEntries = numDECLARATION;  //D3D12_SO_DECLARATION_ENTRYの個数
+		psoDesc.StreamOutput.pBufferStrides = StreamSizeArr;
+		psoDesc.StreamOutput.NumStrides = NumStrides;//バッファの数？
 		psoDesc.StreamOutput.RasterizedStream = D3D12_SO_NO_RASTERIZED_STREAM;
 	}
 
@@ -384,7 +388,8 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 	bool alpha, bool blend,
 	PrimitiveType type)
 {
-	return CreatePSO(vs, nullptr, nullptr, ps, nullptr, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
+	return CreatePSO(vs, nullptr, nullptr, ps, nullptr, mRootSignature, &pVertexLayout,
+		false, nullptr, 0, nullptr, 0, alpha, blend, type);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
@@ -393,15 +398,21 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* h
 	bool alpha, bool blend,
 	PrimitiveType type)
 {
-	return CreatePSO(vs, hs, ds, ps, gs, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, type);
+	return CreatePSO(vs, hs, ds, ps, gs, mRootSignature, &pVertexLayout,
+		false, nullptr, 0, nullptr, 0, alpha, blend, type);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
-	std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize, PrimitiveType type)
+	std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
+	UINT numDECLARATION,
+	UINT* StreamSizeArr,
+	UINT NumStrides,
+	PrimitiveType type)
 {
-	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout, &pDeclaration, true, StreamSize, true, true, type);
+	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout,
+		true, pDeclaration, numDECLARATION, StreamSizeArr, NumStrides, true, true, type);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
@@ -409,7 +420,8 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* p
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend)
 {
-	return CreatePSO(vs, nullptr, nullptr, ps, gs, mRootSignature, &pVertexLayout, nullptr, false, 0, alpha, blend, POINt);
+	return CreatePSO(vs, nullptr, nullptr, ps, gs, mRootSignature, &pVertexLayout,
+		false, nullptr, 0, nullptr, 0, alpha, blend, POINt);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,

@@ -121,8 +121,7 @@ void Dx12Process::FenceSetEvent() {
 	}
 }
 
-void Dx12Process::WaitFence(bool mode) {
-	fenceMode = mode;
+void Dx12Process::WaitFenceNotLock() {
 	//クローズ後リストに加える
 	for (int i = 0; i < COM_NO; i++) {
 		if (dx_sub[i].mComState != CLOSE)continue;
@@ -137,19 +136,12 @@ void Dx12Process::WaitFence(bool mode) {
 	//(mFence->GetCompletedValue()で得られる値がmCurrentFenceと同じになる)
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 
-	if (!mode)
-		FenceSetEvent();
+	FenceSetEvent();
 }
 
-void Dx12Process::WaitFenceCurrent() {
+void Dx12Process::WaitFence() {
 	Lock();
-	WaitFence(false);
-	Unlock();
-}
-
-void Dx12Process::WaitFencePast() {
-	Lock();
-	WaitFence(true);
+	WaitFenceNotLock();
 	Unlock();
 }
 
@@ -765,7 +757,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	dx_sub[0].ResourceBarrier(mDepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	dx_sub[0].End();
-	WaitFenceCurrent();
+	WaitFence();
 
 	//ビューポート
 	mScreenViewport.TopLeftX = 0;
@@ -809,8 +801,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	return CreateShaderByteCode();
 }
 
-void Dx12Process::Sclear(int com_no) {
-
+void Dx12Process::BiginDraw(int com_no) {
 	dx_sub[com_no].mCommandList->RSSetViewports(1, &mScreenViewport);
 	dx_sub[com_no].mCommandList->RSSetScissorRects(1, &mScissorRect);
 
@@ -828,13 +819,14 @@ void Dx12Process::Sclear(int com_no) {
 		mRtvHeap->GetCPUDescriptorHandleForHeapStart(),
 		mCurrBackBuffer,
 		mRtvDescriptorSize), true, &mDsvHeap->GetCPUDescriptorHandleForHeapStart());
+}
 
+void Dx12Process::EndDraw(int com_no) {
 	dx_sub[com_no].ResourceBarrier(mSwapChainBuffer[mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 void Dx12Process::Bigin(int com_no) {
-	if (fenceMode)FenceSetEvent();
 	dx_sub[com_no].Bigin();
 }
 

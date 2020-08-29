@@ -188,7 +188,12 @@ bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLay
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs, gs, dpara.rootSignatureDXR.Get(),
-			vertexLayout, dx->pDeclaration_Output, dxrPara.SviewDXR[i].StreamByteStride, primType_create);
+			vertexLayout,
+			&dx->pDeclaration_Output,
+			(UINT)dx->pDeclaration_Output.size(),
+			&dxrPara.SviewDXR[i].StreamByteStride,
+			1,
+			primType_create);
 	}
 
 	return true;
@@ -397,8 +402,6 @@ void PolygonData::DrawOff() {
 }
 
 void PolygonData::draw(int com, drawPara& para, ParameterDXR& dxr) {
-	dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 
@@ -416,17 +419,15 @@ void PolygonData::draw(int com, drawPara& para, ParameterDXR& dxr) {
 		mCList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCList->SetPipelineState(para.PSO[i].Get());
 		mCList->SetGraphicsRootDescriptorTable(0, heap);
+		heap.ptr += dx->mCbvSrvUavDescriptorSize * para.numDesc;
 		mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}
-
-	dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-
+	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	D3D12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
 		//使用されていないマテリアル対策
@@ -434,10 +435,6 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 		dx->Bigin(com);
 
-		dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-		ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 		mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 		mCList->SetGraphicsRootSignature(para.rootSignatureDXR.Get());
 		mCList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
@@ -445,6 +442,7 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		mCList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCList->SetPipelineState(para.PSO_DXR[i].Get());
 		mCList->SetGraphicsRootDescriptorTable(0, heap);
+		heap.ptr += dx->mCbvSrvUavDescriptorSize * para.numDesc;
 
 		mCList->SOSetTargets(0, 1, &dxr.SviewDXR[i].StreamBufferView());
 
@@ -464,11 +462,8 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 		mCList->SOSetTargets(0, 1, nullptr);
 
-		dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-
 		dx->End(com);
-		dx->WaitFenceCurrent();
+		dx->WaitFence();
 	}
 }
 

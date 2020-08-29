@@ -56,7 +56,6 @@ protected:
 	void CreateVbObj();
 	bool CreatePartsCom();
 	bool CreatePartsDraw(int texpar);
-	void DrawParts0();
 	void DrawParts1();
 	void DrawParts2();
 	void CbSwap(bool init);

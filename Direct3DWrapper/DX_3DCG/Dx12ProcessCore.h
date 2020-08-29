@@ -233,7 +233,6 @@ private:
 	VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
 	int  cBuffSwap[2] = { 0,0 };
-	bool fenceMode = false;
 
 	Dx12Process() {}//外部からのオブジェクト生成禁止
 	Dx12Process(const Dx12Process& obj) {}   // コピーコンストラクタ禁止
@@ -259,7 +258,6 @@ private:
 		float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
 
 	void FenceSetEvent();
-	void WaitFence(bool mode);
 
 	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
 		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
@@ -305,13 +303,14 @@ public:
 		UCHAR* byteArr, DXGI_FORMAT format,
 		int width, LONG_PTR RowPitch, int height);
 
-	void Sclear(int com_no);
 	void Bigin(int com_no);
+	void BiginDraw(int com_no);
+	void EndDraw(int com_no);
 	void End(int com_no);
 	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
 	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
-	void WaitFenceCurrent();//GPU処理そのまま待つ
-	void WaitFencePast();//前回GPU処理未完の場合待つ
+	void WaitFenceNotLock();
+	void WaitFence();
 	void DrawScreen();
 	void Cameraset(float posX, float posY, float posZ,
 		float dirX, float dirY, float dirZ,
@@ -534,8 +533,12 @@ protected:
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
+		bool STREAM_OUTPUT,
 		std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
-		bool STREAM_OUTPUT, UINT StreamSize, bool alpha, bool blend,
+		UINT numDECLARATION,
+		UINT* StreamSizeArr,
+		UINT NumStrides,
+		bool alpha, bool blend,
 		PrimitiveType type);
 
 	ComPtr<ID3D12PipelineState> CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
@@ -553,7 +556,11 @@ protected:
 	ComPtr<ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
-		std::vector<D3D12_SO_DECLARATION_ENTRY>& pDeclaration, UINT StreamSize, PrimitiveType type);
+		std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
+		UINT numDECLARATION,
+		UINT* StreamSizeArr,
+		UINT NumStrides,
+		PrimitiveType type);
 
 	ComPtr<ID3D12PipelineState> CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,

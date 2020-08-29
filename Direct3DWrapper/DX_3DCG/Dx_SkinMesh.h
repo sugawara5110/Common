@@ -73,7 +73,6 @@ protected:
 	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
 	MATRIX* m_pLastBoneMatrix = nullptr;
 	int AnimLastInd = -1;
-	bool firstSetNewPoseMatrices = false;
 	float BoneConnect;
 	PolygonData* mObj = nullptr;
 	int com_no = 0;

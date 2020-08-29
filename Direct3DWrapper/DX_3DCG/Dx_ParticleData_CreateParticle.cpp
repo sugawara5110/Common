@@ -144,7 +144,11 @@ bool ParticleData::CreatePartsCom() {
 
 	//パイプラインステートオブジェクト生成(STREAM_OUTPUT)
 	mPSO_com = CreatePsoStreamOutput(vsSO, gsSO, mRootSignature_com.Get(),
-		dx->pVertexLayout_P, dx->pDeclaration_PSO, Sview1[0].StreamByteStride, POINt);
+		dx->pVertexLayout_P, &dx->pDeclaration_PSO,
+		(UINT)dx->pDeclaration_PSO.size(),
+		&Sview1[0].StreamByteStride,
+		1,
+		POINt);
 	if (mPSO_com == nullptr)return false;
 
 	return true;
@@ -192,13 +196,6 @@ bool ParticleData::CreateBillboard() {
 	GetShaderByteCode();
 	CreateVbObj();
 	return CreatePartsDraw(-1);
-}
-
-void ParticleData::DrawParts0() {
-
-	//mSwapChainBuffer PRESENT→RENDER_TARGET
-	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void ParticleData::DrawParts1() {
@@ -275,12 +272,8 @@ void ParticleData::Draw() {
 	MatrixMap2(&cbP[dx->cBuffSwap[1]], init);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
-	DrawParts0();
 	DrawParts1();
 	if (firstDraw)DrawParts2();
-	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	firstDraw = true;
 	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
 }
@@ -297,11 +290,7 @@ void ParticleData::DrawBillboard() {
 	MatrixMap2(&cbP[dx->cBuffSwap[1]], true);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
-	DrawParts0();
 	DrawParts2();
-	//mSwapChainBuffer RENDER_TARGET→PRESENT
-	dx->dx_sub[com_no].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 void ParticleData::SetVertex(int i,

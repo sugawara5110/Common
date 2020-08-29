@@ -222,12 +222,12 @@ void SearchPixel::ComCreate() {
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
 }
 
-void SearchPixel::SetPixel(float *pi) {
+void SearchPixel::SetPixel(float* pi) {
 	memcpy(srcPix, pi, insize);
 	dx->Bigin(com_no);
 	SubresourcesUp(srcPix, srcWidth * srcHeight, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void SearchPixel::SetPixel3ch(ID3D12Resource* pi) {
@@ -244,21 +244,21 @@ void SearchPixel::SetPixel3ch(ID3D12Resource* pi) {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
-void SearchPixel::SetPixel3ch(BYTE *pi) {
+void SearchPixel::SetPixel3ch(BYTE* pi) {
 	dx->Bigin(com_no);
 	SubresourcesUp(pi, srcWidth * 4, mInputColBuffer, mInputColUpBuffer);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
-void SearchPixel::SetNNoutput(float *in) {
+void SearchPixel::SetNNoutput(float* in) {
 	dx->Bigin(com_no);
 	SubresourcesUp(in, outNum, mNNOutputBuffer, mNNOutputUpBuffer);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void SearchPixel::SetNNoutput(ID3D12Resource* in) {
@@ -276,7 +276,7 @@ void SearchPixel::SeparationTexture() {
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(outIndW / shaderThreadNum[0], outIndH / shaderThreadNum[1], 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 	TextureCopy(mOutputBuffer.Get(), com_no);
 
 	dx->Bigin(com_no);
@@ -286,12 +286,12 @@ void SearchPixel::SeparationTexture() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 
 	D3D12_RANGE range;
 	range.Begin = 0;
 	range.End = outsize;
-	float *out = nullptr;
+	float* out = nullptr;
 	mOutputReadBuffer->Map(0, &range, reinterpret_cast<void**>(&out));
 	memcpy(seaPix, out, outsize);
 	mOutputReadBuffer->Unmap(0, nullptr);
@@ -313,7 +313,7 @@ void SearchPixel::TextureDraw() {
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(srcWidth / shaderThreadNum[2], srcHeight / shaderThreadNum[3], 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 ID3D12Resource *SearchPixel::GetOutputResource() {

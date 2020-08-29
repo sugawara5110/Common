@@ -155,7 +155,7 @@ void DxGradCAM::ComGAP() {
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.NumFil, 1, 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxGradCAM::ComGradCAM(UINT inputsetnum) {
@@ -169,7 +169,7 @@ void DxGradCAM::ComGradCAM(UINT inputsetnum) {
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.SizeFeatureMapW * cb.SizeFeatureMapH, 1, inputSetNumCur);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxGradCAM::SetPixel3ch(ID3D12Resource* pi) {
@@ -186,14 +186,14 @@ void DxGradCAM::SetPixel3ch(ID3D12Resource* pi) {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxGradCAM::SetPixel3ch(BYTE* pi) {
 	dx->Bigin(com_no);
 	SubresourcesUp(pi, cb.srcWid * 4, mInputColBuffer, mInputColUpBuffer);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSlide) {
@@ -211,7 +211,7 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.srcWid, cb.srcHei, 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[3].Get());
@@ -221,7 +221,7 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.srcConvMapW, cb.srcConvMapH, 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[4].Get());
@@ -236,7 +236,7 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.srcWid, cb.srcHei, 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 ID3D12Resource* DxGradCAM::GetPixel() {

@@ -37,7 +37,7 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 		createTriangleVB(comNo, numMaterial);
 		createAccelerationStructures(comNo);
 		dx->dx_sub[comNo].End();
-		dx->WaitFenceCurrent();
+		dx->WaitFence();
 		for (UINT i = 0; i < numMaterial; i++) {
 			mpBottomLevelAS[i] = bottomLevelBuffers[i].pResult;
 

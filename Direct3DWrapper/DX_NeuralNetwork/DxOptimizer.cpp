@@ -102,5 +102,5 @@ void DxOptimizer::comOptimizer() {
 	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(NumNode / shaderThreadNum[0], 1, 1);
 	dx->End(com_no);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }

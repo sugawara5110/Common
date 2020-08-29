@@ -61,7 +61,7 @@ DxText::DxText() {
 		value[i].SetText();
 	}
 	dx->End(0);
-	dx->WaitFenceCurrent();
+	dx->WaitFence();
 }
 
 DxText::~DxText(){
