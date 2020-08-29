@@ -592,13 +592,13 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			return false;
 		}
 	}
-	else if (DXR_ON) {
+	else if (DXR_CreateResource) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5;
 		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
 		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 		{
 			ErrorMessage("DXR not supported");
-			DXR_ON = false;
+			DXR_CreateResource = false;
 			return false;
 		}
 	}

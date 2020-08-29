@@ -114,7 +114,10 @@ public:
 	bool Update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
 		float thetaZ, float thetaY, float thetaX, float size, float disp = 1.0f, float shininess = 4.0f);
 	void DrawOff();
+	void Draw(int com_no);
+	void StreamOutput(int com_no);
 	void Draw();
+	void StreamOutput();
 	VECTOR3 GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
 		float thetaZ, float thetaY, float thetaX, float scale);
 

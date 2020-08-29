@@ -123,7 +123,7 @@ private:
 	ComPtr<IDXGISwapChain3> mSwapChain;
 	ComPtr<ID3D12Fence> mFence;
 	UINT64 mCurrentFence = 0;
-	bool DXR_ON = false;
+	bool DXR_CreateResource = false;
 
 	//MultiSampleレベルチェック
 	bool m4xMsaaState = false;
@@ -295,7 +295,7 @@ public:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
-	void dxrOn() { DXR_ON = true; }
+	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 	ID3D12Device5* getDevice() { return md3dDevice.Get(); }
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
@@ -462,11 +462,13 @@ struct drawPara {
 	int numDesc = 0;
 	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
 	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> rootSignatureDXR = nullptr;
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView[]> Iview = nullptr;
 	std::unique_ptr<MY_MATERIAL_S[]> material = nullptr;
 	D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
 	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
+	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO_DXR = nullptr;
 	UINT insNum = 1;
 };
 
@@ -667,9 +669,8 @@ protected:
 		DivideArr* divArr, int numDiv,
 		float disp = 1.0f, float shininess = 4.0f);
 
-	void drawsubNonSOS(drawPara& para, ParameterDXR& dxr);
-	void drawsubSOS(drawPara& para, ParameterDXR& dxr);
-	void drawsub(drawPara& para, ParameterDXR& dxr);
+	void draw(int com_no, drawPara& para, ParameterDXR& dxr);
+	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
 
 	void ParameterDXR_Update();
 
@@ -719,7 +720,10 @@ public:
 	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess = 4.0f,
 		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 	void DrawOff();
+	void Draw(int com_no);
+	void StreamOutput(int com_no);
 	void Draw();
+	void StreamOutput();
 	ParameterDXR* getParameter();
 };
 

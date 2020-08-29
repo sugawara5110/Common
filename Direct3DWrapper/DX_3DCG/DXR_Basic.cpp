@@ -18,7 +18,7 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_ON) {
+	if (dx->DXR_CreateResource) {
 		numParameter = numparameter;
 		UINT cnt = 0;
 		for (UINT i = 0; i < numParameter; i++) {

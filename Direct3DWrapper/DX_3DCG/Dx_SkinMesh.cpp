@@ -452,7 +452,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 			sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 			sg.uvSwitch.x = uvSw;
 			mObj[m].mObjectCB1->CopyData(i, sg);
-			if (dx->DXR_ON)mObj[m].setColorDXR(i, sg);
+			if (dx->DXR_CreateResource)mObj[m].setColorDXR(i, sg);
 		}
 	}
 }
@@ -509,12 +509,11 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		mObj[i].gs_NoMap = gs_NoMap;
 		mObj[i].createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
 		Dx12Process* dx = mObj[i].dx;
-		if (dx->DXR_ON)mObj[i].createParameterDXR(alpha);
+		if (dx->DXR_CreateResource)mObj[i].createParameterDXR(alpha);
 
-		if (!dx->DXR_ON) {
-			if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, blend, alpha))return false;
-		}
-		else {
+		if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, blend, alpha))return false;
+
+		if (dx->DXR_CreateResource) {
 			if (!mObj[i].createPSO_DXR(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv))return false;
 		}
 		UINT cbSize = mObject_BONES->getSizeInBytes();
@@ -754,14 +753,32 @@ void SkinMesh::DrawOff() {
 		mObj[i].DrawOff();
 }
 
-void SkinMesh::Draw() {
+void SkinMesh::Draw(int com) {
 
 	mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].com_no = com_no;
-		mObj[i].Draw();
+		mObj[i].Draw(com);
 	}
+}
+
+void SkinMesh::StreamOutput(int com) {
+
+	mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
+
+	for (int i = 0; i < numMesh; i++) {
+		mObj[i].com_no = com_no;
+		mObj[i].StreamOutput(com);
+	}
+}
+
+void SkinMesh::Draw() {
+	Draw(com_no);
+}
+
+void SkinMesh::StreamOutput() {
+	StreamOutput(com_no);
 }
 
 void SkinMesh::SetCommandList(int no) {
