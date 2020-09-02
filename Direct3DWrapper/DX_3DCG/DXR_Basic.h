@@ -96,7 +96,7 @@ private:
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxNumInstancing = 0;//INSTANCE_PCS_3D(256) * numParameter
 
-	void createTriangleVB(int comNo, UINT numMaterial);
+	void createTriangleVB(int comNo, UINT numMaterial, bool update);
 	void createBottomLevelAS(int comNo, UINT MaterialNo, bool update);
 	void createTopLevelAS(int comNo, uint64_t& tlasSize, bool update);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);

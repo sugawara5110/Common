@@ -146,10 +146,30 @@ void Common::CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 	}
 }
 
-static void createROOT_PARAMETER(UINT numSrv, UINT numCbv,
+void Common::CreateUavBufferUINT(ID3D12DescriptorHeap* heap, int offsetHeap,
+	ID3D12Resource** buffer, UINT* size, int bufNum) {
+
+	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
+	hDescriptor.ptr += offsetHeap * dx->mCbvSrvUavDescriptorSize;
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.CounterOffsetInBytes = 0;//pCounterResourceÇ™nullptrÇÃèÍçá0
+	uavDesc.Buffer.FirstElement = 0;
+	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+	uavDesc.Buffer.StructureByteStride = sizeof(UINT);
+
+	for (int i = 0; i < bufNum; i++) {
+		uavDesc.Buffer.NumElements = size[i];
+		dx->md3dDevice->CreateUnorderedAccessView(buffer[i], nullptr, &uavDesc, hDescriptor);
+		hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
+	}
+}
+
+static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
 	std::vector<D3D12_DESCRIPTOR_RANGE>& range, D3D12_ROOT_PARAMETER& rootParams) {
 
-	UINT numRange = numSrv + numCbv;
+	UINT numRange = numSrv + numCbv + numUav;
 	range.resize(numRange);
 	int cnt = 0;
 	for (UINT i = 0; i < numSrv; i++) {
@@ -170,6 +190,15 @@ static void createROOT_PARAMETER(UINT numSrv, UINT numCbv,
 		r.OffsetInDescriptorsFromTableStart = cnt;
 		cnt++;
 	}
+	for (UINT i = 0; i < numUav; i++) {
+		D3D12_DESCRIPTOR_RANGE& r = range[cnt];
+		r.BaseShaderRegister = i;
+		r.NumDescriptors = 1;
+		r.RegisterSpace = 0;
+		r.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		r.OffsetInDescriptorsFromTableStart = cnt;
+		cnt++;
+	}
 
 	rootParams.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	rootParams.DescriptorTable.NumDescriptorRanges = numRange;
@@ -177,15 +206,14 @@ static void createROOT_PARAMETER(UINT numSrv, UINT numCbv,
 	rootParams.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv) {
+ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav) {
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
 	D3D12_ROOT_PARAMETER rootParams = {};
-	createROOT_PARAMETER(numSrv, numCbv, range, rootParams);
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams);
 	return CreateRs(1, &rootParams);
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
-{
+static D3D12_STATIC_SAMPLER_DESC getSampler() {
 	D3D12_STATIC_SAMPLER_DESC linearWrap = {};
 	linearWrap.ShaderRegister = 0;
 	linearWrap.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -200,7 +228,12 @@ ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER
 	linearWrap.MaxLOD = D3D12_FLOAT32_MAX;
 	linearWrap.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	linearWrap.RegisterSpace = 0;
+	return linearWrap;
+}
 
+ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
+{
+	D3D12_STATIC_SAMPLER_DESC linearWrap = getSampler();
 	D3D12_ROOT_SIGNATURE_DESC desc = {};
 	desc.NumParameters = paramNum;
 	desc.pParameters = slotRootParameter;
@@ -222,6 +255,20 @@ ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_RO
 	return dx->CreateRsCommon(&desc);
 }
 
+ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
+{
+	D3D12_STATIC_SAMPLER_DESC linearWrap = getSampler();
+	D3D12_ROOT_SIGNATURE_DESC desc = {};
+	desc.NumParameters = paramNum;
+	desc.pParameters = slotRootParameter;
+	desc.NumStaticSamplers = 1;
+	desc.pStaticSamplers = &linearWrap;
+	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	return dx->CreateRsCommon(&desc);
+}
+
 ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
 {
 	D3D12_ROOT_SIGNATURE_DESC desc = {};
@@ -232,11 +279,15 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 	return dx->CreateRsCommon(&desc);
 }
 
-ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv) {
+ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav, bool sampler) {
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
 	D3D12_ROOT_PARAMETER rootParams = {};
-	createROOT_PARAMETER(numSrv, numCbv, range, rootParams);
-	return CreateRsStreamOutput(1, &rootParams);
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams);
+
+	if (sampler)
+		return CreateRsStreamOutputSampler(1, &rootParams);
+	else
+		return CreateRsStreamOutput(1, &rootParams);
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
@@ -299,8 +350,11 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	}
 
 	D3D12_RASTERIZER_DESC rasterizerDesc = {};
-	//rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	if (dx->wireframe)
+		rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	else
+		rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 	rasterizerDesc.FrontCounterClockwise = FALSE;
 	rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
@@ -402,7 +456,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* h
 		false, nullptr, 0, nullptr, 0, alpha, blend, type);
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
@@ -411,7 +465,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlo
 	UINT NumStrides,
 	PrimitiveType type)
 {
-	return CreatePSO(vs, nullptr, nullptr, nullptr, gs, mRootSignature, &pVertexLayout,
+	return CreatePSO(vs, hs, ds, nullptr, gs, mRootSignature, &pVertexLayout,
 		true, pDeclaration, numDECLARATION, StreamSizeArr, NumStrides, true, true, type);
 }
 

@@ -14,9 +14,9 @@ MeshData::MeshData() {
 	divArr[0].distance = 1000.0f;
 	divArr[0].divide = 2;
 	divArr[1].distance = 500.0f;
-	divArr[1].divide = 5;
+	divArr[1].divide = 6;
 	divArr[2].distance = 300.0f;
-	divArr[2].divide = 10;
+	divArr[2].divide = 12;
 }
 
 MeshData::~MeshData() {
@@ -72,7 +72,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 		}
 	}
 
-	mObj.getBuffer(mObj.dpara.NumMaterial);
+	mObj.getBuffer(mObj.dpara.NumMaterial, divArr, numDiv);
 	mMat = std::make_unique<meshMaterial[]>(mObj.dpara.NumMaterial);
 
 	//本読み込み	
@@ -275,6 +275,7 @@ bool MeshData::SetVertex() {
 
 	//同一座標頂点リスト
 	SameVertexList* svList = new SameVertexList[VCount];
+	Dx12Process* dx = Dx12Process::GetInstance();
 
 	for (int i = 0; i < mObj.dpara.NumMaterial; i++) {
 		CONSTANT_BUFFER2 sg;
@@ -294,6 +295,7 @@ bool MeshData::SetVertex() {
 		sg.vDiffuse = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 		mObj.mObjectCB1->CopyData(i, sg);
+		if (dx->DXR_CreateResource)mObj.setColorDXR(i, sg);
 	}
 
 	//フェイス　読み込み　バラバラに収録されている可能性があるので、マテリアル名を頼りにつなぎ合わせる
@@ -419,6 +421,9 @@ bool MeshData::CreateMesh() {
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;
 	const int numCbv = 2;
+	int numUav = 0;
+	if (hs)numUav = 1;
+	mObj.setDivideArr(divArr, numDiv);
 	mObj.primType_create = primType_create;
 	mObj.vs = vs;
 	mObj.hs = hs;
@@ -428,7 +433,19 @@ bool MeshData::CreateMesh() {
 	mObj.gs = gs;
 	mObj.gs_NoMap = gs_NoMap;
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
-	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, blend, alpha))return false;
+	if (hs) {
+		mObj.createDivideBuffer();
+	}
+	if (dx->DXR_CreateResource) {
+		mObj.createParameterDXR(alpha);
+	}
+
+	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
+
+	if (dx->DXR_CreateResource) {
+		if (!mObj.createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
+	}
+
 	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
 }
@@ -438,19 +455,33 @@ void MeshData::InstancedMap(float x, float y, float z, float thetaZ, float theta
 }
 
 void MeshData::InstanceUpdate(float r, float g, float b, float a, float disp, float shininess) {
-	mObj.instanceUpdate(r, g, b, a, divArr, numDiv, disp, shininess);
+	mObj.InstanceUpdate(r, g, b, a, disp, shininess);
 }
 
 void MeshData::Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess) {
-	mObj.update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, divArr, numDiv, disp, shininess);
+	mObj.update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, disp, shininess);
 }
 
 void MeshData::DrawOff() {
 	mObj.DrawOff();
 }
 
+void MeshData::Draw(int com_no) {
+	mObj.com_no = com_no;
+	mObj.Draw(com_no);
+}
+
+void MeshData::StreamOutput(int com_no) {
+	mObj.com_no = com_no;
+	mObj.StreamOutput(com_no);
+}
+
 void MeshData::Draw() {
 	mObj.Draw();
+}
+
+void MeshData::StreamOutput() {
+	mObj.StreamOutput();
 }
 
 void MeshData::SetCommandList(int no) {

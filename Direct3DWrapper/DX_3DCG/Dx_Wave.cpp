@@ -154,7 +154,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	mObj.gs = gs;
 	mObj.gs_NoMap = gs_NoMap;
 	mObj.createDefaultBuffer(ver, index, true);
-	if (!mObj.createPSO(mObj.dx->pVertexLayout_3D, numSrvTex + numSrvBuf, numCbv, blend, alpha))return false;
+	if (!mObj.createPSO(mObj.dx->pVertexLayout_3D, numSrvTex + numSrvBuf, numCbv, blend, alpha, 0))return false;
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};

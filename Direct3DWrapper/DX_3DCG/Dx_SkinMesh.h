@@ -126,6 +126,10 @@ public:
 	HRESULT SetTextureMPixel(BYTE* frame, int texIndex = 0, int meshIndex = 0);
 	int getNumMesh() { return numMesh; }
 	ParameterDXR* getParameter(int meshIndex) { return mObj[meshIndex].getParameter(); }
+	void setDivideArr(DivideArr* arr, int numdiv) {
+		numDiv = numdiv;
+		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
+	}
 };
 
 #endif

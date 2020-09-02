@@ -4,6 +4,8 @@
 
 //ShaderFunction.hに連結させて使う
 char *ShaderCommonTriangleHSDS =
+"RWStructuredBuffer<uint> gDivide : register(u0);\n"
+
 "struct HS_CONSTANT_OUTPUT\n"
 "{\n"
 "	 float factor[3]    : SV_TessFactor;\n"
@@ -36,12 +38,16 @@ char *ShaderCommonTriangleHSDS =
 "      if(distance < g_divide[i].x){divide = g_divide[i].y;}\n"
 "   }\n"
 
+"   gDivide[pid] = divide;\n"//分割数取得
+
 "	output.factor[0] = divide;\n"
 "	output.factor[1] = divide;\n"
 "	output.factor[2] = divide;\n"
 //u 縦の分割数（横のラインを何本ひくか）
 "	output.inner_factor = divide;\n"
-
+//divideが2  →   3 *  6頂点
+//divideが4  →   3 * 24
+//divideが8  →   3 * 96
 "	return output;\n"
 "}\n"
 //***************************************ハルシェーダーコンスタント*************************************************//

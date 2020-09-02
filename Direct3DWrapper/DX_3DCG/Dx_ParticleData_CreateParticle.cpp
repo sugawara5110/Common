@@ -143,7 +143,7 @@ bool ParticleData::CreatePartsCom() {
 	if (mRootSignature_com == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(STREAM_OUTPUT)
-	mPSO_com = CreatePsoStreamOutput(vsSO, gsSO, mRootSignature_com.Get(),
+	mPSO_com = CreatePsoStreamOutput(vsSO, nullptr, nullptr, gsSO, mRootSignature_com.Get(),
 		dx->pVertexLayout_P, &dx->pDeclaration_PSO,
 		(UINT)dx->pDeclaration_PSO.size(),
 		&Sview1[0].StreamByteStride,

@@ -32,11 +32,11 @@ SkinMesh::SkinMesh() {
 	ZeroMemory(this, sizeof(SkinMesh));
 	fbx = new SkinMesh_sub[FBX_PCS];
 	divArr[0].distance = 1000.0f;
-	divArr[0].divide = 2;
+	divArr[0].divide = 2;//í∏ì_êî 3 Å® 3 * 6 = 18
 	divArr[1].distance = 500.0f;
-	divArr[1].divide = 5;
+	divArr[1].divide = 6;//í∏ì_êî 3 Å® 3 * 54 = 162
 	divArr[2].distance = 300.0f;
-	divArr[2].divide = 10;
+	divArr[2].divide = 12;//í∏ì_êî 3 Å® 3 * 216 = 648
 	BoneConnect = -1.0f;
 }
 
@@ -199,7 +199,7 @@ void SkinMesh::GetBuffer(float end_frame) {
 	mObj = new PolygonData[numMesh];
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].SetCommandList(com_no);
-		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial());
+		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), divArr, numDiv);
 	}
 }
 
@@ -497,7 +497,10 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;
 	const int numCbv = 3;
+	int numUav = 0;
+	if (hs)numUav = 1;
 	for (int i = 0; i < numMesh; i++) {
+		mObj[i].setDivideArr(divArr, numDiv);
 		mObj[i].com_no = com_no;
 		mObj[i].primType_create = primType_create;
 		mObj[i].vs = vs;
@@ -508,13 +511,16 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		mObj[i].gs = gs;
 		mObj[i].gs_NoMap = gs_NoMap;
 		mObj[i].createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
+		if (hs) {
+			mObj[i].createDivideBuffer();
+		}
 		Dx12Process* dx = mObj[i].dx;
 		if (dx->DXR_CreateResource)mObj[i].createParameterDXR(alpha);
 
-		if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, blend, alpha))return false;
+		if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 		if (dx->DXR_CreateResource) {
-			if (!mObj[i].createPSO_DXR(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv))return false;
+			if (!mObj[i].createPSO_DXR(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
 		}
 		UINT cbSize = mObject_BONES->getSizeInBytes();
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
@@ -743,7 +749,7 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 	MatrixMap_Bone(&sgb[mObj[0].dx->cBuffSwap[0]]);
 
 	for (int i = 0; i < numMesh; i++)
-		mObj[i].update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, divArr, numDiv, disp, shininess);
+		mObj[i].update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, disp, shininess);
 
 	return frame_end;
 }

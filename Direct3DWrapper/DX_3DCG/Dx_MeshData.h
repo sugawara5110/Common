@@ -68,12 +68,19 @@ public:
 	void Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess = 4.0f);
 	//•`‰æ
 	void DrawOff();
+	void Draw(int com_no);
+	void StreamOutput(int com_no);
 	void Draw();
-
+	void StreamOutput();
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
 	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
+	void setDivideArr(DivideArr* arr, int numdiv) {
+		numDiv = numdiv;
+		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
+	}
+	ParameterDXR* getParameter() { return mObj.getParameter(); }
 };
 
 #endif

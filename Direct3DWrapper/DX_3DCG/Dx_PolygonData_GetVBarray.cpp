@@ -27,11 +27,11 @@ PolygonData::PolygonData() {
 	sg.vAmbient.w = 0.0f;
 
 	divArr[0].distance = 1000.0f;
-	divArr[0].divide = 2;
+	divArr[0].divide = 2;//頂点数 3 → 3 * 6 = 18
 	divArr[1].distance = 500.0f;
-	divArr[1].divide = 50;
+	divArr[1].divide = 48;//頂点数 3 → 3 * 3456 = 10368
 	divArr[2].distance = 300.0f;
-	divArr[2].divide = 100;
+	divArr[2].divide = 96;//頂点数 3 → 3 * 13824 = 41472
 }
 
 PolygonData::~PolygonData() {
@@ -43,7 +43,8 @@ ID3D12PipelineState* PolygonData::GetPipelineState() {
 	return dpara.PSO[0].Get();
 }
 
-void PolygonData::getBuffer(int numMaterial) {
+void PolygonData::getBuffer(int numMaterial, DivideArr* divarr, int numdiv) {
+	memcpy(divArr, divarr, sizeof(DivideArr) * numdiv);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	dpara.NumMaterial = numMaterial;
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
@@ -158,10 +159,10 @@ bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
 }
 
 bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-	const int numSrv, const int numCbv, bool blend, bool alpha) {
+	const int numSrv, const int numCbv, const int numUav, bool blend, bool alpha) {
 
 	//パイプラインステートオブジェクト生成
-	dpara.rootSignature = CreateRootSignature(numSrv, numCbv);
+	dpara.rootSignature = CreateRootSignature(numSrv, numCbv, numUav);
 	if (dpara.rootSignature == nullptr)return false;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
@@ -179,15 +180,21 @@ bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 }
 
 bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-	const int numSrv, const int numCbv) {
+	const int numSrv, const int numCbv, const int numUav) {
 
-	gs = dx->pGeometryShader_Before_vs_Output.Get();
-	dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv);
+	if (hs) {
+		gs = dx->pGeometryShader_Before_ds_Output.Get();
+		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true);
+	}
+	else {
+		gs = dx->pGeometryShader_Before_vs_Output.Get();
+		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, false);
+	}
 	if (dpara.rootSignature == nullptr)return false;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
-		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs, gs, dpara.rootSignatureDXR.Get(),
+		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs, hs, ds, gs, dpara.rootSignatureDXR.Get(),
 			vertexLayout,
 			&dx->pDeclaration_Output,
 			(UINT)dx->pDeclaration_Output.size(),
@@ -231,7 +238,9 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 	if (dx->DXR_CreateResource) {
 		setTextureDXR();
 	}
-	dpara.numDesc = numSrvTex + numSrvBuf + numCbv;
+	int numUav = 0;
+	if (hs)numUav = 1;
+	dpara.numDesc = numSrvTex + numSrvBuf + numCbv + numUav;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
 	dpara.descHeap = dx->CreateDescHeap(numHeap);
 	ARR_DELETE(te);
@@ -249,6 +258,14 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
 		ad[2] = ad3;
 		CreateCbv(dpara.descHeap.Get(), dpara.numDesc * i + numSrvTex + numSrvBuf, ad, cbSize, numCbv);
+		if (hs) {
+			ID3D12Resource* res[1];
+			res[0] = dpara.mDivideBuffer[i].Get();
+			UINT size[1];
+			size[0] = dpara.Iview[i].IndexCount / 3;
+			CreateUavBufferUINT(dpara.descHeap.Get(), dpara.numDesc * i + numSrvTex + numSrvBuf + numCbv,
+				res, size, 1);
+		}
 	}
 	return true;
 }
@@ -271,11 +288,25 @@ void PolygonData::createParameterDXR(bool alpha) {
 	dxrPara.alphaTest = alpha;
 	int NumMaterial = dxrPara.NumMaterial;
 
+	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
+	if (hs) {
+		float maxDiv = 0.0f;
+		const float minDiv = 2.0f;
+		const float minDivPolygon = 6;
+		for (int i = 0; i < numDiv; i++) {
+			if (divArr[i].divide >= minDiv && (int)divArr[i].divide % 2 == 1)divArr[i].divide += 1.0f;//偶数にする
+			if (divArr[i].divide < minDiv)divArr[i].divide = minDiv;
+			if (maxDiv < divArr[i].divide)maxDiv = divArr[i].divide;
+		}
+		int mag = (int)maxDiv / (int)minDiv;
+		numDispPolygon = (int)mag * (int)mag * (int)minDivPolygon;//分割最大数(1ポリゴン)
+	}
+
 	for (int i = 0; i < NumMaterial; i++) {
-		IndexView& dxI = dxrPara.IviewDXR[i];
 		if (dpara.Iview[i].IndexCount <= 0)continue;
-		UINT bytesize = dpara.Iview[i].IndexBufferByteSize;
-		UINT indCnt = dpara.Iview[i].IndexCount;
+		IndexView& dxI = dxrPara.IviewDXR[i];
+		UINT indCnt = dpara.Iview[i].IndexCount * numDispPolygon;
+		UINT bytesize = indCnt * sizeof(UINT);
 		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
 		dxI.IndexBufferByteSize = bytesize;
 		dxI.IndexCount = indCnt;
@@ -314,6 +345,53 @@ void PolygonData::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 	dxrPara.ambient[materialIndex].as(sg.vAmbient.x, sg.vAmbient.y, sg.vAmbient.z, sg.vAmbient.w);
 }
 
+void PolygonData::createDivideBuffer() {
+
+	dpara.mDivideBuffer = std::make_unique<ComPtr<ID3D12Resource>[]>(dpara.NumMaterial);
+	dpara.mDivideReadBuffer = std::make_unique<ComPtr<ID3D12Resource>[]>(dpara.NumMaterial);
+
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.Iview[i].IndexCount <= 0)continue;
+		int numPolygon = dpara.Iview[i].IndexCount / 3;
+		HRESULT hr = dx->createDefaultResourceBuffer_UNORDERED_ACCESS(dpara.mDivideBuffer[i].GetAddressOf(), numPolygon * sizeof(UINT),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		if (FAILED(hr)) {
+			ErrorMessage("PolygonData::createDivideBuffer Error!!");
+		}
+
+		D3D12_HEAP_PROPERTIES heap = {};
+		heap.Type = D3D12_HEAP_TYPE_READBACK;
+		heap.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heap.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		heap.CreationNodeMask = 1;
+		heap.VisibleNodeMask = 1;
+
+		D3D12_RESOURCE_DESC desc = {};
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Alignment = 0;
+		desc.Width = numPolygon * sizeof(UINT);
+		desc.Height = 1;
+		desc.DepthOrArraySize = 1;
+		desc.MipLevels = 1;
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		hr = dx->md3dDevice->CreateCommittedResource(
+			&heap,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(dpara.mDivideReadBuffer[i].GetAddressOf()));
+		if (FAILED(hr)) {
+			ErrorMessage("PolygonData::createDivideBuffer Error!!");
+		}
+	}
+}
+
 bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha) {
 	dpara.material[0].diftex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
@@ -324,6 +402,9 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	const UINT ibByteSize = numIndex * sizeof(UINT);
 	getIndexBuffer(0, ibByteSize, numIndex);
 
+	if (hs) {
+		createDivideBuffer();
+	}
 	createDefaultBuffer(ver, index, true);
 	if (dx->DXR_CreateResource) {
 		createParameterDXR(alpha);
@@ -331,20 +412,21 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	}
 	const int numSrvTex = 3;
 	const int numCbv = 2;
-
+	int numUav = 0;
+	if (hs)numUav = 1;
 	if (tNo == -1 && !movOn[0].m_on) {
-		if (!createPSO(dx->pVertexLayout_3DBC, numSrvTex, numCbv, blend, alpha))return false;
+		if (!createPSO(dx->pVertexLayout_3DBC, numSrvTex, numCbv, numUav, blend, alpha))return false;
 	}
 	else {
-		if (!createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, blend, alpha))return false;
+		if (!createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 	}
 
 	if (dx->DXR_CreateResource) {
 		if (tNo == -1 && !movOn[0].m_on) {
-			if (!createPSO_DXR(dx->pVertexLayout_3DBC, numSrvTex, numCbv))return false;
+			if (!createPSO_DXR(dx->pVertexLayout_3DBC, numSrvTex, numCbv, numUav))return false;
 		}
 		else {
-			if (!createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv))return false;
+			if (!createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
 		}
 	}
 
@@ -380,16 +462,8 @@ void PolygonData::Update(float x, float y, float z, float r, float g, float b, f
 	CbSwap();
 }
 
-void PolygonData::instanceUpdate(float r, float g, float b, float a, DivideArr* divArr, int numDiv,
-	float disp, float shininess) {
-
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
-	CbSwap();
-}
-
 void PolygonData::update(float x, float y, float z, float r, float g, float b, float a,
 	float thetaZ, float thetaY, float thetaX, float size,
-	DivideArr* divArr, int numDiv,
 	float disp, float shininess) {
 
 	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
@@ -464,6 +538,34 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 		dx->End(com);
 		dx->WaitFence();
+
+		if (hs) {
+			dx->Bigin(com);
+			dx->dx_sub[com].ResourceBarrier(dpara.mDivideBuffer[i].Get(),
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			mCList->CopyResource(dpara.mDivideReadBuffer[i].Get(), dpara.mDivideBuffer[i].Get());
+			dx->dx_sub[com].ResourceBarrier(dpara.mDivideBuffer[i].Get(),
+				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			dx->End(com);
+			dx->WaitFence();
+
+			D3D12_RANGE range;
+			range.Begin = 0;
+			UINT numPo = dpara.Iview[i].IndexCount / 3 * sizeof(UINT);
+			range.End = numPo;
+			UINT* div = nullptr;
+			dpara.mDivideReadBuffer[i].Get()->Map(0, &range, reinterpret_cast<void**>(&div));
+			const UINT minDiv = 2;
+			const UINT minDivPolygon = 6;
+			UINT verCnt = 0;
+			for (UINT d = 0; d < numPo; d++) {
+				UINT mag = div[d] / minDiv;
+				UINT ver = mag * mag * minDivPolygon * 3;
+				verCnt += (ver < 1 ? 1 : ver);
+			}
+			dpara.mDivideReadBuffer[i].Get()->Unmap(0, nullptr);
+			dxr.IviewDXR[i].IndexCount = verCnt;
+		}
 	}
 }
 

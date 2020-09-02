@@ -281,6 +281,7 @@ bool Dx12Process::CreateShaderByteCode() {
 
 	//DXR‚Ö‚ÌOutput
 	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_0");
+	pGeometryShader_Before_ds_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds", "gs_5_0");
 	pDeclaration_Output =
 	{
 		{ 0, "POSITION", 0, 0, 3, 0 },

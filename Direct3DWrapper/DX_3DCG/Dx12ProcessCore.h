@@ -148,6 +148,7 @@ private:
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output = nullptr;
 
 	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
@@ -233,6 +234,8 @@ private:
 	VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
 	int  cBuffSwap[2] = { 0,0 };
+
+	bool wireframe = false;
 
 	Dx12Process() {}//外部からのオブジェクト生成禁止
 	Dx12Process(const Dx12Process& obj) {}   // コピーコンストラクタ禁止
@@ -333,6 +336,7 @@ public:
 	float GetNearPlane();
 	float GetFarPlane();
 	InternalTexture* getInternalTexture(int index) { return &texture[index]; }
+	void wireFrameTest(bool f) { wireframe = f; }
 };
 
 struct VertexView {
@@ -468,6 +472,8 @@ struct drawPara {
 	D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
 	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
 	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO_DXR = nullptr;
+	std::unique_ptr<ComPtr<ID3D12Resource>[]> mDivideBuffer = nullptr;
+	std::unique_ptr<ComPtr<ID3D12Resource>[]> mDivideReadBuffer = nullptr;
 	UINT insNum = 1;
 };
 
@@ -523,11 +529,15 @@ protected:
 	void CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
 
-	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv);
+	void CreateUavBufferUINT(ID3D12DescriptorHeap* heap, int offsetHeap,
+		ID3D12Resource** buffer, UINT* size, int bufNum);
+
+	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav);
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv);
+	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav, bool sampler);
 
 	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
@@ -553,7 +563,7 @@ protected:
 		bool alpha, bool blend,
 		PrimitiveType type);
 
-	ComPtr<ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* gs,
+	ComPtr<ID3D12PipelineState> CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* gs,
 		ID3D12RootSignature* mRootSignature,
 		std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 		std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
@@ -629,7 +639,7 @@ protected:
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
-	void getBuffer(int numMaterial);
+	void getBuffer(int numMaterial, DivideArr* divArr = nullptr, int numDiv = 0);
 	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
 	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
 
@@ -657,23 +667,21 @@ protected:
 	void setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg);
 
 	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-		const int numSrv, const int numCbv);
+		const int numSrv, const int numCbv, const int numUav);
 
 	void setTextureDXR();
 
+	void createDivideBuffer();
+
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-		const int numSrv, const int numCbv, bool blend, bool alpha);
+		const int numSrv, const int numCbv, const int numUav, bool blend, bool alpha);
 
 	bool setDescHeap(const int numSrvTex,
 		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void instanceUpdate(float r, float g, float b, float a, DivideArr* divArr, int numDiv,
-		float disp = 1.0f, float shininess = 4.0f);
-
 	void update(float x, float y, float z, float r, float g, float b, float a,
 		float thetaZ, float thetaY, float thetaX, float size,
-		DivideArr* divArr, int numDiv,
 		float disp = 1.0f, float shininess = 4.0f);
 
 	void draw(int com_no, drawPara& para, ParameterDXR& dxr);
@@ -732,6 +740,10 @@ public:
 	void Draw();
 	void StreamOutput();
 	ParameterDXR* getParameter();
+	void setDivideArr(DivideArr* arr, int numdiv) {
+		numDiv = numdiv;
+		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
+	}
 };
 
 //*********************************PolygonData2Dクラス*************************************//

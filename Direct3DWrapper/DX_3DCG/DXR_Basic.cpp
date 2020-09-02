@@ -34,7 +34,7 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 
 		dx->dx_sub[comNo].Bigin();
-		createTriangleVB(comNo, numMaterial);
+		createTriangleVB(comNo, numMaterial, false);
 		createAccelerationStructures(comNo);
 		dx->dx_sub[comNo].End();
 		dx->WaitFence();
@@ -61,11 +61,12 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 	}
 }
 
-void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial) {
+void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial, bool update) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
-	pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
+	if (!update) {
+		pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
+		pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
+	}
 
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
@@ -992,6 +993,7 @@ void DXR_Basic::raytrace(int comNo) {
 	dx->dx_sub[comNo].mCommandList->SetComputeRootDescriptorTable(0, srvHandle);
 	dx->dx_sub[comNo].mCommandList->SetComputeRootDescriptorTable(1, samplerHandle);
 
+	createTriangleVB(comNo, numMaterial, true);
 	for (UINT i = 0; i < numMaterial; i++)createBottomLevelAS(comNo, i, true);
 	createTopLevelAS(comNo, mTlasSize, true);
 
