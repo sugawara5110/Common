@@ -17,6 +17,7 @@ char *ShaderWaveCom =
 "{\n"
 //x:waveHeight, y:ï™äÑêî
 "    float4 g_wHei_divide;\n"
+"    float g_speed;\n"
 "};\n"
 
 //Dispatch(APPë§)(X1, Y1, Z1)numthreads(CSë§)(X, Y, Z)
@@ -34,6 +35,6 @@ char *ShaderWaveCom =
 "   int x = dtid.x;"
 "   int y = dtid.y;"
 "   int div = g_wHei_divide.y;\n"
-"	gOutput[div * y + x].theta = (gInput[div * y + x].theta + 0.05f) % 360;\n"
+"	gOutput[div * y + x].theta = (gInput[div * y + x].theta + g_speed) % 360;\n"
 "	gOutput[div * y + x].sinWave = (sin(gOutput[div * y + x].theta)) * g_wHei_divide.x;\n"
 "}\n";

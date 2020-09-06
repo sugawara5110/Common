@@ -21,46 +21,38 @@ Wave::Wave() {
 	sg.vAmbient.y = 0.0f;
 	sg.vAmbient.z = 0.0f;
 	sg.vAmbient.w = 0.0f;
+
+	divArr[0].distance = 1000.0f;
+	divArr[0].divide = 2;//í∏ì_êî 3 Å® 3 * 6 = 18
+	divArr[1].distance = 500.0f;
+	divArr[1].divide = 48;//í∏ì_êî 3 Å® 3 * 3456 = 10368
+	divArr[2].distance = 300.0f;
+	divArr[2].divide = 96;//í∏ì_êî 3 Å® 3 * 13824 = 41472
 }
 
 Wave::~Wave() {
 	S_DELETE(mObjectCB_WAVE);
 }
 
-void Wave::SetVertex(int i,
-	float vx, float vy, float vz,
-	float nx, float ny, float nz,
-	float u, float v) {
-	if (!ver) {
-		ver = new Vertex[numVer];
-		index = new UINT * [1];
-		index[0] = new UINT[numIndex];
-		mObj.getVertexBuffer(sizeof(Vertex), numVer);
-		const UINT ibByteSize = numIndex * sizeof(UINT);
-		mObj.getIndexBuffer(0, ibByteSize, numIndex);
-	}
-	index[0][i] = i;
-	ver[i].Pos.as(vx, vy, vz);
-	ver[i].normal.as(nx, ny, nz);
-	ver[i].tex.as(u, v);
+void Wave::SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd) {
+	mObj.setVertex(vertexArr, numVer, ind, numInd);
 }
 
-void Wave::GetVBarray(int v) {
-	numVer = numIndex = v;
+void Wave::GetVBarray() {
 	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
 	mObj.getBuffer(1);
 }
 
 void Wave::GetShaderByteCode() {
 	Dx12Process* dx = mObj.dx;
-	cs = dx->pComputeShader_Wave.Get();
-	vs = dx->pVertexShader_Wave.Get();
-	ps = dx->pPixelShader_3D.Get();
-	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
-	hs = dx->pHullShader_Wave.Get();
-	ds = dx->pDomainShader_Wave.Get();
-	gs = dx->pGeometryShader_Before_ds.Get();
-	gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+	mObj.cs = dx->pComputeShader_Wave.Get();
+	mObj.vs = dx->pVertexShader_MESH_D.Get();
+	mObj.ps = dx->pPixelShader_3D.Get();
+	mObj.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
+	mObj.hs = dx->pHullShaderTriangle.Get();
+	mObj.ds = dx->pDomainShader_Wave.Get();
+	mObj.gs = dx->pGeometryShader_Before_ds.Get();
+	mObj.gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 }
 
 bool Wave::ComCreate() {
@@ -115,7 +107,7 @@ bool Wave::ComCreate() {
 	if (mRootSignatureCom == nullptr)return false;
 
 	//PSO
-	mPSOCom = mObj.CreatePsoCompute(cs, mRootSignatureCom.Get());
+	mPSOCom = mObj.CreatePsoCompute(mObj.cs, mRootSignatureCom.Get());
 	if (mPSOCom == nullptr)return false;
 
 	return true;
@@ -140,21 +132,27 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	mObj.dpara.material[0].diftex_no = texNo;
 	mObj.dpara.material[0].nortex_no = nortNo;
 	mObj.dpara.material[0].spetex_no = mObj.dx->GetTexNumber("dummyDifSpe.");
-	mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+	mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	mObj.mObjectCB1->CopyData(0, sg);
 	const int numSrvTex = 3;
 	const int numSrvBuf = 1;
 	const int numCbv = 3;
 	mObj.primType_create = CONTROL_POINT;
-	mObj.vs = vs;
-	mObj.hs = hs;
-	mObj.ds = ds;
-	mObj.ps = ps;
-	mObj.ps_NoMap = ps_NoMap;
-	mObj.gs = gs;
-	mObj.gs_NoMap = gs_NoMap;
-	mObj.createDefaultBuffer(ver, index, true);
-	if (!mObj.createPSO(mObj.dx->pVertexLayout_3D, numSrvTex + numSrvBuf, numCbv, blend, alpha, 0))return false;
+	mObj.setDivideArr(divArr, numDiv);
+	mObj.createDefaultBuffer(mObj.ver, mObj.index, true);
+	int numUav = 0;
+	if (mObj.hs) {
+		numUav = 1;
+		mObj.createDivideBuffer();
+	}
+	if (mObj.dx->DXR_CreateResource) {
+		mObj.createParameterDXR(alpha);
+		mObj.setColorDXR(0, sg);
+	}
+	if (!mObj.createPSO(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
+	if (mObj.dx->DXR_CreateResource) {
+		if (!mObj.createPSO_DXR(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
+	}
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};
@@ -177,54 +175,71 @@ bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 	return DrawCreate(texNo, nortNo, blend, alpha);
 }
 
-void Wave::InstancedMap(float x, float y, float z, float theta, float sizeX, float sizeY, float sizeZ) {
-	mObj.InstancedMap(x, y, z, theta, 0, 0, sizeX, sizeY, sizeZ);
+void Wave::Instancing(float speed, VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+	cbw.speed = speed;
+	mObjectCB_WAVE->CopyData(0, cbw);
+	mObj.Instancing(pos, angle, size);
 }
 
-void Wave::InstanceUpdate(float r, float g, float b, float a, float disp, float shininess,
+void Wave::InstancingUpdate(VECTOR4 Color, float disp, float shininess,
 	float px, float py, float mx, float my) {
 
-	mObj.InstanceUpdate(r, g, b, a, disp, shininess, px, py, mx, my);
+	mObj.InstancingUpdate(Color, disp, shininess, px, py, mx, my);
 }
 
-void Wave::Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess,
-	float size, float px, float py, float mx, float my) {
+void Wave::Update(float speed, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+	float disp, float shininess,
+	float px, float py, float mx, float my) {
 
-	mObj.Update(x, y, z, r, g, b, a, theta, disp, shininess, size, px, py, mx, my);
+	cbw.speed = speed;
+	mObjectCB_WAVE->CopyData(0, cbw);
+	mObj.Update(pos, Color, angle, size, disp, shininess, px, py, mx, my);
 }
 
 void Wave::DrawOff() {
 	mObj.DrawOff();
 }
 
-void Wave::Compute() {
+void Wave::Compute(int com) {
 
-	mObj.mCommandList->SetPipelineState(mPSOCom.Get());
+	ID3D12GraphicsCommandList* mCList = mObj.dx->dx_sub[com].mCommandList.Get();
+	mCList->SetPipelineState(mPSOCom.Get());
 
-	mObj.mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 
-	mObj.mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mObj.mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mObj.mCommandList->SetComputeRootConstantBufferView(2, mObjectCB_WAVE->Resource()->GetGPUVirtualAddress());
+	mCList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
+	mCList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
+	mCList->SetComputeRootConstantBufferView(2, mObjectCB_WAVE->Resource()->GetGPUVirtualAddress());
 
-	mObj.mCommandList->Dispatch(div, div, 1);
+	mCList->Dispatch(div, div, 1);
 
 	auto tmp = mInputBuffer;
 	mInputBuffer = mOutputBuffer;
 	mOutputBuffer = tmp;
-
-	mObj.dx->dx_sub[mObj.com_no].ResourceBarrier(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
-void Wave::DrawSub() {
-	mObj.Draw();
+void Wave::Draw(int com_no) {
+	if (!mObj.UpOn | !mObj.DrawOn)return;
+	Compute(com_no);
+	mObj.Draw(com_no);
+}
+
+void Wave::StreamOutput(int com_no) {
+	if (!mObj.UpOn | !mObj.DrawOn)return;
+	Dx12Process* dx = mObj.dx;
+	dx->Bigin(com_no);
+	Compute(com_no);
+	dx->End(com_no);
+	dx->WaitFence();
+	mObj.StreamOutput(com_no);
 }
 
 void Wave::Draw() {
-	if (!mObj.UpOn | !mObj.DrawOn)return;
-	Compute();
-	DrawSub();
+	Draw(mObj.com_no);
+}
+
+void Wave::StreamOutput() {
+	StreamOutput(mObj.com_no);
 }
 
 void Wave::SetCommandList(int no) {

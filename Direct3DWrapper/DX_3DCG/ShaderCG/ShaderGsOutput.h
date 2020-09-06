@@ -2,7 +2,6 @@
 //                                     ShaderGsOutput.hlsl                                               //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ShaderFunction.h‚É˜AŒ‹‚³‚¹‚ÄŽg‚¤
 char* ShaderGsOutput =
 
 "struct DXR_INPUT\n"

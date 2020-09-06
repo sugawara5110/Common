@@ -50,8 +50,8 @@ protected:
 	ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
 
 	void GetShaderByteCode();
-	void MatrixMap(CONSTANT_BUFFER_P* cb_p, float x, float y, float z, float theta, float size, float speed, bool tex);
-	void MatrixMap2(CONSTANT_BUFFER_P* cb_p, bool init);
+	void update(CONSTANT_BUFFER_P* cb_p, VECTOR3 pos, float angle, float size, float speed, bool tex);
+	void update2(CONSTANT_BUFFER_P* cb_p, bool init);
 	void GetVbColarray(int texture_no, float size, float density);
 	void CreateVbObj();
 	bool CreatePartsCom();
@@ -70,7 +70,7 @@ public:
 		float r, float g, float b, float a);
 	bool CreateParticle(int texpar);//パーティクル1個のテクスチャナンバー
 	bool CreateBillboard();//ver個の四角形を生成
-	void Update(float x, float y, float z, float theta, float size, bool init, float speed);//sizeパーティクル1個のサイズ
+	void Update(VECTOR3 pos, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ
 	void DrawOff();
 	void Draw();
 	void Update(float size);

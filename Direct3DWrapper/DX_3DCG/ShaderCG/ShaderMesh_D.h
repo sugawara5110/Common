@@ -2,7 +2,6 @@
 //                                           ShaderMESH_D.hlsl                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ShaderFunction.hに連結させて使う
 char *ShaderMesh_D =
 //****************************************メッシュ頂点**************************************************************//
 "VS_OUTPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float3 GNor : GEO_NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"

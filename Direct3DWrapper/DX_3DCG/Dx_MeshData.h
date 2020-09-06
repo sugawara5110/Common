@@ -12,14 +12,6 @@
 class MeshData {
 
 protected:
-	ID3DBlob* vs = nullptr;
-	ID3DBlob* ps = nullptr;
-	ID3DBlob* ps_NoMap = nullptr;
-	ID3DBlob* hs = nullptr;
-	ID3DBlob* ds = nullptr;
-	ID3DBlob* gs = nullptr;
-	ID3DBlob* gs_NoMap = nullptr;
-
 	UINT** piFaceBuffer = nullptr;
 	VertexM* pvVertexBuffer = nullptr;
 	int FaceCount = 0;  //ポリゴン数カウンター
@@ -45,7 +37,6 @@ protected:
 	};
 	std::unique_ptr<meshMaterial[]>mMat = nullptr;
 
-	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
 	PolygonData mObj;
@@ -61,12 +52,13 @@ public:
 	bool SetVertex();
 	bool CreateMesh();
 	ID3D12PipelineState* GetPipelineState(int index);
-	//複数Update
-	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size);
-	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f);
-	//単体Update
-	void Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess = 4.0f);
-	//描画
+
+	void Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
+
+	void InstancingUpdate(VECTOR4 Color, float disp, float shininess = 4.0f);
+
+	void Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size, float disp, float shininess = 4.0f);
+
 	void DrawOff();
 	void Draw(int com_no);
 	void StreamOutput(int com_no);

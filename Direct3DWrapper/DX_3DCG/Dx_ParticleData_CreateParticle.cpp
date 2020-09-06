@@ -29,13 +29,13 @@ void ParticleData::GetShaderByteCode() {
 	ps = dx->pPixelShader_P.Get();
 }
 
-void ParticleData::MatrixMap(CONSTANT_BUFFER_P *cb, float x, float y, float z, float theta, float size, float speed, bool tex) {
+void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, float angle, float size, float speed, bool tex) {
 	MATRIX mov;
 	MATRIX rot;
 	MATRIX world;
 
-	MatrixRotationZ(&rot, theta);
-	MatrixTranslation(&mov, x, y, z);
+	MatrixRotationZ(&rot, angle);
+	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
 	MatrixMultiply(&world, &rot, &mov);
 	MatrixMultiply(&cb->WV, &world, &dx->mView);
 	cb->Proj = dx->mProj;
@@ -46,7 +46,7 @@ void ParticleData::MatrixMap(CONSTANT_BUFFER_P *cb, float x, float y, float z, f
 	if (tex)cb->size.w = 1.0f; else cb->size.w = 0.0f;
 }
 
-void ParticleData::MatrixMap2(CONSTANT_BUFFER_P *cb, bool init) {
+void ParticleData::update2(CONSTANT_BUFFER_P* cb, bool init) {
 	if (init)cb->size.y = 1.0f; else cb->size.y = 0.0f;
 }
 
@@ -249,8 +249,8 @@ void ParticleData::CbSwap(bool init) {
 	DrawOn = true;
 }
 
-void ParticleData::Update(float x, float y, float z, float theta, float size, bool init, float speed) {
-	MatrixMap(&cbP[dx->cBuffSwap[0]], x, y, z, theta, size, speed, texpar_on | movOn[0].m_on);
+void ParticleData::Update(VECTOR3 pos, float angle, float size, bool init, float speed) {
+	update(&cbP[dx->cBuffSwap[0]], pos, angle, size, speed, texpar_on | movOn[0].m_on);
 	CbSwap(init);
 }
 
@@ -269,7 +269,7 @@ void ParticleData::Draw() {
 		if (streamInitcount > 2) { streamInitcount = 0; }
 		if (streamInitcount != 0) { init = true; streamInitcount++; }
 	}
-	MatrixMap2(&cbP[dx->cBuffSwap[1]], init);
+	update2(&cbP[dx->cBuffSwap[1]], init);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
 	DrawParts1();
@@ -279,7 +279,7 @@ void ParticleData::Draw() {
 }
 
 void ParticleData::Update(float size) {
-	MatrixMap(&cbP[dx->cBuffSwap[0]], 0, 0, 0, 0, size, 1.0f, texpar_on | movOn[0].m_on);
+	update(&cbP[dx->cBuffSwap[0]], { 0, 0, 0 }, 0, size, 1.0f, texpar_on | movOn[0].m_on);
 	CbSwap(true);
 }
 
@@ -287,7 +287,7 @@ void ParticleData::DrawBillboard() {
 
 	if (!UpOn | !DrawOn)return;
 
-	MatrixMap2(&cbP[dx->cBuffSwap[1]], true);
+	update2(&cbP[dx->cBuffSwap[1]], true);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
 	DrawParts2();

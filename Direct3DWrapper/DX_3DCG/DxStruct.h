@@ -226,6 +226,7 @@ struct WaveData
 
 struct CONSTANT_BUFFER_WAVE {
 	VECTOR4 wHei_divide;//x:waveHeight, y:•ªŠ„”
+	float speed = 0.0f;
 };
 
 class SameVertexList {

@@ -240,14 +240,6 @@ bool Dx12Process::CreateShaderByteCode() {
 	//テセレーター有メッシュ
 	pVertexShader_MESH_D = CompileShader(MeshD.str, MeshD.size, "VSMesh", "vs_5_0");
 
-	//3DレイアウトTexture有り
-	pVertexLayout_3D =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 4 * 3 * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-	};
-
 	//3Dレイアウト基本色
 	pVertexLayout_3DBC =
 	{
@@ -261,8 +253,6 @@ bool Dx12Process::CreateShaderByteCode() {
 	pPixelShader_BC = CompileShader(D3.str, D3.size, "PSBaseColor", "ps_5_0");
 	//Wave
 	pComputeShader_Wave = CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_0");
-	pVertexShader_Wave = CompileShader(Wave.str, Wave.size, "VSWave", "vs_5_0");
-	pHullShader_Wave = CompileShader(Wave.str, Wave.size, "HSWave", "hs_5_0");
 	pDomainShader_Wave = CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_0");
 
 	//2Dレイアウト
@@ -841,22 +831,20 @@ void Dx12Process::DrawScreen() {
 	mCurrBackBuffer = mSwapChain->GetCurrentBackBufferIndex();
 }
 
-void Dx12Process::Cameraset(float pos_X, float pos_Y, float pos_Z,
-	float dirX, float dirY, float dirZ,
-	float up_X, float up_Y, float up_Z) {
+void Dx12Process::Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up) {
 
 	//カメラの位置と方向を設定
 	MatrixLookAtLH(&mView,
-		pos_X, pos_Y, pos_Z, //カメラの位置
-		dirX, dirY, dirZ,   //カメラの方向を向ける点
-		up_X, up_Y, up_Z); //カメラの上の方向(通常視点での上方向を1.0fにする)
+		pos.x, pos.y, pos.z, //カメラの位置
+		dir.x, dir.y, dir.z,   //カメラの方向を向ける点
+		up.x, up.y, up.z); //カメラの上の方向(通常視点での上方向を1.0fにする)
 	//シェーダー計算用座標登録(視点からの距離で使う)
-	posX = pos_X;
-	posY = pos_Y;
-	posZ = pos_Z;
-	upX = up_X;
-	upY = up_Y;
-	upZ = up_Z;
+	posX = pos.x;
+	posY = pos.y;
+	posZ = pos.z;
+	upX = up.x;
+	upY = up.y;
+	upZ = up.z;
 }
 
 void Dx12Process::ResetPointLight() {
@@ -868,22 +856,21 @@ void Dx12Process::ResetPointLight() {
 	lightNum = 0;
 }
 
-bool Dx12Process::PointLightPosSet(int Idx, float x, float y, float z,
-	float r, float g, float b, float a, bool on_off,
-	float range, float atten1, float atten2, float atten3) {
+bool Dx12Process::PointLightPosSet(int Idx, VECTOR3 pos, VECTOR4 Color, bool on_off,
+	float range, VECTOR3 atten) {
 
 	if (Idx > LIGHT_PCS - 1 || Idx < 0) {
 		ErrorMessage("lightNumの値が範囲外です");
 		return false;
 	}
 
-	if (Idx + 1 > lightNum&& on_off)lightNum = Idx + 1;
+	if (Idx + 1 > lightNum && on_off)lightNum = Idx + 1;
 
 	float onoff;
 	if (on_off)onoff = 1.0f; else onoff = 0.0f;
-	plight.LightPos[Idx].as(x, y, z, onoff);
-	plight.LightColor[Idx].as(r, g, b, a);
-	plight.Lightst[Idx].as(range, atten1, atten2, atten3);
+	plight.LightPos[Idx].as(pos.x, pos.y, pos.z, onoff);
+	plight.LightColor[Idx].as(Color.x, Color.y, Color.z, Color.w);
+	plight.Lightst[Idx].as(range, atten.x, atten.y, atten.z);
 	plight.LightPcs = lightNum;
 
 	return true;
@@ -1048,14 +1035,7 @@ ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR
 	return byteCode;
 }
 
-void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
-	float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY, float sizeZ) {
-
-	if (sizeY <= 0.0f || sizeZ <= 0.0f) {
-		sizeY = sizeX;
-		sizeZ = sizeX;
-	}
-
+void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
 	if (insNum > INSTANCE_PCS_3D - 1)insNum--;
 	MATRIX mov;
 	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
@@ -1065,14 +1045,14 @@ void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float 
 	MATRIX WV;
 
 	//拡大縮小
-	MatrixScaling(&scale, sizeX, sizeY, sizeZ);
+	MatrixScaling(&scale, size.x, size.y, size.z);
 	//表示位置
-	MatrixRotationZ(&rotZ, thetaZ);
-	MatrixRotationY(&rotY, thetaY);
-	MatrixRotationX(&rotX, thetaX);
+	MatrixRotationZ(&rotZ, angle.z);
+	MatrixRotationY(&rotY, angle.y);
+	MatrixRotationX(&rotX, angle.x);
 	MatrixMultiply(&rotZY, &rotZ, &rotY);
 	MatrixMultiply(&rotZYX, &rotZY, &rotX);
-	MatrixTranslation(&mov, x, y, z);
+	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
 	MatrixMultiply(&scro, &rotZYX, &scale);
 	MatrixMultiply(&world, &scro, &mov);
 
@@ -1085,12 +1065,12 @@ void Dx12Process::InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float 
 	insNum++;
 }
 
-void Dx12Process::MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a,
-	float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
+void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, VECTOR4 Color, float disp,
+	float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
 
 	cb->C_Pos.as(posX, posY, posZ, 0.0f);
 	cb->viewUp.as(upX, upY, upZ, 0.0f);
-	cb->AddObjColor.as(r, g, b, a);
+	cb->AddObjColor.as(Color.x, Color.y, Color.z, Color.w);
 	memcpy(&cb->GlobalAmbientLight, &GlobalAmbientLight, sizeof(VECTOR4));
 	cb->numLight.as((float)plight.LightPcs, 0.0f, 0.0f, 0.0f);
 	memcpy(cb->pLightPos, plight.LightPos, sizeof(VECTOR4) * LIGHT_PCS);

@@ -399,9 +399,6 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	GetShaderByteCode(light, tNo);
 	mObjectCB1->CopyData(0, sg);
 
-	const UINT ibByteSize = numIndex * sizeof(UINT);
-	getIndexBuffer(0, ibByteSize, numIndex);
-
 	if (hs) {
 		createDivideBuffer();
 	}
@@ -433,10 +430,8 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
 
-void PolygonData::InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX,
-	float sizeX, float sizeY, float sizeZ) {
-
-	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, sizeX, sizeY, sizeZ);
+void PolygonData::Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+	dx->Instancing(ins_no, &cb[dx->cBuffSwap[0]], pos, angle, size);
 }
 
 void PolygonData::CbSwap() {
@@ -449,25 +444,16 @@ void PolygonData::CbSwap() {
 	DrawOn = true;
 }
 
-void PolygonData::InstanceUpdate(float r, float g, float b, float a, float disp, float shininess, float px, float py, float mx, float my) {
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, divArr, numDiv, shininess);
+void PolygonData::InstancingUpdate(VECTOR4 Color, float disp, float shininess, float px, float py, float mx, float my) {
+	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], Color, disp, px, py, mx, my, divArr, numDiv, shininess);
 	CbSwap();
 }
 
-void PolygonData::Update(float x, float y, float z, float r, float g, float b, float a,
-	float theta, float disp, float shininess, float size, float px, float py, float mx, float my) {
+void PolygonData::Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+	float disp, float shininess, float px, float py, float mx, float my) {
 
-	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, theta, 0, 0, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, px, py, mx, my, divArr, numDiv, shininess);
-	CbSwap();
-}
-
-void PolygonData::update(float x, float y, float z, float r, float g, float b, float a,
-	float thetaZ, float thetaY, float thetaX, float size,
-	float disp, float shininess) {
-
-	dx->InstancedMap(ins_no, &cb[dx->cBuffSwap[0]], x, y, z, thetaZ, thetaY, thetaX, size);
-	dx->MatrixMap(&cb[dx->cBuffSwap[0]], r, g, b, a, disp, 1.0f, 1.0f, 1.0f, 1.0f, divArr, numDiv, shininess);
+	dx->Instancing(ins_no, &cb[dx->cBuffSwap[0]], pos, angle, size);
+	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], Color, disp, px, py, mx, my, divArr, numDiv, shininess);
 	CbSwap();
 }
 
@@ -551,8 +537,8 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 			D3D12_RANGE range;
 			range.Begin = 0;
-			UINT numPo = dpara.Iview[i].IndexCount / 3 * sizeof(UINT);
-			range.End = numPo;
+			UINT numPo = dpara.Iview[i].IndexCount / 3;
+			range.End = numPo * sizeof(UINT);
 			UINT* div = nullptr;
 			dpara.mDivideReadBuffer[i].Get()->Map(0, &range, reinterpret_cast<void**>(&div));
 			const UINT minDiv = 2;
@@ -561,7 +547,7 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 			for (UINT d = 0; d < numPo; d++) {
 				UINT mag = div[d] / minDiv;
 				UINT ver = mag * mag * minDivPolygon * 3;
-				verCnt += (ver < 1 ? 1 : ver);
+				verCnt += ver;
 			}
 			dpara.mDivideReadBuffer[i].Get()->Unmap(0, nullptr);
 			dxr.IviewDXR[i].IndexCount = verCnt;

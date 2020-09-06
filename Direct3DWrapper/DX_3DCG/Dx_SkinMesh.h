@@ -35,13 +35,6 @@ class SkinMesh {
 protected:
 	friend SkinMesh_sub;
 	friend Dx12Process;
-	ID3DBlob* vs = nullptr;
-	ID3DBlob* hs = nullptr;
-	ID3DBlob* ds = nullptr;
-	ID3DBlob* ps = nullptr;
-	ID3DBlob* ps_NoMap = nullptr;
-	ID3DBlob* gs = nullptr;
-	ID3DBlob* gs_NoMap = nullptr;
 
 	bool alpha = false;
 	bool blend = false;
@@ -49,7 +42,6 @@ protected:
 	float addSpecular = 0.0f;
 	float addAmbient = 0.0f;
 
-	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
 	int numDiv = 3;
 
@@ -108,10 +100,10 @@ public:
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
 	void CreateFromFBX_SubAnimation(int ind);
 	void setInternalAnimationIndex(int index) { InternalAnimationIndex = index; }
-	bool Update(float time, float x, float y, float z, float r, float g, float b, float a,
-		float thetaZ, float thetaY, float thetaX, float size);
-	bool Update(int ind, float time, float x, float y, float z, float r, float g, float b, float a,
-		float thetaZ, float thetaY, float thetaX, float size, float disp = 1.0f, float shininess = 4.0f);
+
+	bool Update(int ind, float time, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+		float disp = 1.0f, float shininess = 4.0f);
+
 	void DrawOff();
 	void Draw(int com_no);
 	void StreamOutput(int com_no);

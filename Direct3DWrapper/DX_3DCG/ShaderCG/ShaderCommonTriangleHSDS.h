@@ -2,25 +2,8 @@
 //                                 ShaderCommonTriangleHSDS.hlsl                                         //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ShaderFunction.hに連結させて使う
 char *ShaderCommonTriangleHSDS =
 "RWStructuredBuffer<uint> gDivide : register(u0);\n"
-
-"struct HS_CONSTANT_OUTPUT\n"
-"{\n"
-"	 float factor[3]    : SV_TessFactor;\n"
-"	 float inner_factor : SV_InsideTessFactor;\n"
-"};\n"
-
-"struct HS_OUTPUT\n"
-"{\n"
-"    float4 Pos   : POSITION;\n"
-"    float3 Nor   : NORMAL;\n"
-"    float3 GNor  : GEO_NORMAL;\n"
-"    float2 Tex0  : TEXCOORD0;\n"
-"    float2 Tex1  : TEXCOORD1;\n"
-"    uint   instanceID : SV_InstanceID;\n"
-"};\n"
 
 //***************************************ハルシェーダーコンスタント*************************************************//
 "HS_CONSTANT_OUTPUT HSConstant(InputPatch<VS_OUTPUT, 3> ip, uint pid : SV_PrimitiveID)\n"
@@ -33,7 +16,7 @@ char *ShaderCommonTriangleHSDS =
 "   float distance = length(g_C_Pos.xyz - wPos.xyz);\n"
 
 //距離でポリゴン数決定
-"   float divide = 1;\n"
+"   float divide = 2.0f;\n"
 "   for(int i = 0;i < g_DispAmount.y;i++){\n"
 "      if(distance < g_divide[i].x){divide = g_divide[i].y;}\n"
 "   }\n"

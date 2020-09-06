@@ -471,60 +471,55 @@ void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int 
 
 void SkinMesh::GetShaderByteCode(bool disp) {
 	Dx12Process* dx = mObj[0].dx;
-	if (disp) {
-		vs = dx->pVertexShader_SKIN_D.Get();
-		hs = dx->pHullShaderTriangle.Get();
-		ds = dx->pDomainShaderTriangle.Get();
-		gs = dx->pGeometryShader_Before_ds.Get();
-		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
-		primType_create = CONTROL_POINT;
-		for (int i = 0; i < numMesh; i++)
-			mObj[i].dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+	for (int i = 0; i < numMesh; i++) {
+		PolygonData& o = mObj[i];
+		if (disp) {
+			o.vs = dx->pVertexShader_SKIN_D.Get();
+			o.hs = dx->pHullShaderTriangle.Get();
+			o.ds = dx->pDomainShaderTriangle.Get();
+			o.gs = dx->pGeometryShader_Before_ds.Get();
+			o.gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+			o.primType_create = CONTROL_POINT;
+			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+		}
+		else {
+			o.vs = dx->pVertexShader_SKIN.Get();
+			o.gs = dx->pGeometryShader_Before_vs.Get();
+			o.gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
+			o.primType_create = SQUARE;
+			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		}
+		o.ps = dx->pPixelShader_3D.Get();
+		o.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 	}
-	else {
-		vs = dx->pVertexShader_SKIN.Get();
-		gs = dx->pGeometryShader_Before_vs.Get();
-		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
-		primType_create = SQUARE;
-		for (int i = 0; i < numMesh; i++)
-			mObj[i].dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	}
-	ps = dx->pPixelShader_3D.Get();
-	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 }
 
 bool SkinMesh::CreateFromFBX(bool disp) {
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;
 	const int numCbv = 3;
-	int numUav = 0;
-	if (hs)numUav = 1;
-	for (int i = 0; i < numMesh; i++) {
-		mObj[i].setDivideArr(divArr, numDiv);
-		mObj[i].com_no = com_no;
-		mObj[i].primType_create = primType_create;
-		mObj[i].vs = vs;
-		mObj[i].hs = hs;
-		mObj[i].ds = ds;
-		mObj[i].ps = ps;
-		mObj[i].ps_NoMap = ps_NoMap;
-		mObj[i].gs = gs;
-		mObj[i].gs_NoMap = gs_NoMap;
-		mObj[i].createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
-		if (hs) {
-			mObj[i].createDivideBuffer();
-		}
-		Dx12Process* dx = mObj[i].dx;
-		if (dx->DXR_CreateResource)mObj[i].createParameterDXR(alpha);
 
-		if (!mObj[i].createPSO(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
+	for (int i = 0; i < numMesh; i++) {
+		PolygonData& o = mObj[i];
+		o.setDivideArr(divArr, numDiv);
+		o.com_no = com_no;
+		o.createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
+		int numUav = 0;
+		if (o.hs) {
+			numUav = 1;
+			o.createDivideBuffer();
+		}
+		Dx12Process* dx = o.dx;
+		if (dx->DXR_CreateResource)o.createParameterDXR(alpha);
+
+		if (!o.createPSO(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 		if (dx->DXR_CreateResource) {
-			if (!mObj[i].createPSO_DXR(mObj[0].dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
+			if (!o.createPSO_DXR(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
 		}
 		UINT cbSize = mObject_BONES->getSizeInBytes();
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
-		if (!mObj[i].setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
+		if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
 	}
 	if (pvVB_delete_f)ARR_DELETE(pvVB);
 	ARR_DELETE(newIndex);
@@ -736,12 +731,8 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 	}
 }
 
-bool SkinMesh::Update(float time, float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size) {
-	return Update(0, time, x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size);
-}
-
-bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, float g, float b, float a,
-	float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess) {
+bool SkinMesh::Update(int ind, float ti, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+	float disp, float shininess) {
 
 	bool frame_end = false;
 	int insnum = 0;
@@ -749,7 +740,7 @@ bool SkinMesh::Update(int ind, float ti, float x, float y, float z, float r, flo
 	MatrixMap_Bone(&sgb[mObj[0].dx->cBuffSwap[0]]);
 
 	for (int i = 0; i < numMesh; i++)
-		mObj[i].update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, disp, shininess);
+		mObj[i].Update(pos, Color, angle, size, disp, shininess);
 
 	return frame_end;
 }
@@ -763,20 +754,16 @@ void SkinMesh::Draw(int com) {
 
 	mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
 
-	for (int i = 0; i < numMesh; i++) {
-		mObj[i].com_no = com_no;
+	for (int i = 0; i < numMesh; i++)
 		mObj[i].Draw(com);
-	}
 }
 
 void SkinMesh::StreamOutput(int com) {
 
 	mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
 
-	for (int i = 0; i < numMesh; i++) {
-		mObj[i].com_no = com_no;
+	for (int i = 0; i < numMesh; i++)
 		mObj[i].StreamOutput(com);
-	}
 }
 
 void SkinMesh::Draw() {

@@ -150,7 +150,6 @@ private:
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output = nullptr;
 
-	ComPtr<ID3DBlob> pHullShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
 
 	ComPtr<ID3DBlob> pDomainShader_Wave = nullptr;
@@ -161,11 +160,9 @@ private:
 	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_Output;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_P;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_MESH;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3D;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3DBC;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_2D;
 
-	ComPtr<ID3DBlob> pVertexShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_SKIN = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_SKIN_D = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_PSO = nullptr;
@@ -254,11 +251,10 @@ private:
 
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
-	void InstancedMap(int& insNum, CONSTANT_BUFFER* cb, float x, float y, float z,
-		float thetaZ, float thetaY, float thetaX, float sizeX, float sizeY = 0.0f, float sizeZ = 0.0f);
+	void Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
 
-	void MatrixMap(CONSTANT_BUFFER* cb, float r, float g, float b, float a,
-		float disp, float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
+	void InstancingUpdate(CONSTANT_BUFFER* cb, VECTOR4 Color, float disp,
+		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
 
 	void FenceSetEvent();
 
@@ -315,18 +311,15 @@ public:
 	void WaitFenceNotLock();
 	void WaitFence();
 	void DrawScreen();
-	void Cameraset(float posX, float posY, float posZ,
-		float dirX, float dirY, float dirZ,
-		float upX = 0.0f, float upY = 0.0f, float upZ = 1.0f);
+	void Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up = { 0.0f,0.0f,1.0f });
 
 	void ResetPointLight();
 	void setGlobalAmbientLight(float r, float g, float b) {
 		GlobalAmbientLight.as(r, g, b, 0.0f);
 	}
 
-	bool PointLightPosSet(int Idx, float x, float y, float z,
-		float r, float g, float b, float a, bool on_off,
-		float range, float atten1 = 0.01f, float atten2 = 0.001f, float atten3 = 0.001f);
+	bool PointLightPosSet(int Idx, VECTOR3 pos, VECTOR4 Color, bool on_off,
+		float range, VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
 	void DirectionLight(float x, float y, float z, float r, float g, float b);
 	void SetDirectionLight(bool onoff);
@@ -610,6 +603,7 @@ protected:
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* gs = nullptr;
 	ID3DBlob* gs_NoMap = nullptr;
+	ID3DBlob* cs = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
@@ -680,10 +674,6 @@ protected:
 		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void update(float x, float y, float z, float r, float g, float b, float a,
-		float thetaZ, float thetaY, float thetaX, float size,
-		float disp = 1.0f, float shininess = 4.0f);
-
 	void draw(int com_no, drawPara& para, ParameterDXR& dxr);
 	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
 
@@ -727,13 +717,18 @@ public:
 		index[0] = new UINT[numInd];
 		memcpy(index[0], ind, sizeof(UINT) * numInd);
 		numIndex = numInd;
+		const UINT ibByteSize = numIndex * sizeof(UINT);
+		getIndexBuffer(0, ibByteSize, numIndex);
 	}
 
-	void InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX,
-		float sizeX = 1.0f, float sizeY = 0.0f, float sizeZ = 0.0f);
-	void InstanceUpdate(float r, float g, float b, float a, float disp, float shininess = 4.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float theta, float disp, float shininess = 4.0f,
-		float size = 1.0f, float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+	void Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
+
+	void InstancingUpdate(VECTOR4 Color, float disp, float shininess = 4.0f,
+		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+
+	void Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size, float disp, float shininess = 4.0f,
+		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+
 	void DrawOff();
 	void Draw(int com_no);
 	void StreamOutput(int com_no);

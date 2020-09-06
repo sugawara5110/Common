@@ -2,7 +2,6 @@
 //                                          ShaderSkinMesh_D.hlsl                                        //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ShaderFunction.hに連結させて使う
 char *ShaderSkinMesh_D =
 "cbuffer global_bones : register(b2)\n"//ボーンのポーズ行列が入る
 "{\n"

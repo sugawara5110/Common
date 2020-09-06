@@ -30,19 +30,19 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 void MeshData::GetShaderByteCode(bool disp) {
 	Dx12Process* dx = mObj.dx;
 	if (disp) {
-		vs = dx->pVertexShader_MESH_D.Get();
-		hs = dx->pHullShaderTriangle.Get();
-		ds = dx->pDomainShaderTriangle.Get();
-		gs = dx->pGeometryShader_Before_ds.Get();
-		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+		mObj.vs = dx->pVertexShader_MESH_D.Get();
+		mObj.hs = dx->pHullShaderTriangle.Get();
+		mObj.ds = dx->pDomainShaderTriangle.Get();
+		mObj.gs = dx->pGeometryShader_Before_ds.Get();
+		mObj.gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
 	}
 	else {
-		vs = dx->pVertexShader_MESH.Get();
-		gs = dx->pGeometryShader_Before_vs.Get();
-		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
+		mObj.vs = dx->pVertexShader_MESH.Get();
+		mObj.gs = dx->pGeometryShader_Before_vs.Get();
+		mObj.gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
 	}
-	ps = dx->pPixelShader_3D.Get();
-	ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
+	mObj.ps = dx->pPixelShader_3D.Get();
+	mObj.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName) {
@@ -135,11 +135,11 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 	addAmbient = ambi;
 
 	if (disp) {
-		primType_create = CONTROL_POINT;
+		mObj.primType_create = CONTROL_POINT;
 		mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	}
 	else {
-		primType_create = SQUARE;
+		mObj.primType_create = SQUARE;
 		mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	}
 }
@@ -421,19 +421,11 @@ bool MeshData::CreateMesh() {
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;
 	const int numCbv = 2;
-	int numUav = 0;
-	if (hs)numUav = 1;
 	mObj.setDivideArr(divArr, numDiv);
-	mObj.primType_create = primType_create;
-	mObj.vs = vs;
-	mObj.hs = hs;
-	mObj.ds = ds;
-	mObj.ps = ps;
-	mObj.ps_NoMap = ps_NoMap;
-	mObj.gs = gs;
-	mObj.gs_NoMap = gs_NoMap;
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
-	if (hs) {
+	int numUav = 0;
+	if (mObj.hs) {
+		numUav = 1;
 		mObj.createDivideBuffer();
 	}
 	if (dx->DXR_CreateResource) {
@@ -450,16 +442,16 @@ bool MeshData::CreateMesh() {
 	return true;
 }
 
-void MeshData::InstancedMap(float x, float y, float z, float thetaZ, float thetaY, float thetaX, float size) {
-	mObj.InstancedMap(x, y, z, thetaZ, thetaY, thetaX, size, size, size);
+void MeshData::Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+	mObj.Instancing(pos, angle, size);
 }
 
-void MeshData::InstanceUpdate(float r, float g, float b, float a, float disp, float shininess) {
-	mObj.InstanceUpdate(r, g, b, a, disp, shininess);
+void MeshData::InstancingUpdate(VECTOR4 Color, float disp, float shininess) {
+	mObj.InstancingUpdate(Color, disp, shininess);
 }
 
-void MeshData::Update(float x, float y, float z, float r, float g, float b, float a, float thetaZ, float thetaY, float thetaX, float size, float disp, float shininess) {
-	mObj.update(x, y, z, r, g, b, a, thetaZ, thetaY, thetaX, size, disp, shininess);
+void MeshData::Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size, float disp, float shininess) {
+	mObj.Update(pos, Color, angle, size, disp, shininess);
 }
 
 void MeshData::DrawOff() {
@@ -467,12 +459,10 @@ void MeshData::DrawOff() {
 }
 
 void MeshData::Draw(int com_no) {
-	mObj.com_no = com_no;
 	mObj.Draw(com_no);
 }
 
 void MeshData::StreamOutput(int com_no) {
-	mObj.com_no = com_no;
 	mObj.StreamOutput(com_no);
 }
 

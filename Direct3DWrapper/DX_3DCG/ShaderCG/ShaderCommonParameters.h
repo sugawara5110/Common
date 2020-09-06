@@ -84,6 +84,23 @@ char* ShaderCommonParameters =
 "    float2 Tex1     : TEXCOORD1;\n"
 "    float3 tangent  : TANGENT;\n"
 "};\n"
+
+"struct HS_CONSTANT_OUTPUT\n"
+"{\n"
+"	 float factor[3]    : SV_TessFactor;\n"
+"	 float inner_factor : SV_InsideTessFactor;\n"
+"};\n"
+
+"struct HS_OUTPUT\n"
+"{\n"
+"    float4 Pos   : POSITION;\n"
+"    float3 Nor   : NORMAL;\n"
+"    float3 GNor  : GEO_NORMAL;\n"
+"    float2 Tex0  : TEXCOORD0;\n"
+"    float2 Tex1  : TEXCOORD1;\n"
+"    uint   instanceID : SV_InstanceID;\n"
+"};\n"
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////フォグ計算(テクスチャに対して計算)////////////////////////////////////////

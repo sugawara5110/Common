@@ -2,7 +2,6 @@
 //                                           ShaderMESH.hlsl                                             //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ShaderFunction.hに連結させて使う
 char *ShaderMesh =
 //****************************************メッシュ頂点**************************************************************//
 "GS_Mesh_INPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"

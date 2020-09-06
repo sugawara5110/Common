@@ -2,7 +2,6 @@
 //                                 ShaderCommonTriangleGS.hlsl                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//ShaderFunction.h‚É˜AŒ‹‚³‚¹‚ÄŽg‚¤
 char* ShaderCommonTriangleGS =
 "PS_INPUT PsInput(GS_Mesh_INPUT input)\n"
 "{\n"
