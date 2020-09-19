@@ -5,6 +5,8 @@
 //*****************************************************************************************//
 
 #include "Dx_ParticleData.h"
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 ParticleData::ParticleData() {
 	dx = Dx12Process::GetInstance();
@@ -29,7 +31,7 @@ void ParticleData::GetShaderByteCode() {
 	ps = dx->pPixelShader_P.Get();
 }
 
-void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, float angle, float size, float speed, bool tex) {
+void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, VECTOR4 color, float angle, float size, float speed) {
 	MATRIX mov;
 	MATRIX rot;
 	MATRIX world;
@@ -43,7 +45,15 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, float angle, float
 	MatrixTranspose(&cb->Proj);
 	cb->size.x = size;
 	cb->size.z = speed;
-	if (tex)cb->size.w = 1.0f; else cb->size.w = 0.0f;
+	cb->AddObjColor.as(color.x, color.y, color.z, color.w);
+
+	if (dx->DXR_CreateResource) {
+		memcpy(&dxrPara.AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
+		MatrixTranspose(&world);
+		memcpy(dxrPara.Transform, &world, sizeof(MATRIX) * dxrPara.NumInstance);
+		cb->invRot = BillboardAngleCalculation(angle);
+		MatrixTranspose(&cb->invRot);
+	}
 }
 
 void ParticleData::update2(CONSTANT_BUFFER_P* cb, bool init) {
@@ -86,13 +96,13 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 			float yp = (float)(j * size - hs);
 			if (ptex[ptexI + 3] > 0) {
 				float xp = (float)(i * size - ws);
-				P_pos[P_no].Col.as(ptex[ptexI + 0], ptex[ptexI + 1], ptex[ptexI + 2], ptex[ptexI + 3]);//色
 				float xst = xp + ((rand() % 500) * size) - ((rand() % 500) * size);
 				float yst = yp + ((rand() % 500) * size) - ((rand() % 500) * size);
 				float zst = (rand() % 500) * size;
 				P_pos[P_no].CurrentPos.as(xst, yst, zst);
 				P_pos[P_no].PosSt.as(xst, yst, zst);
 				P_pos[P_no].PosEnd.as(xp, yp, 0.0f);//0,0,0を中心にする
+				P_pos[P_no].normal.as(0.0f, 0.0f, -1.0f);
 				P_no++;
 			}
 		}
@@ -116,10 +126,29 @@ void ParticleData::GetBufferBill(int v) {
 	Sview2 = std::make_unique<StreamView[]>(2);
 }
 
+void ParticleData::createDxr() {
+	dxrPara.NumMaterial = 1;
+	dxrPara.NumInstance = 1;
+	dxrPara.difTex = std::make_unique<ID3D12Resource* []>(1);
+	dxrPara.norTex = std::make_unique<ID3D12Resource* []>(1);
+	dxrPara.speTex = std::make_unique<ID3D12Resource* []>(1);
+	dxrPara.diffuse = std::make_unique<VECTOR4[]>(1);
+	dxrPara.specular = std::make_unique<VECTOR4[]>(1);
+	dxrPara.ambient = std::make_unique<VECTOR4[]>(1);
+	dxrPara.VviewDXR = std::make_unique<VertexView[]>(1);
+	dxrPara.IviewDXR = std::make_unique<IndexView[]>(1);
+	dxrPara.VviewDXR = std::make_unique<VertexView[]>(1);
+	dxrPara.VviewDXR = std::make_unique<VertexView[]>(1);
+	dxrPara.SviewDXR = std::make_unique<StreamView[]>(1);
+	dxrPara.SizeLocation = std::make_unique<StreamView[]>(1);
+	dxrPara.shininess = 1.0f;
+	dxrPara.alphaTest = true;
+}
+
 void ParticleData::CreateVbObj() {
 	const UINT vbByteSize = ver * sizeof(PartPos);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, P_pos, vbByteSize, Vview->VertexBufferUploader);
+	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, P_pos, vbByteSize, Vview->VertexBufferUploader, false);
 
 	Vview->VertexByteStride = sizeof(PartPos);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -131,6 +160,10 @@ void ParticleData::CreateVbObj() {
 		Sview1[i].StreamByteStride = Sview2[i].StreamByteStride = sizeof(PartPos);
 		Sview1[i].StreamBufferByteSize = Sview2[i].StreamBufferByteSize = vbByteSize;
 		Sview1[i].BufferFilledSizeLocation = Sview2[i].StreamBufferGPU->GetGPUVirtualAddress();
+	}
+
+	if (dx->DXR_CreateResource) {
+		createDxr();
 	}
 }
 
@@ -170,8 +203,8 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 
 	TextureNo te;
 	te.diffuse = texpar;
-	te.normal = -1;
-	te.specular = -1;
+	te.normal = dx->GetTexNumber("dummyNor.");;
+	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	createTextureResource(0, 1, &te);
 	mSrvHeap = dx->CreateDescHeap(1);
@@ -181,6 +214,62 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	//パイプラインステートオブジェクト生成(Draw)
 	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, true, true);
 	if (mPSO_draw == nullptr)return false;
+
+	if (dx->DXR_CreateResource) {
+
+		UINT indCnt = ver * 6;
+		IndexView& dxI = dxrPara.IviewDXR[0];
+		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+		dxI.IndexBufferByteSize = indCnt * sizeof(UINT);
+		dxI.IndexCount = indCnt;
+		UINT* ind = new UINT[indCnt];
+		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
+		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+			dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
+		ARR_DELETE(ind);
+
+		UINT verCnt = ver * 6;
+		VertexView& dxV = dxrPara.VviewDXR[0];
+		UINT bytesize = verCnt * sizeof(VERTEX_DXR);
+		dxV.VertexByteStride = sizeof(VERTEX_DXR);
+		dxV.VertexBufferByteSize = bytesize;
+		dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+			dxV.VertexBufferByteSize);
+		dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+		StreamView& dxS = dxrPara.SviewDXR[0];
+		dxS.StreamByteStride = sizeof(VERTEX_DXR);
+		dxS.StreamBufferByteSize = bytesize;
+		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
+
+		StreamView& dxL = dxrPara.SizeLocation[0];
+		dxL.StreamByteStride = sizeof(VERTEX_DXR);
+		dxL.StreamBufferByteSize = bytesize;
+		dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
+
+		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
+
+		rootSignatureDXR = CreateRsStreamOutput(2, slotRootParameter_draw);
+		if (rootSignatureDXR == nullptr)return false;
+
+		dxrPara.difTex[0] = texture[0].Get();
+		dxrPara.norTex[0] = texture[1].Get();
+		dxrPara.speTex[0] = texture[2].Get();
+
+		gs = dx->pGeometryShader_P_Output.Get();
+		PSO_DXR = CreatePsoStreamOutput(vs, nullptr, nullptr, gs, rootSignatureDXR.Get(),
+			dx->pVertexLayout_P,
+			&dx->pDeclaration_Output,
+			(UINT)dx->pDeclaration_Output.size(),
+			&dxrPara.SviewDXR[0].StreamByteStride,
+			1,
+			POINt);
+
+		dxrPara.diffuse[0].as(0.5f, 0.5f, 0.5f, 0.5f);
+		dxrPara.specular[0].as(0.5f, 0.5f, 0.5f, 0.5f);
+		dxrPara.ambient[0].as(0.0f, 0.0f, 0.0f, 0.0f);
+	}
 
 	return true;
 }
@@ -198,46 +287,93 @@ bool ParticleData::CreateBillboard() {
 	return CreatePartsDraw(-1);
 }
 
-void ParticleData::DrawParts1() {
-	mCommandList->SetPipelineState(mPSO_com.Get());
+void ParticleData::DrawParts1(int com) {
 
-	mCommandList->SetGraphicsRootSignature(mRootSignature_com.Get());
+	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+	mCList->SetPipelineState(mPSO_com.Get());
 
-	mCommandList->SetGraphicsRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootSignature(mRootSignature_com.Get());
 
-	mCommandList->SOSetTargets(0, 1, &Sview1[svInd].StreamBufferView());
+	mCList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
+	mCList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	mCommandList->DrawInstanced(ver, 1, 0, 0);
+	mCList->SetGraphicsRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
+
+	mCList->SOSetTargets(0, 1, &Sview1[svInd].StreamBufferView());
+
+	mCList->DrawInstanced(ver, 1, 0, 0);
 
 	svInd = 1 - svInd;
 	if (firstDraw) {
-		dx->dx_sub[com_no].ResourceBarrier(Vview->VertexBufferGPU.Get(),
+		dx->dx_sub[com].ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		mCommandList->CopyResource(Vview->VertexBufferGPU.Get(), Sview1[svInd].StreamBufferGPU.Get());
-		dx->dx_sub[com_no].ResourceBarrier(Vview->VertexBufferGPU.Get(),
+		mCList->CopyResource(Vview->VertexBufferGPU.Get(), Sview1[svInd].StreamBufferGPU.Get());
+		dx->dx_sub[com].ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 	}
-	mCommandList->SOSetTargets(0, 1, nullptr);
+	mCList->SOSetTargets(0, 1, nullptr);
 }
 
-void ParticleData::DrawParts2() {
-	mCommandList->SetPipelineState(mPSO_draw.Get());
+void ParticleData::DrawParts2(int com) {
+
+	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+
+	mCList->SetPipelineState(mPSO_draw.Get());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	mCommandList->SetGraphicsRootSignature(mRootSignature_draw.Get());
+	mCList->SetGraphicsRootSignature(mRootSignature_draw.Get());
 
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+	mCList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
+	mCList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	mCommandList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	mCList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
 
-	mCommandList->DrawInstanced(ver, 1, 0, 0);
+	mCList->DrawInstanced(ver, 1, 0, 0);
+}
+
+void ParticleData::DrawParts2StreamOutput(int com) {
+
+	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+
+	dx->Bigin(com);
+
+	mCList->SetPipelineState(PSO_DXR.Get());
+
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
+	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+	mCList->SetGraphicsRootSignature(rootSignatureDXR.Get());
+
+	mCList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
+	mCList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	mCList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	mCList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
+
+	mCList->SOSetTargets(0, 1, &dxrPara.SviewDXR[0].StreamBufferView());
+
+	mCList->DrawInstanced(ver, 1, 0, 0);
+
+	dx->dx_sub[com].ResourceBarrier(dxrPara.VviewDXR[0].VertexBufferGPU.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
+		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	mCList->CopyResource(dxrPara.VviewDXR[0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0].StreamBufferGPU.Get());
+
+	dx->dx_sub[com].ResourceBarrier(dxrPara.VviewDXR[0].VertexBufferGPU.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+
+	mCList->SOSetTargets(0, 1, nullptr);
+
+	dx->End(com);
+	dx->WaitFence();
 }
 
 void ParticleData::CbSwap(bool init) {
@@ -249,8 +385,8 @@ void ParticleData::CbSwap(bool init) {
 	DrawOn = true;
 }
 
-void ParticleData::Update(VECTOR3 pos, float angle, float size, bool init, float speed) {
-	update(&cbP[dx->cBuffSwap[0]], pos, angle, size, speed, texpar_on | movOn[0].m_on);
+void ParticleData::Update(VECTOR3 pos, VECTOR4 color, float angle, float size, bool init, float speed) {
+	update(&cbP[dx->cBuffSwap[0]], pos, color, angle, size, speed);
 	CbSwap(init);
 }
 
@@ -258,7 +394,7 @@ void ParticleData::DrawOff() {
 	DrawOn = FALSE;
 }
 
-void ParticleData::Draw() {
+void ParticleData::Draw(int com) {
 
 	if (!UpOn | !DrawOn)return;
 
@@ -272,30 +408,109 @@ void ParticleData::Draw() {
 	update2(&cbP[dx->cBuffSwap[1]], init);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
-	DrawParts1();
-	if (firstDraw)DrawParts2();
+	DrawParts1(com);
+	if (firstDraw)DrawParts2(com);
 	firstDraw = true;
 	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
 }
 
-void ParticleData::Update(float size) {
-	update(&cbP[dx->cBuffSwap[0]], { 0, 0, 0 }, 0, size, 1.0f, texpar_on | movOn[0].m_on);
+void ParticleData::Draw() {
+	Draw(com_no);
+}
+
+void ParticleData::Update(float size, VECTOR4 color) {
+	update(&cbP[dx->cBuffSwap[0]], { 0, 0, 0 }, color, 0, size, 1.0f);
 	CbSwap(true);
 }
 
-void ParticleData::DrawBillboard() {
+void ParticleData::DrawBillboard(int com) {
 
 	if (!UpOn | !DrawOn)return;
 
 	update2(&cbP[dx->cBuffSwap[1]], true);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
-	DrawParts2();
+	DrawParts2(com);
 }
 
-void ParticleData::SetVertex(int i,
-	float vx, float vy, float vz,
-	float r, float g, float b, float a) {
-	P_pos[i].CurrentPos.as(vx, vy, vz);
-	P_pos[i].Col.as(r, g, b, a);
+void ParticleData::DrawBillboard() {
+	DrawBillboard(com_no);
+}
+
+void ParticleData::SetVertex(int i, VECTOR3 pos, VECTOR3 nor) {
+	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
+	P_pos[i].normal.as(nor.x, nor.y, nor.z);
+}
+
+void ParticleData::StreamOutput(int com) {
+
+	if (!UpOn | !DrawOn)return;
+
+	bool init = parInit;
+	//一回のinit == TRUE で二つのstreamOutを初期化
+	if (init) { streamInitcount = 1; }
+	else {
+		if (streamInitcount > 2) { streamInitcount = 0; }
+		if (streamInitcount != 0) { init = true; streamInitcount++; }
+	}
+	update2(&cbP[dx->cBuffSwap[1]], init);
+	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
+
+	dx->Bigin(com);
+	DrawParts1(com);
+	dx->End(com);
+	dx->WaitFence();
+	if (firstDraw)DrawParts2StreamOutput(com);
+	firstDraw = true;
+	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
+}
+
+void ParticleData::StreamOutputBillboard(int com) {
+
+	if (!UpOn | !DrawOn)return;
+
+	update2(&cbP[dx->cBuffSwap[1]], true);
+	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
+
+	DrawParts2StreamOutput(com);
+}
+
+void ParticleData::StreamOutput() {
+	StreamOutput(com_no);
+}
+
+void ParticleData::StreamOutputBillboard() {
+	StreamOutputBillboard(com_no);
+}
+
+ParameterDXR* ParticleData::getParameter() {
+	return &dxrPara;
+}
+
+static float AngleCalculation360(float distA, float distB) {
+	static const float radian1 = 180.0f / (float)M_PI;
+	float angle = (float)atan(distA / distB) * radian1;
+	if (distA >= 0 && distB < 0) {
+		return angle + 360.0f;
+	}
+	if (distB >= 0) {
+		return angle + 180.0f;
+	}
+	return angle;
+}
+
+MATRIX ParticleData::BillboardAngleCalculation(float angle) {
+	//float distanceZ = dx->posZ - dx->dirZ;
+	float distanceY = dx->posY - dx->dirY;
+	float distanceX = dx->posX - dx->dirX;
+
+	float angleZ = (float)fmod(AngleCalculation360(distanceX, distanceY) + angle, 360.0f);
+	//float angleY = AngleCalculation360(distanceZ, distanceX);
+	//float angleX = AngleCalculation360(distanceZ, distanceY);
+
+	MATRIX rotZ, inv;
+	MatrixRotationZ(&rotZ, angleZ);
+	MatrixInverse(&inv, &rotZ);
+
+	return inv;
 }

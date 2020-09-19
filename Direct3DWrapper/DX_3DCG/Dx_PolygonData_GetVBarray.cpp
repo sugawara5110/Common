@@ -261,10 +261,12 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 		if (hs) {
 			ID3D12Resource* res[1];
 			res[0] = dpara.mDivideBuffer[i].Get();
+			UINT byteStride[1];
+			byteStride[0] = sizeof(UINT);
 			UINT size[1];
 			size[0] = dpara.Iview[i].IndexCount / 3;
-			CreateUavBufferUINT(dpara.descHeap.Get(), dpara.numDesc * i + numSrvTex + numSrvBuf + numCbv,
-				res, size, 1);
+			CreateUavBuffer(dpara.descHeap.Get(), dpara.numDesc * i + numSrvTex + numSrvBuf + numCbv,
+				res, byteStride, size, 1);
 		}
 	}
 	return true;
@@ -313,7 +315,7 @@ void PolygonData::createParameterDXR(bool alpha) {
 		UINT* ind = new UINT[indCnt];
 		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
 		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
-			bytesize, dxI.IndexBufferUploader);
+			bytesize, dxI.IndexBufferUploader, false);
 		ARR_DELETE(ind);
 
 		VertexView& dxV = dxrPara.VviewDXR[i];
@@ -558,6 +560,7 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 void PolygonData::ParameterDXR_Update() {
 	dxrPara.NumInstance = dpara.insNum;
 	dxrPara.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
+	memcpy(&dxrPara.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(VECTOR4));
 	memcpy(dxrPara.Transform, &cb[dx->cBuffSwap[1]].World, sizeof(MATRIX) * dxrPara.NumInstance);
 }
 

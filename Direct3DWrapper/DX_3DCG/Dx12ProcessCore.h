@@ -149,6 +149,7 @@ private:
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_P_Output = nullptr;
 
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
 
@@ -213,6 +214,7 @@ private:
 	MATRIX mView;
 	MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
 	float posX, posY, posZ;
+	float dirX, dirY, dirZ;
 	float upX, upY, upZ;
 
 	//カメラ画角
@@ -245,7 +247,7 @@ private:
 		const void* initData, LONG_PTR RowPitch);
 
 	ComPtr<ID3D12Resource> CreateDefaultBuffer(int com_no,
-		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer);
+		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
 
 	ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
 
@@ -484,6 +486,7 @@ struct ParameterDXR {
 	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
 	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
 	MATRIX Transform[INSTANCE_PCS_3D] = {};
+	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
 	bool alphaTest;
 };
@@ -522,8 +525,8 @@ protected:
 	void CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
 
-	void CreateUavBufferUINT(ID3D12DescriptorHeap* heap, int offsetHeap,
-		ID3D12Resource** buffer, UINT* size, int bufNum);
+	void CreateUavBuffer(ID3D12DescriptorHeap* heap, int offsetHeap,
+		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
 
 	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav);
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
@@ -641,14 +644,14 @@ protected:
 	void createDefaultBuffer(T* vertexArr, UINT** indexArr, bool verDelete_f) {
 		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, vertexArr,
 			dpara.Vview->VertexBufferByteSize,
-			dpara.Vview->VertexBufferUploader);
+			dpara.Vview->VertexBufferUploader, false);
 		if (verDelete_f)ARR_DELETE(vertexArr);//使わない場合解放
 
 		for (int i = 0; i < dpara.NumMaterial; i++) {
 			if (dpara.Iview[i].IndexCount <= 0)continue;
 			dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, indexArr[i],
 				dpara.Iview[i].IndexBufferByteSize,
-				dpara.Iview[i].IndexBufferUploader);
+				dpara.Iview[i].IndexBufferUploader, false);
 			ARR_DELETE(indexArr[i]);
 		}
 		ARR_DELETE(indexArr);

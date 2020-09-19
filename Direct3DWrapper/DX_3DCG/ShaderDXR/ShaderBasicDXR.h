@@ -36,6 +36,7 @@ char* ShaderBasicDXR =
      //         Payload);
      //この関数からRayがスタートする
      //payloadに各hit, miss シェーダーで計算された値が格納される
+"    payload.RecursionCnt = 1;\n"
 "    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
 "    float3 col = linearToSrgb(payload.color);\n"
 "    gOutput[index] = float4(col, 1);\n"
@@ -68,16 +69,21 @@ char* ShaderBasicDXR =
 "    float3 normalMap = getNormalMap(triangleNormal, triangleUV0);\n"
 //テクスチャ
 "    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
+"    float4 add = material[materialID].AddObjColor;\n"
+"    difTex.x = saturate(difTex.x + add.x);\n"
+"    difTex.y = saturate(difTex.y + add.y);\n"
+"    difTex.z = saturate(difTex.z + add.z);\n"
+"    difTex.w = saturate(difTex.w + add.w);\n"
 "    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
 
 //光源への光線(emissive以外)
-"    if(mNo != 1)difTex.xyz = EmissivePayloadCalculate(hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
+"    if(mNo != 1)difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
 //反射方向への光線(metallicのみ)
-"    if(mNo == 0)difTex.xyz = MetallicPayloadCalculate(hitPosition, difTex.xyz, normalMap);\n"
+"    if(mNo == 0)difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, normalMap);\n"
 
 //アルファテスト
 "    if(material[materialID].alphaTest == 1.0f) {\n"
-"       difTex.xyz = AlphaTest(hitPosition, difTex.xyz, difTex.w, 0);\n"
+"       difTex.xyz = AlphaTest(payload.RecursionCnt, hitPosition, difTex.xyz, difTex.w, 0);\n"
 "    }\n"
 "    payload.color = difTex.xyz;\n"
 "}\n"
@@ -101,10 +107,10 @@ char* ShaderBasicDXR =
 "    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
 "    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
 //光源への光線
-"    difTex.xyz = EmissivePayloadCalculate(hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
+"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
 //アルファテスト
 "    if(material[materialID].alphaTest == 1.0f) {\n"
-"       difTex.xyz = AlphaTest(hitPosition, difTex.xyz, difTex.w, 1);\n"
+"       difTex.xyz = AlphaTest(payload.RecursionCnt, hitPosition, difTex.xyz, difTex.w, 1);\n"
 "    }\n"
 "    payload.color = difTex.xyz;\n"
 "    payload.hit = true;\n"

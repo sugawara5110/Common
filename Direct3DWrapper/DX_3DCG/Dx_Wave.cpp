@@ -69,41 +69,33 @@ bool Wave::ComCreate() {
 	Dx12Process* dx = mObj.dx;
 	UINT64 byteSize = wdata.size() * sizeof(WaveData);
 
+	mInputBuffer = dx->CreateDefaultBuffer(mObj.com_no, wdata.data(), byteSize, mInputUploadBuffer, true);
+	if (!mInputBuffer) {
+		ErrorMessage("Wave::ComCreate Error!!");
+		return false;
+	}
+
 	if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(&mOutputBuffer, byteSize))) {
-		ErrorMessage("Wave::ComCreate Error!!"); return false;
-	}
-	if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(&mInputBuffer, byteSize))) {
-		ErrorMessage("Wave::ComCreate Error!!"); return false;
-	}
-	if (FAILED(dx->createUploadResource(&mInputUploadBuffer, byteSize))) {
-		ErrorMessage("Wave::ComCreate Error!!"); return false;
+		ErrorMessage("Wave::ComCreate Error!!");
+		return false;
 	}
 
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = wdata.data();
-	subResourceData.RowPitch = byteSize;
-	subResourceData.SlicePitch = subResourceData.RowPitch;
-	//wdata,UpLoad
-	dx->dx_sub[mObj.com_no].ResourceBarrier(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	if (FAILED(dx->CopyResourcesToGPU(mObj.com_no, mInputUploadBuffer.Get(), mInputBuffer.Get(),
-		subResourceData.pData, subResourceData.RowPitch))) {
-		ErrorMessage("Wave::ComCreate Error!!"); return false;
-	}
-
-	dx->dx_sub[mObj.com_no].ResourceBarrier(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	dx->dx_sub[mObj.com_no].ResourceBarrier(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
-	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
-	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
-	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
-	slotRootParameter[2].InitAsConstantBufferView(0);//mObjectCB_WAVE
+	D3D12_ROOT_PARAMETER rootParameter[3] = {};
+	rootParameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	rootParameter[0].Descriptor.ShaderRegister = 0;
+	rootParameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootParameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	rootParameter[1].Descriptor.ShaderRegister = 1;
+	rootParameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootParameter[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameter[2].Descriptor.ShaderRegister = 0;
+	rootParameter[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	mRootSignatureCom = mObj.CreateRsCompute(3, slotRootParameter);
+	mRootSignatureCom = mObj.CreateRsCompute(3, rootParameter);
 	if (mRootSignatureCom == nullptr)return false;
 
 	//PSO

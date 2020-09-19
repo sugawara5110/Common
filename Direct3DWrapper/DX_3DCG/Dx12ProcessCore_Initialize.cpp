@@ -208,7 +208,7 @@ bool Dx12Process::CreateShaderByteCode() {
 		{ 0, "POSITION", 0, 0, 3, 0 }, //「x,y,z」をスロット「0」の「POSITION」に出力
 		{ 0, "POSITION", 1, 0, 3, 0 },
 		{ 0, "POSITION", 2, 0, 3, 0 },
-		{ 0, "COLOR", 0, 0, 4, 0 }
+		{ 0, "NORMAL", 0, 0, 3, 0 }
 	};
 	//ストリーム出力
 	pVertexShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS_SO", "vs_5_0");
@@ -220,7 +220,7 @@ bool Dx12Process::CreateShaderByteCode() {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "POSITION", 2, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3 * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 4 * 3 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 	//パーティクル
 	pVertexShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS", "vs_5_0");
@@ -279,6 +279,8 @@ bool Dx12Process::CreateShaderByteCode() {
 		{ 0, "TEXCOORD", 0, 0, 2, 0 },
 		{ 0, "TEXCOORD", 1, 0, 2, 0 }
 	};
+
+	pGeometryShader_P_Output = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_PointDxr", "gs_5_0");
 
 	return CreateShaderByteCodeBool;
 }
@@ -832,16 +834,18 @@ void Dx12Process::DrawScreen() {
 }
 
 void Dx12Process::Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up) {
-
 	//カメラの位置と方向を設定
 	MatrixLookAtLH(&mView,
-		pos.x, pos.y, pos.z, //カメラの位置
-		dir.x, dir.y, dir.z,   //カメラの方向を向ける点
-		up.x, up.y, up.z); //カメラの上の方向(通常視点での上方向を1.0fにする)
+		pos, //カメラの位置
+		dir, //カメラの方向を向ける点
+		up); //カメラの上の方向(通常視点での上方向を1.0fにする)
 	//シェーダー計算用座標登録(視点からの距離で使う)
 	posX = pos.x;
 	posY = pos.y;
 	posZ = pos.z;
+	dirX = dir.x;
+	dirY = dir.y;
+	dirZ = dir.z;
 	upX = up.x;
 	upY = up.y;
 	upZ = up.z;
@@ -981,11 +985,19 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	int com_no,
 	const void* initData,
 	UINT64 byteSize,
-	ComPtr<ID3D12Resource>& uploadBuffer)
+	ComPtr<ID3D12Resource>& uploadBuffer, bool uav)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
+	HRESULT hr;
+	D3D12_RESOURCE_STATES after = D3D12_RESOURCE_STATE_GENERIC_READ;
 
-	HRESULT hr = createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
+	if (uav) {
+		hr = createDefaultResourceBuffer_UNORDERED_ACCESS(defaultBuffer.GetAddressOf(), byteSize);
+		after = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	}
+	else {
+		hr = createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
+	}
 	if (FAILED(hr)) {
 		return nullptr;
 	}
@@ -1001,7 +1013,7 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	if (FAILED(hr)) {
 		return nullptr;
 	}
-	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, after);
 
 	return defaultBuffer;
 }

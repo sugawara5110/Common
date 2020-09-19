@@ -26,12 +26,14 @@ struct DxrConstantBuffer
 	VECTOR4 numEmissive;//.xのみ
 	VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	VECTOR4 GlobalAmbientColor;
+	UINT maxRecursion;
 };
 
 struct DxrMaterialCB {
 	VECTOR4 vDiffuse = { 0.8f,0.8f,0.8f,1.0f };//ディフューズ色
 	VECTOR4 vSpeculer = { 0.6f,0.6f,0.6f,1.0f };//スぺキュラ色
 	VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
+	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess = 4.0f;//スペキュラ強さ
 	float alphaTest = 0.0f;//1.0f:on, 0.0f:off 
 	UINT materialNo = 0;//0:metallic, 1:emissive
@@ -95,6 +97,7 @@ private:
 	UINT numParameter = 0;//PD数
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxNumInstancing = 0;//INSTANCE_PCS_3D(256) * numParameter
+	UINT maxRecursion = 1;
 
 	void createTriangleVB(int comNo, UINT numMaterial, bool update);
 	void createBottomLevelAS(int comNo, UINT MaterialNo, bool update);
@@ -106,11 +109,11 @@ private:
 	void createShaderTable();
 
 	void updateMaterial();
-	void setCB();
+	void setCB(UINT numRecursion);
 
 public:
-	void initDXR(int comNo, UINT numParameter, ParameterDXR** pd, MaterialType* type);
-	void raytrace(int comNo);
+	void initDXR(int comNo, UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
+	void raytrace(int comNo, UINT numRecursion);
 	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); S_DELETE(material); }
 };
 

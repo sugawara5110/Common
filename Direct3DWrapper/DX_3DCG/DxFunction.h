@@ -80,7 +80,7 @@ void MatrixMultiply(MATRIX *mat, MATRIX *mat1, MATRIX *mat2);
 //転置
 void MatrixTranspose(MATRIX *mat);
 //透視変換行列 1:視点位置ベクトル 2:注視点位置ベクトル 3:カメラ上方向ベクトル
-void MatrixLookAtLH(MATRIX *mat, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3);
+void MatrixLookAtLH(MATRIX* mat, VECTOR3 pos, VECTOR3 dir, VECTOR3 up);
 //射影変換行列  カメラの画角, アスペクト比, nearプレーン, farプレーン
 void MatrixPerspectiveFovLH(MATRIX *mat, float theta, float aspect, float Near, float Far);
 //ベクトル3, 行列掛け算

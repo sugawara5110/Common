@@ -80,8 +80,10 @@ struct CONSTANT_BUFFER2D {
 //コンスタントバッファパーティクル用
 struct CONSTANT_BUFFER_P {
 	MATRIX  WV;
+	MATRIX  invRot;
 	MATRIX  Proj;
 	VECTOR4 size;//xパーティクル大きさ, yパーティクル初期化フラグ, zスピード
+	VECTOR4 AddObjColor;//オブジェクトの色変化用
 };
 
 //ポイントライト
@@ -125,7 +127,7 @@ struct PartPos {
 	VECTOR3 CurrentPos; //描画に使う
 	VECTOR3 PosSt;     //開始位置
 	VECTOR3 PosEnd;   //終了位置
-	VECTOR4 Col;
+	VECTOR3 normal;
 };
 
 //頂点3DTexture有り

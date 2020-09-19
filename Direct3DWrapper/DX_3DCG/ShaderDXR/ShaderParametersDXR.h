@@ -18,6 +18,7 @@ char* ShaderParametersDXR =
 "    float4 Diffuse;\n"
 "    float4 Speculer; \n"
 "    float4 Ambient;\n"
+"    float4 AddObjColor;\n"
 "    float shininess;\n"
 "    float alphaTest;\n"//1.0f:on, 0.0f:off 
 "    uint materialNo;\n"//0:metallic, 1:emissive, 2:nonReflection
@@ -37,6 +38,7 @@ char* ShaderParametersDXR =
 "    float4 numEmissive;\n"//.x‚Ì‚İ
 "    float4 lightst[256];\n"//ƒŒƒ“ƒW, Œ¸Š1, Œ¸Š2, Œ¸Š3
 "    float4 GlobalAmbientColor;\n"
+"    uint maxRecursion;\n"
 "};\n"
 
 "ConstantBuffer<Instance> instance[] : register(b1, space3);\n"
@@ -51,4 +53,5 @@ char* ShaderParametersDXR =
 "    float3 color;\n"
 "    bool hit;\n"
 "    float Alpha;\n"
+"    uint RecursionCnt;\n"
 "};\n";

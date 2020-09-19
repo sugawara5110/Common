@@ -146,8 +146,8 @@ void Common::CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 	}
 }
 
-void Common::CreateUavBufferUINT(ID3D12DescriptorHeap* heap, int offsetHeap,
-	ID3D12Resource** buffer, UINT* size, int bufNum) {
+void Common::CreateUavBuffer(ID3D12DescriptorHeap* heap, int offsetHeap,
+	ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum) {
 
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(heap->GetCPUDescriptorHandleForHeapStart());
 	hDescriptor.ptr += offsetHeap * dx->mCbvSrvUavDescriptorSize;
@@ -157,10 +157,10 @@ void Common::CreateUavBufferUINT(ID3D12DescriptorHeap* heap, int offsetHeap,
 	uavDesc.Buffer.CounterOffsetInBytes = 0;//pCounterResourceÇ™nullptrÇÃèÍçá0
 	uavDesc.Buffer.FirstElement = 0;
 	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-	uavDesc.Buffer.StructureByteStride = sizeof(UINT);
 
 	for (int i = 0; i < bufNum; i++) {
-		uavDesc.Buffer.NumElements = size[i];
+		uavDesc.Buffer.StructureByteStride = byteStride[i];
+		uavDesc.Buffer.NumElements = bufferSize[i];
 		dx->md3dDevice->CreateUnorderedAccessView(buffer[i], nullptr, &uavDesc, hDescriptor);
 		hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	}

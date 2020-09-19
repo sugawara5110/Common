@@ -111,44 +111,34 @@ void MatrixTranspose(MATRIX *mat){
 	swap(&mat->_34, &mat->_43);
 }
 
-void MatrixLookAtLH(MATRIX *mat, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3){
+void MatrixLookAtLH(MATRIX* mat, VECTOR3 pos, VECTOR3 dir, VECTOR3 up) {
 	//z軸
-	float zx = x2 - x1;
-	float zy = y2 - y1;
-	float zz = z2 - z1;
+	VECTOR3 in, z3;
+	in.as(dir.x - pos.x, dir.y - pos.y, dir.z - pos.z);
 	//正規化
-	float zzz = (float)sqrt(zx * zx + zy * zy + zz * zz);
-	if (zzz != 0.0f){
-		zx = zx / zzz;
-		zy = zy / zzz;
-		zz = zz / zzz;
-	}
+	VectorNormalize(&z3, &in);
 
 	//x軸(外積)
-	float xx = y3 * zz - z3 * zy;
-	float xy = z3 * zx - x3 * zz;
-	float xz = x3 * zy - y3 * zx;
-	float xxx = (float)sqrt(xx * xx + xy * xy + xz * xz);
-	if (xxx != 0.0f){
-		xx = xx / xxx;
-		xy = xy / xxx;
-		xz = xz / xxx;
-	}
+	VECTOR3 x3, xx3;
+	VectorCross(&xx3, &up, &z3);
+	VectorNormalize(&x3, &xx3);
 
 	//y軸(外積)
-	float yx = zy * xz - zz * xy;
-	float yy = zz * xx - zx * xz;
-	float yz = zx * xy - zy * xx;
+	VECTOR3 y3;
+	VectorCross(&y3, &z3, &x3);
 
 	//平行移動(内積)
-	float mx = -(x1 * xx + y1 * xy + z1 * xz);
-	float my = -(x1 * yx + y1 * yy + z1 * yz);
-	float mz = -(x1 * zx + y1 * zy + z1 * zz);
+	VECTOR3 m3;
+	m3.as(
+		-(pos.x * x3.x + pos.y * x3.y + pos.z * x3.z),
+		-(pos.x * y3.x + pos.y * y3.y + pos.z * y3.z),
+		-(pos.x * z3.x + pos.y * z3.y + pos.z * z3.z)
+	);
 
-	mat->_11 = xx; mat->_12 = yx; mat->_13 = zx; mat->_14 = 0.0f;
-	mat->_21 = xy; mat->_22 = yy; mat->_23 = zy; mat->_24 = 0.0f;
-	mat->_31 = xz; mat->_32 = yz; mat->_33 = zz; mat->_34 = 0.0f;
-	mat->_41 = mx; mat->_42 = my; mat->_43 = mz; mat->_44 = 1.0f;
+	mat->_11 = x3.x; mat->_12 = y3.x; mat->_13 = z3.x; mat->_14 = 0.0f;
+	mat->_21 = x3.y; mat->_22 = y3.y; mat->_23 = z3.y; mat->_24 = 0.0f;
+	mat->_31 = x3.z; mat->_32 = y3.z; mat->_33 = z3.z; mat->_34 = 0.0f;
+	mat->_41 = m3.x; mat->_42 = m3.y; mat->_43 = m3.z; mat->_44 = 1.0f;
 }
 
 void MatrixPerspectiveFovLH(MATRIX *mat, float theta, float aspect, float Near, float Far){
@@ -200,7 +190,7 @@ void VectorDivision(VECTOR3 *v, float f) {
 }
 
 //MatrixInverse内で使用
-double CalDetMat4x4(MATRIX *m) {
+static double CalDetMat4x4(MATRIX* m) {
 
 	return m->_11 * m->_22 * m->_33 * m->_44 + m->_11 * m->_23 * m->_34 * m->_42 + m->_11 * m->_24 * m->_32 * m->_43
 		+ m->_12 * m->_21 * m->_34 * m->_43 + m->_12 * m->_23 * m->_31 * m->_44 + m->_12 * m->_24 * m->_33 * m->_41

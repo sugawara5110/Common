@@ -96,7 +96,8 @@ char* ShaderCommonDXR =
 "}\n"
 
 ///////////////////////光源へ光線を飛ばす, ヒットした場合明るさが加算//////////////////////////
-"float3 EmissivePayloadCalculate(in float3 hitPosition, in float3 difTexColor, float3 speTexColor, float3 normal)\n"
+"float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition, \n"
+"                                in float3 difTexColor, in float3 speTexColor, in float3 normal)\n"
 "{\n"
 "    RayPayload emissivePayload;\n"
 "    uint materialID = getMaterialID();\n"
@@ -107,24 +108,28 @@ char* ShaderCommonDXR =
 "    ray.Origin = hitPosition;\n"
 "    ray.TMin = 0.01;\n"
 "    ray.TMax = 100000;\n"
-"    for(uint i = 0; i < numEmissive.x; i++) {\n"
-"        float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
-"        ray.Direction = lightVec;\n"
-"        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES |\n"
-"            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 2, 0, 2, ray, emissivePayload);\n"
+"    RecursionCnt++;\n"
+"    emissivePayload.RecursionCnt = RecursionCnt;\n"
+
+"    if(RecursionCnt <= maxRecursion) {"
+"       for(uint i = 0; i < numEmissive.x; i++) {\n"
+"           float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
+"           ray.Direction = lightVec;\n"
+"           TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                    0xFF, 2, 0, 2, ray, emissivePayload);\n"
 
 //光源計算
-"        float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
-"        float3 Diffuse = material[materialID].Diffuse.xyz;\n"
-"        float3 Ambient = material[materialID].Ambient.xyz;\n"
-"        float shininess = material[materialID].shininess;\n"
-"        Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"//ShaderCG内関数
-"                            hitPosition, lightst[i], emissivePayload.color, cameraPosition.xyz, shininess);\n"
+"           float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
+"           float3 Diffuse = material[materialID].Diffuse.xyz;\n"
+"           float3 Ambient = material[materialID].Ambient.xyz;\n"
+"           float shininess = material[materialID].shininess;\n"
+"           Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"//ShaderCG内関数
+"                               hitPosition, lightst[i], emissivePayload.color, cameraPosition.xyz, shininess);\n"
 
-"        emissiveColor.Diffuse += Out.Diffuse;\n"
-"        emissiveColor.Speculer += Out.Speculer;\n"
+"           emissiveColor.Diffuse += Out.Diffuse;\n"
+"           emissiveColor.Speculer += Out.Speculer;\n"
+"       }\n"
 "    }\n"
-
 "    difTexColor *= emissiveColor.Diffuse;\n"
 "    speTexColor *= emissiveColor.Speculer;\n"
 
@@ -132,11 +137,14 @@ char* ShaderCommonDXR =
 "}\n"
 
 ///////////////////////反射方向へ光線を飛ばす, ヒットした場合ピクセル値乗算///////////////////////
-"float3 MetallicPayloadCalculate(in float3 hitPosition, in float3 difTexColor, float3 normal)\n"
+"float3 MetallicPayloadCalculate(in uint RecursionCnt, in float3 hitPosition, \n"
+"                                in float3 difTexColor, in float3 normal)\n"
 "{\n"
 "    RayPayload payload;\n"
-"    if (!(RayFlags() & RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH))\n"
-"    {\n"
+"    RecursionCnt++;\n"
+"    payload.RecursionCnt = RecursionCnt;\n"
+
+"    if (RecursionCnt <= maxRecursion) {\n"
 "        RayDesc ray;\n"
 //ヒットした位置がスタート
 "        ray.Origin = hitPosition;\n"
@@ -147,8 +155,8 @@ char* ShaderCommonDXR =
 "        ray.Direction = reflectVec;\n"//反射方向にRayを飛ばす
 "        ray.TMin = 0.01;\n"
 "        ray.TMax = 100000;\n"
-"        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES |\n"
-"            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 1, 0, 1, ray, payload);\n"
+"        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                 0xFF, 1, 0, 1, ray, payload);\n"
 "    }\n"
 "    float3 outCol = float3(0.0f, 0.0f, 0.0f);\n"
 "    if (payload.hit && payload.Alpha >= 1.0f) {\n"
@@ -162,18 +170,21 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////////アルファテスト//////////////////////////////////////
-"float3 AlphaTest(in float3 hitPosition, in float3 difTexColor, float Alpha, uint shaderIndex)\n"
+"float3 AlphaTest(in uint RecursionCnt, in float3 hitPosition, \n"
+"                 in float3 difTexColor, in float Alpha, in uint shaderIndex)\n"
 "{\n"
 "    RayPayload payload;\n"
-"    if (!(RayFlags() & RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH))\n"
-"    {\n"
+"    RecursionCnt++;\n"
+"    payload.RecursionCnt = RecursionCnt;\n"
+
+"    if (RecursionCnt <= maxRecursion) {\n"
 "        RayDesc ray;\n"
 "        ray.Origin = hitPosition;\n"
 "        ray.TMin = 0.01;\n"
 "        ray.TMax = 100000;\n"
 "        ray.Direction = WorldRayDirection();\n"
-"        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES |\n"
-"            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, shaderIndex, 0, shaderIndex, ray, payload);\n"
+"        TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                 0xFF, shaderIndex, 0, shaderIndex, ray, payload);\n"
 "    }\n"
 //アルファ値の比率で元の色と光線衝突先の色を配合
 "    return payload.color * (1.0f - Alpha) + difTexColor * Alpha;\n"

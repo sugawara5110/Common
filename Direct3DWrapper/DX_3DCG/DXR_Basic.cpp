@@ -13,12 +13,13 @@
 
 static dxc::DxcDllSupport gDxcDllHelper;
 
-void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, MaterialType* type) {
+void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, MaterialType* type, UINT MaxRecursion) {
 
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	if (dx->DXR_CreateResource) {
+		maxRecursion = MaxRecursion;
 		numParameter = numparameter;
 		UINT cnt = 0;
 		for (UINT i = 0; i < numParameter; i++) {
@@ -659,7 +660,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 5;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 6;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects[index] = shaderConfig.subobject;
 
@@ -675,7 +676,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = configAssociation.subobject;
 
 	//パイプラインコンフィグ作成 SUBOBJECT作成
-	PipelineConfig config(3);
+	PipelineConfig config(maxRecursion);
 	subobjects[index++] = config.subobject;
 
 	//グローバルルートシグネチャ作成 SUBOBJECT作成
@@ -906,6 +907,7 @@ void DXR_Basic::updateMaterial() {
 			matCb[MaterialCnt].vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
 			matCb[MaterialCnt].vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 			matCb[MaterialCnt].shininess = PD[i]->shininess;
+			memcpy(&matCb[MaterialCnt].AddObjColor, &PD[i]->AddObjColor, sizeof(VECTOR4));
 			if (PD[i]->alphaTest) {
 				matCb[MaterialCnt].alphaTest = 1.0f;
 			}
@@ -917,7 +919,7 @@ void DXR_Basic::updateMaterial() {
 	}
 }
 
-void DXR_Basic::setCB() {
+void DXR_Basic::setCB(UINT numRecursion) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX VP;
 	MatrixMultiply(&VP, &dx->mView, &dx->mProj);
@@ -925,6 +927,7 @@ void DXR_Basic::setCB() {
 	MatrixInverse(&cb.projectionToWorld, &VP);
 	cb.cameraUp.as(dx->upX, dx->upY, dx->upZ, 1.0f);
 	cb.cameraPosition.as(dx->posX, dx->posY, dx->posZ, 1.0f);
+	cb.maxRecursion = numRecursion;
 	updateMaterial();
 
 	int cntEm = 0;
@@ -972,10 +975,10 @@ void DXR_Basic::setCB() {
 	}
 }
 
-void DXR_Basic::raytrace(int comNo) {
+void DXR_Basic::raytrace(int comNo, UINT numRecursion) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	setCB();
+	setCB(numRecursion);
 
 	dx->dx_sub[comNo].ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -1000,7 +1003,7 @@ void DXR_Basic::raytrace(int comNo) {
 	D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
 	raytraceDesc.Width = dx->mClientWidth;
 	raytraceDesc.Height = dx->mClientHeight;
-	raytraceDesc.Depth = 3;
+	raytraceDesc.Depth = 1;
 
 	//RayGen
 	raytraceDesc.RayGenerationShaderRecord.StartAddress = mpShaderTable.Get()->GetGPUVirtualAddress();
