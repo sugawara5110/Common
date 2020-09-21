@@ -88,9 +88,11 @@ void PolygonData2D::SetTextParameter(int width, int height, int textCount,
 	CreateTextOn = true;
 }
 
-void PolygonData2D::SetText() {
+void PolygonData2D::SetText(int com) {
 
 	if (!CreateTextOn)return;
+
+	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 
 	texture[0].Reset();
 	textureUp[0].Reset();
@@ -118,7 +120,7 @@ void PolygonData2D::SetText() {
 	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 	src.PlacedFootprint = footprint;
 
-	dx->dx_sub[com_no].ResourceBarrier(texture[0].Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx->dx_sub[com].ResourceBarrier(texture[0].Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	D3D12_SUBRESOURCE_DATA texResource;
 	textureUp[0].Get()->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
@@ -157,11 +159,11 @@ void PolygonData2D::SetText() {
 	}
 	textureUp[0].Get()->Unmap(0, nullptr);
 
-	mCommandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+	mCList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
 
-	dx->dx_sub[com_no].ResourceBarrier(texture[0].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	dx->dx_sub[com].ResourceBarrier(texture[0].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvHeap->GetCPUDescriptorHandleForHeapStart());
+	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -243,14 +245,10 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 
 	GetShaderByteCode();
 
-	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	const int numSrv = 1;
+	const int numCbv = 1;
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
-	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[1].InitAsConstantBufferView(0);
-
-	mRootSignature = CreateRs(2, slotRootParameter);
+	mRootSignature = CreateRootSignature(numSrv, numCbv, 0);
 	if (mRootSignature == nullptr)return false;
 
 	TextureNo te;
@@ -259,8 +257,11 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	te.specular = -1;
 
 	createTextureResource(0, 1, &te);
-	mSrvHeap = dx->CreateDescHeap(1);
-	CreateSrvTexture(mSrvHeap.Get(), 0, texture->GetAddressOf(), 1);
+	mDescHeap = dx->CreateDescHeap(numSrv + numCbv);
+	CreateSrvTexture(mDescHeap.Get(), 0, texture->GetAddressOf(), 1);
+	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
+	UINT size = mObjectCB->getSizeInBytes();
+	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
@@ -309,27 +310,32 @@ void PolygonData2D::DrawOff() {
 	DrawOn = false;
 }
 
-void PolygonData2D::Draw() {
+void PolygonData2D::Draw(int com) {
 
 	if (!UpOn | !DrawOn)return;
 
+	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+
 	mObjectCB->CopyData(0, cb2[dx->cBuffSwap[1]]);
 
-	mCommandList->SetPipelineState(mPSO.Get());
+	mCList->SetPipelineState(mPSO.Get());
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
+	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+	mCList->SetGraphicsRootSignature(mRootSignature.Get());
 
-	mCommandList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
-	mCommandList->IASetIndexBuffer(&Iview->IndexBufferView());
-	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mCList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
+	mCList->IASetIndexBuffer(&Iview->IndexBufferView());
+	mCList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	mCommandList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
-	mCommandList->DrawIndexedInstanced(Iview->IndexCount, insNum[dx->cBuffSwap[1]], 0, 0, 0);
+	mCList->DrawIndexedInstanced(Iview->IndexCount, insNum[dx->cBuffSwap[1]], 0, 0, 0);
+}
+
+void PolygonData2D::Draw() {
+	Draw(com_no);
 }
 
 

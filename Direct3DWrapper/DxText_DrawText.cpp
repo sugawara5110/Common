@@ -58,7 +58,7 @@ DxText::DxText() {
 		value[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
 		TCHAR* va = CreateTextValue(i);
 		CreateText(value, va, i, 15.0f);
-		value[i].SetText();
+		value[i].SetText(0);
 	}
 	dx->End(0);
 	dx->WaitFence();
@@ -484,15 +484,13 @@ void DxText::UpDate() {
 	for (int i = 0; i < VAL_PCS; i++)valueInsData[i].pcs = 0;
 }
 
-void DxText::Draw(int com_no) {
+void DxText::Draw(int com) {
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
-		text[i].SetCommandList(com_no);
-		text[i].SetText();
-		text[i].Draw();
+		text[i].SetText(com);
+		text[i].Draw(com);
 	}
 	for (int i = 0; i < VAL_PCS; i++) {
-		value[i].SetCommandList(com_no);
-		value[i].Draw();
+		value[i].Draw(com);
 	}
 }
 

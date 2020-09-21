@@ -6,7 +6,7 @@ char *ShaderParticle =
 "Texture2D g_texColor : register(t0);\n"
 "SamplerState g_samLinear : register(s0);\n"
 
-"cbuffer global\n"
+"cbuffer global  : register(b0)\n"
 "{\n"
 "	matrix g_WV;\n"
 "	matrix g_invRot;\n"

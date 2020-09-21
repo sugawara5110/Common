@@ -23,7 +23,7 @@ protected:
 
 	ComPtr<ID3D12RootSignature> mRootSignature_com = nullptr;
 	ComPtr<ID3D12RootSignature> mRootSignature_draw = nullptr;
-	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER_P>* mObjectCB = nullptr;

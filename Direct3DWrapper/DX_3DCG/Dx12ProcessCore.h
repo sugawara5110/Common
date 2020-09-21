@@ -305,7 +305,7 @@ public:
 		int width, LONG_PTR RowPitch, int height);
 
 	void Bigin(int com_no);
-	void BiginDraw(int com_no);
+	void BiginDraw(int com_no, bool clearBackBuffer = true);
 	void EndDraw(int com_no);
 	void End(int com_no);
 	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
@@ -533,6 +533,7 @@ protected:
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
+	ComPtr<ID3D12RootSignature> CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav);
 	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav, bool sampler);
 
 	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
@@ -756,7 +757,7 @@ protected:
 	int      ver;//頂点数
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-	ComPtr<ID3D12DescriptorHeap> mSrvHeap = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER2D>* mObjectCB = nullptr;
@@ -797,7 +798,7 @@ protected:
 	void GetShaderByteCode();
 	void SetConstBf(CONSTANT_BUFFER2D* cb2, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void SetTextParameter(int width, int height, int textCount, TEXTMETRIC** TM, GLYPHMETRICS** GM, BYTE** ptr, DWORD** allsize);
-	void SetText();//DxText classでしか使わない
+	void SetText(int com_no);//DxText classでしか使わない
 	void CbSwap();
 
 public:
@@ -821,6 +822,7 @@ public:
 	void Update(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
 	void Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void DrawOff();
+	void Draw(int com_no);
 	void Draw();
 };
 

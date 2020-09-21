@@ -279,6 +279,15 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 	return dx->CreateRsCommon(&desc);
 }
 
+ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav)
+{
+	std::vector<D3D12_DESCRIPTOR_RANGE> range;
+	D3D12_ROOT_PARAMETER rootParams = {};
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams);
+
+	return CreateRsCompute(1, &rootParams);
+}
+
 ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav, bool sampler) {
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
 	D3D12_ROOT_PARAMETER rootParams = {};

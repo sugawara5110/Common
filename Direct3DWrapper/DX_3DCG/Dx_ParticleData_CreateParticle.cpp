@@ -169,10 +169,13 @@ void ParticleData::CreateVbObj() {
 
 bool ParticleData::CreatePartsCom() {
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter_com[1];
-	slotRootParameter_com[0].InitAsConstantBufferView(0);
+	D3D12_ROOT_PARAMETER rootParams = {};
+	rootParams.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParams.Constants.ShaderRegister = 0;
+	rootParams.Constants.RegisterSpace = 0;
+	rootParams.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	mRootSignature_com = CreateRsStreamOutput(1, slotRootParameter_com);
+	mRootSignature_com = CreateRsStreamOutput(1, &rootParams);
 	if (mRootSignature_com == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(STREAM_OUTPUT)
@@ -191,14 +194,10 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 
 	if (texpar != -1)texpar_on = true;
 
-	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	const int numSrv = 1;
+	const int numCbv = 1;
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter_draw[2];
-	slotRootParameter_draw[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);// DescriptorRangeの数は1つ, DescriptorRangeの先頭アドレス
-	slotRootParameter_draw[1].InitAsConstantBufferView(0);
-
-	mRootSignature_draw = CreateRs(2, slotRootParameter_draw);
+	mRootSignature_draw = CreateRootSignature(numSrv, numCbv, 0);
 	if (mRootSignature_draw == nullptr)return false;
 
 	TextureNo te;
@@ -207,9 +206,12 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	createTextureResource(0, 1, &te);
-	mSrvHeap = dx->CreateDescHeap(1);
-	if (mSrvHeap == nullptr)return false;
-	CreateSrvTexture(mSrvHeap.Get(), 0, texture->GetAddressOf(), 1);
+	mDescHeap = dx->CreateDescHeap(numSrv + numCbv);
+	if (mDescHeap == nullptr)return false;
+	CreateSrvTexture(mDescHeap.Get(), 0, texture->GetAddressOf(), 1);
+	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
+	UINT size = mObjectCB->getSizeInBytes();
+	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);
 
 	//パイプラインステートオブジェクト生成(Draw)
 	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, true, true);
@@ -250,7 +252,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 
 		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
 
-		rootSignatureDXR = CreateRsStreamOutput(2, slotRootParameter_draw);
+		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false);
 		if (rootSignatureDXR == nullptr)return false;
 
 		dxrPara.difTex[0] = texture[0].Get();
@@ -321,7 +323,7 @@ void ParticleData::DrawParts2(int com) {
 
 	mCList->SetPipelineState(mPSO_draw.Get());
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	mCList->SetGraphicsRootSignature(mRootSignature_draw.Get());
@@ -329,8 +331,7 @@ void ParticleData::DrawParts2(int com) {
 	mCList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
 	mCList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	mCList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
 }
@@ -343,7 +344,7 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	mCList->SetPipelineState(PSO_DXR.Get());
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	mCList->SetGraphicsRootSignature(rootSignatureDXR.Get());
@@ -351,8 +352,7 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 	mCList->IASetVertexBuffers(0, 1, &Vview->VertexBufferView());
 	mCList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	mCList->SetGraphicsRootDescriptorTable(0, mSrvHeap->GetGPUDescriptorHandleForHeapStart());
-	mCList->SetGraphicsRootConstantBufferView(1, mObjectCB->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
 	mCList->SOSetTargets(0, 1, &dxrPara.SviewDXR[0].StreamBufferView());
 
