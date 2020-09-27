@@ -26,6 +26,7 @@ struct DxrConstantBuffer
 	VECTOR4 numEmissive;//.x‚Ì‚İ
 	VECTOR4 Lightst[LIGHT_PCS];//ƒŒƒ“ƒW, Œ¸Š1, Œ¸Š2, Œ¸Š3
 	VECTOR4 GlobalAmbientColor;
+	VECTOR4 emissiveNo[LIGHT_PCS];//.x‚Ì‚İ
 	UINT maxRecursion;
 };
 

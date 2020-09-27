@@ -794,6 +794,13 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	return CreateShaderByteCode();
 }
 
+void Dx12Process::setPerspectiveFov(float ViewAngle, float nearPlane, float farPlane) {
+	ViewY_theta = ViewAngle;
+	NearPlane = nearPlane;
+	FarPlane = farPlane;
+	MatrixPerspectiveFovLH(&mProj, ViewY_theta, aspect, NearPlane, FarPlane);
+}
+
 void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer) {
 	dx_sub[com_no].mCommandList->RSSetViewports(1, &mScreenViewport);
 	dx_sub[com_no].mCommandList->RSSetScissorRects(1, &mScissorRect);

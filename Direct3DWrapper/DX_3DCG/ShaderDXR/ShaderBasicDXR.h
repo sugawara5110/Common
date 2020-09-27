@@ -60,24 +60,19 @@ char* ShaderBasicDXR =
 "    float3 hitPosition = HitWorldPosition();\n"
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
-//UV計算
-"    float2 triangleUV0 = getUV(attr, 0);\n"
-"    float2 triangleUV1 = getUV(attr, 1);\n"
-//法線の計算
-"    float3 triangleNormal = getNormal(attr);\n"
-//ノーマルマップからの法線出力
-"    float3 normalMap = getNormalMap(triangleNormal, triangleUV0);\n"
-//テクスチャ
-"    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
+//テクスチャ取得
+"    float4 difTex = getDifPixel(attr);\n"
+"    float3 normalMap = getNorPixel(attr);\n"
+"    float3 speTex = getSpePixel(attr);\n"
+
 "    float4 add = material[materialID].AddObjColor;\n"
 "    difTex.x = saturate(difTex.x + add.x);\n"
 "    difTex.y = saturate(difTex.y + add.y);\n"
 "    difTex.z = saturate(difTex.z + add.z);\n"
 "    difTex.w = saturate(difTex.w + add.w);\n"
-"    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
 
 //光源への光線(emissive以外)
-"    if(mNo != 1)difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
+"    if(mNo != 1)difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex, normalMap);\n"
 //反射方向への光線(metallicのみ)
 "    if(mNo == 0)difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, normalMap);\n"
 
@@ -96,18 +91,14 @@ char* ShaderBasicDXR =
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    float3 hitPosition = HitWorldPosition();\n"
-//UV計算
-"    float2 triangleUV0 = getUV(attr, 0);\n"
-"    float2 triangleUV1 = getUV(attr, 1);\n"
-//法線の計算
-"    float3 triangleNormal = getNormal(attr);\n"
-//ノーマルマップからの法線出力
-"    float3 normalMap = getNormalMap(triangleNormal, triangleUV0);\n"
-//ヒットした位置のテクスチャの色をpayload.color格納する
-"    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
-"    float4 speTex = g_texSpecular[materialID].SampleLevel(g_samLinear, triangleUV1, 0.0);\n"
-//光源への光線
-"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
+"    uint mNo = material[materialID].materialNo;\n"
+//テクスチャ取得
+"    float4 difTex = getDifPixel(attr);\n"
+"    float3 normalMap = getNorPixel(attr);\n"
+"    float3 speTex = getSpePixel(attr);\n"
+
+//光源への光線(emissive以外)
+"    if (mNo != 1)difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
 //アルファテスト
 "    if(material[materialID].alphaTest == 1.0f) {\n"
 "       difTex.xyz = AlphaTest(payload.RecursionCnt, hitPosition, difTex.xyz, difTex.w, 1);\n"
@@ -130,22 +121,23 @@ char* ShaderBasicDXR =
 //***********************************emissiveHit_Shader*****************************************************************//
 //camHitから飛ばされた光源への光線がヒットした場合起動される
 "[shader(\"closesthit\")]\n"
-"void emissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"void emissiveHit(inout RayPayloadEmissive payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
 
+"    payload.reTry = false;\n"
 "    if(mNo == 1) {\n"//(emissiveのみ)
-//UV計算
-"       float2 triangleUV0 = getUV(attr, 0);\n"
-"       float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, triangleUV0, 0.0);\n"
+"       float4 difTex = getDifPixel(attr);\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
+"       payload.hitPosition = HitWorldPosition();\n"
 "       payload.color = difTex.xyz;\n"
-"       payload.hit = true;\n"
+"       if(InstanceID() != payload.instanceID) {\n"
+"          payload.reTry = true;\n"
+"       }\n"
 "    }\n"
 "    else {\n"//エミッシブではなかった場合影になる
 "       payload.color = GlobalAmbientColor.xyz;\n"
-"       payload.hit = false;\n"
 "    }\n"
 "}\n"
 //***********************************emissiveHit_Shader*****************************************************************//
@@ -153,9 +145,9 @@ char* ShaderBasicDXR =
 //***********************************emissiveMiss_Shader****************************************************************//
 //camHitから飛ばされた光源への光線がヒットしなかった場合起動される
 "[shader(\"miss\")]\n"
-"void emissiveMiss(inout RayPayload payload)\n"
+"void emissiveMiss(inout RayPayloadEmissive payload)\n"
 "{\n"
 "    payload.color = GlobalAmbientColor.xyz;\n"
-"    payload.hit = false;\n"
+"    payload.reTry = false;\n"
 "}\n";
 //***********************************emissiveMiss_Shader****************************************************************//

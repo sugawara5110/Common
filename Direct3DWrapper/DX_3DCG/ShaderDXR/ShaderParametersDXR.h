@@ -38,6 +38,7 @@ char* ShaderParametersDXR =
 "    float4 numEmissive;\n"//.x‚Ì‚İ
 "    float4 lightst[256];\n"//ƒŒƒ“ƒW, Œ¸Š1, Œ¸Š2, Œ¸Š3
 "    float4 GlobalAmbientColor;\n"
+"    float4 emissiveNo[256];"//.x‚Ì‚İ
 "    uint maxRecursion;\n"
 "};\n"
 
@@ -54,4 +55,12 @@ char* ShaderParametersDXR =
 "    bool hit;\n"
 "    float Alpha;\n"
 "    uint RecursionCnt;\n"
+"};\n"
+
+"struct RayPayloadEmissive\n"
+"{\n"
+"    float3 color;\n"
+"    float3 hitPosition;\n"
+"    bool reTry;\n"
+"    uint instanceID;\n"
 "};\n";

@@ -67,6 +67,8 @@ void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial, bool update) {
 	if (!update) {
 		pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
 		pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
+		for (UINT i = 0; i < numParameter; i++)
+			PD[i]->InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
 	}
 
 	UINT MaterialCnt = 0;
@@ -208,9 +210,10 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 			for (UINT k = 0; k < PD[i]->NumInstance; k++) {
 				//InstanceDesc初期化
 				D3D12_RAYTRACING_INSTANCE_DESC& pID = pInstanceDesc[RayInstanceCnt];
-				UINT materialInstanceID = materialCnt;
-				UINT InstancingID = i * INSTANCE_PCS_3D + k;
+				UINT materialInstanceID = materialCnt;//max65535
+				UINT InstancingID = i * INSTANCE_PCS_3D + k;//max65535
 				UINT InstanceID = ((materialInstanceID << 16) & 0xffff0000) | (InstancingID & 0x0000ffff);
+				PD[i]->InstanceID[INSTANCE_PCS_3D * j + k] = InstanceID;
 				pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
 				pID.InstanceContributionToHitGroupIndex = 0;//シェーダーテーブル内のオフセット。ジオメトリが一つの場合,オフセット0
 				pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
@@ -660,7 +663,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 6;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 8;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects[index] = shaderConfig.subobject;
 
@@ -948,6 +951,7 @@ void DXR_Basic::setCB(UINT numRecursion) {
 					cb.Lightst[cntEm].y = dx->plight.Lightst[cntEm].y;
 					cb.Lightst[cntEm].z = dx->plight.Lightst[cntEm].z;
 					cb.Lightst[cntEm].w = dx->plight.Lightst[cntEm].w;
+					cb.emissiveNo[cntEm].x = (float)PD[i]->InstanceID[INSTANCE_PCS_3D * j + k];
 					cntEm++;
 					if (cntEm >= LIGHT_PCS) {
 						breakF = true;

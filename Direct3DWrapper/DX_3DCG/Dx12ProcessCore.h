@@ -332,6 +332,7 @@ public:
 	float GetFarPlane();
 	InternalTexture* getInternalTexture(int index) { return &texture[index]; }
 	void wireFrameTest(bool f) { wireframe = f; }
+	void setPerspectiveFov(float ViewAngle, float NearPlane, float FarPlane);
 };
 
 struct VertexView {
@@ -489,6 +490,7 @@ struct ParameterDXR {
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
 	bool alphaTest;
+	std::unique_ptr<UINT[]> InstanceID = nullptr;
 };
 
 //**********************************Commonクラス*************************************//

@@ -19,7 +19,7 @@ char* ShaderCommonDXR =
 "}\n"
 
 /////////////////////////////////////RGB → sRGBに変換/////////////////////////////////////////////
-"float3 linearToSrgb(float3 c)\n"
+"float3 linearToSrgb(in float3 c)\n"
 "{\n"
 "    float3 sq1 = sqrt(c);\n"
 "    float3 sq2 = sqrt(sq1);\n"
@@ -36,7 +36,7 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////Hitの重心を使用して、頂点属性から補間されたhit位置の属性を取得(法線)///////////////
-"float3 getCenterNormal(float3 vertexNormal[3], BuiltInTriangleIntersectionAttributes attr)\n"
+"float3 getCenterNormal(in float3 vertexNormal[3], in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    return vertexNormal[0] +\n"
 "        attr.barycentrics.x * (vertexNormal[1] - vertexNormal[0]) +\n"
@@ -44,7 +44,7 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////法線取得//////////////////////////////////////////////////////////
-"float3 getNormal(BuiltInTriangleIntersectionAttributes attr)\n"
+"float3 getNormal(in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    uint indicesPerTriangle = 3;\n"
 "    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
@@ -59,7 +59,7 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////Hitの重心を使用して、頂点属性から補間されたhit位置の属性を取得(UV)////////////////
-"float2 getCenterUV(float2 vertexUV[3], BuiltInTriangleIntersectionAttributes attr)\n"
+"float2 getCenterUV(in float2 vertexUV[3], in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    return vertexUV[0] +\n"
 "        attr.barycentrics.x * (vertexUV[1] - vertexUV[0]) +\n"
@@ -67,7 +67,7 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////UV取得//////////////////////////////////////////////////////////
-"float2 getUV(BuiltInTriangleIntersectionAttributes attr, uint uvNo)\n"
+"float2 getUV(in BuiltInTriangleIntersectionAttributes attr, in uint uvNo)\n"
 "{\n"
 "    uint indicesPerTriangle = 3;\n"
 "    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
@@ -82,7 +82,7 @@ char* ShaderCommonDXR =
 "}\n"
 
 /////////////////////////////ノーマルテクスチャから法線取得/////////////////////////////////////
-"float3 getNormalMap(float3 normal, float2 uv)\n"
+"float3 getNormalMap(in float3 normal, float2 uv)\n"
 "{\n"
 "    NormalTangent tan;\n"
 "    uint instancingID = getInstancingID();\n"
@@ -95,36 +95,72 @@ char* ShaderCommonDXR =
 "    return GetNormal(Tnor.xyz, tan.normal, tan.tangent);\n"//ShaderCG内関数
 "}\n"
 
+//////////////////////////////////////ピクセル値取得///////////////////////////////////////////
+//////////////ディフェーズ
+"float4 getDifPixel(in BuiltInTriangleIntersectionAttributes attr)\n"
+"{\n"
+"    uint materialID = getMaterialID();\n"
+//UV計算
+"    float2 UV = getUV(attr, 0);\n"
+//ピクセル値
+"    return g_texDiffuse[materialID].SampleLevel(g_samLinear, UV, 0.0);\n"
+"}\n"
+//////////////ノーマル
+"float3 getNorPixel(in BuiltInTriangleIntersectionAttributes attr)\n"
+"{\n"
+"    uint materialID = getMaterialID();\n"
+//UV計算
+"    float2 UV = getUV(attr, 0);\n"
+//法線の計算
+"    float3 triangleNormal = getNormal(attr);\n"
+//ノーマルマップからの法線出力
+"    return getNormalMap(triangleNormal, UV);\n"
+"}\n"
+//////////////スペキュラ
+"float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr)\n"
+"{\n"
+"    uint materialID = getMaterialID();\n"
+//UV計算
+"    float2 UV = getUV(attr, 1);\n"
+//ピクセル値
+"    float4 spe = g_texSpecular[materialID].SampleLevel(g_samLinear, UV, 0.0);\n"
+"    return spe.xyz;\n"
+"}\n"
+
 ///////////////////////光源へ光線を飛ばす, ヒットした場合明るさが加算//////////////////////////
 "float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition, \n"
 "                                in float3 difTexColor, in float3 speTexColor, in float3 normal)\n"
 "{\n"
-"    RayPayload emissivePayload;\n"
+"    RayPayloadEmissive payload;\n"
 "    uint materialID = getMaterialID();\n"
 "    LightOut emissiveColor = (LightOut)0;\n"
 "    LightOut Out;\n"
 "    RayDesc ray;\n"
-//ヒットした位置がスタート
-"    ray.Origin = hitPosition;\n"
+"    payload.hitPosition = hitPosition;\n"
 "    ray.TMin = 0.01;\n"
 "    ray.TMax = 100000;\n"
 "    RecursionCnt++;\n"
-"    emissivePayload.RecursionCnt = RecursionCnt;\n"
 
-"    if(RecursionCnt <= maxRecursion) {"
+"    if(RecursionCnt <= maxRecursion) {\n"
 "       for(uint i = 0; i < numEmissive.x; i++) {\n"
 "           float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
 "           ray.Direction = lightVec;\n"
-"           TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                    0xFF, 2, 0, 2, ray, emissivePayload);\n"
-
+"           payload.instanceID = (uint)emissiveNo[i].x;\n"
+"           bool loop = true;\n"
+"           while(loop){\n"
+"              ray.Origin = payload.hitPosition;\n"
+"              TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                       0xFF, 2, 0, 2, ray, payload);\n"
+"              loop = payload.reTry;\n"
+"           }\n"
+"           payload.hitPosition = hitPosition;\n"
 //光源計算
 "           float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
 "           float3 Diffuse = material[materialID].Diffuse.xyz;\n"
 "           float3 Ambient = material[materialID].Ambient.xyz;\n"
 "           float shininess = material[materialID].shininess;\n"
 "           Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"//ShaderCG内関数
-"                               hitPosition, lightst[i], emissivePayload.color, cameraPosition.xyz, shininess);\n"
+"                               hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
 
 "           emissiveColor.Diffuse += Out.Diffuse;\n"
 "           emissiveColor.Speculer += Out.Speculer;\n"
