@@ -130,7 +130,7 @@ char *ShaderParticle =
 "    float2 Tex1     : TEXCOORD1;\n"
 "};\n"
 
-"[maxvertexcount(6)]\n"
+"[maxvertexcount(12)]\n"
 "void GS_PointDxr(point GS_INPUT Input[1], inout TriangleStream <DXR_INPUT> ParticleStream)\n"
 "{\n"
 "	DXR_INPUT p = (DXR_INPUT)0;\n"
@@ -179,6 +179,42 @@ char *ShaderParticle =
 "	p.Pos = pos4[0] + pos;\n"
 "   p.Nor = Input[0].Nor;\n"
 "	p.Tex0 = p.Tex1 = float2(0, 0);\n"
+"	ParticleStream.Append(p);\n"
+
+"	ParticleStream.RestartStrip();\n"
+
+//ç∂è„
+"	p.Pos = pos4[0] + pos;\n"
+"   p.Nor = Input[0].Nor;\n"
+"	p.Tex0 = p.Tex1 = float2(0, 0);\n"
+"	ParticleStream.Append(p);\n"
+//âEè„
+"	p.Pos = pos4[1] + pos;\n"
+"   p.Nor = Input[0].Nor;\n"
+"	p.Tex0 = p.Tex1 = float2(1, 0);\n"
+"	ParticleStream.Append(p);\n"
+//âEâ∫
+"	p.Pos = pos4[3] + pos;\n"
+"   p.Nor = Input[0].Nor;\n"
+"	p.Tex0 = p.Tex1 = float2(1, 1);\n"
+"	ParticleStream.Append(p);\n"
+
+"	ParticleStream.RestartStrip();\n"
+
+//ç∂â∫
+"	p.Pos = pos4[2] + pos;\n"
+"   p.Nor = Input[0].Nor;\n"
+"	p.Tex0 = p.Tex1 = float2(0, 1);\n"
+"	ParticleStream.Append(p);\n"
+//ç∂è„
+"	p.Pos = pos4[0] + pos;\n"
+"   p.Nor = Input[0].Nor;\n"
+"	p.Tex0 = p.Tex1 = float2(0, 0);\n"
+"	ParticleStream.Append(p);\n"
+//âEâ∫
+"	p.Pos = pos4[3] + pos;\n"
+"   p.Nor = Input[0].Nor;\n"
+"	p.Tex0 = p.Tex1 = float2(1, 1);\n"
 "	ParticleStream.Append(p);\n"
 
 "	ParticleStream.RestartStrip();\n"

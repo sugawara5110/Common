@@ -940,24 +940,35 @@ void DXR_Basic::setCB(UINT numRecursion) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < PD[i]->NumInstance; k++) {
 				if (matCb[MaterialCnt].materialNo == 1) {
-					MATRIX Transpose;
-					memcpy(&Transpose, &PD[i]->Transform[k], sizeof(MATRIX));
-					MatrixTranspose(&Transpose);
-					cb.emissivePosition[cntEm].x = Transpose._41;
-					cb.emissivePosition[cntEm].y = Transpose._42;
-					cb.emissivePosition[cntEm].z = Transpose._43;
-					cb.emissivePosition[cntEm].w = 1.0f;//wはライトonoffに使う？
-					cb.Lightst[cntEm].x = dx->plight.Lightst[cntEm].x;
-					cb.Lightst[cntEm].y = dx->plight.Lightst[cntEm].y;
-					cb.Lightst[cntEm].z = dx->plight.Lightst[cntEm].z;
-					cb.Lightst[cntEm].w = dx->plight.Lightst[cntEm].w;
-					cb.emissiveNo[cntEm].x = (float)PD[i]->InstanceID[INSTANCE_PCS_3D * j + k];
-					cntEm++;
-					if (cntEm >= LIGHT_PCS) {
-						breakF = true;
-						break;
+					for (UINT v = 0; v < PD[i]->numVertex; v++) {
+						MATRIX Transpose;
+						memcpy(&Transpose, &PD[i]->Transform[k], sizeof(MATRIX));
+						MatrixTranspose(&Transpose);
+						VECTOR3 v3;
+						if (PD[i]->useVertex) {
+							v3.as(PD[i]->v[v].x, PD[i]->v[v].y, PD[i]->v[v].z);
+							VectorMatrixMultiply(&v3, &Transpose);
+						}
+						else {
+							v3.as(Transpose._41, Transpose._42, Transpose._43);
+						}
+						cb.emissivePosition[cntEm].x = v3.x;
+						cb.emissivePosition[cntEm].y = v3.y;
+						cb.emissivePosition[cntEm].z = v3.z;
+						cb.emissivePosition[cntEm].w = dx->plight.LightPos[cntEm].w;
+						cb.Lightst[cntEm].x = dx->plight.Lightst[cntEm].x;
+						cb.Lightst[cntEm].y = dx->plight.Lightst[cntEm].y;
+						cb.Lightst[cntEm].z = dx->plight.Lightst[cntEm].z;
+						cb.Lightst[cntEm].w = dx->plight.Lightst[cntEm].w;
+						cb.emissiveNo[cntEm].x = (float)PD[i]->InstanceID[INSTANCE_PCS_3D * j + k];
+						cntEm++;
+						if (cntEm >= LIGHT_PCS) {
+							breakF = true;
+							break;
+						}
 					}
 				}
+				if (breakF)break;
 			}
 			MaterialCnt++;
 			if (breakF)break;

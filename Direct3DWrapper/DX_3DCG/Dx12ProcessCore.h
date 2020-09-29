@@ -491,6 +491,9 @@ struct ParameterDXR {
 	float shininess;
 	bool alphaTest;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
+	bool useVertex = false;
+	UINT numVertex = 1;
+	std::unique_ptr<VECTOR3[]> v = nullptr;
 };
 
 //**********************************CommonƒNƒ‰ƒX*************************************//

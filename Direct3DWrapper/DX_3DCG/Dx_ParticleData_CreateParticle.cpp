@@ -119,6 +119,11 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 
 void ParticleData::GetBufferBill(int v) {
 	ver = v;
+	if (dx->DXR_CreateResource) {
+		dxrPara.useVertex = true;
+		dxrPara.numVertex = ver;
+		dxrPara.v = std::make_unique<VECTOR3[]>(ver);
+	}
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
@@ -219,7 +224,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 
 	if (dx->DXR_CreateResource) {
 
-		UINT indCnt = ver * 6;
+		UINT indCnt = ver * 12;
 		IndexView& dxI = dxrPara.IviewDXR[0];
 		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
 		dxI.IndexBufferByteSize = indCnt * sizeof(UINT);
@@ -230,7 +235,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 			dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
 		ARR_DELETE(ind);
 
-		UINT verCnt = ver * 6;
+		UINT verCnt = ver * 12;
 		VertexView& dxV = dxrPara.VviewDXR[0];
 		UINT bytesize = verCnt * sizeof(VERTEX_DXR);
 		dxV.VertexByteStride = sizeof(VERTEX_DXR);
@@ -440,6 +445,9 @@ void ParticleData::DrawBillboard() {
 void ParticleData::SetVertex(int i, VECTOR3 pos, VECTOR3 nor) {
 	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
 	P_pos[i].normal.as(nor.x, nor.y, nor.z);
+	if (dx->DXR_CreateResource) {
+		dxrPara.v[i].as(pos.x, pos.y, pos.z);
+	}
 }
 
 void ParticleData::StreamOutput(int com) {

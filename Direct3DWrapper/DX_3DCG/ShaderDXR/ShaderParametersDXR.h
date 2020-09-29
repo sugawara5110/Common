@@ -34,7 +34,7 @@ char* ShaderParametersDXR =
 "    matrix projectionToWorld;\n"
 "    float4 cameraUp;"
 "    float4 cameraPosition;\n"
-"    float4 emissivePosition[256];\n"
+"    float4 emissivePosition[256];\n"//.w:onoff
 "    float4 numEmissive;\n"//.x‚Ì‚İ
 "    float4 lightst[256];\n"//ƒŒƒ“ƒW, Œ¸Š1, Œ¸Š2, Œ¸Š3
 "    float4 GlobalAmbientColor;\n"
