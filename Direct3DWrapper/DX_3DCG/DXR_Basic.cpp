@@ -260,12 +260,9 @@ void DXR_Basic::createAccelerationStructures(int comNo) {
 }
 
 static const WCHAR* kRayGenShader = L"rayGen";
-static const WCHAR* kCamMissShader = L"camMiss";
-static const WCHAR* kCamClosestHitShader = L"camHit";
-static const WCHAR* kCamHitGroup = L"camHitGroup";
-static const WCHAR* kMetallicMiss = L"metallicMiss";
-static const WCHAR* kMetallicHitShader = L"metallicHit";
-static const WCHAR* kMetallicHitGroup = L"metallicHitGroup";
+static const WCHAR* kBasicMissShader = L"basicMiss";
+static const WCHAR* kBasicClosestHitShader = L"basicHit";
+static const WCHAR* kBasicHitGroup = L"basicHitGroup";
 static const WCHAR* kEmissiveMiss = L"emissiveMiss";
 static const WCHAR* kEmissiveHitShader = L"emissiveHit";
 static const WCHAR* kEmissiveHitGroup = L"emissiveHitGroup";
@@ -359,8 +356,7 @@ static DxilLibrary createDxilLibrary(char* add_shader) {
 	//シェーダーのコンパイル
 	ComPtr<ID3DBlob> pDxilLib = CompileLibrary(dxrShader[2].str, L"ShaderBasicDXR", L"lib_6_3");
 	const WCHAR* entryPoints[] = { kRayGenShader,
-		kCamMissShader, kCamClosestHitShader,
-		kMetallicMiss, kMetallicHitShader,
+		kBasicMissShader, kBasicClosestHitShader,
 		kEmissiveMiss, kEmissiveHitShader
 	};
 	return DxilLibrary(pDxilLib, entryPoints, ARRAY_SIZE(entryPoints));
@@ -600,7 +596,7 @@ void DXR_Basic::createRtPipelineState() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
-	std::array<D3D12_STATE_SUBOBJECT, 16> subobjects;
+	std::array<D3D12_STATE_SUBOBJECT, 13> subobjects;
 	uint32_t index = 0;
 
 	//DXIL library 初期化, SUBOBJECT作成
@@ -609,13 +605,9 @@ void DXR_Basic::createRtPipelineState() {
 	DxilLibrary dxilLib = createDxilLibrary(str.str);//Dx12Processに保持してるshaderを入力
 	subobjects[index++] = dxilLib.stateSubobject;
 
-	//CamhitShader SUBOBJECT作成
-	HitProgram camHitProgram(nullptr, kCamClosestHitShader, kCamHitGroup);
-	subobjects[index++] = camHitProgram.subObject;
-
-	//MetallicHitShader SUBOBJECT作成
-	HitProgram metallicHitProgram(nullptr, kMetallicHitShader, kMetallicHitGroup);
-	subobjects[index++] = metallicHitProgram.subObject;
+	//BasicHitShader SUBOBJECT作成
+	HitProgram basicHitProgram(nullptr, kBasicClosestHitShader, kBasicHitGroup);
+	subobjects[index++] = basicHitProgram.subObject;
 
 	//EmissiveHitShader SUBOBJECT作成
 	HitProgram emissiveHitProgram(nullptr, kEmissiveHitShader, kEmissiveHitGroup);
@@ -630,26 +622,16 @@ void DXR_Basic::createRtPipelineState() {
 	ExportAssociation rgsRootAssociation(&kRayGenShader, 1, &(subobjects[rgsRootIndex]));
 	subobjects[index++] = rgsRootAssociation.subobject;
 
-	//camHitShader, camMissShader ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature camHitMissRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
-	subobjects[index] = camHitMissRootSignature.subobject;
+	//basicHitShader, basicMissShader ルートシグネチャ作成, SUBOBJECT作成
+	LocalRootSignature basicHitMissRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
+	subobjects[index] = basicHitMissRootSignature.subobject;
 
-	//↑のcamHitShader, camMissShader 共有ルートシグネチャとcamHitShader, camMissShader関連付け, SUBOBJECT作成
-	uint32_t camHitMissRootIndex = index++;
-	const WCHAR* camMissHitExportName[] = { kCamMissShader, kCamClosestHitShader };
-	ExportAssociation camMissHitRootAssociation(camMissHitExportName, ARRAY_SIZE(camMissHitExportName),
-		&(subobjects[camHitMissRootIndex]));
-	subobjects[index++] = camMissHitRootAssociation.subobject;
-
-	//kMetallicHit, kMetallicMiss ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature metallicRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
-	subobjects[index] = metallicRootSignature.subobject;
-
-	uint32_t metallicRootIndex = index++;
-	const WCHAR* metallicRootExport[] = { kMetallicHitShader, kMetallicMiss };
-	ExportAssociation metallicRootAssociation(metallicRootExport, ARRAY_SIZE(metallicRootExport),
-		&(subobjects[metallicRootIndex]));
-	subobjects[index++] = metallicRootAssociation.subobject;
+	//↑のbasicHitShader, basicMissShader 共有ルートシグネチャとbasicHitShader, basicMissShader関連付け, SUBOBJECT作成
+	uint32_t basicHitMissRootIndex = index++;
+	const WCHAR* basicMissHitExportName[] = { kBasicMissShader, kBasicClosestHitShader };
+	ExportAssociation basicMissHitRootAssociation(basicMissHitExportName, ARRAY_SIZE(basicMissHitExportName),
+		&(subobjects[basicHitMissRootIndex]));
+	subobjects[index++] = basicMissHitRootAssociation.subobject;
 
 	//kEmissiveHit, kEmissiveMiss ルートシグネチャ作成, SUBOBJECT作成
 	LocalRootSignature emissiveRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
@@ -663,7 +645,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 8;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 11;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects[index] = shaderConfig.subobject;
 
@@ -671,8 +653,7 @@ void DXR_Basic::createRtPipelineState() {
 	uint32_t shaderConfigIndex = index++;
 	const WCHAR* shaderExports[] = {
 		kRayGenShader,
-		kCamClosestHitShader,kCamMissShader,
-		kMetallicHitShader, kMetallicMiss,
+		kBasicClosestHitShader,kBasicMissShader,
 		kEmissiveHitShader, kEmissiveMiss
 	};
 	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), &(subobjects[shaderConfigIndex]));
@@ -851,7 +832,7 @@ void DXR_Basic::createShaderTable() {
 	mShaderTableEntrySize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 	mShaderTableEntrySize += 8; //ray-genは + 8
 	mShaderTableEntrySize = ALIGNMENT_TO(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mShaderTableEntrySize);
-	uint32_t shaderTableSize = mShaderTableEntrySize * 7;//raygen + miss * 3 + hit * 3
+	uint32_t shaderTableSize = mShaderTableEntrySize * 5;//raygen + miss * 2 + hit * 2
 
 	Dx12Process::GetInstance()->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
 
@@ -867,30 +848,21 @@ void DXR_Basic::createShaderTable() {
 	uint64_t heapStart = mpSrvUavCbvHeap.Get()->GetGPUDescriptorHandleForHeapStart().ptr;
 	*(uint64_t*)(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart;
 
-	//Entry 1 - cam miss program
-	memcpy(pData + mShaderTableEntrySize, pRtsoProps.Get()->GetShaderIdentifier(kCamMissShader),
+	//Entry 1 - basic miss program
+	memcpy(pData + mShaderTableEntrySize, pRtsoProps.Get()->GetShaderIdentifier(kBasicMissShader),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-	// Entry 2 - metallic miss program
-	memcpy(pData + mShaderTableEntrySize * 2, pRtsoProps->GetShaderIdentifier(kMetallicMiss),
+	// Entry 2 - emissive miss program
+	memcpy(pData + mShaderTableEntrySize * 2, pRtsoProps->GetShaderIdentifier(kEmissiveMiss),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-	// Entry 3 - emissive miss program
-	memcpy(pData + mShaderTableEntrySize * 3, pRtsoProps->GetShaderIdentifier(kEmissiveMiss),
+	//Entry 3 - basic hit program
+	uint8_t* pHitEntry = pData + mShaderTableEntrySize * 3;
+	memcpy(pHitEntry, pRtsoProps.Get()->GetShaderIdentifier(kBasicHitGroup),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
-	//Entry 4 - cam hit program
-	uint8_t* pHitEntry = pData + mShaderTableEntrySize * 4;
-	memcpy(pHitEntry, pRtsoProps.Get()->GetShaderIdentifier(kCamHitGroup),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-	//Entry 5 - metallic hit program
-	uint8_t* pHitEntry1 = pData + mShaderTableEntrySize * 5;
-	memcpy(pHitEntry1, pRtsoProps.Get()->GetShaderIdentifier(kMetallicHitGroup),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-	//Entry 6 - emissive hit program
-	uint8_t* pHitEntry2 = pData + mShaderTableEntrySize * 6;
+	//Entry 4 - emissive hit program
+	uint8_t* pHitEntry2 = pData + mShaderTableEntrySize * 4;
 	memcpy(pHitEntry2, pRtsoProps.Get()->GetShaderIdentifier(kEmissiveHitGroup),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
@@ -1028,13 +1000,13 @@ void DXR_Basic::raytrace(int comNo, UINT numRecursion) {
 	size_t missOffset = 1 * mShaderTableEntrySize;
 	raytraceDesc.MissShaderTable.StartAddress = mpShaderTable.Get()->GetGPUVirtualAddress() + missOffset;
 	raytraceDesc.MissShaderTable.StrideInBytes = mShaderTableEntrySize;
-	raytraceDesc.MissShaderTable.SizeInBytes = mShaderTableEntrySize * 3;//missShader 3個
+	raytraceDesc.MissShaderTable.SizeInBytes = mShaderTableEntrySize * 2;//missShader 2個
 
 	//Hit
-	size_t hitOffset = 4 * mShaderTableEntrySize;
+	size_t hitOffset = 3 * mShaderTableEntrySize;
 	raytraceDesc.HitGroupTable.StartAddress = mpShaderTable.Get()->GetGPUVirtualAddress() + hitOffset;
 	raytraceDesc.HitGroupTable.StrideInBytes = mShaderTableEntrySize;
-	raytraceDesc.HitGroupTable.SizeInBytes = mShaderTableEntrySize * 3;//hitShader 3個
+	raytraceDesc.HitGroupTable.SizeInBytes = mShaderTableEntrySize * 2;//hitShader 2個
 
 	//Dispatch
 	dx->dx_sub[comNo].mCommandList->SetPipelineState1(mpPipelineState.Get());

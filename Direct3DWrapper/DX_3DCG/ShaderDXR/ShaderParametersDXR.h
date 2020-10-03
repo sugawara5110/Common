@@ -52,15 +52,10 @@ char* ShaderParametersDXR =
 "struct RayPayload\n"
 "{\n"
 "    float3 color;\n"
+"    float3 hitPosition;\n"
+"    bool reTry;\n"
 "    bool hit;\n"
 "    float Alpha;\n"
 "    uint RecursionCnt;\n"
-"};\n"
-
-"struct RayPayloadEmissive\n"
-"{\n"
-"    float3 color;\n"
-"    float3 hitPosition;\n"
-"    bool reTry;\n"
 "    uint instanceID;\n"
 "};\n";

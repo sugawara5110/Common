@@ -37,115 +37,84 @@ char* ShaderBasicDXR =
      //この関数からRayがスタートする
      //payloadに各hit, miss シェーダーで計算された値が格納される
 "    payload.RecursionCnt = 1;\n"
-"    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
+"    bool loop = true;\n"
+"    payload.hitPosition = ray.Origin;\n"
+"    while(loop){\n"
+"       ray.Origin = payload.hitPosition;\n"
+"       TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
+"       loop = payload.reTry;\n"
+"    }\n"
 "    float3 col = linearToSrgb(payload.color);\n"
 "    gOutput[index] = float4(col, 1);\n"
 "}\n"
 //**************************************rayGen_Shader*******************************************************************//
 
-//**************************************camMiss_Shader*******************************************************************//
-//視線がヒットしなかった場合起動される
+//**************************************basicMiss_Shader*******************************************************************//
 "[shader(\"miss\")]\n"
-"void camMiss(inout RayPayload payload)\n"
+"void basicMiss(inout RayPayload payload)\n"
 "{\n"
 "    payload.color = float3(0.0, 0.0, 0.0);\n"
+"    payload.hit = false;\n"
+"    payload.reTry = false;\n"
 "}\n"
-//**************************************camMiss_Shader*******************************************************************//
+//**************************************basicMiss_Shader*******************************************************************//
 
-//**************************************camHit_Shader*******************************************************************//
-//視線がヒットした場合起動される
+//**************************************basicHit_Shader*******************************************************************//
 "[shader(\"closesthit\")]\n"
-"void camHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
-"    float3 hitPosition = HitWorldPosition();\n"
-"    uint materialID = getMaterialID();\n"
-"    uint mNo = material[materialID].materialNo;\n"
+"    payload.hitPosition = HitWorldPosition();\n"
 //テクスチャ取得
 "    float4 difTex = getDifPixel(attr);\n"
 "    float3 normalMap = getNorPixel(attr);\n"
 "    float3 speTex = getSpePixel(attr);\n"
 
-"    float4 add = material[materialID].AddObjColor;\n"
-"    difTex.x = saturate(difTex.x + add.x);\n"
-"    difTex.y = saturate(difTex.y + add.y);\n"
-"    difTex.z = saturate(difTex.z + add.z);\n"
-"    difTex.w = saturate(difTex.w + add.w);\n"
-
-//光源への光線(emissive以外)
-"    if(mNo != 1)difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex, normalMap);\n"
-//反射方向への光線(metallicのみ)
-"    if(mNo == 0)difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, normalMap);\n"
-
+"    payload.reTry = true;\n"
+"    if(difTex.w > 0.0f) {\n"
+"       payload.reTry = false;\n"
+//光源への光線
+"       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
+//反射方向への光線
+"       difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, normalMap);\n"
 //アルファテスト
-"    if(material[materialID].alphaTest == 1.0f) {\n"
-"       difTex.xyz = AlphaTest(payload.RecursionCnt, hitPosition, difTex.xyz, difTex.w, 0);\n"
-"    }\n"
-"    payload.color = difTex.xyz;\n"
-"}\n"
-//**************************************camHit_Shader*******************************************************************//
-
-//***********************************metallicHit_Shader*****************************************************************//
-//camHitから飛ばされた光線がヒットした場合起動される
-"[shader(\"closesthit\")]\n"
-"void metallicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
-"{\n"
-"    uint materialID = getMaterialID();\n"
-"    float3 hitPosition = HitWorldPosition();\n"
-"    uint mNo = material[materialID].materialNo;\n"
-//テクスチャ取得
-"    float4 difTex = getDifPixel(attr);\n"
-"    float3 normalMap = getNorPixel(attr);\n"
-"    float3 speTex = getSpePixel(attr);\n"
-
-//光源への光線(emissive以外)
-"    if (mNo != 1)difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, hitPosition, difTex.xyz, speTex.xyz, normalMap);\n"
-//アルファテスト
-"    if(material[materialID].alphaTest == 1.0f) {\n"
-"       difTex.xyz = AlphaTest(payload.RecursionCnt, hitPosition, difTex.xyz, difTex.w, 1);\n"
+"       difTex.xyz = AlphaTest(payload.RecursionCnt, payload.hitPosition, difTex);\n"
 "    }\n"
 "    payload.color = difTex.xyz;\n"
 "    payload.hit = true;\n"
 "    payload.Alpha = difTex.w;\n"
 "}\n"
-//***********************************metallicHit_Shader*****************************************************************//
-
-//***********************************metallicMiss_Shader****************************************************************//
-//camHitから飛ばされた光線がヒットしなかった場合起動される
-"[shader(\"miss\")]\n"
-"void metallicMiss(inout RayPayload payload)\n"
-"{\n"
-"    payload.hit = false;\n"
-"}\n"
-//***********************************metallicMiss_Shader****************************************************************//
+//**************************************basicHit_Shader*******************************************************************//
 
 //***********************************emissiveHit_Shader*****************************************************************//
-//camHitから飛ばされた光源への光線がヒットした場合起動される
 "[shader(\"closesthit\")]\n"
-"void emissiveHit(inout RayPayloadEmissive payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"void emissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
-
+"    float4 difTex = getDifPixel(attr);\n"
+"    payload.hitPosition = HitWorldPosition();\n"
 "    payload.reTry = false;\n"
 "    if(mNo == 1) {\n"//(emissiveのみ)
-"       float4 difTex = getDifPixel(attr);\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
-"       payload.hitPosition = HitWorldPosition();\n"
 "       payload.color = difTex.xyz;\n"
 "       if(InstanceID() != payload.instanceID) {\n"
 "          payload.reTry = true;\n"
 "       }\n"
 "    }\n"
-"    else {\n"//エミッシブではなかった場合影になる
-"       payload.color = GlobalAmbientColor.xyz;\n"
+"    else {\n"//エミッシブ以外かつアルファ値0より大きい場合影になる
+"       if(difTex.w > 0.0f) {\n"
+"          payload.color = GlobalAmbientColor.xyz;\n"
+"       }\n"
+"       else {\n"
+"          payload.reTry = true;\n"
+"       }\n"
 "    }\n"
 "}\n"
 //***********************************emissiveHit_Shader*****************************************************************//
 
 //***********************************emissiveMiss_Shader****************************************************************//
-//camHitから飛ばされた光源への光線がヒットしなかった場合起動される
 "[shader(\"miss\")]\n"
-"void emissiveMiss(inout RayPayloadEmissive payload)\n"
+"void emissiveMiss(inout RayPayload payload)\n"
 "{\n"
 "    payload.color = GlobalAmbientColor.xyz;\n"
 "    payload.reTry = false;\n"
