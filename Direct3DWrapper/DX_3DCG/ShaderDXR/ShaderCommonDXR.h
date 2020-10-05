@@ -138,9 +138,10 @@ char* ShaderCommonDXR =
 "                                in float3 difTexColor, in float3 speTexColor, in float3 normal)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
+"    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor;\n"
 
-"    if(material[materialID].materialNo != 1) {\n"//emissive以外
+"    if(mNo != 2) {\n"//emissive以外
 
 "       RayPayload payload;\n"
 "       LightOut emissiveColor = (LightOut)0;\n"
@@ -151,24 +152,27 @@ char* ShaderCommonDXR =
 "       ray.TMax = 100000;\n"
 "       RecursionCnt++;\n"
 
+"       float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
+"       float3 Diffuse = material[materialID].Diffuse.xyz;\n"
+"       float3 Ambient = material[materialID].Ambient.xyz;\n"
+"       float shininess = material[materialID].shininess;\n"
+
 "       if(RecursionCnt <= maxRecursion) {\n"
+//点光源計算
 "          for(uint i = 0; i < numEmissive.x; i++) {\n"
-"              if(emissivePosition[i].w == 1.0f) {"
+"              if(emissivePosition[i].w == 1.0f) {\n"
 "                 float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
 "                 ray.Direction = lightVec;\n"
 "                 payload.instanceID = (uint)emissiveNo[i].x;\n"
 "                 bool loop = true;\n"
 "                 while(loop){\n"
+"                    payload.mNo = 2;\n"//処理分岐用
 "                    ray.Origin = payload.hitPosition;\n"
 "                    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
 "                             0xFF, 1, 0, 1, ray, payload);\n"
 "                    loop = payload.reTry;\n"
 "                 }\n"
-//光源計算
-"                 float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
-"                 float3 Diffuse = material[materialID].Diffuse.xyz;\n"
-"                 float3 Ambient = material[materialID].Ambient.xyz;\n"
-"                 float shininess = material[materialID].shininess;\n"
+
 "                 Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"//ShaderCG内関数
 "                                     hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
 
@@ -176,7 +180,27 @@ char* ShaderCommonDXR =
 "                 emissiveColor.Speculer += Out.Speculer;\n"
 "              }\n"
 "          }\n"
+//平行光源計算
+"          if(dLightst.x == 1.0f){\n"
+"             payload.hitPosition = hitPosition;\n"
+"             ray.Direction = -dDirection.xyz;\n"
+"             bool loop = true;\n"
+"             while(loop){\n"
+"                payload.mNo = 3;\n"//処理分岐用
+"                ray.Origin = payload.hitPosition;\n"
+"                TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                         0xFF, 1, 0, 1, ray, payload);\n"
+"                loop = payload.reTry;\n"
+"             }\n"
+
+"             Out = DirectionalLightCom(SpeculerCol, Diffuse, Ambient, normal, dLightst, dDirection.xyz, \n"//ShaderCG内関数
+"                                       payload.color, hitPosition, cameraPosition.xyz, shininess);\n"
+
+"             emissiveColor.Diffuse += Out.Diffuse;\n"
+"             emissiveColor.Speculer += Out.Speculer;\n"
+"          }\n"
 "       }\n"
+//最後にテクスチャの色に掛け合わせ
 "       difTexColor *= emissiveColor.Diffuse;\n"
 "       speTexColor *= emissiveColor.Speculer;\n"
 "       ret = difTexColor + speTexColor;\n"
@@ -189,9 +213,10 @@ char* ShaderCommonDXR =
 "                                in float3 difTexColor, in float3 normal)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
+"    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor;\n"
 
-"    if(material[materialID].materialNo == 0) {\n"//metallicのみ
+"    if(mNo == 0 || mNo == 3) {\n"//metallicのみ
 
 "       RayPayload payload;\n"
 "       RecursionCnt++;\n"
@@ -228,6 +253,15 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////////アルファテスト//////////////////////////////////////
+"bool AlphaTestSw(in float Alpha)\n"
+"{\n"
+"    bool ret = true;\n"
+"    uint materialID = getMaterialID();\n"
+"    float test = material[materialID].alphaTest;\n"
+"    if(test == 1.0f && Alpha <= 0.0f)ret = false;\n"
+"    return ret;\n"
+"}\n"
+
 "float3 AlphaTest(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"

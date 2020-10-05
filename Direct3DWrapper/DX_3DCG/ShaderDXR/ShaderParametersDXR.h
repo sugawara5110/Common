@@ -21,7 +21,7 @@ char* ShaderParametersDXR =
 "    float4 AddObjColor;\n"
 "    float shininess;\n"
 "    float alphaTest;\n"//1.0f:on, 0.0f:off 
-"    uint materialNo;\n"//0:metallic, 1:emissive, 2:nonReflection
+"    uint materialNo;\n"
 "};\n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
@@ -39,6 +39,9 @@ char* ShaderParametersDXR =
 "    float4 lightst[256];\n"//レンジ, 減衰1, 減衰2, 減衰3
 "    float4 GlobalAmbientColor;\n"
 "    float4 emissiveNo[256];"//.xのみ
+"    float4 dDirection;\n"
+"    float4 dLightColor;\n"
+"    float4 dLightst;\n"//.x:オンオフ
 "    uint maxRecursion;\n"
 "};\n"
 
@@ -58,4 +61,5 @@ char* ShaderParametersDXR =
 "    float Alpha;\n"
 "    uint RecursionCnt;\n"
 "    uint instanceID;\n"
+"    uint mNo;\n"
 "};\n";

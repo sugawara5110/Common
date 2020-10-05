@@ -70,7 +70,7 @@ char* ShaderBasicDXR =
 "    float3 speTex = getSpePixel(attr);\n"
 
 "    payload.reTry = true;\n"
-"    if(difTex.w > 0.0f) {\n"
+"    if(AlphaTestSw(difTex.w)) {\n"
 "       payload.reTry = false;\n"
 //光源への光線
 "       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
@@ -94,15 +94,26 @@ char* ShaderBasicDXR =
 "    float4 difTex = getDifPixel(attr);\n"
 "    payload.hitPosition = HitWorldPosition();\n"
 "    payload.reTry = false;\n"
-"    if(mNo == 1) {\n"//(emissiveのみ)
 //ヒットした位置のテクスチャの色をpayload.color格納する
+//////点光源
+"    if(payload.mNo == 2 && mNo == 2) {\n"
 "       payload.color = difTex.xyz;\n"
-"       if(InstanceID() != payload.instanceID) {\n"
+"       if(InstanceID() != payload.instanceID) {\n"//目標の点光源か?
+"          payload.reTry = true;\n"//目標の点光源以外の場合素通り
+"       }\n"
+"    }\n"
+//////平行光源
+"    if(payload.mNo == 3) {\n"
+"       if(mNo > 2) {\n"//平行光源発生マテリアルか?
+"          payload.color = dLightColor.xyz;\n"
+"       }\n"
+"       if(mNo == 2) {\n"//点光源の場合素通り
 "          payload.reTry = true;\n"
 "       }\n"
 "    }\n"
-"    else {\n"//エミッシブ以外かつアルファ値0より大きい場合影になる
-"       if(difTex.w > 0.0f) {\n"
+//////影
+"    if(mNo != 2 && payload.mNo == 2 || mNo < 2 && payload.mNo == 3) {\n"
+"       if(difTex.w >= 1.0f) {\n"
 "          payload.color = GlobalAmbientColor.xyz;\n"
 "       }\n"
 "       else {\n"

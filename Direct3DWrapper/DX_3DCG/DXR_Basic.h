@@ -27,6 +27,9 @@ struct DxrConstantBuffer
 	VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	VECTOR4 GlobalAmbientColor;
 	VECTOR4 emissiveNo[LIGHT_PCS];//.xのみ
+	VECTOR4 dDirection;
+	VECTOR4 dLightColor;
+	VECTOR4 dLightst;//x:オンオフ
 	UINT maxRecursion;
 };
 
@@ -42,8 +45,10 @@ struct DxrMaterialCB {
 
 enum MaterialType {
 	METALLIC,
+	NONREFLECTION,
 	EMISSIVE,
-	NONREFLECTION
+	DIRECTIONLIGHT_METALLIC,
+	DIRECTIONLIGHT_NONREFLECTION
 };
 
 struct DxrInstanceCB {

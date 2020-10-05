@@ -46,11 +46,21 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 			case METALLIC:
 				matCb[i].materialNo = 0;
 				break;
-			case EMISSIVE:
+
+			case NONREFLECTION:
 				matCb[i].materialNo = 1;
 				break;
-			case NONREFLECTION:
+
+			case EMISSIVE:
 				matCb[i].materialNo = 2;
+				break;
+
+			case DIRECTIONLIGHT_METALLIC:
+				matCb[i].materialNo = 3;
+				break;
+
+			case DIRECTIONLIGHT_NONREFLECTION:
+				matCb[i].materialNo = 4;
 				break;
 			}
 		}
@@ -645,7 +655,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 11;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 12;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects[index] = shaderConfig.subobject;
 
@@ -911,7 +921,7 @@ void DXR_Basic::setCB(UINT numRecursion) {
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < PD[i]->NumInstance; k++) {
-				if (matCb[MaterialCnt].materialNo == 1) {
+				if (matCb[MaterialCnt].materialNo == 2) {
 					for (UINT v = 0; v < PD[i]->numVertex; v++) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &PD[i]->Transform[k], sizeof(MATRIX));
@@ -950,6 +960,10 @@ void DXR_Basic::setCB(UINT numRecursion) {
 
 	cb.numEmissive.x = (float)cntEm;
 	memcpy(&cb.GlobalAmbientColor, &dx->GlobalAmbientLight, sizeof(VECTOR4));
+	memcpy(&cb.dDirection, &dx->dlight.Direction, sizeof(VECTOR4));
+	memcpy(&cb.dLightColor, &dx->dlight.LightColor, sizeof(VECTOR4));
+	memcpy(&cb.dLightst, &dx->dlight.onoff, sizeof(VECTOR4));
+
 	sCB->CopyData(0, cb);
 
 	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, matCb[i]);
