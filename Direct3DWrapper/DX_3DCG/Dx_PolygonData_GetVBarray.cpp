@@ -198,7 +198,7 @@ bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLay
 			vertexLayout,
 			&dx->pDeclaration_Output,
 			(UINT)dx->pDeclaration_Output.size(),
-			&dxrPara.SviewDXR[i].StreamByteStride,
+			&dxrPara.updateDXR[0].SviewDXR[i].StreamByteStride,
 			1,
 			primType_create);
 	}
@@ -274,16 +274,7 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 
 void PolygonData::createBufferDXR(int numMaterial) {
 	dxrPara.NumMaterial = numMaterial;
-	dxrPara.difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
-	dxrPara.norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
-	dxrPara.speTex = std::make_unique<ID3D12Resource* []>(numMaterial);
-	dxrPara.diffuse = std::make_unique<VECTOR4[]>(numMaterial);
-	dxrPara.specular = std::make_unique<VECTOR4[]>(numMaterial);
-	dxrPara.ambient = std::make_unique<VECTOR4[]>(numMaterial);
-	dxrPara.VviewDXR = std::make_unique<VertexView[]>(numMaterial);
-	dxrPara.IviewDXR = std::make_unique<IndexView[]>(numMaterial);
-	dxrPara.SviewDXR = std::make_unique<StreamView[]>(numMaterial);
-	dxrPara.SizeLocation = std::make_unique<StreamView[]>(numMaterial);
+	dxrPara.create(numMaterial);
 }
 
 void PolygonData::createParameterDXR(bool alpha) {
@@ -306,38 +297,40 @@ void PolygonData::createParameterDXR(bool alpha) {
 
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
-		IndexView& dxI = dxrPara.IviewDXR[i];
-		UINT indCnt = dpara.Iview[i].IndexCount * numDispPolygon;
-		UINT bytesize = indCnt * sizeof(UINT);
-		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
-		dxI.IndexBufferByteSize = bytesize;
-		dxI.IndexCount = indCnt;
-		UINT* ind = new UINT[indCnt];
-		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
-			bytesize, dxI.IndexBufferUploader, false);
-		ARR_DELETE(ind);
+		for (int j = 0; j < 2; j++) {
+			IndexView& dxI = dxrPara.updateDXR[j].IviewDXR[i];
+			UINT indCnt = dpara.Iview[i].IndexCount * numDispPolygon;
+			UINT bytesize = indCnt * sizeof(UINT);
+			dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+			dxI.IndexBufferByteSize = bytesize;
+			dxI.IndexCount = indCnt;
+			UINT* ind = new UINT[indCnt];
+			for (UINT in = 0; in < indCnt; in++)ind[in] = in;
+			dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+				bytesize, dxI.IndexBufferUploader, false);
+			ARR_DELETE(ind);
 
-		VertexView& dxV = dxrPara.VviewDXR[i];
-		bytesize = indCnt * sizeof(VERTEX_DXR);
-		dxV.VertexByteStride = sizeof(VERTEX_DXR);
-		dxV.VertexBufferByteSize = bytesize;
-		dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-			dxV.VertexBufferByteSize);
-		dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+			VertexView& dxV = dxrPara.updateDXR[j].VviewDXR[i];
+			bytesize = indCnt * sizeof(VERTEX_DXR);
+			dxV.VertexByteStride = sizeof(VERTEX_DXR);
+			dxV.VertexBufferByteSize = bytesize;
+			dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+				dxV.VertexBufferByteSize);
+			dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-		StreamView& dxS = dxrPara.SviewDXR[i];
-		dxS.StreamByteStride = sizeof(VERTEX_DXR);
-		dxS.StreamBufferByteSize = bytesize;
-		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
+			StreamView& dxS = dxrPara.updateDXR[j].SviewDXR[i];
+			dxS.StreamByteStride = sizeof(VERTEX_DXR);
+			dxS.StreamBufferByteSize = bytesize;
+			dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
 
-		StreamView& dxL = dxrPara.SizeLocation[i];
-		dxL.StreamByteStride = sizeof(VERTEX_DXR);
-		dxL.StreamBufferByteSize = bytesize;
-		dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
+			StreamView& dxL = dxrPara.updateDXR[j].SizeLocation[i];
+			dxL.StreamByteStride = sizeof(VERTEX_DXR);
+			dxL.StreamBufferByteSize = bytesize;
+			dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
 
-		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
+			dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
+		}
 	}
 }
 
@@ -463,7 +456,7 @@ void PolygonData::DrawOff() {
 	DrawOn = false;
 }
 
-void PolygonData::draw(int com, drawPara& para, ParameterDXR& dxr) {
+void PolygonData::draw(int com, drawPara& para) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 
@@ -506,20 +499,22 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		mCList->SetGraphicsRootDescriptorTable(0, heap);
 		heap.ptr += dx->mCbvSrvUavDescriptorSize * para.numDesc;
 
-		mCList->SOSetTargets(0, 1, &dxr.SviewDXR[i].StreamBufferView());
+		UpdateDXR& ud = dxr.updateDXR[dx->dxrBuffSwap[0]];
+		mCList->SOSetTargets(0, 1, &ud.SviewDXR[i].StreamBufferView());
 
 		mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 
-		dx->dx_sub[com].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+		dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		dx->dx_sub[com].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+		dx->dx_sub[com].ResourceBarrier(ud.SviewDXR[i].StreamBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		mCList->CopyResource(dxr.VviewDXR[i].VertexBufferGPU.Get(), dxr.SviewDXR[i].StreamBufferGPU.Get());
+		mCList->CopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(),
+			ud.SviewDXR[i].StreamBufferGPU.Get());
 
-		dx->dx_sub[com].ResourceBarrier(dxr.VviewDXR[i].VertexBufferGPU.Get(),
+		dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-		dx->dx_sub[com].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+		dx->dx_sub[com].ResourceBarrier(ud.SviewDXR[i].StreamBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
 		mCList->SOSetTargets(0, 1, nullptr);
@@ -552,16 +547,18 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 				verCnt += ver;
 			}
 			dpara.mDivideReadBuffer[i].Get()->Unmap(0, nullptr);
-			dxr.IviewDXR[i].IndexCount = verCnt;
+			ud.IviewDXR[i].IndexCount = verCnt;
 		}
 	}
 }
 
 void PolygonData::ParameterDXR_Update() {
-	dxrPara.NumInstance = dpara.insNum;
-	dxrPara.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
-	memcpy(&dxrPara.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(VECTOR4));
-	memcpy(dxrPara.Transform, &cb[dx->cBuffSwap[1]].World, sizeof(MATRIX) * dxrPara.NumInstance);
+	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	ud.NumInstance = dpara.insNum;
+	ud.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
+	memcpy(&ud.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(VECTOR4));
+	memcpy(ud.Transform,
+		&cb[dx->cBuffSwap[1]].World, sizeof(MATRIX) * ud.NumInstance);
 }
 
 void PolygonData::Draw(int com) {
@@ -569,7 +566,7 @@ void PolygonData::Draw(int com) {
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
-	draw(com, dpara, dxrPara);
+	draw(com, dpara);
 }
 
 void PolygonData::StreamOutput(int com) {
@@ -591,7 +588,7 @@ void PolygonData::StreamOutput() {
 
 ParameterDXR* PolygonData::getParameter() {
 	for (int i = 0; i < dxrPara.NumMaterial; i++) {
-		if (dxrPara.IviewDXR[i].IndexCount <= 0) {
+		if (dxrPara.updateDXR[0].IviewDXR[i].IndexCount <= 0) {
 			dxrPara.NumMaterial = i;
 			break;
 		}

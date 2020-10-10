@@ -123,12 +123,14 @@ void Dx12Process::FenceSetEvent() {
 
 void Dx12Process::WaitFenceNotLock() {
 	//クローズ後リストに加える
+	static ID3D12CommandList* cmdsLists[COM_NO] = {};
+	UINT cnt = 0;
 	for (int i = 0; i < COM_NO; i++) {
 		if (dx_sub[i].mComState != CLOSE)continue;
-		ID3D12CommandList* cmdsLists[] = { dx_sub[i].mCommandList.Get() };
-		mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+		cmdsLists[cnt++] = dx_sub[i].mCommandList.Get();
 		dx_sub[i].mComState = USED;
 	}
+	mCommandQueue->ExecuteCommandLists(cnt, cmdsLists);
 
 	//インクリメントされたことで描画完了と判断
 	mCurrentFence++;
@@ -578,7 +580,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		}
 	}
 	else if (DXR_CreateResource) {
-		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5;
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
 		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
 		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 		{

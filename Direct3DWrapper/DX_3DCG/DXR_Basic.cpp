@@ -77,21 +77,26 @@ void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial, bool update) {
 	if (!update) {
 		pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
 		pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
-		for (UINT i = 0; i < numParameter; i++)
-			PD[i]->InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
+		for (UINT i = 0; i < numParameter; i++) {
+			for (UINT j = 0; j < 2; j++)
+				PD[i]->updateDXR[j].InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
+		}
 	}
+
+	Dx12Process* dx = Dx12Process::GetInstance();
 
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 			VertexObj& vb = pVertexBuffer[MaterialCnt];
-			VertexView& vv = PD[i]->VviewDXR[j];
+			VertexView& vv = ud.VviewDXR[j];
 			vb.VertexByteStride = vv.VertexByteStride;
 			vb.VertexBufferByteSize = vv.VertexBufferByteSize;
 			vb.VertexBufferGPU = vv.VertexBufferGPU.Get();
 
 			IndexObj& ib = pIndexBuffer[MaterialCnt];
-			IndexView& iv = PD[i]->IviewDXR[j];
+			IndexView& iv = ud.IviewDXR[j];
 			ib.IndexBufferByteSize = iv.IndexBufferByteSize;
 			ib.IndexCount = iv.IndexCount;
 			ib.IndexBufferGPU = iv.IndexBufferGPU.Get();
@@ -176,8 +181,9 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 
 	UINT numRayInstance = 0;
 	for (UINT i = 0; i < numParameter; i++) {
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		if (update)
-			numRayInstance += PD[i]->NumInstance * PD[i]->NumMaterial;
+			numRayInstance += ud.NumInstance * PD[i]->NumMaterial;
 		else
 			numRayInstance += INSTANCE_PCS_3D * PD[i]->NumMaterial;
 	}
@@ -216,18 +222,19 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 	UINT RayInstanceCnt = 0;
 	UINT materialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			for (UINT k = 0; k < PD[i]->NumInstance; k++) {
+			for (UINT k = 0; k < ud.NumInstance; k++) {
 				//InstanceDesc初期化
 				D3D12_RAYTRACING_INSTANCE_DESC& pID = pInstanceDesc[RayInstanceCnt];
 				UINT materialInstanceID = materialCnt;//max65535
 				UINT InstancingID = i * INSTANCE_PCS_3D + k;//max65535
 				UINT InstanceID = ((materialInstanceID << 16) & 0xffff0000) | (InstancingID & 0x0000ffff);
-				PD[i]->InstanceID[INSTANCE_PCS_3D * j + k] = InstanceID;
+				ud.InstanceID[INSTANCE_PCS_3D * j + k] = InstanceID;
 				pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
 				pID.InstanceContributionToHitGroupIndex = 0;//シェーダーテーブル内のオフセット。ジオメトリが一つの場合,オフセット0
 				pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-				memcpy(pID.Transform, &PD[i]->Transform[k], sizeof(pID.Transform));
+				memcpy(pID.Transform, &ud.Transform[k], sizeof(pID.Transform));
 				pID.AccelerationStructure = bottomLevelBuffers[materialCnt].pResult.Get()->GetGPUVirtualAddress();
 				pID.InstanceMask = 0xFF;
 				RayInstanceCnt++;
@@ -881,8 +888,11 @@ void DXR_Basic::createShaderTable() {
 
 void DXR_Basic::updateMaterial() {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 
 			VECTOR4& dif = PD[i]->diffuse[j];
@@ -891,8 +901,8 @@ void DXR_Basic::updateMaterial() {
 			matCb[MaterialCnt].vDiffuse.as(dif.x, dif.y, dif.z, 0.0f);
 			matCb[MaterialCnt].vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
 			matCb[MaterialCnt].vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
-			matCb[MaterialCnt].shininess = PD[i]->shininess;
-			memcpy(&matCb[MaterialCnt].AddObjColor, &PD[i]->AddObjColor, sizeof(VECTOR4));
+			matCb[MaterialCnt].shininess = ud.shininess;
+			memcpy(&matCb[MaterialCnt].AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
 			if (PD[i]->alphaTest) {
 				matCb[MaterialCnt].alphaTest = 1.0f;
 			}
@@ -919,12 +929,13 @@ void DXR_Basic::setCB(UINT numRecursion) {
 	bool breakF = false;
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			for (UINT k = 0; k < PD[i]->NumInstance; k++) {
+			for (UINT k = 0; k < ud.NumInstance; k++) {
 				if (matCb[MaterialCnt].materialNo == 2) {
 					for (UINT v = 0; v < PD[i]->numVertex; v++) {
 						MATRIX Transpose;
-						memcpy(&Transpose, &PD[i]->Transform[k], sizeof(MATRIX));
+						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));
 						MatrixTranspose(&Transpose);
 						VECTOR3 v3;
 						if (PD[i]->useVertex) {
@@ -942,7 +953,7 @@ void DXR_Basic::setCB(UINT numRecursion) {
 						cb.Lightst[cntEm].y = dx->plight.Lightst[cntEm].y;
 						cb.Lightst[cntEm].z = dx->plight.Lightst[cntEm].z;
 						cb.Lightst[cntEm].w = dx->plight.Lightst[cntEm].w;
-						cb.emissiveNo[cntEm].x = (float)PD[i]->InstanceID[INSTANCE_PCS_3D * j + k];
+						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[INSTANCE_PCS_3D * j + k];
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {
 							breakF = true;
@@ -969,8 +980,9 @@ void DXR_Basic::setCB(UINT numRecursion) {
 	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, matCb[i]);
 
 	for (UINT i = 0; i < numParameter; i++) {
-		for (UINT k = 0; k < PD[i]->NumInstance; k++) {
-			memcpy(&insCb[INSTANCE_PCS_3D * i + k].world, &PD[i]->Transform[k], sizeof(MATRIX));
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		for (UINT k = 0; k < ud.NumInstance; k++) {
+			memcpy(&insCb[INSTANCE_PCS_3D * i + k].world, &ud.Transform[k], sizeof(MATRIX));
 			instance->CopyData(INSTANCE_PCS_3D * i + k, insCb[INSTANCE_PCS_3D * i + k]);
 		}
 	}

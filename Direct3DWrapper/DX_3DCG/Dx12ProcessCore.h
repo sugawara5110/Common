@@ -232,7 +232,8 @@ private:
 	Fog fog;
 	VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
-	int  cBuffSwap[2] = { 0,0 };
+	int cBuffSwap[2] = { 0,0 };
+	int dxrBuffSwap[2] = { 0,0 };
 
 	bool wireframe = false;
 
@@ -310,6 +311,8 @@ public:
 	void End(int com_no);
 	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
 	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
+	void setStreamOutputSwapIndex(int index) { dxrBuffSwap[0] = index; }
+	void setRaytraceSwapIndex(int index) { dxrBuffSwap[1] = index; }
 	void WaitFenceNotLock();
 	void WaitFence();
 	void DrawScreen();
@@ -473,15 +476,8 @@ struct drawPara {
 	UINT insNum = 1;
 };
 
-struct ParameterDXR {
-	int NumMaterial = 0;
+struct UpdateDXR {
 	UINT NumInstance = 1;
-	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
-	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
-	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
-	std::unique_ptr<VECTOR4[]> diffuse = nullptr;
-	std::unique_ptr<VECTOR4[]> specular = nullptr;
-	std::unique_ptr<VECTOR4[]> ambient = nullptr;
 	std::unique_ptr<VertexView[]> VviewDXR = nullptr;
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
 	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
@@ -489,8 +485,39 @@ struct ParameterDXR {
 	MATRIX Transform[INSTANCE_PCS_3D] = {};
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
-	bool alphaTest;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
+
+	void create(int numMaterial) {
+		VviewDXR = std::make_unique<VertexView[]>(numMaterial);
+		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
+		SviewDXR = std::make_unique<StreamView[]>(numMaterial);
+		SizeLocation = std::make_unique<StreamView[]>(numMaterial);
+	}
+};
+
+struct ParameterDXR {
+	int NumMaterial = 0;
+	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
+	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
+	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
+	std::unique_ptr<VECTOR4[]> diffuse = nullptr;
+	std::unique_ptr<VECTOR4[]> specular = nullptr;
+	std::unique_ptr<VECTOR4[]> ambient = nullptr;
+	UpdateDXR updateDXR[2] = {};
+
+	void create(int numMaterial) {
+		difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+		norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+		speTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+		diffuse = std::make_unique<VECTOR4[]>(numMaterial);
+		specular = std::make_unique<VECTOR4[]>(numMaterial);
+		ambient = std::make_unique<VECTOR4[]>(numMaterial);
+		updateDXR[0].create(numMaterial);
+		updateDXR[1].create(numMaterial);
+	}
+
+	bool alphaTest;
+	//ParticleData用
 	bool useVertex = false;
 	UINT numVertex = 1;
 	std::unique_ptr<VECTOR3[]> v = nullptr;
@@ -683,7 +710,7 @@ protected:
 		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void draw(int com_no, drawPara& para, ParameterDXR& dxr);
+	void draw(int com_no, drawPara& para);
 	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
 
 	void ParameterDXR_Update();

@@ -48,9 +48,10 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, VECTOR4 color, flo
 	cb->AddObjColor.as(color.x, color.y, color.z, color.w);
 
 	if (dx->DXR_CreateResource) {
-		memcpy(&dxrPara.AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
+		memcpy(&dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
 		MatrixTranspose(&world);
-		memcpy(dxrPara.Transform, &world, sizeof(MATRIX) * dxrPara.NumInstance);
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform,
+			&world, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
 		cb->invRot = BillboardAngleCalculation(angle);
 		MatrixTranspose(&cb->invRot);
 	}
@@ -133,20 +134,9 @@ void ParticleData::GetBufferBill(int v) {
 
 void ParticleData::createDxr() {
 	dxrPara.NumMaterial = 1;
-	dxrPara.NumInstance = 1;
-	dxrPara.difTex = std::make_unique<ID3D12Resource* []>(1);
-	dxrPara.norTex = std::make_unique<ID3D12Resource* []>(1);
-	dxrPara.speTex = std::make_unique<ID3D12Resource* []>(1);
-	dxrPara.diffuse = std::make_unique<VECTOR4[]>(1);
-	dxrPara.specular = std::make_unique<VECTOR4[]>(1);
-	dxrPara.ambient = std::make_unique<VECTOR4[]>(1);
-	dxrPara.VviewDXR = std::make_unique<VertexView[]>(1);
-	dxrPara.IviewDXR = std::make_unique<IndexView[]>(1);
-	dxrPara.VviewDXR = std::make_unique<VertexView[]>(1);
-	dxrPara.VviewDXR = std::make_unique<VertexView[]>(1);
-	dxrPara.SviewDXR = std::make_unique<StreamView[]>(1);
-	dxrPara.SizeLocation = std::make_unique<StreamView[]>(1);
-	dxrPara.shininess = 1.0f;
+	dxrPara.create(1);
+	dxrPara.updateDXR[0].shininess = 1.0f;
+	dxrPara.updateDXR[1].shininess = 1.0f;
 	dxrPara.alphaTest = true;
 }
 
@@ -224,38 +214,40 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 
 	if (dx->DXR_CreateResource) {
 
-		UINT indCnt = ver * 12;
-		IndexView& dxI = dxrPara.IviewDXR[0];
-		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
-		dxI.IndexBufferByteSize = indCnt * sizeof(UINT);
-		dxI.IndexCount = indCnt;
-		UINT* ind = new UINT[indCnt];
-		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
-			dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
-		ARR_DELETE(ind);
+		for (int j = 0; j < 2; j++) {
+			UINT indCnt = ver * 12;
+			IndexView& dxI = dxrPara.updateDXR[j].IviewDXR[0];
+			dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+			dxI.IndexBufferByteSize = indCnt * sizeof(UINT);
+			dxI.IndexCount = indCnt;
+			UINT* ind = new UINT[indCnt];
+			for (UINT in = 0; in < indCnt; in++)ind[in] = in;
+			dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+				dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
+			ARR_DELETE(ind);
 
-		UINT verCnt = ver * 12;
-		VertexView& dxV = dxrPara.VviewDXR[0];
-		UINT bytesize = verCnt * sizeof(VERTEX_DXR);
-		dxV.VertexByteStride = sizeof(VERTEX_DXR);
-		dxV.VertexBufferByteSize = bytesize;
-		dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-			dxV.VertexBufferByteSize);
-		dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+			UINT verCnt = ver * 12;
+			VertexView& dxV = dxrPara.updateDXR[j].VviewDXR[0];
+			UINT bytesize = verCnt * sizeof(VERTEX_DXR);
+			dxV.VertexByteStride = sizeof(VERTEX_DXR);
+			dxV.VertexBufferByteSize = bytesize;
+			dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+				dxV.VertexBufferByteSize);
+			dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-		StreamView& dxS = dxrPara.SviewDXR[0];
-		dxS.StreamByteStride = sizeof(VERTEX_DXR);
-		dxS.StreamBufferByteSize = bytesize;
-		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
+			StreamView& dxS = dxrPara.updateDXR[j].SviewDXR[0];
+			dxS.StreamByteStride = sizeof(VERTEX_DXR);
+			dxS.StreamBufferByteSize = bytesize;
+			dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
 
-		StreamView& dxL = dxrPara.SizeLocation[0];
-		dxL.StreamByteStride = sizeof(VERTEX_DXR);
-		dxL.StreamBufferByteSize = bytesize;
-		dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
+			StreamView& dxL = dxrPara.updateDXR[j].SizeLocation[0];
+			dxL.StreamByteStride = sizeof(VERTEX_DXR);
+			dxL.StreamBufferByteSize = bytesize;
+			dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
 
-		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
+			dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
+		}
 
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false);
 		if (rootSignatureDXR == nullptr)return false;
@@ -269,7 +261,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 			dx->pVertexLayout_P,
 			&dx->pDeclaration_Output,
 			(UINT)dx->pDeclaration_Output.size(),
-			&dxrPara.SviewDXR[0].StreamByteStride,
+			&dxrPara.updateDXR[0].SviewDXR[0].StreamByteStride,
 			1,
 			POINt);
 
@@ -359,20 +351,21 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
-	mCList->SOSetTargets(0, 1, &dxrPara.SviewDXR[0].StreamBufferView());
+	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	mCList->SOSetTargets(0, 1, &ud.SviewDXR[0].StreamBufferView());
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
 
-	dx->dx_sub[com].ResourceBarrier(dxrPara.VviewDXR[0].VertexBufferGPU.Get(),
+	dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[0].VertexBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
+	dx->dx_sub[com].ResourceBarrier(ud.SviewDXR[0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	mCList->CopyResource(dxrPara.VviewDXR[0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0].StreamBufferGPU.Get());
+	mCList->CopyResource(ud.VviewDXR[0].VertexBufferGPU.Get(), ud.SviewDXR[0].StreamBufferGPU.Get());
 
-	dx->dx_sub[com].ResourceBarrier(dxrPara.VviewDXR[0].VertexBufferGPU.Get(),
+	dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[0].VertexBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
+	dx->dx_sub[com].ResourceBarrier(ud.SviewDXR[0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
 	mCList->SOSetTargets(0, 1, nullptr);
