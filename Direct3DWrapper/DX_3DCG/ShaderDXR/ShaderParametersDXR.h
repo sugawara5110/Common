@@ -10,10 +10,6 @@ char* ShaderParametersDXR =
 "    float2 tex[2];\n"
 "};\n"
 
-"struct Instance {\n"
-"    matrix world;\n"
-"};\n"
-
 "struct MaterialCB {\n"
 "    float4 Diffuse;\n"
 "    float4 Speculer; \n"
@@ -25,9 +21,8 @@ char* ShaderParametersDXR =
 "};\n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
-"RaytracingAccelerationStructure gRtScene : register(t0, space0);\n"
-"StructuredBuffer<uint> Indices[] : register(t1, space1);\n"//無制限配列の場合,別なレジスタ空間にした方が(・∀・)ｲｲ!! みたい
-"StructuredBuffer<Vertex> Vertices[] : register(t2, space2);\n"
+"StructuredBuffer<uint> Indices[] : register(t0, space1);\n"//無制限配列の場合,別なレジスタ空間にした方が(・∀・)ｲｲ!! みたい
+"StructuredBuffer<Vertex> Vertices[] : register(t1, space2);\n"
 
 "cbuffer global : register(b0, space0)\n"
 "{\n"
@@ -45,12 +40,12 @@ char* ShaderParametersDXR =
 "    uint maxRecursion;\n"
 "};\n"
 
-"ConstantBuffer<Instance> instance[] : register(b1, space3);\n"
-"ConstantBuffer<MaterialCB> material[] : register(b2, space4);\n"
+"ConstantBuffer<MaterialCB> material[] : register(b1, space3);\n"
 "Texture2D g_texDiffuse[] : register(t0, space10);\n"
 "Texture2D g_texNormal[] : register(t1, space11);\n"
 "Texture2D g_texSpecular[] : register(t2, space12);\n"
 "SamplerState g_samLinear : register(s0, space13);\n"
+"RaytracingAccelerationStructure gRtScene : register(t3, space14);\n"
 
 "struct RayPayload\n"
 "{\n"

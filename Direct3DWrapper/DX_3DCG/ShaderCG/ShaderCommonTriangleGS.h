@@ -55,9 +55,9 @@ char* ShaderCommonTriangleGS =
 "   Normal3 n3 = NormalRecalculation(Input);\n"
 
 //接ベクトル計算
-"   tan[0] = GetTangent(n3.nor0, g_World[Input[0].instanceID], g_viewUp);\n"
-"   tan[1] = GetTangent(n3.nor1, g_World[Input[1].instanceID], g_viewUp);\n"
-"   tan[2] = GetTangent(n3.nor2, g_World[Input[2].instanceID], g_viewUp);\n"
+"   tan[0] = GetTangent(n3.nor0, (float3x3)g_World[Input[0].instanceID], g_viewUp);\n"
+"   tan[1] = GetTangent(n3.nor1, (float3x3)g_World[Input[1].instanceID], g_viewUp);\n"
+"   tan[2] = GetTangent(n3.nor2, (float3x3)g_World[Input[2].instanceID], g_viewUp);\n"
 
 "   Stream(p, Input, triStream, tan);\n"
 "}\n"
@@ -88,9 +88,9 @@ char* ShaderCommonTriangleGS =
 "   NormalTangent tan[3];\n"
 
 //接ベクトル計算
-"   tan[0] = GetTangent(Input[0].Nor, g_World[Input[0].instanceID], g_viewUp);\n"
-"   tan[1] = GetTangent(Input[1].Nor, g_World[Input[1].instanceID], g_viewUp);\n"
-"   tan[2] = GetTangent(Input[2].Nor, g_World[Input[2].instanceID], g_viewUp);\n"
+"   tan[0] = GetTangent(Input[0].Nor, (float3x3)g_World[Input[0].instanceID], g_viewUp);\n"
+"   tan[1] = GetTangent(Input[1].Nor, (float3x3)g_World[Input[1].instanceID], g_viewUp);\n"
+"   tan[2] = GetTangent(Input[2].Nor, (float3x3)g_World[Input[2].instanceID], g_viewUp);\n"
 
 "   Stream(p, Input, triStream, tan);\n"
 "}\n"

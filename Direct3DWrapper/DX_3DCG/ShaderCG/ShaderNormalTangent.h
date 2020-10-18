@@ -9,11 +9,11 @@ char* ShaderNormalTangent =
 "    float3 tangent : TANGENT;\n"
 "};\n"
 
-"NormalTangent GetTangent(float3 normal, matrix World, float4 viewUp)\n"
+"NormalTangent GetTangent(float3 normal, float3x3 world, float4 viewUp)\n"
 "{\n"
 "	NormalTangent Out = (NormalTangent)0;\n"
 
-"   Out.normal = mul(normal, (float3x3)World);\n"
+"   Out.normal = mul(normal, world);\n"
 "   Out.normal = normalize(Out.normal);\n"
 "   float3 view = normalize(viewUp.xyz);\n"
 "   Out.tangent = cross(Out.normal, view);\n"

@@ -86,12 +86,27 @@ private:
 	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
 	int mAloc_Num = 0;
-	volatile ComListState mComState;
+	volatile ComListState mComState = {};
 
-	bool ListCreate();
+	bool ListCreate(bool Compute);
 	void ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+	void CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src);
 	void Bigin();
 	void End();
+};
+
+class DxCommandQueue final {
+
+private:
+	friend Dx12Process;
+
+	ComPtr<ID3D12CommandQueue> mCommandQueue;
+	ComPtr<ID3D12Fence> mFence;
+	UINT64 mCurrentFence = 0;
+
+	bool Create(ID3D12Device5* dev, bool Compute);
+	void setCommandList(UINT numList, ID3D12CommandList* const* cmdsLists);
+	void waitFence();
 };
 
 class Dx12Process final {
@@ -121,16 +136,16 @@ private:
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<ID3D12Device5> md3dDevice;
 	ComPtr<IDXGISwapChain3> mSwapChain;
-	ComPtr<ID3D12Fence> mFence;
-	UINT64 mCurrentFence = 0;
 	bool DXR_CreateResource = false;
 
 	//MultiSampleレベルチェック
 	bool m4xMsaaState = false;
 	UINT m4xMsaaQuality = 0;
 
-	ComPtr<ID3D12CommandQueue> mCommandQueue;
+	DxCommandQueue graphicsQueue;
+	DxCommandQueue computeQueue;
 	Dx12Process_sub dx_sub[COM_NO];
+	Dx12Process_sub dx_subCom[COM_NO];
 
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
@@ -209,6 +224,8 @@ private:
 
 	static Dx12Process* dx;//クラス内でオブジェクト生成し使いまわす
 	static std::mutex mtx;
+	static std::mutex mtxGraphicsQueue;
+	static std::mutex mtxComputeQueue;
 
 	MATRIX mProj;
 	MATRIX mView;
@@ -258,8 +275,6 @@ private:
 
 	void InstancingUpdate(CONSTANT_BUFFER* cb, VECTOR4 Color, float disp,
 		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
-
-	void FenceSetEvent();
 
 	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
 		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
@@ -316,6 +331,10 @@ public:
 	void WaitFenceNotLock();
 	void WaitFence();
 	void DrawScreen();
+	void BiginCom(int com_no);
+	void EndCom(int com_no);
+	void WaitFenceNotLockCom();
+	void WaitFenceCom();
 	void Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up = { 0.0f,0.0f,1.0f });
 
 	void ResetPointLight();
@@ -480,8 +499,6 @@ struct UpdateDXR {
 	UINT NumInstance = 1;
 	std::unique_ptr<VertexView[]> VviewDXR = nullptr;
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
-	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
-	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
 	MATRIX Transform[INSTANCE_PCS_3D] = {};
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
@@ -490,8 +507,6 @@ struct UpdateDXR {
 	void create(int numMaterial) {
 		VviewDXR = std::make_unique<VertexView[]>(numMaterial);
 		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
-		SviewDXR = std::make_unique<StreamView[]>(numMaterial);
-		SizeLocation = std::make_unique<StreamView[]>(numMaterial);
 	}
 };
 
@@ -503,6 +518,8 @@ struct ParameterDXR {
 	std::unique_ptr<VECTOR4[]> diffuse = nullptr;
 	std::unique_ptr<VECTOR4[]> specular = nullptr;
 	std::unique_ptr<VECTOR4[]> ambient = nullptr;
+	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
+	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
 	UpdateDXR updateDXR[2] = {};
 
 	void create(int numMaterial) {
@@ -512,6 +529,8 @@ struct ParameterDXR {
 		diffuse = std::make_unique<VECTOR4[]>(numMaterial);
 		specular = std::make_unique<VECTOR4[]>(numMaterial);
 		ambient = std::make_unique<VECTOR4[]>(numMaterial);
+		SviewDXR = std::make_unique<StreamView[]>(numMaterial);
+		SizeLocation = std::make_unique<StreamView[]>(numMaterial);
 		updateDXR[0].create(numMaterial);
 		updateDXR[1].create(numMaterial);
 	}

@@ -26,12 +26,10 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 			cnt += PD[i]->NumMaterial;
 		}
 		numMaterial = cnt;
-		maxNumInstancing = INSTANCE_PCS_3D * numParameter;
 
 		material = new ConstantBuffer<DxrMaterialCB>(numMaterial);
-		matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
-		instance = new ConstantBuffer<DxrInstanceCB>(maxNumInstancing);
-		insCb = std::make_unique<DxrInstanceCB[]>(maxNumInstancing);
+		cbObj[0].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
+		cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 
 		dx->dx_sub[comNo].Bigin();
@@ -40,31 +38,36 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 		dx->dx_sub[comNo].End();
 		dx->WaitFence();
 		for (UINT i = 0; i < numMaterial; i++) {
-			mpBottomLevelAS[i] = bottomLevelBuffers[i].pResult;
 
 			switch (type[i]) {
 			case METALLIC:
-				matCb[i].materialNo = 0;
+				cbObj[0].matCb[i].materialNo = 0;
+				cbObj[1].matCb[i].materialNo = 0;
 				break;
 
 			case NONREFLECTION:
-				matCb[i].materialNo = 1;
+				cbObj[0].matCb[i].materialNo = 1;
+				cbObj[1].matCb[i].materialNo = 1;
 				break;
 
 			case EMISSIVE:
-				matCb[i].materialNo = 2;
+				cbObj[0].matCb[i].materialNo = 2;
+				cbObj[1].matCb[i].materialNo = 2;
 				break;
 
 			case DIRECTIONLIGHT_METALLIC:
-				matCb[i].materialNo = 3;
+				cbObj[0].matCb[i].materialNo = 3;
+				cbObj[1].matCb[i].materialNo = 3;
 				break;
 
 			case DIRECTIONLIGHT_NONREFLECTION:
-				matCb[i].materialNo = 4;
+				cbObj[0].matCb[i].materialNo = 4;
+				cbObj[1].matCb[i].materialNo = 4;
 				break;
 			}
 		}
-		mpTopLevelAS = topLevelBuffers.pResult;
+		asObj[0].mpTopLevelAS = asObj[0].topLevelBuffers.pResult;
+		asObj[1].mpTopLevelAS = asObj[1].topLevelBuffers.pResult;
 
 		createRtPipelineState();
 		createShaderResources();
@@ -74,43 +77,67 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 
 void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial, bool update) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (!update) {
-		pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
-		pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
 		for (UINT i = 0; i < numParameter; i++) {
 			for (UINT j = 0; j < 2; j++)
 				PD[i]->updateDXR[j].InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
 		}
-	}
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+		VertexBufferGPU = std::make_unique<ComPtr<ID3D12Resource>[]>(numMaterial);
+		asObj[0].pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
+		asObj[1].pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
+		asObj[0].pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
+		asObj[1].pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
+
+		UINT MaterialCnt = 0;
+		for (UINT i = 0; i < numParameter; i++) {
+			for (int j = 0; j < PD[i]->NumMaterial; j++) {
+				UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+				VertexView& vv = ud.VviewDXR[j];
+				for (int v = 0; v < 2; v++) {
+					VertexObj& vb = asObj[v].pVertexBuffer[MaterialCnt];
+					vb.VertexByteStride = vv.VertexByteStride;
+					vb.VertexBufferByteSize = vv.VertexBufferByteSize;
+					dx->createDefaultResourceBuffer(vb.VertexBufferGPU.GetAddressOf(),
+						vb.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
+					dx->dx_sub[comNo].CopyResourceGENERIC_READ(vb.VertexBufferGPU.Get(), vv.VertexBufferGPU.Get());
+
+					IndexObj& ib = asObj[v].pIndexBuffer[MaterialCnt];
+					IndexView& iv = ud.IviewDXR[j];
+					ib.IndexBufferByteSize = iv.IndexBufferByteSize;
+					ib.IndexCount = iv.IndexCount;
+					ib.IndexBufferGPU = iv.IndexBufferGPU.Get();
+				}
+				dx->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
+					vv.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
+				MaterialCnt++;
+			}
+		}
+	}
 
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
-			VertexObj& vb = pVertexBuffer[MaterialCnt];
+			VertexObj& vb = asObj[buffSwap[0]].pVertexBuffer[MaterialCnt];
 			VertexView& vv = ud.VviewDXR[j];
-			vb.VertexByteStride = vv.VertexByteStride;
-			vb.VertexBufferByteSize = vv.VertexBufferByteSize;
-			vb.VertexBufferGPU = vv.VertexBufferGPU.Get();
+			dx->dx_sub[comNo].CopyResourceGENERIC_READ(vb.VertexBufferGPU.Get(), vv.VertexBufferGPU.Get());
 
-			IndexObj& ib = pIndexBuffer[MaterialCnt];
+			IndexObj& ib = asObj[buffSwap[0]].pIndexBuffer[MaterialCnt];
 			IndexView& iv = ud.IviewDXR[j];
-			ib.IndexBufferByteSize = iv.IndexBufferByteSize;
 			ib.IndexCount = iv.IndexCount;
-			ib.IndexBufferGPU = iv.IndexBufferGPU.Get();
 			MaterialCnt++;
 		}
 	}
 }
 
-void DXR_Basic::createBottomLevelAS(int comNo, UINT MaterialNo, bool update) {
+void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com, UINT MaterialNo, bool update) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	VertexObj& pVB = pVertexBuffer[MaterialNo];
-	IndexObj& pIB = pIndexBuffer[MaterialNo];
+	VertexObj& pVB = asObj[buffSwap[0]].pVertexBuffer[MaterialNo];
+	IndexObj& pIB = asObj[buffSwap[0]].pIndexBuffer[MaterialNo];
 
 	D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
 	geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -137,20 +164,23 @@ void DXR_Basic::createBottomLevelAS(int comNo, UINT MaterialNo, bool update) {
 	//AccelerationStructureを構築する為のリソース要件を取得(infoに入る)
 	dx->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
-	AccelerationStructureBuffers& bLB = bottomLevelBuffers[MaterialNo];
+	AccelerationStructureBuffers& bLB = asObj[buffSwap[0]].bottomLevelBuffers[MaterialNo];
 
 	if (update) {
 		D3D12_RESOURCE_BARRIER uavBarrier = {};
 		uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 		uavBarrier.UAV.pResource = bLB.pResult.Get();
-		dx->dx_sub[comNo].mCommandList->ResourceBarrier(1, &uavBarrier);
+		com->mCommandList->ResourceBarrier(1, &uavBarrier);
 	}
 	else {
 		//リソース要件を元にUAV作成
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
-			D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+		for (int i = 0; i < 2; i++) {
+			AccelerationStructureBuffers& blb = asObj[i].bottomLevelBuffers[MaterialNo];
+			dx->createDefaultResourceBuffer_UNORDERED_ACCESS(blb.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			dx->createDefaultResourceBuffer_UNORDERED_ACCESS(blb.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
+				D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+		}
 	}
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
@@ -165,17 +195,17 @@ void DXR_Basic::createBottomLevelAS(int comNo, UINT MaterialNo, bool update) {
 	}
 
 	//bottom-level AS作成, 第三引数は作成後の情報, 不要の場合nullptr
-	dx->dx_sub[comNo].mCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+	com->mCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
 	D3D12_RESOURCE_BARRIER uavBarrier = {};
 	//バリアしたリソースへのUAVアクセスに於いて次のUAVアクセス開始前に現在のUAVアクセスが終了する必要がある事を示す
 	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 	uavBarrier.UAV.pResource = bLB.pResult.Get();
 
-	dx->dx_sub[comNo].mCommandList->ResourceBarrier(1, &uavBarrier);
+	com->mCommandList->ResourceBarrier(1, &uavBarrier);
 }
 
-void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
+void DXR_Basic::createTopLevelAS(Dx12Process_sub* com, bool update) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 
@@ -190,7 +220,8 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
 	inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-	inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+	inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE |
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
 	inputs.NumDescs = numRayInstance;
 	inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 
@@ -198,25 +229,28 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 	//AccelerationStructureを構築する為のリソース要件を取得(infoに入る)
 	dx->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
+	AccelerationStructureBuffers& tLB = asObj[buffSwap[0]].topLevelBuffers;
+
 	if (update) {
 		D3D12_RESOURCE_BARRIER uavBarrier = {};
 		uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-		uavBarrier.UAV.pResource = topLevelBuffers.pResult.Get();
-		dx->dx_sub[comNo].mCommandList->ResourceBarrier(1, &uavBarrier);
+		uavBarrier.UAV.pResource = tLB.pResult.Get();
+		com->mCommandList->ResourceBarrier(1, &uavBarrier);
 	}
 	else {
 		//リソース要件を元にUAV作成
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(topLevelBuffers.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(topLevelBuffers.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
-			D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
-		dx->createUploadResource(topLevelBuffers.pInstanceDesc.GetAddressOf(),
-			sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
-		tlasSize = info.ResultDataMaxSizeInBytes;
+		for (int i = 0; i < 2; i++) {
+			dx->createDefaultResourceBuffer_UNORDERED_ACCESS(asObj[i].topLevelBuffers.pScratch.GetAddressOf(),
+				info.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			dx->createDefaultResourceBuffer_UNORDERED_ACCESS(asObj[i].topLevelBuffers.pResult.GetAddressOf(),
+				info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+			dx->createUploadResource(asObj[i].topLevelBuffers.pInstanceDesc.GetAddressOf(),
+				sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
+		}
 	}
 
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDesc;
-	topLevelBuffers.pInstanceDesc->Map(0, nullptr, (void**)&pInstanceDesc);
+	tLB.pInstanceDesc->Map(0, nullptr, (void**)&pInstanceDesc);
 	ZeroMemory(pInstanceDesc, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
 
 	UINT RayInstanceCnt = 0;
@@ -235,7 +269,7 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 				pID.InstanceContributionToHitGroupIndex = 0;//シェーダーテーブル内のオフセット。ジオメトリが一つの場合,オフセット0
 				pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 				memcpy(pID.Transform, &ud.Transform[k], sizeof(pID.Transform));
-				pID.AccelerationStructure = bottomLevelBuffers[materialCnt].pResult.Get()->GetGPUVirtualAddress();
+				pID.AccelerationStructure = asObj[buffSwap[0]].bottomLevelBuffers[materialCnt].pResult.Get()->GetGPUVirtualAddress();
 				pID.InstanceMask = 0xFF;
 				RayInstanceCnt++;
 			}
@@ -243,37 +277,36 @@ void DXR_Basic::createTopLevelAS(int comNo, uint64_t& tlasSize, bool update) {
 		}
 	}
 
-	topLevelBuffers.pInstanceDesc->Unmap(0, nullptr);
+	tLB.pInstanceDesc->Unmap(0, nullptr);
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
 	asDesc.Inputs = inputs;
-	asDesc.Inputs.InstanceDescs = topLevelBuffers.pInstanceDesc->GetGPUVirtualAddress();
-	asDesc.DestAccelerationStructureData = topLevelBuffers.pResult->GetGPUVirtualAddress();
-	asDesc.ScratchAccelerationStructureData = topLevelBuffers.pScratch->GetGPUVirtualAddress();
+	asDesc.Inputs.InstanceDescs = tLB.pInstanceDesc->GetGPUVirtualAddress();
+	asDesc.DestAccelerationStructureData = tLB.pResult->GetGPUVirtualAddress();
+	asDesc.ScratchAccelerationStructureData = tLB.pScratch->GetGPUVirtualAddress();
 
 	if (update) {
-		//更新範囲広い場合ALLOW_UPDATEだとうまくいく
-		asDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+		asDesc.Inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE |
+			D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
 		asDesc.SourceAccelerationStructureData = 0; //ALLOW_UPDATEの場合0にする
 	}
 
-	dx->dx_sub[comNo].mCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+	com->mCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
 	D3D12_RESOURCE_BARRIER uavBarrier = {};
 	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-	uavBarrier.UAV.pResource = topLevelBuffers.pResult.Get();
-	dx->dx_sub[comNo].mCommandList->ResourceBarrier(1, &uavBarrier);
+	uavBarrier.UAV.pResource = tLB.pResult.Get();
+	com->mCommandList->ResourceBarrier(1, &uavBarrier);
 }
 
 void DXR_Basic::createAccelerationStructures(int comNo) {
-
-	bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
-	mpBottomLevelAS = std::make_unique<ComPtr<ID3D12Resource>[]>(numMaterial);
-
+	asObj[0].bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
+	asObj[1].bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
+	Dx12Process* dx = Dx12Process::GetInstance();
 	for (UINT i = 0; i < numMaterial; i++) {
-		createBottomLevelAS(comNo, i, false);
+		createBottomLevelAS(&dx->dx_sub[comNo], i, false);
 	}
-	createTopLevelAS(comNo, mTlasSize, false);
+	createTopLevelAS(&dx->dx_sub[comNo], false);
 }
 
 static const WCHAR* kRayGenShader = L"rayGen";
@@ -481,10 +514,10 @@ struct RootSignatureDesc {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 };
 
-static RootSignatureDesc createRayGenRootDesc(UINT numMaterial, UINT maxNumInstancing) {
+static RootSignatureDesc createRayGenRootDesc(UINT numMaterial) {
 
 	RootSignatureDesc desc = {};
-	int numDescriptorRanges = 7;
+	int numDescriptorRanges = 5;
 	desc.range.resize(numDescriptorRanges);
 	UINT descCnt = 0;
 	//gOutput(u0)
@@ -494,50 +527,35 @@ static RootSignatureDesc createRayGenRootDesc(UINT numMaterial, UINT maxNumInsta
 	desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	desc.range[0].OffsetInDescriptorsFromTableStart = descCnt++;
 
-	//gRtScene(t0)
+	//Indices(t0)
 	desc.range[1].BaseShaderRegister = 0;
-	desc.range[1].NumDescriptors = 1;
-	desc.range[1].RegisterSpace = 0;
+	desc.range[1].NumDescriptors = numMaterial;
+	desc.range[1].RegisterSpace = 1;
 	desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	desc.range[1].OffsetInDescriptorsFromTableStart = descCnt++;
+	desc.range[1].OffsetInDescriptorsFromTableStart = descCnt;
+	descCnt += numMaterial;
 
-	//Indices(t1)
+	//Vertex(t1)
 	desc.range[2].BaseShaderRegister = 1;
 	desc.range[2].NumDescriptors = numMaterial;
-	desc.range[2].RegisterSpace = 1;
+	desc.range[2].RegisterSpace = 2;
 	desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	desc.range[2].OffsetInDescriptorsFromTableStart = descCnt;
 	descCnt += numMaterial;
 
-	//Vertex(t2)
-	desc.range[3].BaseShaderRegister = 2;
-	desc.range[3].NumDescriptors = numMaterial;
-	desc.range[3].RegisterSpace = 2;
-	desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	desc.range[3].OffsetInDescriptorsFromTableStart = descCnt;
-	descCnt += numMaterial;
-
 	//cbuffer global(b0)
-	desc.range[4].BaseShaderRegister = 0;
-	desc.range[4].NumDescriptors = 1;
-	desc.range[4].RegisterSpace = 0;
+	desc.range[3].BaseShaderRegister = 0;
+	desc.range[3].NumDescriptors = 1;
+	desc.range[3].RegisterSpace = 0;
+	desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	desc.range[3].OffsetInDescriptorsFromTableStart = descCnt++;
+
+	//material(b1)
+	desc.range[4].BaseShaderRegister = 1;
+	desc.range[4].NumDescriptors = numMaterial;
+	desc.range[4].RegisterSpace = 3;
 	desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	desc.range[4].OffsetInDescriptorsFromTableStart = descCnt++;
-
-	//instance(b1)
-	desc.range[5].BaseShaderRegister = 1;
-	desc.range[5].NumDescriptors = maxNumInstancing;
-	desc.range[5].RegisterSpace = 3;
-	desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
-	descCnt += maxNumInstancing;
-
-	//material(b2)
-	desc.range[6].BaseShaderRegister = 2;
-	desc.range[6].NumDescriptors = numMaterial;
-	desc.range[6].RegisterSpace = 4;
-	desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
+	desc.range[4].OffsetInDescriptorsFromTableStart = descCnt;
 	descCnt += numMaterial;
 
 	desc.rootParams.resize(1);
@@ -590,7 +608,7 @@ static RootSignatureDesc createGlobalRootDesc(UINT numMaterial) {
 	desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
 	desc.range[3].OffsetInDescriptorsFromTableStart = 0;
 
-	desc.rootParams.resize(2);
+	desc.rootParams.resize(3);
 	desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 3;
 	desc.rootParams[0].DescriptorTable.pDescriptorRanges = desc.range.data();
@@ -601,7 +619,13 @@ static RootSignatureDesc createGlobalRootDesc(UINT numMaterial) {
 	desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[3];
 	desc.rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	desc.desc.NumParameters = 2;
+	//gRtScene(t3)
+	desc.rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	desc.rootParams[2].Descriptor.ShaderRegister = 3;
+	desc.rootParams[2].Descriptor.RegisterSpace = 14;
+	desc.rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	desc.desc.NumParameters = 3;
 	desc.desc.pParameters = desc.rootParams.data();
 	desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
@@ -631,7 +655,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = emissiveHitProgram.subObject;
 
 	//raygenerationShaderルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature rgsRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
+	LocalRootSignature rgsRootSignature(createRootSignature(createRayGenRootDesc(numMaterial).desc));
 	subobjects[index] = rgsRootSignature.subobject;
 
 	//raygenerationShaderと↑のルートシグネチャ関連付け, SUBOBJECT作成
@@ -640,7 +664,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = rgsRootAssociation.subobject;
 
 	//basicHitShader, basicMissShader ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature basicHitMissRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
+	LocalRootSignature basicHitMissRootSignature(createRootSignature(createRayGenRootDesc(numMaterial).desc));
 	subobjects[index] = basicHitMissRootSignature.subobject;
 
 	//↑のbasicHitShader, basicMissShader 共有ルートシグネチャとbasicHitShader, basicMissShader関連付け, SUBOBJECT作成
@@ -651,7 +675,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = basicMissHitRootAssociation.subobject;
 
 	//kEmissiveHit, kEmissiveMiss ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature emissiveRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
+	LocalRootSignature emissiveRootSignature(createRootSignature(createRayGenRootDesc(numMaterial).desc));
 	subobjects[index] = emissiveRootSignature.subobject;
 
 	uint32_t emissiveRootIndex = index++;
@@ -709,13 +733,11 @@ void DXR_Basic::createShaderResources() {
 
 	//Local
 	int num_u0 = 1;
-	int num_t0 = 1;
+	int num_t0 = numMaterial;
 	int num_t1 = numMaterial;
-	int num_t2 = numMaterial;
 	int num_b0 = 1;
-	int num_b1 = maxNumInstancing;
-	int num_b2 = numMaterial;
-	numSkipLocalHeap = num_u0 + num_t0 + num_t1 + num_t2 + num_b0 + num_b1 + num_b2;
+	int num_b1 = numMaterial;
+	numSkipLocalHeap = num_u0 + num_t0 + num_t1 + num_b0 + num_b1;
 	//Global
 	int num_t00 = numMaterial;
 	int num_t01 = numMaterial;
@@ -732,38 +754,30 @@ void DXR_Basic::createShaderResources() {
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	dx->getDevice()->CreateUnorderedAccessView(mpOutputResource.Get(), nullptr, &uavDesc, srvHandle);
 
-	//SRVを作成 gRtScene(t0)
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc0 = {};
-	srvDesc0.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-	srvDesc0.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc0.RaytracingAccelerationStructure.Location = mpTopLevelAS.Get()->GetGPUVirtualAddress();
-	srvHandle.ptr += offsetSize;
-	dx->getDevice()->CreateShaderResourceView(nullptr, &srvDesc0, srvHandle);
-
-	//SRVを作成 Indices(t1)
+	//SRVを作成 Indices(t0)
 	for (UINT i = 0; i < numMaterial; i++) {
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1 = {};
 		srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc1.Buffer.NumElements = pIndexBuffer[i].IndexCount;
+		srvDesc1.Buffer.NumElements = asObj[0].pIndexBuffer[i].IndexCount;
 		srvDesc1.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc1.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 		srvDesc1.Buffer.StructureByteStride = sizeof(uint32_t);
 		srvHandle.ptr += offsetSize;
-		dx->getDevice()->CreateShaderResourceView(pIndexBuffer[i].IndexBufferGPU, &srvDesc1, srvHandle);
+		dx->getDevice()->CreateShaderResourceView(asObj[0].pIndexBuffer[i].IndexBufferGPU, &srvDesc1, srvHandle);
 	}
 
-	//SRVを作成 Vertex(t2)
+	//SRVを作成 Vertex(t1)
 	for (UINT i = 0; i < numMaterial; i++) {
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
 		srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc2.Buffer.NumElements = pVertexBuffer[i].VertexBufferByteSize / pVertexBuffer[i].VertexByteStride;
+		srvDesc2.Buffer.NumElements = asObj[0].pVertexBuffer[i].VertexBufferByteSize / asObj[0].pVertexBuffer[i].VertexByteStride;
 		srvDesc2.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc2.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-		srvDesc2.Buffer.StructureByteStride = pVertexBuffer[i].VertexByteStride;
+		srvDesc2.Buffer.StructureByteStride = asObj[0].pVertexBuffer[i].VertexByteStride;
 		srvHandle.ptr += offsetSize;
-		dx->getDevice()->CreateShaderResourceView(pVertexBuffer[i].VertexBufferGPU, &srvDesc2, srvHandle);
+		dx->getDevice()->CreateShaderResourceView(VertexBufferGPU[i].Get(), &srvDesc2, srvHandle);
 	}
 
 	//CBVを作成 cbuffer global(b0)
@@ -773,16 +787,7 @@ void DXR_Basic::createShaderResources() {
 	srvHandle.ptr += offsetSize;
 	dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
 
-	//CBVを作成 instance(b1)
-	for (UINT i = 0; i < maxNumInstancing; i++) {
-		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
-		bufferDesc.SizeInBytes = instance->getElementByteSize();
-		bufferDesc.BufferLocation = instance->getGPUVirtualAddress(i);
-		srvHandle.ptr += offsetSize;
-		dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
-	}
-
-	//CBVを作成 material(b2)
+	//CBVを作成 material(b1)
 	for (UINT i = 0; i < numMaterial; i++) {
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
 		bufferDesc.SizeInBytes = material->getElementByteSize();
@@ -886,7 +891,7 @@ void DXR_Basic::createShaderTable() {
 	mpShaderTable.Get()->Unmap(0, nullptr);
 }
 
-void DXR_Basic::updateMaterial() {
+void DXR_Basic::updateMaterial(CBobj* cbObj) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	UINT MaterialCnt = 0;
@@ -898,32 +903,34 @@ void DXR_Basic::updateMaterial() {
 			VECTOR4& dif = PD[i]->diffuse[j];
 			VECTOR4& spe = PD[i]->specular[j];
 			VECTOR4& amb = PD[i]->ambient[j];
-			matCb[MaterialCnt].vDiffuse.as(dif.x, dif.y, dif.z, 0.0f);
-			matCb[MaterialCnt].vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
-			matCb[MaterialCnt].vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
-			matCb[MaterialCnt].shininess = ud.shininess;
-			memcpy(&matCb[MaterialCnt].AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
+			DxrMaterialCB& mcb = cbObj->matCb[MaterialCnt];
+			mcb.vDiffuse.as(dif.x, dif.y, dif.z, 0.0f);
+			mcb.vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
+			mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
+			mcb.shininess = ud.shininess;
+			memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
 			if (PD[i]->alphaTest) {
-				matCb[MaterialCnt].alphaTest = 1.0f;
+				mcb.alphaTest = 1.0f;
 			}
 			else {
-				matCb[MaterialCnt].alphaTest = 0.0f;
+				mcb.alphaTest = 0.0f;
 			}
 			MaterialCnt++;
 		}
 	}
 }
 
-void DXR_Basic::setCB(UINT numRecursion) {
+void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX VP;
 	MatrixMultiply(&VP, &dx->mView, &dx->mProj);
 	MatrixTranspose(&VP);
+	DxrConstantBuffer& cb = cbObj->cb;
 	MatrixInverse(&cb.projectionToWorld, &VP);
 	cb.cameraUp.as(dx->upX, dx->upY, dx->upZ, 1.0f);
 	cb.cameraPosition.as(dx->posX, dx->posY, dx->posZ, 1.0f);
 	cb.maxRecursion = numRecursion;
-	updateMaterial();
+	updateMaterial(cbObj);
 
 	int cntEm = 0;
 	bool breakF = false;
@@ -932,7 +939,7 @@ void DXR_Basic::setCB(UINT numRecursion) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
-				if (matCb[MaterialCnt].materialNo == 2) {
+				if (cbObj->matCb[MaterialCnt].materialNo == 2) {
 					for (UINT v = 0; v < PD[i]->numVertex; v++) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));
@@ -974,44 +981,54 @@ void DXR_Basic::setCB(UINT numRecursion) {
 	memcpy(&cb.dDirection, &dx->dlight.Direction, sizeof(VECTOR4));
 	memcpy(&cb.dLightColor, &dx->dlight.LightColor, sizeof(VECTOR4));
 	memcpy(&cb.dLightst, &dx->dlight.onoff, sizeof(VECTOR4));
+}
 
-	sCB->CopyData(0, cb);
+void DXR_Basic::updateTriangleVB(int comNo) {
+	createTriangleVB(comNo, numMaterial, true);
+}
 
-	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, matCb[i]);
+void DXR_Basic::updateAS(Dx12Process_sub* com, UINT numRecursion) {
+	for (UINT i = 0; i < numMaterial; i++) {
+		createBottomLevelAS(com, i, true);
+	}
+	createTopLevelAS(com, true);
+	updateCB(&cbObj[buffSwap[0]], numRecursion);
+}
 
-	for (UINT i = 0; i < numParameter; i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
-		for (UINT k = 0; k < ud.NumInstance; k++) {
-			memcpy(&insCb[INSTANCE_PCS_3D * i + k].world, &ud.Transform[k], sizeof(MATRIX));
-			instance->CopyData(INSTANCE_PCS_3D * i + k, insCb[INSTANCE_PCS_3D * i + k]);
-		}
+void DXR_Basic::updateVertexBuffer(int comNo) {
+	for (UINT i = 0; i < numMaterial; i++) {
+		Dx12Process::GetInstance()->
+			dx->dx_sub[comNo].CopyResourceGENERIC_READ(VertexBufferGPU[i].Get(),
+				asObj[buffSwap[1]].pVertexBuffer[i].VertexBufferGPU.Get());
 	}
 }
 
-void DXR_Basic::raytrace(int comNo, UINT numRecursion) {
+void DXR_Basic::setCB() {
+	sCB->CopyData(0, cbObj[buffSwap[1]].cb);
+	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, cbObj[buffSwap[1]].matCb[i]);
+}
+
+void DXR_Basic::raytrace(Dx12Process_sub* com) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	setCB(numRecursion);
+	setCB();
 
-	dx->dx_sub[comNo].ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
+	com->ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	dx->dx_sub[comNo].mCommandList->SetComputeRootSignature(mpGlobalRootSig.Get());
+	com->mCommandList->SetComputeRootSignature(mpGlobalRootSig.Get());
 
 	ID3D12DescriptorHeap* heaps[] = { mpSrvUavCbvHeap.Get(), mpSamplerHeap.Get() };
-	dx->dx_sub[comNo].mCommandList->SetDescriptorHeaps(ARRAY_SIZE(heaps), heaps);
+	com->mCommandList->SetDescriptorHeaps(ARRAY_SIZE(heaps), heaps);
 
 	UINT offsetSize = dx->mCbvSrvUavDescriptorSize;
 	D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
 	srvHandle.ptr += offsetSize * numSkipLocalHeap;
 	D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle = mpSamplerHeap.Get()->GetGPUDescriptorHandleForHeapStart();
 
-	dx->dx_sub[comNo].mCommandList->SetComputeRootDescriptorTable(0, srvHandle);
-	dx->dx_sub[comNo].mCommandList->SetComputeRootDescriptorTable(1, samplerHandle);
-
-	createTriangleVB(comNo, numMaterial, true);
-	for (UINT i = 0; i < numMaterial; i++)createBottomLevelAS(comNo, i, true);
-	createTopLevelAS(comNo, mTlasSize, true);
+	com->mCommandList->SetComputeRootDescriptorTable(0, srvHandle);
+	com->mCommandList->SetComputeRootDescriptorTable(1, samplerHandle);
+	com->mCommandList->SetComputeRootShaderResourceView(2, asObj[buffSwap[1]].mpTopLevelAS.Get()->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
 	raytraceDesc.Width = dx->mClientWidth;
@@ -1035,10 +1052,13 @@ void DXR_Basic::raytrace(int comNo, UINT numRecursion) {
 	raytraceDesc.HitGroupTable.SizeInBytes = mShaderTableEntrySize * 2;//hitShader 2個
 
 	//Dispatch
-	dx->dx_sub[comNo].mCommandList->SetPipelineState1(mpPipelineState.Get());
-	dx->dx_sub[comNo].mCommandList->DispatchRays(&raytraceDesc);
+	com->mCommandList->SetPipelineState1(mpPipelineState.Get());
+	com->mCommandList->DispatchRays(&raytraceDesc);
+}
 
+void DXR_Basic::copyBackBuffer(int comNo) {
 	//結果をバックバッファにコピー
+	Dx12Process* dx = Dx12Process::GetInstance();
 	dx->dx_sub[comNo].ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
@@ -1050,4 +1070,24 @@ void DXR_Basic::raytrace(int comNo, UINT numRecursion) {
 
 	dx->dx_sub[comNo].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+}
+
+void DXR_Basic::update_g(int comNo, UINT numRecursion) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	updateAS(&dx->dx_sub[comNo], numRecursion);
+}
+
+void DXR_Basic::update_c(int comNo, UINT numRecursion) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	updateAS(&dx->dx_subCom[comNo], numRecursion);
+}
+
+void DXR_Basic::raytrace_g(int comNo) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	raytrace(&dx->dx_sub[comNo]);
+}
+
+void DXR_Basic::raytrace_c(int comNo) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	raytrace(&dx->dx_subCom[comNo]);
 }

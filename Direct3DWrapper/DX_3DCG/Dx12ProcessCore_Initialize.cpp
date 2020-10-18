@@ -26,11 +26,15 @@
 #include "./ShaderCG/ShaderGsOutput.h"
 #include <locale.h>
 
-bool Dx12Process_sub::ListCreate() {
+bool Dx12Process_sub::ListCreate(bool Compute) {
+
+	D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	if (Compute)type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+
 	for (int i = 0; i < 2; i++) {
 		//コマンドアロケータ生成(コマンドリストに積むバッファを確保するObj)
 		if (FAILED(Dx12Process::dx->md3dDevice->CreateCommandAllocator(
-			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			type,
 			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf())))) {
 			ErrorMessage("CreateCommandAllocator Error");
 			return false;
@@ -40,7 +44,7 @@ bool Dx12Process_sub::ListCreate() {
 	//コマンドリスト生成
 	if (FAILED(Dx12Process::dx->md3dDevice->CreateCommandList(
 		0,
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		type,
 		mCmdListAlloc[0].Get(),
 		nullptr,
 		IID_PPV_ARGS(mCommandList.GetAddressOf())))) {
@@ -68,6 +72,20 @@ void Dx12Process_sub::ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES
 	mCommandList->ResourceBarrier(1, &BarrierDesc);
 }
 
+void Dx12Process_sub::CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src) {
+	ResourceBarrier(dest,
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	ResourceBarrier(src,
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	mCommandList->CopyResource(dest, src);
+
+	ResourceBarrier(dest,
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	ResourceBarrier(src,
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+}
+
 void Dx12Process_sub::Bigin() {
 	mComState = OPEN;
 	mAloc_Num = 1 - mAloc_Num;
@@ -81,8 +99,54 @@ void Dx12Process_sub::End() {
 	mComState = CLOSE;
 }
 
+bool DxCommandQueue::Create(ID3D12Device5* dev, bool Compute) {
+	//フェンス生成
+	//Command Queueに送信したCommand Listの完了を検知するために使用
+	if (FAILED(dev->CreateFence(0, D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(&mFence)))) {
+		ErrorMessage("CreateFence Error");
+		return false;
+	}
+	//コマンドキュー生成
+	D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	if (Compute)type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+	queueDesc.Type = type;
+	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; //GPUタイムアウトが有効
+	if (FAILED(dev->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)))) {
+		ErrorMessage("CreateCommandQueue Error");
+		return false;
+	}
+	return true;
+}
+
+void DxCommandQueue::setCommandList(UINT numList, ID3D12CommandList* const* cmdsLists) {
+	mCommandQueue->ExecuteCommandLists(numList, cmdsLists);
+}
+
+void DxCommandQueue::waitFence() {
+	//インクリメントされたことで描画完了と判断
+	mCurrentFence++;
+	//GPU上で実行されているコマンド完了後,自動的にフェンスにmCurrentFenceを書き込む
+	//(mFence->GetCompletedValue()で得られる値がmCurrentFenceと同じになる)
+	mCommandQueue->Signal(mFence.Get(), mCurrentFence);//この命令以前のコマンドリストが待つ対象になる
+	//ここまででコマンドキューが終了してしまうと
+	//↓のイベントが正しく処理されない可能性有る為↓ifでチェックしている
+	//GetCompletedValue():Fence内部UINT64のカウンタ取得(初期値0)
+	if (mFence->GetCompletedValue() < mCurrentFence) {
+		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		//このFenceにおいて,mCurrentFence の値になったらイベントを発火させる
+		mFence->SetEventOnCompletion(mCurrentFence, eventHandle);
+		//イベントが発火するまで待つ(GPUの処理待ち)これによりGPU上の全コマンド実行終了まで待たせる
+		WaitForSingleObject(eventHandle, INFINITE);
+		CloseHandle(eventHandle);
+	}
+}
+
 Dx12Process *Dx12Process::dx = nullptr;
 std::mutex Dx12Process::mtx;
+std::mutex Dx12Process::mtxGraphicsQueue;
+std::mutex Dx12Process::mtxComputeQueue;
 
 void Dx12Process::InstanceCreate() {
 
@@ -107,20 +171,6 @@ Dx12Process::~Dx12Process() {
 	ARR_DELETE(texture);
 }
 
-void Dx12Process::FenceSetEvent() {
-	//ここまででコマンドキューが終了してしまうと
-	//↓のイベントが正しく処理されない可能性有る為↓ifでチェックしている
-	//GetCompletedValue():Fence内部UINT64のカウンタ取得(初期値0)
-	if (mFence->GetCompletedValue() < mCurrentFence) {
-		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-		//このFenceにおいて,mCurrentFence の値になったらイベントを発火させる
-		mFence->SetEventOnCompletion(mCurrentFence, eventHandle);
-		//イベントが発火するまで待つ(GPUの処理待ち)これによりGPU上の全コマンド実行終了まで待たせる
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
-	}
-}
-
 void Dx12Process::WaitFenceNotLock() {
 	//クローズ後リストに加える
 	static ID3D12CommandList* cmdsLists[COM_NO] = {};
@@ -130,21 +180,42 @@ void Dx12Process::WaitFenceNotLock() {
 		cmdsLists[cnt++] = dx_sub[i].mCommandList.Get();
 		dx_sub[i].mComState = USED;
 	}
-	mCommandQueue->ExecuteCommandLists(cnt, cmdsLists);
 
-	//インクリメントされたことで描画完了と判断
-	mCurrentFence++;
-	//GPU上で実行されているコマンド完了後,自動的にフェンスにmCurrentFenceを書き込む
-	//(mFence->GetCompletedValue()で得られる値がmCurrentFenceと同じになる)
-	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
-
-	FenceSetEvent();
+	graphicsQueue.setCommandList(cnt, cmdsLists);
+	graphicsQueue.waitFence();
 }
 
 void Dx12Process::WaitFence() {
-	Lock();
+	mtxGraphicsQueue.lock();
 	WaitFenceNotLock();
-	Unlock();
+	mtxGraphicsQueue.unlock();
+}
+
+void Dx12Process::BiginCom(int com_no) {
+	dx_subCom[com_no].Bigin();
+}
+
+void Dx12Process::EndCom(int com_no) {
+	dx_subCom[com_no].End();
+}
+
+void Dx12Process::WaitFenceNotLockCom() {
+	static ID3D12CommandList* cmdsLists[COM_NO] = {};
+	UINT cnt = 0;
+	for (int i = 0; i < COM_NO; i++) {
+		if (dx_subCom[i].mComState != CLOSE)continue;
+		cmdsLists[cnt++] = dx_subCom[i].mCommandList.Get();
+		dx_subCom[i].mComState = USED;
+	}
+
+	computeQueue.setCommandList(cnt, cmdsLists);
+	computeQueue.waitFence();
+}
+
+void Dx12Process::WaitFenceCom() {
+	mtxComputeQueue.lock();
+	WaitFenceNotLockCom();
+	mtxComputeQueue.unlock();
 }
 
 bool Dx12Process::CreateShaderByteCode() {
@@ -590,14 +661,6 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		}
 	}
 
-	//フェンス生成
-	//Command Queueに送信したCommand Listの完了を検知するために使用
-	if (FAILED(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mFence)))) {
-		ErrorMessage("CreateFence Error");
-		return false;
-	}
-
 	//Descriptor のアドレス計算で使用
 	mRtvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	mDsvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -620,19 +683,14 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
 	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
 
-	//コマンドキューデスク
-	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT; //直接コマンドキュー
-	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; //GPUタイムアウトが有効
-	//コマンド待ち行列生成
-	if (FAILED(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)))) {
-		ErrorMessage("CreateCommandQueue Error");
-		return false;
-	}
+	//コマンドキュー生成
+	if (!graphicsQueue.Create(md3dDevice.Get(), false))return false;
+	if (!computeQueue.Create(md3dDevice.Get(), true))return false;
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
-		if (!dx_sub[i].ListCreate())return false;
+		if (!dx_sub[i].ListCreate(false))return false;
+		if (!dx_subCom[i].ListCreate(true))return false;
 	}
 
 	//初期化
@@ -654,7 +712,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	ComPtr<IDXGISwapChain1> swapChain;
 	if (FAILED(mdxgiFactory->CreateSwapChainForHwnd(
-		mCommandQueue.Get(),
+		graphicsQueue.mCommandQueue.Get(),
 		hWnd,
 		&sd,
 		nullptr,

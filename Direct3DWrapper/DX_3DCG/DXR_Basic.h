@@ -51,12 +51,8 @@ enum MaterialType {
 	DIRECTIONLIGHT_NONREFLECTION
 };
 
-struct DxrInstanceCB {
-	MATRIX world = {};
-};
-
 struct VertexObj {
-	ID3D12Resource* VertexBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
 	//バッファのサイズ等
 	UINT VertexByteStride = 0;
 	UINT VertexBufferByteSize = 0;
@@ -71,25 +67,30 @@ struct IndexObj {
 	UINT IndexCount = 0;
 };
 
+struct ASobj {
+	std::unique_ptr<VertexObj[]> pVertexBuffer;
+	std::unique_ptr<IndexObj[]> pIndexBuffer;
+	ComPtr<ID3D12Resource> mpTopLevelAS;
+	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
+	AccelerationStructureBuffers topLevelBuffers;
+};
+
+struct CBobj {
+	DxrConstantBuffer cb = {};
+	std::unique_ptr<DxrMaterialCB[]> matCb = nullptr;
+};
+
 class DXR_Basic {
 
 private:
 	ParameterDXR** PD;
-	std::unique_ptr<VertexObj[]> pVertexBuffer;
-	std::unique_ptr<IndexObj[]> pIndexBuffer;
+	ASobj asObj[2] = {};
+	CBobj cbObj[2] = {};
+	int buffSwap[2] = { 0,0 };
+	std::unique_ptr<ComPtr<ID3D12Resource>[]> VertexBufferGPU = nullptr;
 
-	DxrConstantBuffer cb = {};
 	ConstantBuffer<DxrConstantBuffer>* sCB;
-	std::unique_ptr<DxrInstanceCB[]> insCb;
-	ConstantBuffer<DxrInstanceCB>* instance;
-	std::unique_ptr<DxrMaterialCB[]> matCb;
 	ConstantBuffer<DxrMaterialCB>* material;
-
-	std::unique_ptr<ComPtr<ID3D12Resource>[]> mpBottomLevelAS;
-	ComPtr<ID3D12Resource> mpTopLevelAS;
-	uint64_t mTlasSize = 0;
-	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
-	AccelerationStructureBuffers topLevelBuffers;
 
 	ComPtr<ID3D12StateObject> mpPipelineState;
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;
@@ -102,25 +103,35 @@ private:
 
 	UINT numParameter = 0;//PD数
 	UINT numMaterial = 0;//全マテリアル数
-	UINT maxNumInstancing = 0;//INSTANCE_PCS_3D(256) * numParameter
 	UINT maxRecursion = 1;
 
 	void createTriangleVB(int comNo, UINT numMaterial, bool update);
-	void createBottomLevelAS(int comNo, UINT MaterialNo, bool update);
-	void createTopLevelAS(int comNo, uint64_t& tlasSize, bool update);
+	void createBottomLevelAS(Dx12Process_sub* com, UINT MaterialNo, bool update);
+	void createTopLevelAS(Dx12Process_sub* com, bool update);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
 	void createAccelerationStructures(int comNo);
 	void createRtPipelineState();
 	void createShaderResources();
 	void createShaderTable();
 
-	void updateMaterial();
-	void setCB(UINT numRecursion);
+	void updateMaterial(CBobj* cbObj);
+	void updateCB(CBobj* cbObj, UINT numRecursion);
+	void updateAS(Dx12Process_sub* com, UINT numRecursion);
+	void setCB();
+	void raytrace(Dx12Process_sub* com);
 
 public:
 	void initDXR(int comNo, UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
-	void raytrace(int comNo, UINT numRecursion);
-	~DXR_Basic() { S_DELETE(sCB); S_DELETE(instance); S_DELETE(material); }
+	void updateTriangleVB(int comNo);
+	void update_g(int comNo, UINT numRecursion);
+	void update_c(int comNo, UINT numRecursion);
+	void updateVertexBuffer(int comNo);
+	void raytrace_g(int comNo);
+	void raytrace_c(int comNo);
+	void copyBackBuffer(int comNo);
+	void setASswapIndex(int index) { buffSwap[0] = index; }
+	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
+	~DXR_Basic() { S_DELETE(sCB); S_DELETE(material); }
 };
 
 #endif
