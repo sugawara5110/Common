@@ -498,7 +498,7 @@ struct drawPara {
 struct UpdateDXR {
 	UINT NumInstance = 1;
 	std::unique_ptr<VertexView[]> VviewDXR = nullptr;
-	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
+	std::unique_ptr<UINT[]> currentIndexCount = nullptr;
 	MATRIX Transform[INSTANCE_PCS_3D] = {};
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
@@ -506,7 +506,7 @@ struct UpdateDXR {
 
 	void create(int numMaterial) {
 		VviewDXR = std::make_unique<VertexView[]>(numMaterial);
-		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
+		currentIndexCount = std::make_unique<UINT[]>(numMaterial);
 	}
 };
 
@@ -520,9 +520,11 @@ struct ParameterDXR {
 	std::unique_ptr<VECTOR4[]> ambient = nullptr;
 	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
 	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
+	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
 
 	void create(int numMaterial) {
+		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
 		difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
 		norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
 		speTex = std::make_unique<ID3D12Resource* []>(numMaterial);

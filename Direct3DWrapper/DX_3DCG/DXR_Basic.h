@@ -51,25 +51,7 @@ enum MaterialType {
 	DIRECTIONLIGHT_NONREFLECTION
 };
 
-struct VertexObj {
-	ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
-	//バッファのサイズ等
-	UINT VertexByteStride = 0;
-	UINT VertexBufferByteSize = 0;
-};
-
-struct IndexObj {
-	ID3D12Resource* IndexBufferGPU = nullptr;
-	//バッファのサイズ等
-	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R32_UINT;
-	UINT IndexBufferByteSize = 0;
-	//DrawIndexedInstancedの引数で使用
-	UINT IndexCount = 0;
-};
-
 struct ASobj {
-	std::unique_ptr<VertexObj[]> pVertexBuffer;
-	std::unique_ptr<IndexObj[]> pIndexBuffer;
 	ComPtr<ID3D12Resource> mpTopLevelAS;
 	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
 	AccelerationStructureBuffers topLevelBuffers;
@@ -105,8 +87,10 @@ private:
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
 
-	void createTriangleVB(int comNo, UINT numMaterial, bool update);
-	void createBottomLevelAS(Dx12Process_sub* com, UINT MaterialNo, bool update);
+	void createTriangleVB(int comNo, UINT numMaterial);
+	void createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
+		IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update);
+	void createBottomLevelAS(Dx12Process_sub* com, bool update);
 	void createTopLevelAS(Dx12Process_sub* com, bool update);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
 	void createAccelerationStructures(int comNo);
@@ -122,7 +106,6 @@ private:
 
 public:
 	void initDXR(int comNo, UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
-	void updateTriangleVB(int comNo);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
 	void updateVertexBuffer(int comNo);

@@ -298,19 +298,19 @@ void PolygonData::createParameterDXR(bool alpha) {
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		UINT bytesize = 0;
+		IndexView& dxI = dxrPara.IviewDXR[i];
+		UINT indCnt = dpara.Iview[i].IndexCount * numDispPolygon;
+		bytesize = indCnt * sizeof(UINT);
+		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+		dxI.IndexBufferByteSize = bytesize;
+		dxI.IndexCount = indCnt;
+		UINT* ind = new UINT[indCnt];
+		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
+		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+			bytesize, dxI.IndexBufferUploader, false);
+		ARR_DELETE(ind);
 		for (int j = 0; j < 2; j++) {
-			IndexView& dxI = dxrPara.updateDXR[j].IviewDXR[i];
-			UINT indCnt = dpara.Iview[i].IndexCount * numDispPolygon;
-			bytesize = indCnt * sizeof(UINT);
-			dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
-			dxI.IndexBufferByteSize = bytesize;
-			dxI.IndexCount = indCnt;
-			UINT* ind = new UINT[indCnt];
-			for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-			dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
-				bytesize, dxI.IndexBufferUploader, false);
-			ARR_DELETE(ind);
-
+			dxrPara.updateDXR[j].currentIndexCount[i] = indCnt;
 			VertexView& dxV = dxrPara.updateDXR[j].VviewDXR[i];
 			bytesize = indCnt * sizeof(VERTEX_DXR);
 			dxV.VertexByteStride = sizeof(VERTEX_DXR);
@@ -547,7 +547,7 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 				verCnt += ver;
 			}
 			dpara.mDivideReadBuffer[i].Get()->Unmap(0, nullptr);
-			ud.IviewDXR[i].IndexCount = verCnt;
+			ud.currentIndexCount[i] = verCnt;
 		}
 	}
 }
@@ -588,7 +588,7 @@ void PolygonData::StreamOutput() {
 
 ParameterDXR* PolygonData::getParameter() {
 	for (int i = 0; i < dxrPara.NumMaterial; i++) {
-		if (dxrPara.updateDXR[0].IviewDXR[i].IndexCount <= 0) {
+		if (dxrPara.IviewDXR[i].IndexCount <= 0) {
 			dxrPara.NumMaterial = i;
 			break;
 		}

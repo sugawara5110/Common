@@ -32,8 +32,8 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 		cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 
+		createTriangleVB(comNo, numMaterial);
 		dx->dx_sub[comNo].Bigin();
-		createTriangleVB(comNo, numMaterial, false);
 		createAccelerationStructures(comNo);
 		dx->dx_sub[comNo].End();
 		dx->WaitFence();
@@ -75,80 +75,39 @@ void DXR_Basic::initDXR(int comNo, UINT numparameter, ParameterDXR** pd, Materia
 	}
 }
 
-void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial, bool update) {
-
+void DXR_Basic::createTriangleVB(int comNo, UINT numMaterial) {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!update) {
-		for (UINT i = 0; i < numParameter; i++) {
-			for (UINT j = 0; j < 2; j++)
-				PD[i]->updateDXR[j].InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
-		}
-
-		VertexBufferGPU = std::make_unique<ComPtr<ID3D12Resource>[]>(numMaterial);
-		asObj[0].pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
-		asObj[1].pVertexBuffer = std::make_unique<VertexObj[]>(numMaterial);
-		asObj[0].pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
-		asObj[1].pIndexBuffer = std::make_unique<IndexObj[]>(numMaterial);
-
-		UINT MaterialCnt = 0;
-		for (UINT i = 0; i < numParameter; i++) {
-			for (int j = 0; j < PD[i]->NumMaterial; j++) {
-				UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
-				VertexView& vv = ud.VviewDXR[j];
-				for (int v = 0; v < 2; v++) {
-					VertexObj& vb = asObj[v].pVertexBuffer[MaterialCnt];
-					vb.VertexByteStride = vv.VertexByteStride;
-					vb.VertexBufferByteSize = vv.VertexBufferByteSize;
-					dx->createDefaultResourceBuffer(vb.VertexBufferGPU.GetAddressOf(),
-						vb.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
-					dx->dx_sub[comNo].CopyResourceGENERIC_READ(vb.VertexBufferGPU.Get(), vv.VertexBufferGPU.Get());
-
-					IndexObj& ib = asObj[v].pIndexBuffer[MaterialCnt];
-					IndexView& iv = ud.IviewDXR[j];
-					ib.IndexBufferByteSize = iv.IndexBufferByteSize;
-					ib.IndexCount = iv.IndexCount;
-					ib.IndexBufferGPU = iv.IndexBufferGPU.Get();
-				}
-				dx->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
-					vv.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
-				MaterialCnt++;
-			}
-		}
+	for (UINT i = 0; i < numParameter; i++) {
+		for (UINT j = 0; j < 2; j++)
+			PD[i]->updateDXR[j].InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
 	}
-
+	VertexBufferGPU = std::make_unique<ComPtr<ID3D12Resource>[]>(numMaterial);
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
-			VertexObj& vb = asObj[buffSwap[0]].pVertexBuffer[MaterialCnt];
-			VertexView& vv = ud.VviewDXR[j];
-			dx->dx_sub[comNo].CopyResourceGENERIC_READ(vb.VertexBufferGPU.Get(), vv.VertexBufferGPU.Get());
-
-			IndexObj& ib = asObj[buffSwap[0]].pIndexBuffer[MaterialCnt];
-			IndexView& iv = ud.IviewDXR[j];
-			ib.IndexCount = iv.IndexCount;
+			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
+			dx->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
+				vv.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 			MaterialCnt++;
 		}
 	}
 }
 
-void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com, UINT MaterialNo, bool update) {
+void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
+	IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	VertexObj& pVB = asObj[buffSwap[0]].pVertexBuffer[MaterialNo];
-	IndexObj& pIB = asObj[buffSwap[0]].pIndexBuffer[MaterialNo];
-
 	D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
 	geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-	geomDesc.Triangles.VertexBuffer.StartAddress = pVB.VertexBufferGPU->GetGPUVirtualAddress();
-	geomDesc.Triangles.VertexBuffer.StrideInBytes = pVB.VertexByteStride;
+	geomDesc.Triangles.VertexBuffer.StartAddress = vv->VertexBufferGPU->GetGPUVirtualAddress();
+	geomDesc.Triangles.VertexBuffer.StrideInBytes = vv->VertexByteStride;
 	geomDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-	UINT numVertices = pVB.VertexBufferByteSize / pVB.VertexByteStride;
+	UINT numVertices = vv->VertexBufferByteSize / vv->VertexByteStride;
 	geomDesc.Triangles.VertexCount = numVertices;
-	geomDesc.Triangles.IndexBuffer = pIB.IndexBufferGPU->GetGPUVirtualAddress();
-	geomDesc.Triangles.IndexCount = pIB.IndexCount;
-	geomDesc.Triangles.IndexFormat = pIB.IndexFormat;
+	geomDesc.Triangles.IndexBuffer = iv->IndexBufferGPU->GetGPUVirtualAddress();
+	geomDesc.Triangles.IndexCount = currentIndexCount;
+	geomDesc.Triangles.IndexFormat = iv->IndexFormat;
 	geomDesc.Triangles.Transform3x4 = 0;
 	geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
@@ -203,6 +162,20 @@ void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com, UINT MaterialNo, bool 
 	uavBarrier.UAV.pResource = bLB.pResult.Get();
 
 	com->mCommandList->ResourceBarrier(1, &uavBarrier);
+}
+
+void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com, bool update) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	UINT MaterialCnt = 0;
+	for (UINT i = 0; i < numParameter; i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			VertexView* vv = &PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
+			IndexView* iv = &PD[i]->IviewDXR[j];
+			UINT indexCnt = PD[i]->updateDXR[dx->dxrBuffSwap[1]].currentIndexCount[j];
+			createBottomLevelAS1(com, vv, iv, indexCnt, MaterialCnt, update);
+			MaterialCnt++;
+		}
+	}
 }
 
 void DXR_Basic::createTopLevelAS(Dx12Process_sub* com, bool update) {
@@ -303,9 +276,7 @@ void DXR_Basic::createAccelerationStructures(int comNo) {
 	asObj[0].bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
 	asObj[1].bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
 	Dx12Process* dx = Dx12Process::GetInstance();
-	for (UINT i = 0; i < numMaterial; i++) {
-		createBottomLevelAS(&dx->dx_sub[comNo], i, false);
-	}
+	createBottomLevelAS(&dx->dx_sub[comNo], false);
 	createTopLevelAS(&dx->dx_sub[comNo], false);
 }
 
@@ -755,29 +726,37 @@ void DXR_Basic::createShaderResources() {
 	dx->getDevice()->CreateUnorderedAccessView(mpOutputResource.Get(), nullptr, &uavDesc, srvHandle);
 
 	//SRVÇçÏê¨ Indices(t0)
-	for (UINT i = 0; i < numMaterial; i++) {
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1 = {};
-		srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc1.Buffer.NumElements = asObj[0].pIndexBuffer[i].IndexCount;
-		srvDesc1.Format = DXGI_FORMAT_UNKNOWN;
-		srvDesc1.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-		srvDesc1.Buffer.StructureByteStride = sizeof(uint32_t);
-		srvHandle.ptr += offsetSize;
-		dx->getDevice()->CreateShaderResourceView(asObj[0].pIndexBuffer[i].IndexBufferGPU, &srvDesc1, srvHandle);
+	for (UINT i = 0; i < numParameter; i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			IndexView& iv = PD[i]->IviewDXR[j];
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1 = {};
+			srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc1.Buffer.NumElements = iv.IndexCount;
+			srvDesc1.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc1.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+			srvDesc1.Buffer.StructureByteStride = sizeof(uint32_t);
+			srvHandle.ptr += offsetSize;
+			dx->getDevice()->CreateShaderResourceView(iv.IndexBufferGPU.Get(), &srvDesc1, srvHandle);
+		}
 	}
 
 	//SRVÇçÏê¨ Vertex(t1)
-	for (UINT i = 0; i < numMaterial; i++) {
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
-		srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc2.Buffer.NumElements = asObj[0].pVertexBuffer[i].VertexBufferByteSize / asObj[0].pVertexBuffer[i].VertexByteStride;
-		srvDesc2.Format = DXGI_FORMAT_UNKNOWN;
-		srvDesc2.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-		srvDesc2.Buffer.StructureByteStride = asObj[0].pVertexBuffer[i].VertexByteStride;
-		srvHandle.ptr += offsetSize;
-		dx->getDevice()->CreateShaderResourceView(VertexBufferGPU[i].Get(), &srvDesc2, srvHandle);
+	UINT MaterialCnt = 0;
+	for (UINT i = 0; i < numParameter; i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
+			srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc2.Buffer.NumElements = vv.VertexBufferByteSize / vv.VertexByteStride;
+			srvDesc2.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc2.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+			srvDesc2.Buffer.StructureByteStride = vv.VertexByteStride;
+			srvHandle.ptr += offsetSize;
+			dx->getDevice()->CreateShaderResourceView(VertexBufferGPU[MaterialCnt].Get(), &srvDesc2, srvHandle);
+			MaterialCnt++;
+		}
 	}
 
 	//CBVÇçÏê¨ cbuffer global(b0)
@@ -983,23 +962,23 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	memcpy(&cb.dLightst, &dx->dlight.onoff, sizeof(VECTOR4));
 }
 
-void DXR_Basic::updateTriangleVB(int comNo) {
-	createTriangleVB(comNo, numMaterial, true);
-}
-
 void DXR_Basic::updateAS(Dx12Process_sub* com, UINT numRecursion) {
-	for (UINT i = 0; i < numMaterial; i++) {
-		createBottomLevelAS(com, i, true);
-	}
+	createBottomLevelAS(com, true);
 	createTopLevelAS(com, true);
 	updateCB(&cbObj[buffSwap[0]], numRecursion);
 }
 
 void DXR_Basic::updateVertexBuffer(int comNo) {
-	for (UINT i = 0; i < numMaterial; i++) {
-		Dx12Process::GetInstance()->
-			dx->dx_sub[comNo].CopyResourceGENERIC_READ(VertexBufferGPU[i].Get(),
-				asObj[buffSwap[1]].pVertexBuffer[i].VertexBufferGPU.Get());
+	UINT MaterialCnt = 0;
+	Dx12Process* dx = Dx12Process::GetInstance();
+	for (UINT i = 0; i < numParameter; i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
+
+			dx->dx->dx_sub[comNo].CopyResourceGENERIC_READ(VertexBufferGPU[MaterialCnt].Get(),
+				vv.VertexBufferGPU.Get());
+			MaterialCnt++;
+		}
 	}
 }
 

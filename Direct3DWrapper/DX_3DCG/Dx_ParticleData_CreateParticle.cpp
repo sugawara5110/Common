@@ -213,20 +213,19 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	if (mPSO_draw == nullptr)return false;
 
 	if (dx->DXR_CreateResource) {
-
 		UINT bytesize = 0;
+		UINT indCnt = ver * 12;
+		IndexView& dxI = dxrPara.IviewDXR[0];
+		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+		dxI.IndexBufferByteSize = indCnt * sizeof(UINT);
+		dxI.IndexCount = indCnt;
+		UINT* ind = new UINT[indCnt];
+		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
+		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+			dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
+		ARR_DELETE(ind);
 		for (int j = 0; j < 2; j++) {
-			UINT indCnt = ver * 12;
-			IndexView& dxI = dxrPara.updateDXR[j].IviewDXR[0];
-			dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
-			dxI.IndexBufferByteSize = indCnt * sizeof(UINT);
-			dxI.IndexCount = indCnt;
-			UINT* ind = new UINT[indCnt];
-			for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-			dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
-				dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
-			ARR_DELETE(ind);
-
+			dxrPara.updateDXR[j].currentIndexCount[0] = indCnt;
 			UINT verCnt = ver * 12;
 			VertexView& dxV = dxrPara.updateDXR[j].VviewDXR[0];
 			bytesize = verCnt * sizeof(VERTEX_DXR);
