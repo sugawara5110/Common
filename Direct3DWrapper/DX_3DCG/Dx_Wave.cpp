@@ -211,13 +211,13 @@ void Wave::Compute(int com) {
 }
 
 void Wave::Draw(int com_no) {
-	if (!mObj.UpOn | !mObj.DrawOn)return;
+	if (!mObj.firstCbSet[mObj.dx->cBuffSwap[1]] | !mObj.DrawOn)return;
 	Compute(com_no);
 	mObj.Draw(com_no);
 }
 
 void Wave::StreamOutput(int com_no) {
-	if (!mObj.UpOn | !mObj.DrawOn)return;
+	if (!mObj.firstCbSet[mObj.dx->cBuffSwap[1]] | !mObj.DrawOn)return;
 	Dx12Process* dx = mObj.dx;
 	dx->Bigin(com_no);
 	Compute(com_no);

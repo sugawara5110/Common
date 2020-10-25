@@ -33,6 +33,9 @@ PolygonData2D::PolygonData2D() {
 	d2varrayI = nullptr;
 	magX = magnificationX;
 	magY = magnificationY;
+
+	firstCbSet[0] = false;
+	firstCbSet[1] = false;
 }
 
 void PolygonData2D::DisabledMagnification() {
@@ -284,10 +287,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 }
 
 void PolygonData2D::CbSwap() {
-	if (!UpOn) {
-		upCount++;
-		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
-	}
+	firstCbSet[dx->cBuffSwap[0]] = true;
 	insNum[dx->cBuffSwap[0]] = ins_no;
 	ins_no = 0;
 	DrawOn = true;
@@ -312,7 +312,7 @@ void PolygonData2D::DrawOff() {
 
 void PolygonData2D::Draw(int com) {
 
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 

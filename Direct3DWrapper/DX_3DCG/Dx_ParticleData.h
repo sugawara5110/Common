@@ -28,10 +28,7 @@ protected:
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER_P>* mObjectCB = nullptr;
 	CONSTANT_BUFFER_P cbP[2];
-	//UpLoadカウント
-	int upCount = 0;
-	//初回Up終了
-	bool UpOn = false;
+	bool firstCbSet[2];
 	//DrawOn
 	bool DrawOn = false;
 	bool texpar_on = false;

@@ -32,6 +32,9 @@ PolygonData::PolygonData() {
 	divArr[1].divide = 48;//頂点数 3 → 3 * 3456 = 10368
 	divArr[2].distance = 300.0f;
 	divArr[2].divide = 96;//頂点数 3 → 3 * 13824 = 41472
+
+	firstCbSet[0] = false;
+	firstCbSet[1] = false;
 }
 
 PolygonData::~PolygonData() {
@@ -295,6 +298,8 @@ void PolygonData::createParameterDXR(bool alpha) {
 		numDispPolygon = (int)mag * (int)mag * (int)minDivPolygon;//分割最大数(1ポリゴン)
 	}
 
+	if (hs || vs == dx->pVertexShader_SKIN.Get())dxrPara.updateF = true;
+
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		UINT bytesize = 0;
@@ -430,10 +435,7 @@ void PolygonData::Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
 }
 
 void PolygonData::CbSwap() {
-	if (!UpOn) {
-		upCount++;
-		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
-	}
+	firstCbSet[dx->cBuffSwap[0]] = true;
 	insNum[dx->cBuffSwap[0]] = ins_no;
 	ins_no = 0;
 	DrawOn = true;
@@ -519,6 +521,8 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 		mCList->SOSetTargets(0, 1, nullptr);
 
+		ud.firstSet = true;
+
 		dx->End(com);
 		dx->WaitFence();
 
@@ -562,7 +566,7 @@ void PolygonData::ParameterDXR_Update() {
 }
 
 void PolygonData::Draw(int com) {
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
@@ -570,12 +574,13 @@ void PolygonData::Draw(int com) {
 }
 
 void PolygonData::StreamOutput(int com) {
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	ParameterDXR_Update();
-	streamOutput(com, dpara, dxrPara);
+	if (dxrPara.updateF || !dxrPara.updateDXR[dx->dxrBuffSwap[0]].createAS)
+		streamOutput(com, dpara, dxrPara);
 }
 
 void PolygonData::Draw() {

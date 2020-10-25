@@ -15,6 +15,7 @@ struct AccelerationStructureBuffers
 	ComPtr<ID3D12Resource> pScratch;
 	ComPtr<ID3D12Resource> pResult;
 	ComPtr<ID3D12Resource> pInstanceDesc;//top-level AS しか使わない
+	bool firstSet = false;
 };
 
 struct DxrConstantBuffer
@@ -87,13 +88,13 @@ private:
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
 
-	void createTriangleVB(int comNo, UINT numMaterial);
+	void createTriangleVB(UINT numMaterial);
 	void createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
 		IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update);
-	void createBottomLevelAS(Dx12Process_sub* com, bool update);
-	void createTopLevelAS(Dx12Process_sub* com, bool update);
+	void createBottomLevelAS(Dx12Process_sub* com);
+	void createTopLevelAS(Dx12Process_sub* com);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
-	void createAccelerationStructures(int comNo);
+	void createAccelerationStructures();
 	void createRtPipelineState();
 	void createShaderResources();
 	void createShaderTable();
@@ -105,7 +106,7 @@ private:
 	void raytrace(Dx12Process_sub* com);
 
 public:
-	void initDXR(int comNo, UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
+	void initDXR(UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
 	void updateVertexBuffer(int comNo);

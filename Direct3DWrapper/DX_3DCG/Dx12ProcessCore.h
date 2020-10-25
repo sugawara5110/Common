@@ -503,7 +503,8 @@ struct UpdateDXR {
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
-
+	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ
+	bool createAS = false;//ASの最初の構築完了フラグ
 	void create(int numMaterial) {
 		VviewDXR = std::make_unique<VertexView[]>(numMaterial);
 		currentIndexCount = std::make_unique<UINT[]>(numMaterial);
@@ -522,6 +523,7 @@ struct ParameterDXR {
 	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
+	bool updateF = false;//AS構築後のupdateの有無
 
 	void create(int numMaterial) {
 		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
@@ -666,11 +668,8 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
 	CONSTANT_BUFFER cb[2];
+	bool firstCbSet[2];
 	CONSTANT_BUFFER2 sg;
-	//UpLoadカウント
-	int upCount = 0;
-	//初回Up終了
-	bool UpOn = false;
 	//DrawOn
 	bool DrawOn = false;
 
@@ -815,10 +814,7 @@ protected:
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER2D>* mObjectCB = nullptr;
 	CONSTANT_BUFFER2D cb2[2];
-	//UpLoadカウント
-	int upCount = 0;
-	//初回Up終了
-	bool UpOn = false;
+	bool firstCbSet[2];
 	//DrawOn
 	bool DrawOn = false;
 

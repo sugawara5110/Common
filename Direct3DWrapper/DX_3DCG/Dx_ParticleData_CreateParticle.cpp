@@ -13,6 +13,9 @@ ParticleData::ParticleData() {
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	ver = 0;
 	P_pos = nullptr;
+
+	firstCbSet[0] = false;
+	firstCbSet[1] = false;
 }
 
 ParticleData::~ParticleData() {
@@ -275,6 +278,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 bool ParticleData::CreateParticle(int texpar) {
 	GetShaderByteCode();
 	CreateVbObj();
+	dxrPara.updateF = true;
 	if (!CreatePartsCom())return false;
 	return CreatePartsDraw(texpar);
 }
@@ -369,16 +373,16 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	mCList->SOSetTargets(0, 1, nullptr);
 
+	ud.firstSet = true;
+
 	dx->End(com);
 	dx->WaitFence();
 }
 
 void ParticleData::CbSwap(bool init) {
 	if (!parInit)parInit = init;//parInit==TRUEの場合まだ初期化終了していない為フラグを書き換えない
-	if (!UpOn) {
-		upCount++;
-		if (upCount > 1)UpOn = true;//cb,2要素初回更新終了
-	}
+
+	firstCbSet[dx->cBuffSwap[0]] = true;
 	DrawOn = true;
 }
 
@@ -393,7 +397,7 @@ void ParticleData::DrawOff() {
 
 void ParticleData::Draw(int com) {
 
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	bool init = parInit;
 	//一回のinit == TRUE で二つのstreamOutを初期化
@@ -422,7 +426,7 @@ void ParticleData::Update(float size, VECTOR4 color) {
 
 void ParticleData::DrawBillboard(int com) {
 
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	update2(&cbP[dx->cBuffSwap[1]], true);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
@@ -444,7 +448,7 @@ void ParticleData::SetVertex(int i, VECTOR3 pos, VECTOR3 nor) {
 
 void ParticleData::StreamOutput(int com) {
 
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	bool init = parInit;
 	//一回のinit == TRUE で二つのstreamOutを初期化
@@ -467,11 +471,10 @@ void ParticleData::StreamOutput(int com) {
 
 void ParticleData::StreamOutputBillboard(int com) {
 
-	if (!UpOn | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
 	update2(&cbP[dx->cBuffSwap[1]], true);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
-
 	DrawParts2StreamOutput(com);
 }
 
