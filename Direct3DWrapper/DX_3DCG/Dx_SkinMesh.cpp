@@ -452,7 +452,10 @@ void SkinMesh::SetVertex(bool lclOn) {
 			sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 			sg.uvSwitch.x = uvSw;
 			mObj[m].mObjectCB1->CopyData(i, sg);
-			if (dx->DXR_CreateResource)mObj[m].setColorDXR(i, sg);
+			if (dx->DXR_CreateResource) {
+				mObj[m].setColorDXR(i, sg);
+				mObj[m].setUvSW(i, uvSw);
+			}
 		}
 	}
 }

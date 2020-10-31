@@ -286,6 +286,7 @@ bool ParticleData::CreateParticle(int texpar) {
 bool ParticleData::CreateBillboard() {
 	GetShaderByteCode();
 	CreateVbObj();
+	dxrPara.updateF = true;
 	return CreatePartsDraw(-1);
 }
 

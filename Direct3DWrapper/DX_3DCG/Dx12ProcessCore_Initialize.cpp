@@ -24,6 +24,7 @@
 #include "./ShaderCG/ShaderPostEffect.h"
 #include "./ShaderCG/ShaderCalculateLighting.h"
 #include "./ShaderCG/ShaderGsOutput.h"
+#include "./ShaderCG/ShaderSkinMeshCom.h"
 #include <locale.h>
 
 bool Dx12Process_sub::ListCreate(bool Compute) {
@@ -354,6 +355,8 @@ bool Dx12Process::CreateShaderByteCode() {
 	};
 
 	pGeometryShader_P_Output = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_PointDxr", "gs_5_0");
+
+	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom, strlen(ShaderSkinMeshCom), "VSSkinCS", "cs_5_0");
 
 	return CreateShaderByteCodeBool;
 }

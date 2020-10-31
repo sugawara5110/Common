@@ -7,6 +7,142 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
 
+void SkinnedCom::getBuffer(PolygonData* p, int numMaterial) {
+	pd = p;
+	int NumMaterial = pd->dpara.NumMaterial;
+	mObjectCB = new ConstantBuffer<uvSW>(NumMaterial);
+	sw = std::make_unique<uvSW[]>(NumMaterial);
+}
+
+void SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	int NumMaterial = pd->dpara.NumMaterial;
+
+	const int numDesc = numSrv + numCbv + numUav;
+	NumDesc = numDesc;
+	const int numHeap = numDesc * NumMaterial;
+	descHeap = dx->CreateDescHeap(numHeap);
+
+	UINT cbSize[2] = {};
+	cbSize[0] = ad3Size;
+	cbSize[1] = mObjectCB->getSizeInBytes();
+
+	for (int i = 0; i < NumMaterial; i++) {
+		mObjectCB->CopyData(i, sw[i]);
+		ID3D12Resource* res[1];
+		res[0] = pd->dpara.Vview.get()->VertexBufferGPU.Get();
+		UINT resSize[1];
+		resSize[0] = sizeof(MY_VERTEX_S);
+		pd->CreateSrvBuffer(descHeap.Get(), numDesc * i, res, numSrv, resSize);
+		D3D12_GPU_VIRTUAL_ADDRESS ad[2];
+		ad[0] = ad3;
+		ad[1] = mObjectCB->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
+		pd->CreateCbv(descHeap.Get(), numDesc * i + numSrv, ad, cbSize, numCbv);
+		ID3D12Resource* resU[1];
+		resU[0] = VviewDXR.Get();
+		UINT byteStride[1];
+		byteStride[0] = sizeof(VERTEX_DXR);
+		UINT size[1];
+		size[0] = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+		pd->CreateUavBuffer(descHeap.Get(), numDesc * i + numSrv + numCbv,
+			resU, byteStride, size, numUav);
+	}
+}
+
+bool SkinnedCom::createPSO() {
+
+	rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav);
+	if (rootSignature == nullptr)return false;
+
+	ID3DBlob* cs = pd->dx->pVertexShader_SKIN_Com.Get();
+
+	PSO = pd->CreatePsoCompute(cs, rootSignature.Get());
+	if (PSO == nullptr)return false;
+
+	return true;
+}
+
+bool SkinnedCom::createParameterDXR() {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	int NumMaterial = pd->dxrPara.NumMaterial;
+
+	for (int i = 0; i < NumMaterial; i++) {
+		if (pd->dpara.Iview[i].IndexCount <= 0)continue;
+		UINT bytesize = 0;
+		IndexView& dxI = pd->dxrPara.IviewDXR[i];
+		UINT indCnt = pd->dpara.Iview[i].IndexCount;
+		bytesize = indCnt * sizeof(UINT);
+		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
+		dxI.IndexBufferByteSize = bytesize;
+		dxI.IndexCount = indCnt;
+		if (FAILED(dx->createDefaultResourceBuffer(dxI.IndexBufferGPU.GetAddressOf(),
+			dxI.IndexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ))) {
+			ErrorMessage("SkinnedCom::createParameterDXR Error!!");
+			return false;
+		}
+
+		dx->dx_sub[pd->com_no].CopyResourceGENERIC_READ(dxI.IndexBufferGPU.Get(),
+			pd->dpara.Iview[i].IndexBufferGPU.Get());
+
+		for (int j = 0; j < 2; j++) {
+			pd->dxrPara.updateDXR[j].currentIndexCount[i] = indCnt;
+			VertexView& dxV = pd->dxrPara.updateDXR[j].VviewDXR[i];
+			UINT vCnt = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+			bytesize = vCnt * sizeof(VERTEX_DXR);
+			dxV.VertexByteStride = sizeof(VERTEX_DXR);
+			dxV.VertexBufferByteSize = bytesize;
+			if (FAILED(dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+				dxV.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ))) {
+				ErrorMessage("SkinnedCom::createParameterDXR Error!!");
+				return false;
+			}
+		}
+		if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(VviewDXR.GetAddressOf(),
+			bytesize, D3D12_RESOURCE_STATE_UNORDERED_ACCESS))) {
+			ErrorMessage("SkinnedCom::createParameterDXR Error!!");
+			return false;
+		}
+	}
+	return true;
+}
+
+void SkinnedCom::Skinning(int comNo) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	ID3D12GraphicsCommandList* mCList = pd->dx->dx_sub[comNo].mCommandList.Get();
+	mCList->SetPipelineState(PSO.Get());
+	ID3D12DescriptorHeap* descriptorHeaps[] = { descHeap.Get() };
+	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	mCList->SetComputeRootSignature(rootSignature.Get());
+
+	UINT numVer = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+	D3D12_GPU_DESCRIPTOR_HANDLE des = descHeap->GetGPUDescriptorHandleForHeapStart();
+	UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	for (int i = 0; i < pd->dpara.NumMaterial; i++) {
+		//使用されていないマテリアル対策
+		if (pd->dpara.Iview[i].IndexCount <= 0)continue;
+
+		mCList->SetComputeRootDescriptorTable(0, des);
+		mCList->Dispatch(numVer, 1, 1);
+		des.ptr += dx->mCbvSrvUavDescriptorSize * NumDesc;
+
+		dx->dx_sub[comNo].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+		dx->dx_sub[comNo].ResourceBarrier(VviewDXR.Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		mCList->CopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(), VviewDXR.Get());
+		dx->dx_sub[comNo].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		dx->dx_sub[comNo].ResourceBarrier(VviewDXR.Get(),
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+		D3D12_RESOURCE_BARRIER uavBarrier = {};
+		uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+		uavBarrier.UAV.pResource = VviewDXR.Get();
+		mCList->ResourceBarrier(1, &uavBarrier);
+		ud.firstSet = true;
+	}
+}
+
 PolygonData::PolygonData() {
 	dx = Dx12Process::GetInstance();
 	mCommandList = dx->dx_sub[0].mCommandList.Get();
@@ -57,6 +193,7 @@ void PolygonData::getBuffer(int numMaterial, DivideArr* divarr, int numdiv) {
 	if (dx->DXR_CreateResource) {
 		dpara.PSO_DXR = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 		createBufferDXR(dpara.NumMaterial);
+		sk.getBuffer(this, numMaterial);
 	}
 }
 
@@ -85,14 +222,14 @@ void PolygonData::GetVBarray(PrimitiveType type) {
 	if (type == LINE_L) {
 		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 	}
-	if (type == LINE_S) {
-		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
-	}
-	if (type == CONTROL_POINT) {
-		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
-	}
+if (type == LINE_S) {
+	dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
+}
+if (type == CONTROL_POINT) {
+	dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+}
 
-	getBuffer(1);
+getBuffer(1);
 }
 
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
@@ -185,6 +322,11 @@ bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 	const int numSrv, const int numCbv, const int numUav) {
 
+	if (vs == dx->pVertexShader_SKIN.Get()) {
+		sk.createPSO();
+		return true;
+	}
+
 	if (hs) {
 		gs = dx->pGeometryShader_Before_ds_Output.Get();
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true);
@@ -240,6 +382,9 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 	createTextureResource(0, tCnt, te);
 	if (dx->DXR_CreateResource) {
 		setTextureDXR();
+		if (vs == dx->pVertexShader_SKIN.Get()) {
+			sk.createDescHeap(ad3, ad3Size);
+		}
 	}
 	int numUav = 0;
 	if (hs)numUav = 1;
@@ -284,6 +429,13 @@ void PolygonData::createParameterDXR(bool alpha) {
 	dxrPara.alphaTest = alpha;
 	int NumMaterial = dxrPara.NumMaterial;
 
+	if (hs || vs == dx->pVertexShader_SKIN.Get())dxrPara.updateF = true;
+
+	if (vs == dx->pVertexShader_SKIN.Get()) {
+		sk.createParameterDXR();
+		return;
+	}
+
 	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
 	if (hs) {
 		float maxDiv = 0.0f;
@@ -297,8 +449,6 @@ void PolygonData::createParameterDXR(bool alpha) {
 		int mag = (int)maxDiv / (int)minDiv;
 		numDispPolygon = (int)mag * (int)mag * (int)minDivPolygon;//分割最大数(1ポリゴン)
 	}
-
-	if (hs || vs == dx->pVertexShader_SKIN.Get())dxrPara.updateF = true;
 
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
@@ -579,8 +729,12 @@ void PolygonData::StreamOutput(int com) {
 	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 	dpara.insNum = insNum[dx->cBuffSwap[1]];
 	ParameterDXR_Update();
-	if (dxrPara.updateF || !dxrPara.updateDXR[dx->dxrBuffSwap[0]].createAS)
-		streamOutput(com, dpara, dxrPara);
+	if (dxrPara.updateF || !dxrPara.updateDXR[dx->dxrBuffSwap[0]].createAS) {
+		if (vs == dx->pVertexShader_SKIN.Get())
+			sk.Skinning(com);
+		else
+			streamOutput(com, dpara, dxrPara);
+	}
 }
 
 void PolygonData::Draw() {

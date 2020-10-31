@@ -59,6 +59,7 @@ class DxGradCAM;
 class DxActivation;
 class DxOptimizer;
 class DXR_Basic;
+class SkinnedCom;
 //前方宣言
 
 class Dx12Process_sub final {
@@ -82,6 +83,7 @@ private:
 	friend DxActivation;
 	friend DxOptimizer;
 	friend DXR_Basic;
+	friend SkinnedCom;
 
 	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
@@ -132,6 +134,7 @@ private:
 	friend DxActivation;
 	friend DxOptimizer;
 	friend DXR_Basic;
+	friend SkinnedCom;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<ID3D12Device5> md3dDevice;
@@ -200,6 +203,7 @@ private:
 
 	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
 	ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
+	ComPtr<ID3DBlob> pVertexShader_SKIN_Com = nullptr;
 
 	std::unique_ptr<char[]> ShaderNormalTangentCopy = nullptr;
 	std::unique_ptr<char[]> ShaderCalculateLightingCopy = nullptr;
@@ -554,6 +558,7 @@ protected:
 	friend PolygonData2D;
 	friend ParticleData;
 	friend PostEffect;
+	friend SkinnedCom;
 	Common() {};//外部からのオブジェクト生成禁止
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
@@ -646,6 +651,36 @@ public:
 	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
 };
 
+struct uvSW {
+	VECTOR4 uvSw;//.xのみ
+};
+
+class SkinnedCom {
+
+private:
+	friend PolygonData;
+	std::unique_ptr<uvSW[]> sw = nullptr;
+	ConstantBuffer<uvSW>* mObjectCB = nullptr;
+	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
+	ComPtr<ID3D12PipelineState> PSO = nullptr;
+	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
+	ComPtr<ID3D12Resource> VviewDXR = nullptr;
+	PolygonData* pd = nullptr;
+	int NumDesc = 0;
+	const int numSrv = 1;
+	const int numCbv = 2;
+	const int numUav = 1;
+
+	void getBuffer(PolygonData* pd, int numMaterial);
+	void createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
+	bool createPSO();
+	bool createParameterDXR();
+	void Skinning(int comNo);
+	~SkinnedCom() {
+		S_DELETE(mObjectCB);
+	}
+};
+
 //*********************************PolygonDataクラス*************************************//
 class PolygonData :public Common {
 
@@ -654,6 +689,7 @@ protected:
 	friend MeshData;
 	friend Wave;
 	friend DXR_Basic;
+	friend SkinnedCom;
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -663,6 +699,8 @@ protected:
 	ID3DBlob* gs = nullptr;
 	ID3DBlob* gs_NoMap = nullptr;
 	ID3DBlob* cs = nullptr;
+
+	SkinnedCom sk;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
@@ -734,6 +772,9 @@ protected:
 	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
 
 	void ParameterDXR_Update();
+	void setUvSW(int mIndex, float uvSW) {
+		sk.sw[mIndex].uvSw.x = uvSW;
+	}
 
 public:
 	PolygonData();
