@@ -690,7 +690,7 @@ void DXR_Basic::createRtPipelineState() {
 	desc.pSubobjects = subobjects.data();
 	desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
 
-	HRESULT hr = dx->getDevice()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
+	HRESULT hr = dx->md3dDevice.Get()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
 	if (FAILED(hr)) {
 		ErrorMessage("DXR_Basic::createRtPipelineState() Error");
 	}

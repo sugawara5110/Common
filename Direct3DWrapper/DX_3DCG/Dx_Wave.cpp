@@ -137,14 +137,10 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 		numUav = 1;
 		mObj.createDivideBuffer();
 	}
-	if (mObj.dx->DXR_CreateResource) {
-		mObj.createParameterDXR(alpha);
-		mObj.setColorDXR(0, sg);
-	}
+	mObj.createParameterDXR(alpha);
+	mObj.setColorDXR(0, sg);
 	if (!mObj.createPSO(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
-	if (mObj.dx->DXR_CreateResource) {
-		if (!mObj.createPSO_DXR(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
-	}
+	if (!mObj.createPSO_DXR(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};

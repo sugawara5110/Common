@@ -871,18 +871,17 @@ void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer) {
 	dx_sub[com_no].ResourceBarrier(mSwapChainBuffer[mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	if (clearBackBuffer)dx_sub[com_no].mCommandList->ClearRenderTargetView(CD3DX12_CPU_DESCRIPTOR_HANDLE(
-		mRtvHeap->GetCPUDescriptorHandleForHeapStart(),
-		mCurrBackBuffer,
-		mRtvDescriptorSize), DirectX::Colors::Black, 0, nullptr);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
+	rtvHandle.ptr += mCurrBackBuffer * mRtvDescriptorSize;
+
+	if (clearBackBuffer)dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
+		DirectX::Colors::Black, 0, nullptr);
 
 	dx_sub[com_no].mCommandList->ClearDepthStencilView(mDsvHeap->GetCPUDescriptorHandleForHeapStart(),
 		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-	dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &CD3DX12_CPU_DESCRIPTOR_HANDLE(
-		mRtvHeap->GetCPUDescriptorHandleForHeapStart(),
-		mCurrBackBuffer,
-		mRtvDescriptorSize), true, &mDsvHeap->GetCPUDescriptorHandleForHeapStart());
+	dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
+		true, &mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
 void Dx12Process::EndDraw(int com_no) {

@@ -52,6 +52,7 @@ SkinMesh::~SkinMesh() {
 	ARR_DELETE(m_pLastBoneMatrix);
 	ARR_DELETE(m_BoneArray);
 	ARR_DELETE(mObj);
+	ARR_DELETE(sk);
 	S_DELETE(mObject_BONES);
 
 	DestroyFBX();
@@ -197,9 +198,11 @@ void SkinMesh::GetBuffer(float end_frame) {
 
 	pvVB = new MY_VERTEX_S * [numMesh];
 	mObj = new PolygonData[numMesh];
+	sk = new SkinnedCom[numMesh];
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].SetCommandList(com_no);
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), divArr, numDiv);
+		sk[i].getBuffer(&mObj[i], fbL->getFbxMeshNode(i)->getNumMaterial());
 	}
 }
 
@@ -454,7 +457,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 			mObj[m].mObjectCB1->CopyData(i, sg);
 			if (dx->DXR_CreateResource) {
 				mObj[m].setColorDXR(i, sg);
-				mObj[m].setUvSW(i, uvSw);
+				sk[m].setUvSW(i, uvSw);
 			}
 		}
 	}
@@ -513,16 +516,15 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 			o.createDivideBuffer();
 		}
 		Dx12Process* dx = o.dx;
-		if (dx->DXR_CreateResource)o.createParameterDXR(alpha);
-
+		o.createParameterDXR(alpha);
+		if (!sk[i].createParameterDXR())return false;
 		if (!o.createPSO(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
-
-		if (dx->DXR_CreateResource) {
-			if (!o.createPSO_DXR(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
-		}
+		if (!o.createPSO_DXR(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
+		if (!sk[i].createPSO())return false;
 		UINT cbSize = mObject_BONES->getSizeInBytes();
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
 		if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
+		if (!sk[i].createDescHeap(ad, cbSize))return false;
 	}
 	if (pvVB_delete_f)ARR_DELETE(pvVB);
 	ARR_DELETE(newIndex);
@@ -765,8 +767,10 @@ void SkinMesh::StreamOutput(int com) {
 
 	mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
 
-	for (int i = 0; i < numMesh; i++)
+	for (int i = 0; i < numMesh; i++) {
 		mObj[i].StreamOutput(com);
+		sk[i].Skinning(com);
+	}
 }
 
 void SkinMesh::Draw() {

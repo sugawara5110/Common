@@ -8,6 +8,7 @@
 #define Class_SkinMesh_Header
 
 #include "Dx12ProcessCore.h"
+#include "DxSkinnedCom.h"
 #include "../../../FbxLoader/FbxLoader.h"
 
 class SkinMesh_sub {
@@ -67,6 +68,7 @@ protected:
 	int AnimLastInd = -1;
 	float BoneConnect;
 	PolygonData* mObj = nullptr;
+	SkinnedCom* sk = nullptr;
 	int com_no = 0;
 
 	void DestroyFBX();

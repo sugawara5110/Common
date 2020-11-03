@@ -295,7 +295,7 @@ bool MeshData::SetVertex() {
 		sg.vDiffuse = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 		mObj.mObjectCB1->CopyData(i, sg);
-		if (dx->DXR_CreateResource)mObj.setColorDXR(i, sg);
+		mObj.setColorDXR(i, sg);
 	}
 
 	//フェイス　読み込み　バラバラに収録されている可能性があるので、マテリアル名を頼りにつなぎ合わせる
@@ -428,15 +428,11 @@ bool MeshData::CreateMesh() {
 		numUav = 1;
 		mObj.createDivideBuffer();
 	}
-	if (dx->DXR_CreateResource) {
-		mObj.createParameterDXR(alpha);
-	}
+	mObj.createParameterDXR(alpha);
 
 	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
-	if (dx->DXR_CreateResource) {
-		if (!mObj.createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
-	}
+	if (!mObj.createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
 
 	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
