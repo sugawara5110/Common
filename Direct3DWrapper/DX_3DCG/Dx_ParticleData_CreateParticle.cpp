@@ -116,8 +116,7 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 void ParticleData::GetBufferParticle(int texture_no, float size, float density) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
-	Sview1 = std::make_unique<StreamView[]>(2);
-	Sview2 = std::make_unique<StreamView[]>(2);
+	Sview = std::make_unique<StreamView[]>(2);
 	GetVbColarray(texture_no, size, density);
 }
 
@@ -131,8 +130,7 @@ void ParticleData::GetBufferBill(int v) {
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
-	Sview1 = std::make_unique<StreamView[]>(2);
-	Sview2 = std::make_unique<StreamView[]>(2);
+	Sview = std::make_unique<StreamView[]>(2);
 }
 
 void ParticleData::createDxr() {
@@ -152,12 +150,10 @@ void ParticleData::CreateVbObj() {
 	Vview->VertexBufferByteSize = vbByteSize;
 
 	for (int i = 0; i < 2; i++) {
-		Sview1[i].StreamBufferGPU = dx->CreateStreamBuffer(vbByteSize);
-		Sview2[i].StreamBufferGPU = dx->CreateStreamBuffer(vbByteSize);
+		Sview[i].StreamBufferGPU = dx->CreateStreamBuffer(vbByteSize);
 
-		Sview1[i].StreamByteStride = Sview2[i].StreamByteStride = sizeof(PartPos);
-		Sview1[i].StreamBufferByteSize = Sview2[i].StreamBufferByteSize = vbByteSize;
-		Sview1[i].BufferFilledSizeLocation = Sview2[i].StreamBufferGPU->GetGPUVirtualAddress();
+		Sview[i].StreamByteStride = sizeof(PartPos);
+		Sview[i].StreamBufferByteSize = vbByteSize;
 	}
 
 	if (dx->DXR_CreateResource) {
@@ -180,7 +176,7 @@ bool ParticleData::CreatePartsCom() {
 	mPSO_com = CreatePsoStreamOutput(vsSO, nullptr, nullptr, gsSO, mRootSignature_com.Get(),
 		dx->pVertexLayout_P, &dx->pDeclaration_PSO,
 		(UINT)dx->pDeclaration_PSO.size(),
-		&Sview1[0].StreamByteStride,
+		&Sview[0].StreamByteStride,
 		1,
 		POINt);
 	if (mPSO_com == nullptr)return false;
@@ -244,13 +240,6 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 		dxS.StreamBufferByteSize = bytesize;
 		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
 
-		StreamView& dxL = dxrPara.SizeLocation[0];
-		dxL.StreamByteStride = sizeof(VERTEX_DXR);
-		dxL.StreamBufferByteSize = bytesize;
-		dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
-
-		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
-
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false);
 		if (rootSignatureDXR == nullptr)return false;
 
@@ -303,7 +292,7 @@ void ParticleData::DrawParts1(int com) {
 
 	mCList->SetGraphicsRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
 
-	mCList->SOSetTargets(0, 1, &Sview1[svInd].StreamBufferView());
+	mCList->SOSetTargets(0, 1, &Sview[svInd].StreamBufferView());
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
 
@@ -311,11 +300,11 @@ void ParticleData::DrawParts1(int com) {
 	if (firstDraw) {
 		dx->dx_sub[com].ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		mCList->CopyResource(Vview->VertexBufferGPU.Get(), Sview1[svInd].StreamBufferGPU.Get());
+		mCList->CopyResource(Vview->VertexBufferGPU.Get(), Sview[svInd].StreamBufferGPU.Get());
 		dx->dx_sub[com].ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 	}
-	mCList->SOSetTargets(0, 1, nullptr);
+	Sview[svInd].ResetFilledSizeBuffer(com);
 }
 
 void ParticleData::DrawParts2(int com) {
@@ -372,7 +361,7 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
-	mCList->SOSetTargets(0, 1, nullptr);
+	dxrPara.SviewDXR[0].ResetFilledSizeBuffer(com);
 
 	ud.firstSet = true;
 

@@ -332,13 +332,6 @@ void PolygonData::createParameterDXR(bool alpha) {
 		dxS.StreamByteStride = sizeof(VERTEX_DXR);
 		dxS.StreamBufferByteSize = bytesize;
 		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
-
-		StreamView& dxL = dxrPara.SizeLocation[i];
-		dxL.StreamByteStride = sizeof(VERTEX_DXR);
-		dxL.StreamBufferByteSize = bytesize;
-		dxL.StreamBufferGPU = dx->CreateStreamBuffer(dxL.StreamBufferByteSize);
-
-		dxS.BufferFilledSizeLocation = dxL.StreamBufferGPU.Get()->GetGPUVirtualAddress();
 	}
 }
 
@@ -364,33 +357,7 @@ void PolygonData::createDivideBuffer() {
 			ErrorMessage("PolygonData::createDivideBuffer Error!!");
 		}
 
-		D3D12_HEAP_PROPERTIES heap = {};
-		heap.Type = D3D12_HEAP_TYPE_READBACK;
-		heap.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heap.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heap.CreationNodeMask = 1;
-		heap.VisibleNodeMask = 1;
-
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Alignment = 0;
-		desc.Width = numPolygon * sizeof(UINT);
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.Format = DXGI_FORMAT_UNKNOWN;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-		hr = dx->md3dDevice->CreateCommittedResource(
-			&heap,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			nullptr,
-			IID_PPV_ARGS(dpara.mDivideReadBuffer[i].GetAddressOf()));
+		hr = dx->createReadBackResource(dpara.mDivideReadBuffer[i].GetAddressOf(), numPolygon * sizeof(UINT));
 		if (FAILED(hr)) {
 			ErrorMessage("PolygonData::createDivideBuffer Error!!");
 		}
@@ -522,7 +489,7 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		dx->dx_sub[com].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
-		mCList->SOSetTargets(0, 1, nullptr);
+		dxr.SviewDXR[i].ResetFilledSizeBuffer(com);
 
 		ud.firstSet = true;
 

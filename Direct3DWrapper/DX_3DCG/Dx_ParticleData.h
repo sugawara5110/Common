@@ -36,8 +36,7 @@ protected:
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
 	//ストリームバッファOBJ
-	std::unique_ptr<StreamView[]> Sview1 = nullptr;
-	std::unique_ptr<StreamView[]> Sview2 = nullptr;//BufferFilledSizeLocationの送り先
+	std::unique_ptr<StreamView[]> Sview = nullptr;
 	int svInd = 0;
 	bool firstDraw = false;
 	int  streamInitcount = 0;

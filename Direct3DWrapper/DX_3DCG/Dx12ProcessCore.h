@@ -60,6 +60,8 @@ class DxActivation;
 class DxOptimizer;
 class DXR_Basic;
 class SkinnedCom;
+struct StreamView;
+void ErrorMessage(char* E_mes);
 //前方宣言
 
 class Dx12Process_sub final {
@@ -84,6 +86,7 @@ private:
 	friend DxOptimizer;
 	friend DXR_Basic;
 	friend SkinnedCom;
+	friend StreamView;
 
 	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
@@ -135,6 +138,7 @@ private:
 	friend DxOptimizer;
 	friend DXR_Basic;
 	friend SkinnedCom;
+	friend StreamView;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<ID3D12Device5> md3dDevice;
@@ -294,6 +298,8 @@ private:
 
 	HRESULT createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize);
 
+	HRESULT createReadBackResource(ID3D12Resource** ba, UINT64 BufferSize);
+
 	HRESULT textureInit(int width, int height,
 		ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
 		D3D12_RESOURCE_STATES firstState);
@@ -410,11 +416,57 @@ struct IndexView {
 struct StreamView {
 
 	ComPtr<ID3D12Resource> StreamBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> BufferFilledSizeBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> ReadBuffer = nullptr;
+	ComPtr<ID3D12Resource> resetBuffer = nullptr;
 
 	//バッファのサイズ等
 	UINT StreamByteStride = 0;
 	UINT StreamBufferByteSize = 0;
-	D3D12_GPU_VIRTUAL_ADDRESS BufferFilledSizeLocation;
+	UINT FilledSize = 0;
+
+	StreamView() {
+		Dx12Process* dx = Dx12Process::GetInstance();
+		BufferFilledSizeBufferGPU = dx->CreateStreamBuffer(sizeof(UINT64));
+		dx->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
+		dx->createDefaultResourceBuffer(resetBuffer.GetAddressOf(), sizeof(UINT64),
+			D3D12_RESOURCE_STATE_GENERIC_READ);
+	}
+
+	void ResetFilledSizeBuffer(int com) {
+		Dx12Process* dx = Dx12Process::GetInstance();
+		ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST);
+
+		mCList->CopyResource(BufferFilledSizeBufferGPU.Get(),
+			resetBuffer.Get());
+
+		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT);
+	}
+
+	void outputReadBack(int com) {
+		Dx12Process* dx = Dx12Process::GetInstance();
+		ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		mCList->CopyResource(ReadBuffer.Get(), BufferFilledSizeBufferGPU.Get());
+
+		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+	}
+
+	void outputFilledSize() {
+		D3D12_RANGE range;
+		range.Begin = 0;
+		range.End = sizeof(UINT64);
+		UINT* ba = nullptr;
+		ReadBuffer.Get()->Map(0, &range, reinterpret_cast<void**>(&ba));
+		FilledSize = ba[0];
+		ReadBuffer.Get()->Unmap(0, nullptr);
+	}
 
 	//ストリームバッファビュー
 	D3D12_STREAM_OUTPUT_BUFFER_VIEW StreamBufferView()const
@@ -422,7 +474,7 @@ struct StreamView {
 		D3D12_STREAM_OUTPUT_BUFFER_VIEW sbv;
 		sbv.BufferLocation = StreamBufferGPU->GetGPUVirtualAddress();
 		sbv.SizeInBytes = StreamBufferByteSize;
-		sbv.BufferFilledSizeLocation = BufferFilledSizeLocation;//以前のサイズ?
+		sbv.BufferFilledSizeLocation = BufferFilledSizeBufferGPU.Get()->GetGPUVirtualAddress();
 		return sbv;
 	}
 };
@@ -524,7 +576,6 @@ struct ParameterDXR {
 	std::unique_ptr<VECTOR4[]> specular = nullptr;
 	std::unique_ptr<VECTOR4[]> ambient = nullptr;
 	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
-	std::unique_ptr<StreamView[]> SizeLocation = nullptr;
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
 	bool updateF = false;//AS構築後のupdateの有無
@@ -538,7 +589,6 @@ struct ParameterDXR {
 		specular = std::make_unique<VECTOR4[]>(numMaterial);
 		ambient = std::make_unique<VECTOR4[]>(numMaterial);
 		SviewDXR = std::make_unique<StreamView[]>(numMaterial);
-		SizeLocation = std::make_unique<StreamView[]>(numMaterial);
 		updateDXR[0].create(numMaterial);
 		updateDXR[1].create(numMaterial);
 	}
@@ -912,8 +962,5 @@ public:
 	static int GetUps();
 	float Add(float f);
 };
-
-//エラーメッセージ
-void ErrorMessage(char *E_mes);
 
 #endif

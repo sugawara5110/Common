@@ -475,6 +475,36 @@ HRESULT Dx12Process::createUploadResource(ID3D12Resource** up, UINT64 uploadBuff
 		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(up));
 }
 
+HRESULT Dx12Process::createReadBackResource(ID3D12Resource** ba, UINT64 BufferSize) {
+	D3D12_HEAP_PROPERTIES heap = {};
+	heap.Type = D3D12_HEAP_TYPE_READBACK;
+	heap.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	heap.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	heap.CreationNodeMask = 1;
+	heap.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC desc = {};
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	desc.Alignment = 0;
+	desc.Width = BufferSize;
+	desc.Height = 1;
+	desc.DepthOrArraySize = 1;
+	desc.MipLevels = 1;
+	desc.Format = DXGI_FORMAT_UNKNOWN;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	return md3dDevice->CreateCommittedResource(
+		&heap,
+		D3D12_HEAP_FLAG_NONE,
+		&desc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(ba));
+}
+
 HRESULT Dx12Process::textureInit(int width, int height,
 	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
 	D3D12_RESOURCE_STATES firstState) {
