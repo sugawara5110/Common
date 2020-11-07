@@ -17,6 +17,7 @@ MeshData::MeshData() {
 	divArr[1].divide = 6;
 	divArr[2].distance = 300.0f;
 	divArr[2].divide = 12;
+	numDiv = 3;
 }
 
 MeshData::~MeshData() {

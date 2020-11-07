@@ -28,6 +28,7 @@ Wave::Wave() {
 	divArr[1].divide = 48;//’¸“_” 3 ¨ 3 * 3456 = 10368
 	divArr[2].distance = 300.0f;
 	divArr[2].divide = 96;//’¸“_” 3 ¨ 3 * 13824 = 41472
+	numDiv = 3;
 }
 
 Wave::~Wave() {
@@ -215,10 +216,7 @@ void Wave::Draw(int com_no) {
 void Wave::StreamOutput(int com_no) {
 	if (!mObj.firstCbSet[mObj.dx->cBuffSwap[1]] | !mObj.DrawOn)return;
 	Dx12Process* dx = mObj.dx;
-	dx->Bigin(com_no);
 	Compute(com_no);
-	dx->End(com_no);
-	dx->WaitFence();
 	mObj.StreamOutput(com_no);
 }
 

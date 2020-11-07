@@ -330,8 +330,6 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 
-	dx->Bigin(com);
-
 	mCList->SetPipelineState(PSO_DXR.Get());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
@@ -364,9 +362,6 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 	dxrPara.SviewDXR[0].ResetFilledSizeBuffer(com);
 
 	ud.firstSet = true;
-
-	dx->End(com);
-	dx->WaitFence();
 }
 
 void ParticleData::CbSwap(bool init) {
@@ -382,7 +377,7 @@ void ParticleData::Update(VECTOR3 pos, VECTOR4 color, float angle, float size, b
 }
 
 void ParticleData::DrawOff() {
-	DrawOn = FALSE;
+	DrawOn = false;
 }
 
 void ParticleData::Draw(int com) {
@@ -438,7 +433,10 @@ void ParticleData::SetVertex(int i, VECTOR3 pos, VECTOR3 nor) {
 
 void ParticleData::StreamOutput(int com) {
 
-	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
+	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	ud.InstanceMaskChange(DrawOn);
+
+	if (!firstCbSet[dx->cBuffSwap[1]])return;
 
 	bool init = parInit;
 	//ˆê‰ñ‚Ìinit == TRUE ‚Å“ñ‚Â‚ÌstreamOut‚ð‰Šú‰»
@@ -450,10 +448,8 @@ void ParticleData::StreamOutput(int com) {
 	update2(&cbP[dx->cBuffSwap[1]], init);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
 
-	dx->Bigin(com);
 	DrawParts1(com);
-	dx->End(com);
-	dx->WaitFence();
+
 	if (firstDraw)DrawParts2StreamOutput(com);
 	firstDraw = true;
 	parInit = false;//parInit==TRUE‚Ìê‡‚±‚±‚É—ˆ‚½Žž“_‚Å‰Šú‰»I—¹
@@ -461,7 +457,10 @@ void ParticleData::StreamOutput(int com) {
 
 void ParticleData::StreamOutputBillboard(int com) {
 
-	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
+	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	ud.InstanceMaskChange(DrawOn);
+
+	if (!firstCbSet[dx->cBuffSwap[1]])return;
 
 	update2(&cbP[dx->cBuffSwap[1]], true);
 	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);

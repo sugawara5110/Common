@@ -38,7 +38,7 @@ protected:
 	std::unique_ptr<meshMaterial[]>mMat = nullptr;
 
 	DivideArr divArr[16] = {};
-	int numDiv = 3;
+	int numDiv = 0;
 	PolygonData mObj;
 
 	bool LoadMaterialFromFile(char* FileName);
@@ -73,6 +73,9 @@ public:
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
 	ParameterDXR* getParameter() { return mObj.getParameter(); }
+	void UpdateDxrDivideBuffer() {
+		mObj.UpdateDxrDivideBuffer();
+	}
 };
 
 #endif

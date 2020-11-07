@@ -18,6 +18,7 @@ using namespace std;
 SkinMesh_sub::SkinMesh_sub() {
 	fbxL = new FbxLoader();
 	MatrixIdentity(&rotZYX);
+	connect_step = 3000.0f;
 }
 
 SkinMesh_sub::~SkinMesh_sub() {
@@ -38,6 +39,8 @@ SkinMesh::SkinMesh() {
 	divArr[2].distance = 300.0f;
 	divArr[2].divide = 12;//í∏ì_êî 3 Å® 3 * 216 = 648
 	BoneConnect = -1.0f;
+	numDiv = 3;
+	AnimLastInd = -1;
 }
 
 SkinMesh::~SkinMesh() {

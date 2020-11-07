@@ -246,7 +246,7 @@ void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
 					pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 					memcpy(pID.Transform, &ud.Transform[k], sizeof(pID.Transform));
 					pID.AccelerationStructure = asObj[buffSwap[0]].bottomLevelBuffers[materialCnt].pResult.Get()->GetGPUVirtualAddress();
-					pID.InstanceMask = 0xFF;
+					pID.InstanceMask = ud.InstanceMask;
 				}
 				RayInstanceCnt++;
 			}

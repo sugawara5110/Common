@@ -162,7 +162,10 @@ void SkinnedCom::Skinning(int comNo) {
 
 	if (pd->vs == dx->pVertexShader_SKIN.Get()) {
 
-		if (!pd->firstCbSet[dx->cBuffSwap[1]] | !pd->DrawOn)return;
+		UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+		ud.InstanceMaskChange(pd->DrawOn);
+
+		if (!pd->firstCbSet[dx->cBuffSwap[1]])return;
 
 		pd->mObjectCB->CopyData(0, pd->cb[dx->cBuffSwap[1]]);
 		pd->dpara.insNum = pd->insNum[dx->cBuffSwap[1]];

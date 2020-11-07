@@ -561,6 +561,13 @@ struct UpdateDXR {
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
 	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ
 	bool createAS = false;//ASの最初の構築完了フラグ
+	UINT InstanceMask = 0xFF;
+
+	void InstanceMaskChange(bool DrawOn) {
+		if (DrawOn)InstanceMask = 0xFF;
+		else InstanceMask = 0x00;
+	}
+
 	void create(int numMaterial) {
 		VviewDXR = std::make_unique<VertexView[]>(numMaterial);
 		currentIndexCount = std::make_unique<UINT[]>(numMaterial);
@@ -739,7 +746,7 @@ protected:
 
 	PrimitiveType primType_create;
 	DivideArr divArr[16] = {};
-	int numDiv = 3;
+	int numDiv;
 	drawPara dpara = {};
 	ParameterDXR dxrPara = {};
 
@@ -851,6 +858,7 @@ public:
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
+	void UpdateDxrDivideBuffer();
 };
 
 //*********************************PolygonData2Dクラス*************************************//

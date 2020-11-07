@@ -32,6 +32,7 @@ PolygonData::PolygonData() {
 	divArr[1].divide = 48;//頂点数 3 → 3 * 3456 = 10368
 	divArr[2].distance = 300.0f;
 	divArr[2].divide = 96;//頂点数 3 → 3 * 13824 = 41472
+	numDiv = 3;
 
 	firstCbSet[0] = false;
 	firstCbSet[1] = false;
@@ -47,7 +48,10 @@ ID3D12PipelineState* PolygonData::GetPipelineState() {
 }
 
 void PolygonData::getBuffer(int numMaterial, DivideArr* divarr, int numdiv) {
-	memcpy(divArr, divarr, sizeof(DivideArr) * numdiv);
+	if (numdiv > 0) {
+		numDiv = numdiv;
+		memcpy(divArr, divarr, sizeof(DivideArr) * numdiv);
+	}
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
 	dpara.NumMaterial = numMaterial;
 	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
@@ -460,8 +464,6 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		//使用されていないマテリアル対策
 		if (para.Iview[i].IndexCount <= 0)continue;
 
-		dx->Bigin(com);
-
 		mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 		mCList->SetGraphicsRootSignature(para.rootSignatureDXR.Get());
 		mCList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
@@ -493,35 +495,12 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 		ud.firstSet = true;
 
-		dx->End(com);
-		dx->WaitFence();
-
 		if (hs) {
-			dx->Bigin(com);
 			dx->dx_sub[com].ResourceBarrier(dpara.mDivideBuffer[i].Get(),
 				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			mCList->CopyResource(dpara.mDivideReadBuffer[i].Get(), dpara.mDivideBuffer[i].Get());
 			dx->dx_sub[com].ResourceBarrier(dpara.mDivideBuffer[i].Get(),
 				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			dx->End(com);
-			dx->WaitFence();
-
-			D3D12_RANGE range;
-			range.Begin = 0;
-			UINT numPo = dpara.Iview[i].IndexCount / 3;
-			range.End = numPo * sizeof(UINT);
-			UINT* div = nullptr;
-			dpara.mDivideReadBuffer[i].Get()->Map(0, &range, reinterpret_cast<void**>(&div));
-			const UINT minDiv = 2;
-			const UINT minDivPolygon = 6;
-			UINT verCnt = 0;
-			for (UINT d = 0; d < numPo; d++) {
-				UINT mag = div[d] / minDiv;
-				UINT ver = mag * mag * minDivPolygon * 3;
-				verCnt += ver;
-			}
-			dpara.mDivideReadBuffer[i].Get()->Unmap(0, nullptr);
-			ud.currentIndexCount[i] = verCnt;
 		}
 	}
 }
@@ -547,7 +526,10 @@ void PolygonData::StreamOutput(int com) {
 
 	if (vs != dx->pVertexShader_SKIN.Get()) {
 
-		if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
+		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+		ud.InstanceMaskChange(DrawOn);
+
+		if (!firstCbSet[dx->cBuffSwap[1]])return;
 
 		mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
 		dpara.insNum = insNum[dx->cBuffSwap[1]];
@@ -574,4 +556,30 @@ ParameterDXR* PolygonData::getParameter() {
 		}
 	}
 	return &dxrPara;
+}
+
+void PolygonData::UpdateDxrDivideBuffer() {
+	if (hs) {
+		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+		for (int i = 0; i < dpara.NumMaterial; i++) {
+			//使用されていないマテリアル対策
+			if (dpara.Iview[i].IndexCount <= 0)continue;
+			D3D12_RANGE range;
+			range.Begin = 0;
+			UINT numPo = dpara.Iview[i].IndexCount / 3;
+			range.End = numPo * sizeof(UINT);
+			UINT* div = nullptr;
+			dpara.mDivideReadBuffer[i].Get()->Map(0, &range, reinterpret_cast<void**>(&div));
+			const UINT minDiv = 2;
+			const UINT minDivPolygon = 6;
+			UINT verCnt = 0;
+			for (UINT d = 0; d < numPo; d++) {
+				UINT mag = div[d] / minDiv;
+				UINT ver = mag * mag * minDivPolygon * 3;
+				verCnt += ver;
+			}
+			dpara.mDivideReadBuffer[i].Get()->Unmap(0, nullptr);
+			ud.currentIndexCount[i] = verCnt;
+		}
+	}
 }

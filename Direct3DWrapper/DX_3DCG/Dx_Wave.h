@@ -24,7 +24,7 @@ protected:
 	ComPtr<ID3D12Resource> mInputUploadBuffer = nullptr;
 	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 	DivideArr divArr[16] = {};
-	int numDiv = 3;
+	int numDiv;
 	PolygonData mObj;
 
 	void GetShaderByteCode();
@@ -65,6 +65,9 @@ public:
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
 	ParameterDXR* getParameter() { return mObj.getParameter(); }
+	void UpdateDxrDivideBuffer() {
+		mObj.UpdateDxrDivideBuffer();
+	}
 };
 
 #endif

@@ -23,7 +23,7 @@ protected:
 	float cx = 0.0f;
 	float cy = 0.0f;
 	float cz = 0.0f;
-	float connect_step = 3000.0f;
+	float connect_step;
 	MATRIX rotZYX = {};
 
 	SkinMesh_sub();
@@ -44,7 +44,7 @@ protected:
 	float addAmbient = 0.0f;
 
 	DivideArr divArr[16] = {};
-	int numDiv = 3;
+	int numDiv = 0;
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
@@ -65,7 +65,7 @@ protected:
 	SkinMesh_sub* fbx = nullptr;
 	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
 	MATRIX* m_pLastBoneMatrix = nullptr;
-	int AnimLastInd = -1;
+	int AnimLastInd;
 	float BoneConnect;
 	PolygonData* mObj = nullptr;
 	SkinnedCom* sk = nullptr;
@@ -123,6 +123,10 @@ public:
 	void setDivideArr(DivideArr* arr, int numdiv) {
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
+	}
+	void UpdateDxrDivideBuffer() {
+		for (int i = 0; i < numMesh; i++)
+			mObj[i].UpdateDxrDivideBuffer();
 	}
 };
 
