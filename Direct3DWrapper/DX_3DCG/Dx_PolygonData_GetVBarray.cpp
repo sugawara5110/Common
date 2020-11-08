@@ -512,6 +512,8 @@ void PolygonData::ParameterDXR_Update() {
 	memcpy(&ud.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(VECTOR4));
 	memcpy(ud.Transform,
 		&cb[dx->cBuffSwap[1]].World, sizeof(MATRIX) * ud.NumInstance);
+	memcpy(ud.WVP,
+		&cb[dx->cBuffSwap[1]].WVP, sizeof(MATRIX) * ud.NumInstance);
 }
 
 void PolygonData::Draw(int com) {

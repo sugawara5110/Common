@@ -20,7 +20,12 @@ char* ShaderParametersDXR =
 "    uint materialNo;\n"
 "};\n"
 
+"struct WVPCB {\n"
+"    matrix wvp;\n"
+"};\n"
+
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
+"RWTexture2D<float> gDepthOut : register(u1, space0);\n"
 "StructuredBuffer<uint> Indices[] : register(t0, space1);\n"//無制限配列の場合,別なレジスタ空間にした方が(・∀・)ｲｲ!! みたい
 "StructuredBuffer<Vertex> Vertices[] : register(t1, space2);\n"
 
@@ -41,6 +46,8 @@ char* ShaderParametersDXR =
 "};\n"
 
 "ConstantBuffer<MaterialCB> material[] : register(b1, space3);\n"
+"ConstantBuffer<WVPCB> wvp[] : register(b2, space4);\n"
+
 "Texture2D g_texDiffuse[] : register(t0, space10);\n"
 "Texture2D g_texNormal[] : register(t1, space11);\n"
 "Texture2D g_texSpecular[] : register(t2, space12);\n"
@@ -57,4 +64,5 @@ char* ShaderParametersDXR =
 "    uint RecursionCnt;\n"
 "    uint instanceID;\n"
 "    uint mNo;\n"
+"    float depth;\n"
 "};\n";

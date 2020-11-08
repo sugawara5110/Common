@@ -26,7 +26,11 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 			cnt += PD[i]->NumMaterial;
 		}
 		numMaterial = cnt;
+		maxNumInstancing = INSTANCE_PCS_3D * numParameter;
 
+		wvp = new ConstantBuffer<WVP_CB>(maxNumInstancing);
+		cbObj[0].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
+		cbObj[1].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
 		material = new ConstantBuffer<DxrMaterialCB>(numMaterial);
 		cbObj[0].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 		cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
@@ -490,10 +494,10 @@ struct RootSignatureDesc {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 };
 
-static RootSignatureDesc createRayGenRootDesc(UINT numMaterial) {
+static RootSignatureDesc createRayGenRootDesc(UINT numMaterial, UINT numInstancing) {
 
 	RootSignatureDesc desc = {};
-	int numDescriptorRanges = 5;
+	int numDescriptorRanges = 7;
 	desc.range.resize(numDescriptorRanges);
 	UINT descCnt = 0;
 	//gOutput(u0)
@@ -503,36 +507,51 @@ static RootSignatureDesc createRayGenRootDesc(UINT numMaterial) {
 	desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	desc.range[0].OffsetInDescriptorsFromTableStart = descCnt++;
 
-	//Indices(t0)
-	desc.range[1].BaseShaderRegister = 0;
-	desc.range[1].NumDescriptors = numMaterial;
-	desc.range[1].RegisterSpace = 1;
-	desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	desc.range[1].OffsetInDescriptorsFromTableStart = descCnt;
-	descCnt += numMaterial;
+	//gDepthOut(u1)
+	desc.range[1].BaseShaderRegister = 1;
+	desc.range[1].NumDescriptors = 1;
+	desc.range[1].RegisterSpace = 0;
+	desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	desc.range[1].OffsetInDescriptorsFromTableStart = descCnt++;
 
-	//Vertex(t1)
-	desc.range[2].BaseShaderRegister = 1;
+	//Indices(t0)
+	desc.range[2].BaseShaderRegister = 0;
 	desc.range[2].NumDescriptors = numMaterial;
-	desc.range[2].RegisterSpace = 2;
+	desc.range[2].RegisterSpace = 1;
 	desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	desc.range[2].OffsetInDescriptorsFromTableStart = descCnt;
 	descCnt += numMaterial;
 
+	//Vertex(t1)
+	desc.range[3].BaseShaderRegister = 1;
+	desc.range[3].NumDescriptors = numMaterial;
+	desc.range[3].RegisterSpace = 2;
+	desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	desc.range[3].OffsetInDescriptorsFromTableStart = descCnt;
+	descCnt += numMaterial;
+
 	//cbuffer global(b0)
-	desc.range[3].BaseShaderRegister = 0;
-	desc.range[3].NumDescriptors = 1;
-	desc.range[3].RegisterSpace = 0;
-	desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	desc.range[3].OffsetInDescriptorsFromTableStart = descCnt++;
+	desc.range[4].BaseShaderRegister = 0;
+	desc.range[4].NumDescriptors = 1;
+	desc.range[4].RegisterSpace = 0;
+	desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	desc.range[4].OffsetInDescriptorsFromTableStart = descCnt++;
 
 	//material(b1)
-	desc.range[4].BaseShaderRegister = 1;
-	desc.range[4].NumDescriptors = numMaterial;
-	desc.range[4].RegisterSpace = 3;
-	desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	desc.range[4].OffsetInDescriptorsFromTableStart = descCnt;
+	desc.range[5].BaseShaderRegister = 1;
+	desc.range[5].NumDescriptors = numMaterial;
+	desc.range[5].RegisterSpace = 3;
+	desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
 	descCnt += numMaterial;
+
+	//wvp(b2)
+	desc.range[6].BaseShaderRegister = 2;
+	desc.range[6].NumDescriptors = numInstancing;
+	desc.range[6].RegisterSpace = 4;
+	desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
+	descCnt += numInstancing;
 
 	desc.rootParams.resize(1);
 	desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -631,7 +650,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = emissiveHitProgram.subObject;
 
 	//raygenerationShaderルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature rgsRootSignature(createRootSignature(createRayGenRootDesc(numMaterial).desc));
+	LocalRootSignature rgsRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
 	subobjects[index] = rgsRootSignature.subobject;
 
 	//raygenerationShaderと↑のルートシグネチャ関連付け, SUBOBJECT作成
@@ -640,7 +659,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = rgsRootAssociation.subobject;
 
 	//basicHitShader, basicMissShader ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature basicHitMissRootSignature(createRootSignature(createRayGenRootDesc(numMaterial).desc));
+	LocalRootSignature basicHitMissRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
 	subobjects[index] = basicHitMissRootSignature.subobject;
 
 	//↑のbasicHitShader, basicMissShader 共有ルートシグネチャとbasicHitShader, basicMissShader関連付け, SUBOBJECT作成
@@ -651,7 +670,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = basicMissHitRootAssociation.subobject;
 
 	//kEmissiveHit, kEmissiveMiss ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature emissiveRootSignature(createRootSignature(createRayGenRootDesc(numMaterial).desc));
+	LocalRootSignature emissiveRootSignature(createRootSignature(createRayGenRootDesc(numMaterial, maxNumInstancing).desc));
 	subobjects[index] = emissiveRootSignature.subobject;
 
 	uint32_t emissiveRootIndex = index++;
@@ -662,7 +681,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 12;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 13;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects[index] = shaderConfig.subobject;
 
@@ -704,13 +723,21 @@ void DXR_Basic::createShaderResources() {
 		dx->mClientHeight,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
+	dx->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpDepthResource.GetAddressOf(),
+		dx->mClientWidth,
+		dx->mClientHeight,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		DXGI_FORMAT_R32_FLOAT);
+
 	//Local
 	int num_u0 = 1;
+	int num_u1 = 1;
 	int num_t0 = numMaterial;
 	int num_t1 = numMaterial;
 	int num_b0 = 1;
 	int num_b1 = numMaterial;
-	numSkipLocalHeap = num_u0 + num_t0 + num_t1 + num_b0 + num_b1;
+	int num_b2 = maxNumInstancing;
+	numSkipLocalHeap = num_u0 + num_u1 + num_t0 + num_t1 + num_b0 + num_b1 + num_b2;
 	//Global
 	int num_t00 = numMaterial;
 	int num_t01 = numMaterial;
@@ -726,6 +753,10 @@ void DXR_Basic::createShaderResources() {
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	dx->getDevice()->CreateUnorderedAccessView(mpOutputResource.Get(), nullptr, &uavDesc, srvHandle);
+
+	//UAVを作成 gDepthOut(u1)
+	srvHandle.ptr += offsetSize;
+	dx->getDevice()->CreateUnorderedAccessView(mpDepthResource.Get(), nullptr, &uavDesc, srvHandle);
 
 	//SRVを作成 Indices(t0)
 	for (UINT i = 0; i < numParameter; i++) {
@@ -773,6 +804,15 @@ void DXR_Basic::createShaderResources() {
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
 		bufferDesc.SizeInBytes = material->getElementByteSize();
 		bufferDesc.BufferLocation = material->getGPUVirtualAddress(i);
+		srvHandle.ptr += offsetSize;
+		dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
+	}
+
+	//CBVを作成 wvp(b2)
+	for (UINT i = 0; i < maxNumInstancing; i++) {
+		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
+		bufferDesc.SizeInBytes = wvp->getElementByteSize();
+		bufferDesc.BufferLocation = wvp->getGPUVirtualAddress(i);
 		srvHandle.ptr += offsetSize;
 		dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
 	}
@@ -904,12 +944,13 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX VP;
-	MatrixMultiply(&VP, &dx->mView, &dx->mProj);
+	Dx12Process::Update& upd = dx->upd[dx->cBuffSwap[1]];
+	MatrixMultiply(&VP, &upd.mView, &upd.mProj);
 	MatrixTranspose(&VP);
 	DxrConstantBuffer& cb = cbObj->cb;
 	MatrixInverse(&cb.projectionToWorld, &VP);
-	cb.cameraUp.as(dx->upX, dx->upY, dx->upZ, 1.0f);
-	cb.cameraPosition.as(dx->posX, dx->posY, dx->posZ, 1.0f);
+	cb.cameraUp.as(upd.up.x, upd.up.y, upd.up.z, 1.0f);
+	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
 	updateMaterial(cbObj);
 
@@ -936,11 +977,11 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.emissivePosition[cntEm].x = v3.x;
 						cb.emissivePosition[cntEm].y = v3.y;
 						cb.emissivePosition[cntEm].z = v3.z;
-						cb.emissivePosition[cntEm].w = dx->plight.LightPos[cntEm].w;
-						cb.Lightst[cntEm].x = dx->plight.Lightst[cntEm].x;
-						cb.Lightst[cntEm].y = dx->plight.Lightst[cntEm].y;
-						cb.Lightst[cntEm].z = dx->plight.Lightst[cntEm].z;
-						cb.Lightst[cntEm].w = dx->plight.Lightst[cntEm].w;
+						cb.emissivePosition[cntEm].w = upd.plight.LightPos[cntEm].w;
+						cb.Lightst[cntEm].x = upd.plight.Lightst[cntEm].x;
+						cb.Lightst[cntEm].y = upd.plight.Lightst[cntEm].y;
+						cb.Lightst[cntEm].z = upd.plight.Lightst[cntEm].z;
+						cb.Lightst[cntEm].w = upd.plight.Lightst[cntEm].w;
 						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[INSTANCE_PCS_3D * j + k];
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {
@@ -959,9 +1000,18 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 
 	cb.numEmissive.x = (float)cntEm;
 	memcpy(&cb.GlobalAmbientColor, &dx->GlobalAmbientLight, sizeof(VECTOR4));
-	memcpy(&cb.dDirection, &dx->dlight.Direction, sizeof(VECTOR4));
-	memcpy(&cb.dLightColor, &dx->dlight.LightColor, sizeof(VECTOR4));
-	memcpy(&cb.dLightst, &dx->dlight.onoff, sizeof(VECTOR4));
+	memcpy(&cb.dDirection, &upd.dlight.Direction, sizeof(VECTOR4));
+	memcpy(&cb.dLightColor, &upd.dlight.LightColor, sizeof(VECTOR4));
+	memcpy(&cb.dLightst, &upd.dlight.onoff, sizeof(VECTOR4));
+
+	for (UINT i = 0; i < numParameter; i++) {
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		for (UINT k = 0; k < ud.NumInstance; k++) {
+			int index = INSTANCE_PCS_3D * i + k;
+			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
+			wvp->CopyData(index, cbObj->wvpCb[index]);
+		}
+	}
 }
 
 void DXR_Basic::updateAS(Dx12Process_sub* com, UINT numRecursion) {
@@ -1052,6 +1102,24 @@ void DXR_Basic::copyBackBuffer(int comNo) {
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
 
 	dx->dx_sub[comNo].ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+}
+
+void DXR_Basic::copyDepthBuffer(int comNo) {
+
+	Dx12Process* dx = Dx12Process::GetInstance();
+	dx->dx_sub[comNo].ResourceBarrier(mpDepthResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	dx->dx_sub[comNo].ResourceBarrier(dx->mDepthStencilBuffer.Get(),
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
+
+	dx->dx_sub[comNo].mCommandList->CopyResource(dx->mDepthStencilBuffer.Get(), mpDepthResource.Get());
+
+	dx->dx_sub[comNo].ResourceBarrier(dx->mDepthStencilBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+	dx->dx_sub[comNo].ResourceBarrier(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 

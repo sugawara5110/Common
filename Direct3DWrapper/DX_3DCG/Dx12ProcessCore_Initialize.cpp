@@ -424,11 +424,12 @@ HRESULT Dx12Process::createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64
 }
 
 HRESULT Dx12Process::createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height,
-	D3D12_RESOURCE_STATES firstState) {
+	D3D12_RESOURCE_STATES firstState,
+	DXGI_FORMAT format) {
 
 	return createDefaultResourceCommon(md3dDevice.Get(), def,
 		D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height,
-		DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		format, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		firstState);
 }
 
@@ -855,8 +856,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 
-	MatrixIdentity(&mProj);
-	MatrixIdentity(&mView);
+	MatrixIdentity(&upd[0].mProj);
+	MatrixIdentity(&upd[1].mProj);
+	MatrixIdentity(&upd[0].mView);
+	MatrixIdentity(&upd[1].mView);
 	//カメラ画角
 	ViewY_theta = 55.0f;
 	// アスペクト比の計算
@@ -865,7 +868,8 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	NearPlane = 1.0f;
 	//farプレーン
 	FarPlane = 10000.0f;
-	MatrixPerspectiveFovLH(&mProj, ViewY_theta, aspect, NearPlane, FarPlane);
+	MatrixPerspectiveFovLH(&upd[0].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
+	MatrixPerspectiveFovLH(&upd[1].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
 
 	//ビューポート行列作成(3D座標→2D座標変換に使用)
 	MatrixViewPort(&Vp, mClientWidth, mClientHeight);
@@ -874,9 +878,12 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	ResetPointLight();
 
 	//平行光源初期化
-	dlight.Direction.as(0.0f, 0.0f, 0.0f, 0.0f);
-	dlight.LightColor.as(1.0f, 1.0f, 1.0f, 1.0f);
-	dlight.onoff = 0.0f;
+	upd[0].dlight.Direction.as(0.0f, 0.0f, 0.0f, 0.0f);
+	upd[0].dlight.LightColor.as(1.0f, 1.0f, 1.0f, 1.0f);
+	upd[0].dlight.onoff = 0.0f;
+	upd[1].dlight.Direction.as(0.0f, 0.0f, 0.0f, 0.0f);
+	upd[1].dlight.LightColor.as(1.0f, 1.0f, 1.0f, 1.0f);
+	upd[1].dlight.onoff = 0.0f;
 
 	//フォグ初期化
 	fog.FogColor.as(1.0f, 1.0f, 1.0f, 1.0f);
@@ -891,7 +898,8 @@ void Dx12Process::setPerspectiveFov(float ViewAngle, float nearPlane, float farP
 	ViewY_theta = ViewAngle;
 	NearPlane = nearPlane;
 	FarPlane = farPlane;
-	MatrixPerspectiveFovLH(&mProj, ViewY_theta, aspect, NearPlane, FarPlane);
+	MatrixPerspectiveFovLH(&upd[0].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
+	MatrixPerspectiveFovLH(&upd[1].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
 }
 
 void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer) {
@@ -904,11 +912,13 @@ void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer) {
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	rtvHandle.ptr += mCurrBackBuffer * mRtvDescriptorSize;
 
-	if (clearBackBuffer)dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
-		DirectX::Colors::Black, 0, nullptr);
+	if (clearBackBuffer) {
+		dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
+			DirectX::Colors::Black, 0, nullptr);
 
-	dx_sub[com_no].mCommandList->ClearDepthStencilView(mDsvHeap->GetCPUDescriptorHandleForHeapStart(),
-		D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+		dx_sub[com_no].mCommandList->ClearDepthStencilView(mDsvHeap->GetCPUDescriptorHandleForHeapStart(),
+			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	}
 
 	dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
 		true, &mDsvHeap->GetCPUDescriptorHandleForHeapStart());
@@ -935,29 +945,27 @@ void Dx12Process::DrawScreen() {
 
 void Dx12Process::Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up) {
 	//カメラの位置と方向を設定
-	MatrixLookAtLH(&mView,
+	MatrixLookAtLH(&upd[cBuffSwap[0]].mView,
 		pos, //カメラの位置
 		dir, //カメラの方向を向ける点
 		up); //カメラの上の方向(通常視点での上方向を1.0fにする)
 	//シェーダー計算用座標登録(視点からの距離で使う)
-	posX = pos.x;
-	posY = pos.y;
-	posZ = pos.z;
-	dirX = dir.x;
-	dirY = dir.y;
-	dirZ = dir.z;
-	upX = up.x;
-	upY = up.y;
-	upZ = up.z;
+	upd[cBuffSwap[0]].pos.as(pos.x, pos.y, pos.z);
+	upd[cBuffSwap[0]].dir.as(dir.x, dir.y, dir.z);
+	upd[cBuffSwap[0]].up.as(up.x, up.y, up.z);
 }
 
 void Dx12Process::ResetPointLight() {
 	for (int i = 0; i < LIGHT_PCS; i++) {
-		plight.LightPos[i].as(0.0f, 0.0f, 0.0f, 0.0f);
-		plight.LightColor[i].as(0.0f, 0.0f, 0.0f, 0.0f);
-		plight.Lightst[i].as(0.0f, 1.0f, 0.001f, 0.001f);
+		upd[0].plight.LightPos[i].as(0.0f, 0.0f, 0.0f, 0.0f);
+		upd[0].plight.LightColor[i].as(0.0f, 0.0f, 0.0f, 0.0f);
+		upd[0].plight.Lightst[i].as(0.0f, 1.0f, 0.001f, 0.001f);
+		upd[1].plight.LightPos[i].as(0.0f, 0.0f, 0.0f, 0.0f);
+		upd[1].plight.LightColor[i].as(0.0f, 0.0f, 0.0f, 0.0f);
+		upd[1].plight.Lightst[i].as(0.0f, 1.0f, 0.001f, 0.001f);
 	}
-	lightNum = 0;
+	upd[0].lightNum = 0;
+	upd[1].lightNum = 0;
 }
 
 bool Dx12Process::PointLightPosSet(int Idx, VECTOR3 pos, VECTOR4 Color, bool on_off,
@@ -968,27 +976,28 @@ bool Dx12Process::PointLightPosSet(int Idx, VECTOR3 pos, VECTOR4 Color, bool on_
 		return false;
 	}
 
-	if (Idx + 1 > lightNum && on_off)lightNum = Idx + 1;
+	if (Idx + 1 > upd[cBuffSwap[0]].lightNum && on_off)upd[cBuffSwap[0]].lightNum = Idx + 1;
 
 	float onoff;
 	if (on_off)onoff = 1.0f; else onoff = 0.0f;
-	plight.LightPos[Idx].as(pos.x, pos.y, pos.z, onoff);
-	plight.LightColor[Idx].as(Color.x, Color.y, Color.z, Color.w);
-	plight.Lightst[Idx].as(range, atten.x, atten.y, atten.z);
-	plight.LightPcs = lightNum;
+	upd[cBuffSwap[0]].plight.LightPos[Idx].as(pos.x, pos.y, pos.z, onoff);
+	upd[cBuffSwap[0]].plight.LightColor[Idx].as(Color.x, Color.y, Color.z, Color.w);
+	upd[cBuffSwap[0]].plight.Lightst[Idx].as(range, atten.x, atten.y, atten.z);
+	upd[cBuffSwap[0]].plight.LightPcs = upd[cBuffSwap[0]].lightNum;
 
 	return true;
 }
 
 void Dx12Process::DirectionLight(float x, float y, float z, float r, float g, float b) {
-	dlight.Direction.as(x, y, z, 0.0f);
-	dlight.LightColor.as(r, g, b, 0.0f);
+	upd[cBuffSwap[0]].dlight.Direction.as(x, y, z, 0.0f);
+	upd[cBuffSwap[0]].dlight.LightColor.as(r, g, b, 0.0f);
 }
 
 void Dx12Process::SetDirectionLight(bool onoff) {
 	float f = 0.0f;
 	if (onoff)f = 1.0f;
-	dlight.onoff = f;
+	upd[0].dlight.onoff = f;
+	upd[1].dlight.onoff = f;
 }
 
 void Dx12Process::Fog(float r, float g, float b, float amount, float density, bool onoff) {
@@ -1170,8 +1179,8 @@ void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECT
 
 	//ワールド、カメラ、射影行列、等
 	cb->World[insNum] = world;
-	MatrixMultiply(&WV, &world, &mView);
-	MatrixMultiply(&cb->WVP[insNum], &WV, &mProj);
+	MatrixMultiply(&WV, &world, &upd[cBuffSwap[0]].mView);
+	MatrixMultiply(&cb->WVP[insNum], &WV, &upd[cBuffSwap[0]].mProj);
 	MatrixTranspose(&cb->World[insNum]);
 	MatrixTranspose(&cb->WVP[insNum]);
 	insNum++;
@@ -1180,17 +1189,21 @@ void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECT
 void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, VECTOR4 Color, float disp,
 	float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
 
-	cb->C_Pos.as(posX, posY, posZ, 0.0f);
-	cb->viewUp.as(upX, upY, upZ, 0.0f);
+	cb->C_Pos.as(upd[cBuffSwap[0]].pos.x,
+		upd[cBuffSwap[0]].pos.y,
+		upd[cBuffSwap[0]].pos.z, 0.0f);
+	cb->viewUp.as(upd[cBuffSwap[0]].up.x,
+		upd[cBuffSwap[0]].up.y,
+		upd[cBuffSwap[0]].up.z, 0.0f);
 	cb->AddObjColor.as(Color.x, Color.y, Color.z, Color.w);
 	memcpy(&cb->GlobalAmbientLight, &GlobalAmbientLight, sizeof(VECTOR4));
-	cb->numLight.as((float)plight.LightPcs, 0.0f, 0.0f, 0.0f);
-	memcpy(cb->pLightPos, plight.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
-	memcpy(cb->pLightColor, plight.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
-	memcpy(cb->pLightst, plight.Lightst, sizeof(VECTOR4) * LIGHT_PCS);
-	cb->dDirection = dlight.Direction;
-	cb->dLightColor = dlight.LightColor;
-	cb->dLightst.x = dlight.onoff;
+	cb->numLight.as((float)upd[cBuffSwap[0]].plight.LightPcs, 0.0f, 0.0f, 0.0f);
+	memcpy(cb->pLightPos, upd[cBuffSwap[0]].plight.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
+	memcpy(cb->pLightColor, upd[cBuffSwap[0]].plight.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
+	memcpy(cb->pLightst, upd[cBuffSwap[0]].plight.Lightst, sizeof(VECTOR4) * LIGHT_PCS);
+	cb->dDirection = upd[cBuffSwap[0]].dlight.Direction;
+	cb->dLightColor = upd[cBuffSwap[0]].dlight.LightColor;
+	cb->dLightst.x = upd[cBuffSwap[0]].dlight.onoff;
 	cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
 	cb->FogColor = fog.FogColor;
 	cb->DispAmount.as(disp, float(numDiv), shininess, 0.0f);

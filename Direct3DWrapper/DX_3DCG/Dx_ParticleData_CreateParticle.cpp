@@ -42,22 +42,30 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, VECTOR4 color, flo
 	MatrixRotationZ(&rot, angle);
 	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
 	MatrixMultiply(&world, &rot, &mov);
-	MatrixMultiply(&cb->WV, &world, &dx->mView);
-	cb->Proj = dx->mProj;
+	MatrixMultiply(&cb->WV, &world, &dx->upd[dx->cBuffSwap[0]].mView);
+	memcpy(&cb->Proj, &dx->upd[dx->cBuffSwap[0]].mProj, sizeof(MATRIX));
+
+	if (dx->DXR_CreateResource) {
+		MATRIX wvp;
+		MatrixMultiply(&wvp, &cb->WV, &dx->upd[dx->cBuffSwap[0]].mProj);
+		MatrixTranspose(&wvp);
+
+		memcpy(&dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
+		MatrixTranspose(&world);
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform,
+			&world, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP,
+			&wvp, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
+
+		cb->invRot = BillboardAngleCalculation(angle);
+		MatrixTranspose(&cb->invRot);
+	}
+
 	MatrixTranspose(&cb->WV);
 	MatrixTranspose(&cb->Proj);
 	cb->size.x = size;
 	cb->size.z = speed;
 	cb->AddObjColor.as(color.x, color.y, color.z, color.w);
-
-	if (dx->DXR_CreateResource) {
-		memcpy(&dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
-		MatrixTranspose(&world);
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform,
-			&world, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
-		cb->invRot = BillboardAngleCalculation(angle);
-		MatrixTranspose(&cb->invRot);
-	}
 }
 
 void ParticleData::update2(CONSTANT_BUFFER_P* cb, bool init) {
@@ -493,8 +501,8 @@ static float AngleCalculation360(float distA, float distB) {
 
 MATRIX ParticleData::BillboardAngleCalculation(float angle) {
 	//float distanceZ = dx->posZ - dx->dirZ;
-	float distanceY = dx->posY - dx->dirY;
-	float distanceX = dx->posX - dx->dirX;
+	float distanceY = dx->upd[dx->cBuffSwap[0]].pos.y - dx->upd[dx->cBuffSwap[0]].dir.y;
+	float distanceX = dx->upd[dx->cBuffSwap[0]].pos.x - dx->upd[dx->cBuffSwap[0]].dir.x;
 
 	float angleZ = (float)fmod(AngleCalculation360(distanceX, distanceY) + angle, 360.0f);
 	//float angleY = AngleCalculation360(distanceZ, distanceX);

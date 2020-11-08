@@ -35,6 +35,29 @@ char* ShaderCommonDXR =
 "    return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();\n"
 "}\n"
 
+///////////////////////////////////////深度値取得//////////////////////////////////////////////////
+"float getDepth(in BuiltInTriangleIntersectionAttributes attr)\n"
+"{\n"
+"    uint indicesPerTriangle = 3;\n"
+"    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
+"    uint materialID = getMaterialID();\n"
+
+"    float3 vertex[3] = {\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 0]].Pos,\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 1]].Pos,\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 2]].Pos\n"
+"    };\n"
+
+"    float3 v = vertex[0] + \n"
+"        attr.barycentrics.x * (vertex[1] - vertex[0]) +\n"
+"        attr.barycentrics.y * (vertex[2] - vertex[0]);\n"
+"    float4 ver = float4(v, 1.0f);\n"
+
+"    matrix m = wvp[getInstancingID()].wvp;\n"
+"    float4 ver2 = mul(ver, m);\n"
+"    return ver2.z / ver2.w;\n"
+"}\n"
+
 ////////////////Hitの重心を使用して、頂点属性から補間されたhit位置の属性を取得(法線)///////////////
 "float3 getCenterNormal(in float3 vertexNormal[3], in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"

@@ -222,7 +222,7 @@ private:
 	UINT mCbvSrvUavDescriptorSize = 0;
 
 	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D32_FLOAT;
 	int mClientWidth;
 	int mClientHeight;
 
@@ -235,12 +235,22 @@ private:
 	static std::mutex mtxGraphicsQueue;
 	static std::mutex mtxComputeQueue;
 
-	MATRIX mProj;
-	MATRIX mView;
+	struct Update {
+		MATRIX mProj = {};
+		MATRIX mView = {};
+
+		VECTOR3 pos = {};
+		VECTOR3 dir = {};
+		VECTOR3 up = {};
+
+		PointLight plight = {};
+		int lightNum = 0;
+		DirectionLight dlight = {};
+	};
+	Update upd[2] = {};//cBuffSwap
+
 	MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
-	float posX, posY, posZ;
-	float dirX, dirY, dirZ;
-	float upX, upY, upZ;
+	Fog fog;
 
 	//カメラ画角
 	float ViewY_theta;
@@ -250,11 +260,6 @@ private:
 	float NearPlane;
 	//farプレーン
 	float FarPlane;
-
-	PointLight plight;
-	int lightNum = 0;
-	DirectionLight dlight;
-	Fog fog;
 	VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
 	int cBuffSwap[2] = { 0,0 };
@@ -288,7 +293,8 @@ private:
 		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
 
 	HRESULT createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height,
-		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
+		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	HRESULT createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize,
 		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
@@ -556,6 +562,7 @@ struct UpdateDXR {
 	std::unique_ptr<VertexView[]> VviewDXR = nullptr;
 	std::unique_ptr<UINT[]> currentIndexCount = nullptr;
 	MATRIX Transform[INSTANCE_PCS_3D] = {};
+	MATRIX WVP[INSTANCE_PCS_3D] = {};
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;

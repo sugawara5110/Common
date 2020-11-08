@@ -9,11 +9,12 @@
 float PolygonData2D::magnificationX = 1.0f;
 float PolygonData2D::magnificationY = 1.0f;
 
-void PolygonData2D::Pos2DCompute(VECTOR3 *p) {
+void PolygonData2D::Pos2DCompute(VECTOR3* p) {
 	MATRIX VP, VP_VP;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	//“ü—Í3DÀ•W‚©‚ç•ÏŠ·s—ñŽæ“¾
-	MatrixMultiply(&VP, &Dx12Process::GetInstance()->mView, &Dx12Process::GetInstance()->mProj);
-	MatrixMultiply(&VP_VP, &VP, &Dx12Process::GetInstance()->Vp);
+	MatrixMultiply(&VP, &dx->upd[dx->cBuffSwap[0]].mView, &dx->upd[dx->cBuffSwap[0]].mProj);
+	MatrixMultiply(&VP_VP, &VP, &dx->Vp);
 	//•ÏŠ·Œã‚ÌÀ•WŽæ“¾
 	VectorMatrixMultiply(p, &VP_VP);
 	p->x /= magnificationX;

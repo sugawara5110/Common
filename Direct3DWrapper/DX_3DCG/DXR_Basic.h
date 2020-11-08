@@ -18,6 +18,10 @@ struct AccelerationStructureBuffers
 	bool firstSet = false;
 };
 
+struct WVP_CB {
+	MATRIX wvp;
+};
+
 struct DxrConstantBuffer
 {
 	MATRIX projectionToWorld;
@@ -41,7 +45,7 @@ struct DxrMaterialCB {
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess = 4.0f;//スペキュラ強さ
 	float alphaTest = 0.0f;//1.0f:on, 0.0f:off 
-	UINT materialNo = 0;//0:metallic, 1:emissive
+	UINT materialNo = 0;
 };
 
 enum MaterialType {
@@ -61,6 +65,7 @@ struct ASobj {
 struct CBobj {
 	DxrConstantBuffer cb = {};
 	std::unique_ptr<DxrMaterialCB[]> matCb = nullptr;
+	std::unique_ptr<WVP_CB[]> wvpCb = nullptr;
 };
 
 class DXR_Basic {
@@ -74,12 +79,14 @@ private:
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
+	ConstantBuffer<WVP_CB>* wvp;
 
 	ComPtr<ID3D12StateObject> mpPipelineState;
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;
 	ComPtr<ID3D12Resource> mpShaderTable;
 	uint32_t mShaderTableEntrySize = 0;
 	ComPtr<ID3D12Resource> mpOutputResource;
+	ComPtr<ID3D12Resource> mpDepthResource;
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap;
 	uint32_t numSkipLocalHeap = 0;
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
@@ -87,6 +94,7 @@ private:
 	UINT numParameter = 0;//PD数
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
+	UINT maxNumInstancing = 0;
 
 	void createTriangleVB(UINT numMaterial);
 	void createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
@@ -113,9 +121,10 @@ public:
 	void raytrace_g(int comNo);
 	void raytrace_c(int comNo);
 	void copyBackBuffer(int comNo);
+	void copyDepthBuffer(int comNo);
 	void setASswapIndex(int index) { buffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
-	~DXR_Basic() { S_DELETE(sCB); S_DELETE(material); }
+	~DXR_Basic() { S_DELETE(sCB); S_DELETE(material); S_DELETE(wvp); }
 };
 
 #endif
