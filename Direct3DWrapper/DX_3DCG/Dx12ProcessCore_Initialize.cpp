@@ -95,9 +95,103 @@ void Dx12Process_sub::Bigin() {
 }
 
 void Dx12Process_sub::End() {
+	RunDelayResourceBarrierBefore();
+	RunDelayCopyResource();
+	RunDelayResourceBarrierAfter();
 	//コマンドクローズ
 	mCommandList->Close();
 	mComState = CLOSE;
+}
+
+int Dx12Process_sub::NumResourceBarrier = 512;
+
+void Dx12Process_sub::createResourceBarrierList() {
+	beforeBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
+	copy = std::make_unique<CopyList[]>(NumResourceBarrier);
+	afterBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
+}
+
+void Dx12Process_sub::createUavResourceBarrierList() {
+	uavBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
+}
+
+void Dx12Process_sub::delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before,
+	D3D12_RESOURCE_STATES after) {
+
+	if (beforeCnt >= NumResourceBarrier) {
+		ErrorMessage("ResourceBarrier個数上限超えてます!");
+	}
+	D3D12_RESOURCE_BARRIER& ba = beforeBa[beforeCnt];
+	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	ba.Transition.pResource = res;
+	ba.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	ba.Transition.StateBefore = before;
+	ba.Transition.StateAfter = after;
+	beforeCnt++;
+}
+
+void Dx12Process_sub::delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
+
+	if (copyCnt >= NumResourceBarrier) {
+		ErrorMessage("ResourceBarrier個数上限超えてます!");
+	}
+	copy[copyCnt].dest = dest;
+	copy[copyCnt].src = src;
+	copyCnt++;
+}
+
+void Dx12Process_sub::delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before,
+	D3D12_RESOURCE_STATES after) {
+
+	if (afterCnt >= NumResourceBarrier) {
+		ErrorMessage("ResourceBarrier個数上限超えてます!");
+	}
+	D3D12_RESOURCE_BARRIER& ba = afterBa[afterCnt];
+	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	ba.Transition.pResource = res;
+	ba.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	ba.Transition.StateBefore = before;
+	ba.Transition.StateAfter = after;
+	afterCnt++;
+}
+
+void Dx12Process_sub::delayUavResourceBarrier(ID3D12Resource* res) {
+
+	if (uavCnt >= NumResourceBarrier) {
+		ErrorMessage("ResourceBarrier個数上限超えてます!");
+	}
+	D3D12_RESOURCE_BARRIER& ba = uavBa[uavCnt];
+	//バリアしたリソースへのUAVアクセスに於いて次のUAVアクセス開始前に現在のUAVアクセスが終了する必要がある事を示す
+	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+	ba.UAV.pResource = res;
+	uavCnt++;
+}
+
+void Dx12Process_sub::RunDelayResourceBarrierBefore() {
+	if (beforeCnt <= 0)return;
+	mCommandList->ResourceBarrier(beforeCnt, beforeBa.get());
+	beforeCnt = 0;
+}
+
+void Dx12Process_sub::RunDelayCopyResource() {
+	for (int i = 0; i < copyCnt; i++)
+		mCommandList->CopyResource(copy[i].dest, copy[i].src);
+
+	copyCnt = 0;
+}
+
+void Dx12Process_sub::RunDelayResourceBarrierAfter() {
+	if (afterCnt <= 0)return;
+	mCommandList->ResourceBarrier(afterCnt, afterBa.get());
+	afterCnt = 0;
+}
+
+void Dx12Process_sub::RunDelayUavResourceBarrier() {
+	if (uavCnt <= 0)return;
+	mCommandList->ResourceBarrier(uavCnt, uavBa.get());
+	uavCnt = 0;
 }
 
 bool DxCommandQueue::Create(ID3D12Device5* dev, bool Compute) {
@@ -724,7 +818,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
 		if (!dx_sub[i].ListCreate(false))return false;
+		dx_sub[i].createResourceBarrierList();
+		dx_sub[i].createUavResourceBarrierList();
 		if (!dx_subCom[i].ListCreate(true))return false;
+		dx_subCom[i].createUavResourceBarrierList();
 	}
 
 	//初期化

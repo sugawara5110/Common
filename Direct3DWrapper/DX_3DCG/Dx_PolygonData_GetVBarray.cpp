@@ -458,6 +458,7 @@ void PolygonData::draw(int com, drawPara& para) {
 void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	Dx12Process_sub& d = dx->dx_sub[com];
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	D3D12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
@@ -478,17 +479,17 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 		mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 
-		dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayResourceBarrierBefore(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		dx->dx_sub[com].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+		d.delayResourceBarrierBefore(dxr.SviewDXR[i].StreamBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-		mCList->CopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayCopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			dxr.SviewDXR[i].StreamBufferGPU.Get());
 
-		dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayResourceBarrierAfter(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-		dx->dx_sub[com].ResourceBarrier(dxr.SviewDXR[i].StreamBufferGPU.Get(),
+		d.delayResourceBarrierAfter(dxr.SviewDXR[i].StreamBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
 		dxr.SviewDXR[i].ResetFilledSizeBuffer(com);
@@ -496,10 +497,10 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		ud.firstSet = true;
 
 		if (hs) {
-			dx->dx_sub[com].ResourceBarrier(dpara.mDivideBuffer[i].Get(),
+			d.delayResourceBarrierBefore(dpara.mDivideBuffer[i].Get(),
 				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			mCList->CopyResource(dpara.mDivideReadBuffer[i].Get(), dpara.mDivideBuffer[i].Get());
-			dx->dx_sub[com].ResourceBarrier(dpara.mDivideBuffer[i].Get(),
+			d.delayCopyResource(dpara.mDivideReadBuffer[i].Get(), dpara.mDivideBuffer[i].Get());
+			d.delayResourceBarrierAfter(dpara.mDivideBuffer[i].Get(),
 				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		}
 	}

@@ -94,6 +94,7 @@ void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, f
 	if (!On)return;
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	Dx12Process_sub& d = dx->dx_sub[com];
 
 	CONSTANT_BUFFER_PostMosaic cb;
 	cb.mosaicSize.x = (float)size;
@@ -106,18 +107,18 @@ void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, f
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 
 	//バックバッファをコピー元にする
-	dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	dx->dx_sub[com].ResourceBarrier(mInputBuffer.Get(),
+	d.delayResourceBarrierBefore(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
+	d.RunDelayResourceBarrierBefore();
 	//現在のバックバッファをインプット用バッファにコピーする
 	mCList->CopyResource(mInputBuffer.Get(), dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get());
 
-	dx->dx_sub[com].ResourceBarrier(mInputBuffer.Get(),
+	d.ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE des = mDescHeap->GetGPUDescriptorHandleForHeapStart();
@@ -127,18 +128,17 @@ void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, f
 	UINT disY = dx->mClientHeight / 8;
 	mCList->Dispatch(disX, disY, 1);//CS内32, 8, 1
 
-	dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	dx->dx_sub[com].ResourceBarrier(mOutputBuffer.Get(),
+	d.delayResourceBarrierBefore(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
-
+	d.RunDelayResourceBarrierBefore();
 	//計算後バックバッファにコピー
 	mCList->CopyResource(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(), mOutputBuffer.Get());
 
-	dx->dx_sub[com].ResourceBarrier(mOutputBuffer.Get(),
+	d.delayResourceBarrierBefore(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-	dx->dx_sub[com].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	d.RunDelayResourceBarrierBefore();
 }

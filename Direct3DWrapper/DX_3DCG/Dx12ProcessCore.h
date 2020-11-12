@@ -98,6 +98,33 @@ private:
 	void CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src);
 	void Bigin();
 	void End();
+
+	static int NumResourceBarrier;
+
+	struct CopyList {
+		ID3D12Resource* dest;
+		ID3D12Resource* src;
+	};
+
+	std::unique_ptr<D3D12_RESOURCE_BARRIER[]> beforeBa = nullptr;
+	int beforeCnt = 0;
+	std::unique_ptr<CopyList[]> copy = nullptr;
+	int copyCnt = 0;
+	std::unique_ptr <D3D12_RESOURCE_BARRIER[]> afterBa = nullptr;
+	int afterCnt = 0;
+	std::unique_ptr <D3D12_RESOURCE_BARRIER[]> uavBa = nullptr;
+	int uavCnt = 0;
+
+	void createResourceBarrierList();
+	void createUavResourceBarrierList();
+	void delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+	void delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src);
+	void delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+	void delayUavResourceBarrier(ID3D12Resource* res);
+	void RunDelayResourceBarrierBefore();
+	void RunDelayCopyResource();
+	void RunDelayResourceBarrierAfter();
+	void RunDelayUavResourceBarrier();
 };
 
 class DxCommandQueue final {
@@ -326,6 +353,8 @@ public:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
+	void setNumResourceBarrier(int num) { Dx12Process_sub::NumResourceBarrier = num; }
+
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 	ID3D12Device5* getDevice() { return md3dDevice.Get(); }
@@ -441,14 +470,13 @@ struct StreamView {
 
 	void ResetFilledSizeBuffer(int com) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+		dx->dx_sub[com].delayResourceBarrierBefore(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST);
 
-		mCList->CopyResource(BufferFilledSizeBufferGPU.Get(),
+		dx->dx_sub[com].delayCopyResource(BufferFilledSizeBufferGPU.Get(),
 			resetBuffer.Get());
 
-		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+		dx->dx_sub[com].delayResourceBarrierAfter(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT);
 	}
 

@@ -337,6 +337,7 @@ void ParticleData::DrawParts2(int com) {
 void ParticleData::DrawParts2StreamOutput(int com) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	Dx12Process_sub& d = dx->dx_sub[com];
 
 	mCList->SetPipelineState(PSO_DXR.Get());
 
@@ -355,16 +356,16 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
 
-	dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[0].VertexBufferGPU.Get(),
+	d.delayResourceBarrierBefore(ud.VviewDXR[0].VertexBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
+	d.delayResourceBarrierBefore(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	mCList->CopyResource(ud.VviewDXR[0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0].StreamBufferGPU.Get());
+	d.delayCopyResource(ud.VviewDXR[0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0].StreamBufferGPU.Get());
 
-	dx->dx_sub[com].ResourceBarrier(ud.VviewDXR[0].VertexBufferGPU.Get(),
+	d.delayResourceBarrierAfter(ud.VviewDXR[0].VertexBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-	dx->dx_sub[com].ResourceBarrier(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
+	d.delayResourceBarrierAfter(dxrPara.SviewDXR[0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
 	dxrPara.SviewDXR[0].ResetFilledSizeBuffer(com);

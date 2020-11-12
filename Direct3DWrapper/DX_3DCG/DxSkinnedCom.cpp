@@ -123,6 +123,7 @@ void SkinnedCom::skinning(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	ID3D12GraphicsCommandList* mCList = pd->dx->dx_sub[comNo].mCommandList.Get();
+	Dx12Process_sub& d = dx->dx_sub[comNo];
 	mCList->SetPipelineState(PSO.Get());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { descHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -139,20 +140,16 @@ void SkinnedCom::skinning(int comNo) {
 		mCList->Dispatch(numVer, 1, 1);
 		des.ptr += dx->mCbvSrvUavDescriptorSize * NumDesc;
 
-		dx->dx_sub[comNo].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayResourceBarrierBefore(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		dx->dx_sub[comNo].ResourceBarrier(VviewDXR.Get(),
+		d.delayResourceBarrierBefore(VviewDXR.Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		mCList->CopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(), VviewDXR.Get());
-		dx->dx_sub[comNo].ResourceBarrier(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayCopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(), VviewDXR.Get());
+		d.delayResourceBarrierAfter(ud.VviewDXR[i].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-		dx->dx_sub[comNo].ResourceBarrier(VviewDXR.Get(),
+		d.delayResourceBarrierAfter(VviewDXR.Get(),
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-		D3D12_RESOURCE_BARRIER uavBarrier = {};
-		uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-		uavBarrier.UAV.pResource = VviewDXR.Get();
-		mCList->ResourceBarrier(1, &uavBarrier);
 		ud.firstSet = true;
 	}
 }

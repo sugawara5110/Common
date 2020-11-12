@@ -129,13 +129,7 @@ void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
 	//AccelerationStructureを構築する為のリソース要件を取得(infoに入る)
 	dx->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
-	if (bLB.firstSet) {
-		D3D12_RESOURCE_BARRIER uavBarrier = {};
-		uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-		uavBarrier.UAV.pResource = bLB.pResult.Get();
-		com->mCommandList->ResourceBarrier(1, &uavBarrier);
-	}
-	else {
+	if (!bLB.firstSet) {
 		//リソース要件を元にUAV作成
 		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -159,12 +153,7 @@ void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
 	//bottom-level AS作成, 第三引数は作成後の情報, 不要の場合nullptr
 	com->mCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
-	D3D12_RESOURCE_BARRIER uavBarrier = {};
-	//バリアしたリソースへのUAVアクセスに於いて次のUAVアクセス開始前に現在のUAVアクセスが終了する必要がある事を示す
-	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-	uavBarrier.UAV.pResource = bLB.pResult.Get();
-
-	com->mCommandList->ResourceBarrier(1, &uavBarrier);
+	com->delayUavResourceBarrier(bLB.pResult.Get());
 }
 
 void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com) {
@@ -185,6 +174,7 @@ void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com) {
 		}
 		ud.createAS = createAS;
 	}
+	com->RunDelayUavResourceBarrier();
 }
 
 void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
@@ -212,13 +202,7 @@ void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
 	//AccelerationStructureを構築する為のリソース要件を取得(infoに入る)
 	dx->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
-	if (tLB.firstSet) {
-		D3D12_RESOURCE_BARRIER uavBarrier = {};
-		uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-		uavBarrier.UAV.pResource = tLB.pResult.Get();
-		com->mCommandList->ResourceBarrier(1, &uavBarrier);
-	}
-	else {
+	if (!tLB.firstSet) {
 		//リソース要件を元にUAV作成
 		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pScratch.GetAddressOf(),
 			info.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -1023,15 +1007,27 @@ void DXR_Basic::updateAS(Dx12Process_sub* com, UINT numRecursion) {
 void DXR_Basic::updateVertexBuffer(int comNo) {
 	UINT MaterialCnt = 0;
 	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx12Process_sub& d = dx->dx_sub[comNo];
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
 
-			dx->dx->dx_sub[comNo].CopyResourceGENERIC_READ(VertexBufferGPU[MaterialCnt].Get(),
-				vv.VertexBufferGPU.Get());
+			d.delayResourceBarrierBefore(VertexBufferGPU[MaterialCnt].Get(),
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+			d.delayResourceBarrierBefore(vv.VertexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			d.delayCopyResource(VertexBufferGPU[MaterialCnt].Get(), vv.VertexBufferGPU.Get());
+			d.delayResourceBarrierAfter(VertexBufferGPU[MaterialCnt].Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+			d.delayResourceBarrierAfter(vv.VertexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 			MaterialCnt++;
 		}
 	}
+	d.RunDelayResourceBarrierBefore();
+	d.RunDelayCopyResource();
+	d.RunDelayResourceBarrierAfter();
 }
 
 void DXR_Basic::setCB() {
@@ -1089,37 +1085,39 @@ void DXR_Basic::raytrace(Dx12Process_sub* com) {
 void DXR_Basic::copyBackBuffer(int comNo) {
 	//結果をバックバッファにコピー
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->dx_sub[comNo].ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+	Dx12Process_sub& d = dx->dx_sub[comNo];
+	d.delayResourceBarrierBefore(mpOutputResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	dx->dx_sub[comNo].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	dx->dx_sub[comNo].mCommandList->CopyResource(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayCopyResource(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		mpOutputResource.Get());
 
-	dx->dx_sub[comNo].ResourceBarrier(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierAfter(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
 
-	dx->dx_sub[comNo].ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
+	d.delayResourceBarrierAfter(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
 void DXR_Basic::copyDepthBuffer(int comNo) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->dx_sub[comNo].ResourceBarrier(mpDepthResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+	Dx12Process_sub& d = dx->dx_sub[comNo];
+	d.delayResourceBarrierBefore(mpDepthResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	dx->dx_sub[comNo].ResourceBarrier(dx->mDepthStencilBuffer.Get(),
+	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer.Get(),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	dx->dx_sub[comNo].mCommandList->CopyResource(dx->mDepthStencilBuffer.Get(), mpDepthResource.Get());
+	d.delayCopyResource(dx->mDepthStencilBuffer.Get(), mpDepthResource.Get());
 
-	dx->dx_sub[comNo].ResourceBarrier(dx->mDepthStencilBuffer.Get(),
+	d.delayResourceBarrierAfter(dx->mDepthStencilBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	dx->dx_sub[comNo].ResourceBarrier(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
+	d.delayResourceBarrierAfter(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
