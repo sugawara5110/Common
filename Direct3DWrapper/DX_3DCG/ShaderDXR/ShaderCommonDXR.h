@@ -188,6 +188,7 @@ char* ShaderCommonDXR =
 "                 ray.Direction = lightVec;\n"
 "                 payload.instanceID = (uint)emissiveNo[i].x;\n"
 "                 bool loop = true;\n"
+"                 payload.hitPosition = hitPosition;\n"
 "                 while(loop){\n"
 "                    payload.mNo = 2;\n"//ˆ—•ªŠò—p
 "                    ray.Origin = payload.hitPosition;\n"

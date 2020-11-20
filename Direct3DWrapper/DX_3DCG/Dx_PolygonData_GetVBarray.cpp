@@ -395,7 +395,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	}
 
 	if (tNo == -1 && !movOn[0].m_on) {
-		if (!createPSO_DXR(dx->pVertexLayout_3DBC, numSrvTex, numCbv, numUav))return false;
+		//dx->pVertexLayout_3DBC‚ÍŽg—p•s‰Â
 	}
 	else {
 		if (!createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;

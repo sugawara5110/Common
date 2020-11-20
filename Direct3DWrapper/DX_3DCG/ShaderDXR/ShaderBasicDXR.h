@@ -49,7 +49,11 @@ char* ShaderBasicDXR =
 "    if(payload.depth != -1.0f)"
 "       gDepthOut[index] = payload.depth;\n"
 "    float3 col = linearToSrgb(payload.color);\n"
-"    gOutput[index] = float4(col, 1);\n"
+"    float3 colsatu;\n"
+"    colsatu.x = saturate(col.x);\n"
+"    colsatu.y = saturate(col.y);\n"
+"    colsatu.z = saturate(col.z);\n"
+"    gOutput[index] = float4(colsatu, 1);\n"
 "}\n"
 //**************************************rayGen_Shader*******************************************************************//
 
