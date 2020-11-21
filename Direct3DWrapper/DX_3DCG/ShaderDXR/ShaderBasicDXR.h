@@ -76,13 +76,14 @@ char* ShaderBasicDXR =
 "    float4 difTex = getDifPixel(attr);\n"
 "    float3 normalMap = getNorPixel(attr);\n"
 "    float3 speTex = getSpePixel(attr);\n"
-//[“xæ“¾
-"    if(payload.depth == -1.0f) {\n"
-"       payload.depth = getDepth(attr);\n"
-"    }\n"
+
 "    payload.reTry = true;\n"
 "    if(AlphaTestSw(difTex.w)) {\n"
 "       payload.reTry = false;\n"
+//[“xæ“¾
+"       if(payload.depth == -1.0f) {\n"
+"          payload.depth = getDepth(attr);\n"
+"       }\n"
 //ŒõŒ¹‚Ö‚ÌŒõü
 "       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
 //”½Ë•ûŒü‚Ö‚ÌŒõü
