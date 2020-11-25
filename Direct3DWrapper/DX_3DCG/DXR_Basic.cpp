@@ -993,6 +993,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 		for (UINT k = 0; k < ud.NumInstance; k++) {
 			int index = INSTANCE_PCS_3D * i + k;
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
+			memcpy(&cbObj->wvpCb[index].world, &ud.Transform[k], sizeof(MATRIX));
 			wvp->CopyData(index, cbObj->wvpCb[index]);
 		}
 	}

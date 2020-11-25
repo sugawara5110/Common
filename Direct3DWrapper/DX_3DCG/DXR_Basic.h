@@ -20,6 +20,7 @@ struct AccelerationStructureBuffers
 
 struct WVP_CB {
 	MATRIX wvp;
+	MATRIX world;
 };
 
 struct DxrConstantBuffer

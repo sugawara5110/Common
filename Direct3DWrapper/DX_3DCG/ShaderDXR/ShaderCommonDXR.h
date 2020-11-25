@@ -111,7 +111,7 @@ char* ShaderCommonDXR =
 "    uint instancingID = getInstancingID();\n"
 "    uint materialID = getMaterialID();\n"
 //接ベクトル計算
-"    tan = GetTangent(normal, (float3x3)ObjectToWorld3x4(), cameraUp);\n"//ShaderCG内関数
+"    tan = GetTangent(normal, (float3x3)wvp[getInstancingID()].world, cameraUp);\n"//ShaderCG内関数
 //法線テクスチャ
 "    float4 Tnor = g_texNormal[materialID].SampleLevel(g_samLinear, uv, 0.0);\n"
 //ノーマルマップでの法線出力

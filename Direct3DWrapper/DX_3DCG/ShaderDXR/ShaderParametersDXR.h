@@ -22,6 +22,7 @@ char* ShaderParametersDXR =
 
 "struct WVPCB {\n"
 "    matrix wvp;\n"
+"    matrix world;\n"
 "};\n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
