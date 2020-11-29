@@ -3,15 +3,16 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderCommonTriangleHSDS =
-"RWStructuredBuffer<uint> gDivide : register(u0);\n"
-
 //***************************************ハルシェーダーコンスタント*************************************************//
 "HS_CONSTANT_OUTPUT HSConstant(InputPatch<VS_OUTPUT, 3> ip, uint pid : SV_PrimitiveID)\n"
 "{\n"
 "	HS_CONSTANT_OUTPUT output = (HS_CONSTANT_OUTPUT)0;\n"
 
+//instanceID切り替え, DXR テセレーション時のみ
+"   uint instanceID = ip[0].instanceID;\n"
+"   if(g_instanceID.y == 1.0f) instanceID = g_instanceID.x;\n"
 //ワールド変換
-"   float4 wPos = mul(ip[0].Pos, g_World[ip[0].instanceID]);\n"
+"   float4 wPos = mul(ip[0].Pos, g_World[instanceID]);\n"
 //頂点から現在地までの距離を計算
 "   float distance = length(g_C_Pos.xyz - wPos.xyz);\n"
 
@@ -20,8 +21,6 @@ char *ShaderCommonTriangleHSDS =
 "   for(int i = 0;i < g_DispAmount.y;i++){\n"
 "      if(distance < g_divide[i].x){divide = g_divide[i].y;}\n"
 "   }\n"
-
-"   gDivide[pid] = divide;\n"//分割数取得
 
 "	output.factor[0] = divide;\n"
 "	output.factor[1] = divide;\n"

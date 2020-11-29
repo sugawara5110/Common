@@ -204,7 +204,7 @@ void SkinMesh::GetBuffer(float end_frame) {
 	sk = new SkinnedCom[numMesh];
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].SetCommandList(com_no);
-		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), divArr, numDiv);
+		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), 1, divArr, numDiv);
 		sk[i].getBuffer(&mObj[i], fbL->getFbxMeshNode(i)->getNumMaterial());
 	}
 }
@@ -514,10 +514,6 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		o.com_no = com_no;
 		o.createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
 		int numUav = 0;
-		if (o.hs) {
-			numUav = 1;
-			o.createDivideBuffer();
-		}
 		Dx12Process* dx = o.dx;
 		o.createParameterDXR(alpha);
 		if (!sk[i].createParameterDXR())return false;

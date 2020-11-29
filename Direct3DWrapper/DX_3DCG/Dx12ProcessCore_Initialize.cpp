@@ -27,6 +27,9 @@
 #include "./ShaderCG/ShaderSkinMeshCom.h"
 #include <locale.h>
 
+ComPtr<ID3D12Resource> StreamView::UpresetBuffer = nullptr;
+ComPtr<ID3D12Resource> StreamView::resetBuffer = nullptr;
+
 bool Dx12Process_sub::ListCreate(bool Compute) {
 
 	D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -939,6 +942,8 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	//深度ステンシルバッファ,リソースバリア共有→深度書き込み
 	dx_sub[0].ResourceBarrier(mDepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+	StreamView::createResetBuffer(0);
 
 	dx_sub[0].End();
 	WaitFence();

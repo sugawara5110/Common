@@ -39,9 +39,9 @@ void Wave::SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd) {
 	mObj.setVertex(vertexArr, numVer, ind, numInd);
 }
 
-void Wave::GetVBarray() {
+void Wave::GetVBarray(int numMaxInstance) {
 	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
-	mObj.getBuffer(1);
+	mObj.getBuffer(1, numMaxInstance);
 }
 
 void Wave::GetShaderByteCode() {
@@ -134,10 +134,6 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	mObj.setDivideArr(divArr, numDiv);
 	mObj.createDefaultBuffer(mObj.ver, mObj.index, true);
 	int numUav = 0;
-	if (mObj.hs) {
-		numUav = 1;
-		mObj.createDivideBuffer();
-	}
 	mObj.createParameterDXR(alpha);
 	mObj.setColorDXR(0, sg);
 	if (!mObj.createPSO(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;

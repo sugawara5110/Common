@@ -69,6 +69,10 @@ struct CONSTANT_BUFFER2 {
 	VECTOR4 uvSwitch;//.xのみ
 };
 
+struct cbInstanceID {
+	VECTOR4 instanceID;//x:ID, y:1.0f on 0.0f off
+};
+
 //コンスタントバッファ2D用
 struct CONSTANT_BUFFER2D {
 	VECTOR4 Pos[INSTANCE_PCS_2D];

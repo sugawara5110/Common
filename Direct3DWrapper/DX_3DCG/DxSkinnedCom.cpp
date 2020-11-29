@@ -13,6 +13,7 @@ void SkinnedCom::getBuffer(PolygonData* p, int numMaterial) {
 		int NumMaterial = pd->dpara.NumMaterial;
 		mObjectCB = new ConstantBuffer<uvSW>(NumMaterial);
 		sw = std::make_unique<uvSW[]>(NumMaterial);
+		SkinnedVer = std::make_unique<ComPtr<ID3D12Resource>[]>(NumMaterial);
 	}
 }
 
@@ -44,7 +45,7 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 			ad[1] = mObjectCB->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
 			pd->CreateCbv(descHeap.Get(), numDesc * i + numSrv, ad, cbSize, numCbv);
 			ID3D12Resource* resU[1];
-			resU[0] = VviewDXR.Get();
+			resU[0] = SkinnedVer[i].Get();
 			UINT byteStride[1];
 			byteStride[0] = sizeof(VERTEX_DXR);
 			UINT size[1];
@@ -60,7 +61,7 @@ bool SkinnedCom::createPSO() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	if (dx->DXR_CreateResource && pd->vs == dx->pVertexShader_SKIN.Get()) {
-		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav);
+		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav, 0, 0);
 		if (rootSignature == nullptr)return false;
 
 		ID3DBlob* cs = pd->dx->pVertexShader_SKIN_Com.Get();
@@ -97,8 +98,8 @@ bool SkinnedCom::createParameterDXR() {
 				pd->dpara.Iview[i].IndexBufferGPU.Get());
 
 			for (int j = 0; j < 2; j++) {
-				pd->dxrPara.updateDXR[j].currentIndexCount[i] = indCnt;
-				VertexView& dxV = pd->dxrPara.updateDXR[j].VviewDXR[i];
+				pd->dxrPara.updateDXR[j].currentIndexCount[i][0] = indCnt;
+				VertexView& dxV = pd->dxrPara.updateDXR[j].VviewDXR[i][0];
 				UINT vCnt = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
 				bytesize = vCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
@@ -109,7 +110,7 @@ bool SkinnedCom::createParameterDXR() {
 					return false;
 				}
 			}
-			if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(VviewDXR.GetAddressOf(),
+			if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(SkinnedVer[i].GetAddressOf(),
 				bytesize, D3D12_RESOURCE_STATE_UNORDERED_ACCESS))) {
 				ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 				return false;
@@ -140,14 +141,14 @@ void SkinnedCom::skinning(int comNo) {
 		mCList->Dispatch(numVer, 1, 1);
 		des.ptr += dx->mCbvSrvUavDescriptorSize * NumDesc;
 
-		d.delayResourceBarrierBefore(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayResourceBarrierBefore(ud.VviewDXR[i][0].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		d.delayResourceBarrierBefore(VviewDXR.Get(),
+		d.delayResourceBarrierBefore(SkinnedVer[i].Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		d.delayCopyResource(ud.VviewDXR[i].VertexBufferGPU.Get(), VviewDXR.Get());
-		d.delayResourceBarrierAfter(ud.VviewDXR[i].VertexBufferGPU.Get(),
+		d.delayCopyResource(ud.VviewDXR[i][0].VertexBufferGPU.Get(), SkinnedVer[i].Get());
+		d.delayResourceBarrierAfter(ud.VviewDXR[i][0].VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-		d.delayResourceBarrierAfter(VviewDXR.Get(),
+		d.delayResourceBarrierAfter(SkinnedVer[i].Get(),
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		ud.firstSet = true;

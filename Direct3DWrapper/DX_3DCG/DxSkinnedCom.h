@@ -23,7 +23,7 @@ private:
 	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 	ComPtr<ID3D12PipelineState> PSO = nullptr;
 	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
-	ComPtr<ID3D12Resource> VviewDXR = nullptr;
+	std::unique_ptr<ComPtr<ID3D12Resource>[]> SkinnedVer = nullptr;
 	PolygonData* pd = nullptr;
 	int NumDesc = 0;
 	const int numSrv = 1;

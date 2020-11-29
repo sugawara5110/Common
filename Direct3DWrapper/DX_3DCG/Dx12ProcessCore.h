@@ -453,19 +453,28 @@ struct StreamView {
 	ComPtr<ID3D12Resource> StreamBufferGPU = nullptr;
 	ComPtr<ID3D12Resource> BufferFilledSizeBufferGPU = nullptr;
 	ComPtr<ID3D12Resource> ReadBuffer = nullptr;
-	ComPtr<ID3D12Resource> resetBuffer = nullptr;
+
+	static ComPtr<ID3D12Resource> UpresetBuffer;
+	static ComPtr<ID3D12Resource> resetBuffer;
 
 	//バッファのサイズ等
 	UINT StreamByteStride = 0;
 	UINT StreamBufferByteSize = 0;
 	UINT FilledSize = 0;
 
+	static void createResetBuffer(int comNo) {
+		Dx12Process* dx = Dx12Process::GetInstance();
+		UINT64 zero[1];
+		zero[0] = 0;
+		resetBuffer = dx->CreateDefaultBuffer(comNo, zero,
+			sizeof(UINT64),
+			UpresetBuffer, false);
+	}
+
 	StreamView() {
 		Dx12Process* dx = Dx12Process::GetInstance();
 		BufferFilledSizeBufferGPU = dx->CreateStreamBuffer(sizeof(UINT64));
 		dx->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
-		dx->createDefaultResourceBuffer(resetBuffer.GetAddressOf(), sizeof(UINT64),
-			D3D12_RESOURCE_STATE_GENERIC_READ);
 	}
 
 	void ResetFilledSizeBuffer(int com) {
@@ -580,15 +589,13 @@ struct drawPara {
 	D3D_PRIMITIVE_TOPOLOGY TOPOLOGY;
 	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO = nullptr;
 	std::unique_ptr<ComPtr<ID3D12PipelineState>[]> PSO_DXR = nullptr;
-	std::unique_ptr<ComPtr<ID3D12Resource>[]> mDivideBuffer = nullptr;
-	std::unique_ptr<ComPtr<ID3D12Resource>[]> mDivideReadBuffer = nullptr;
 	UINT insNum = 1;
 };
 
 struct UpdateDXR {
 	UINT NumInstance = 1;
-	std::unique_ptr<VertexView[]> VviewDXR = nullptr;
-	std::unique_ptr<UINT[]> currentIndexCount = nullptr;
+	std::unique_ptr<std::unique_ptr<VertexView[]>[]> VviewDXR = nullptr;
+	std::unique_ptr<std::unique_ptr<UINT[]>[]> currentIndexCount = nullptr;
 	MATRIX Transform[INSTANCE_PCS_3D] = {};
 	MATRIX WVP[INSTANCE_PCS_3D] = {};
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
@@ -603,26 +610,32 @@ struct UpdateDXR {
 		else InstanceMask = 0x00;
 	}
 
-	void create(int numMaterial) {
-		VviewDXR = std::make_unique<VertexView[]>(numMaterial);
-		currentIndexCount = std::make_unique<UINT[]>(numMaterial);
+	void create(int numMaterial, int numMaxInstance) {
+		VviewDXR = std::make_unique<std::unique_ptr<VertexView[]>[]>(numMaterial);
+		currentIndexCount = std::make_unique<std::unique_ptr<UINT[]>[]>(numMaterial);
+		for (int i = 0; i < numMaterial; i++) {
+			VviewDXR[i] = std::make_unique<VertexView[]>(numMaxInstance);
+			currentIndexCount[i] = std::make_unique<UINT[]>(numMaxInstance);
+		}
 	}
 };
 
 struct ParameterDXR {
 	int NumMaterial = 0;
+	UINT NumMaxInstance = 1;
 	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
 	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
 	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
 	std::unique_ptr<VECTOR4[]> diffuse = nullptr;
 	std::unique_ptr<VECTOR4[]> specular = nullptr;
 	std::unique_ptr<VECTOR4[]> ambient = nullptr;
-	std::unique_ptr<StreamView[]> SviewDXR = nullptr;
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
+	std::unique_ptr<std::unique_ptr<StreamView[]>[]> SviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
 	bool updateF = false;//AS構築後のupdateの有無
 
-	void create(int numMaterial) {
+	void create(int numMaterial, int numMaxInstance) {
+		NumMaxInstance = numMaxInstance;
 		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
 		difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
 		norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
@@ -630,9 +643,12 @@ struct ParameterDXR {
 		diffuse = std::make_unique<VECTOR4[]>(numMaterial);
 		specular = std::make_unique<VECTOR4[]>(numMaterial);
 		ambient = std::make_unique<VECTOR4[]>(numMaterial);
-		SviewDXR = std::make_unique<StreamView[]>(numMaterial);
-		updateDXR[0].create(numMaterial);
-		updateDXR[1].create(numMaterial);
+		SviewDXR = std::make_unique<std::unique_ptr<StreamView[]>[]>(numMaterial);
+		for (int i = 0; i < numMaterial; i++) {
+			SviewDXR[i] = std::make_unique<StreamView[]>(numMaxInstance);
+		}
+		updateDXR[0].create(numMaterial, numMaxInstance);
+		updateDXR[1].create(numMaterial, numMaxInstance);
 	}
 
 	bool alphaTest;
@@ -680,13 +696,14 @@ protected:
 	void CreateUavBuffer(ID3D12DescriptorHeap* heap, int offsetHeap,
 		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
 
-	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav);
+	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav, UINT numCbvPara, UINT RegisterStNoCbv);
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr<ID3D12RootSignature> CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav);
-	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav, bool sampler);
+	ComPtr<ID3D12RootSignature> CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav, UINT numCbvPara, UINT RegisterStNoCbv);
+	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav,
+		bool sampler, UINT numCbvPara, UINT RegisterStNoCbv);
 
 	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
@@ -765,6 +782,7 @@ protected:
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+	ConstantBuffer<cbInstanceID>* mObjectCB_Ins = nullptr;
 	CONSTANT_BUFFER cb[2];
 	bool firstCbSet[2];
 	CONSTANT_BUFFER2 sg;
@@ -787,7 +805,7 @@ protected:
 
 	void GetShaderByteCode(bool light, int tNo);
 	void CbSwap();
-	void getBuffer(int numMaterial, DivideArr* divArr = nullptr, int numDiv = 0);
+	void getBuffer(int numMaterial, int numMaxInstance, DivideArr* divArr = nullptr, int numDiv = 0);
 	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
 	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
 
@@ -808,7 +826,7 @@ protected:
 		ARR_DELETE(indexArr);
 	}
 
-	void createBufferDXR(int numMaterial);
+	void createBufferDXR(int numMaterial, int numMaxInstance);
 
 	void createParameterDXR(bool alpha);
 
@@ -818,8 +836,6 @@ protected:
 		const int numSrv, const int numCbv, const int numUav);
 
 	void setTextureDXR();
-
-	void createDivideBuffer();
 
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool blend, bool alpha);
@@ -837,7 +853,7 @@ public:
 	PolygonData();
 	~PolygonData();
 	ID3D12PipelineState* GetPipelineState();
-	void GetVBarray(PrimitiveType type);
+	void GetVBarray(PrimitiveType type, int numMaxInstance);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 	bool Create(bool light, int tNo, bool blend, bool alpha);

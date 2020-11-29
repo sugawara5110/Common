@@ -167,7 +167,9 @@ void Common::CreateUavBuffer(ID3D12DescriptorHeap* heap, int offsetHeap,
 }
 
 static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
-	std::vector<D3D12_DESCRIPTOR_RANGE>& range, D3D12_ROOT_PARAMETER& rootParams) {
+	std::vector<D3D12_DESCRIPTOR_RANGE>& range,
+	std::vector<D3D12_ROOT_PARAMETER>& rootParams,
+	UINT numCbvPara, UINT RegisterStNoCbv) {
 
 	UINT numRange = numSrv + numCbv + numUav;
 	range.resize(numRange);
@@ -200,17 +202,30 @@ static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
 		cnt++;
 	}
 
-	rootParams.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParams.DescriptorTable.NumDescriptorRanges = numRange;
-	rootParams.DescriptorTable.pDescriptorRanges = range.data();
-	rootParams.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	UINT numPara = numCbvPara + 1;
+	rootParams.resize(numPara);
+	int cntp = 0;
+	rootParams[cntp].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParams[cntp].DescriptorTable.NumDescriptorRanges = numRange;
+	rootParams[cntp].DescriptorTable.pDescriptorRanges = range.data();
+	rootParams[cntp].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	cntp++;
+	for (UINT i = 0; i < numCbvPara; i++) {
+		rootParams[cntp].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		rootParams[cntp].Descriptor.ShaderRegister = RegisterStNoCbv + i;
+		rootParams[cntp].Descriptor.RegisterSpace = 0;
+		rootParams[cntp].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		cntp++;
+	}
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav) {
+ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
+	UINT numCbvPara, UINT RegisterStNoCbv) {
+
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
-	D3D12_ROOT_PARAMETER rootParams = {};
-	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams);
-	return CreateRs(1, &rootParams);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv);
+	return CreateRs(numCbvPara + 1, rootParams.data());
 }
 
 static D3D12_STATIC_SAMPLER_DESC getSampler() {
@@ -279,24 +294,27 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 	return dx->CreateRsCommon(&desc);
 }
 
-ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav)
-{
-	std::vector<D3D12_DESCRIPTOR_RANGE> range;
-	D3D12_ROOT_PARAMETER rootParams = {};
-	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams);
+ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
+	UINT numCbvPara, UINT RegisterStNoCbv) {
 
-	return CreateRsCompute(1, &rootParams);
+	std::vector<D3D12_DESCRIPTOR_RANGE> range;
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv);
+
+	return CreateRsCompute(numCbvPara + 1, rootParams.data());
 }
 
-ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav, bool sampler) {
+ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav,
+	bool sampler, UINT numCbvPara, UINT RegisterStNoCbv) {
+
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
-	D3D12_ROOT_PARAMETER rootParams = {};
-	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv);
 
 	if (sampler)
-		return CreateRsStreamOutputSampler(1, &rootParams);
+		return CreateRsStreamOutputSampler(numCbvPara + 1, rootParams.data());
 	else
-		return CreateRsStreamOutput(1, &rootParams);
+		return CreateRsStreamOutput(numCbvPara + 1, rootParams.data());
 }
 
 ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,

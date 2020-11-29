@@ -46,7 +46,7 @@ void MeshData::GetShaderByteCode(bool disp) {
 	mObj.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
 }
 
-bool MeshData::LoadMaterialFromFile(char* FileName) {
+bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
 	Dx12Process* dx = mObj.dx;
 	//マテリアルファイルを開いて内容を読み込む
 	errno_t error;
@@ -73,7 +73,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName) {
 		}
 	}
 
-	mObj.getBuffer(mObj.dpara.NumMaterial, divArr, numDiv);
+	mObj.getBuffer(mObj.dpara.NumMaterial, numMaxInstance, divArr, numDiv);
 	mMat = std::make_unique<meshMaterial[]>(mObj.dpara.NumMaterial);
 
 	//本読み込み	
@@ -145,7 +145,7 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 	}
 }
 
-bool MeshData::GetBuffer(char* FileName) {
+bool MeshData::GetBuffer(char* FileName, int numMaxInstance) {
 
 	if (0 != strcpy_s(mFileName, FileName)) {
 		ErrorMessage("MeshData::GetBuffer strcpy_s Error");
@@ -178,7 +178,7 @@ bool MeshData::GetBuffer(char* FileName) {
 		if (strcmp(key, "mtllib") == 0)
 		{
 			sscanf_s(&line[7], "%s ", key, (unsigned int)sizeof(key));
-			if (!LoadMaterialFromFile(key))return false;
+			if (!LoadMaterialFromFile(key, numMaxInstance))return false;
 		}
 		//頂点
 		if (strcmp(key, "v") == 0)
@@ -425,10 +425,6 @@ bool MeshData::CreateMesh() {
 	mObj.setDivideArr(divArr, numDiv);
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
 	int numUav = 0;
-	if (mObj.hs) {
-		numUav = 1;
-		mObj.createDivideBuffer();
-	}
 	mObj.createParameterDXR(alpha);
 
 	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;

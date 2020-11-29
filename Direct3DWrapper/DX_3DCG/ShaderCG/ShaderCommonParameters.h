@@ -56,6 +56,12 @@ char* ShaderCommonParameters =
 "    float4 g_uvSw;\n"
 "};\n"
 
+"cbuffer global_2 : register(b3)\n"
+"{\n"
+//DXR—p
+"    float4 g_instanceID;\n"//x:ID, y:1.0f on 0.0f off
+"};\n"
+
 "struct VS_OUTPUT\n"
 "{\n"
 "    float4 Pos    : POSITION;\n"

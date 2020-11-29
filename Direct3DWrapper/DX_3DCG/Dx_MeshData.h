@@ -41,14 +41,14 @@ protected:
 	int numDiv = 0;
 	PolygonData mObj;
 
-	bool LoadMaterialFromFile(char* FileName);
+	bool LoadMaterialFromFile(char* FileName, int numMaxInstance);
 	void GetShaderByteCode(bool disp);
 
 public:
 	MeshData();
 	~MeshData();
 	void SetState(bool alpha, bool blend, bool disp, float diffuse = 0.0f, float specu = 0.0f, float ambi = 0.0f);
-	bool GetBuffer(char* FileName);
+	bool GetBuffer(char* FileName, int numMaxInstance);
 	bool SetVertex();
 	bool CreateMesh();
 	ID3D12PipelineState* GetPipelineState(int index);

@@ -23,7 +23,7 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 		numParameter = numparameter;
 		UINT cnt = 0;
 		for (UINT i = 0; i < numParameter; i++) {
-			cnt += PD[i]->NumMaterial;
+			cnt += PD[i]->NumMaterial * PD[i]->NumMaxInstance;
 		}
 		numMaterial = cnt;
 		maxNumInstancing = INSTANCE_PCS_3D * numParameter;
@@ -39,33 +39,40 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 		createTriangleVB(numMaterial);
 		createAccelerationStructures();
 
-		for (UINT i = 0; i < numMaterial; i++) {
+		int numMat = 0;
+		int numIns = 0;
+		for (UINT i = 0; i < numParameter; i++) {
+			for (int j = 0; j < PD[i]->NumMaterial; j++) {
+				for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+					switch (type[numMat]) {
+					case METALLIC:
+						cbObj[0].matCb[numIns].materialNo = 0;
+						cbObj[1].matCb[numIns].materialNo = 0;
+						break;
 
-			switch (type[i]) {
-			case METALLIC:
-				cbObj[0].matCb[i].materialNo = 0;
-				cbObj[1].matCb[i].materialNo = 0;
-				break;
+					case NONREFLECTION:
+						cbObj[0].matCb[numIns].materialNo = 1;
+						cbObj[1].matCb[numIns].materialNo = 1;
+						break;
 
-			case NONREFLECTION:
-				cbObj[0].matCb[i].materialNo = 1;
-				cbObj[1].matCb[i].materialNo = 1;
-				break;
+					case EMISSIVE:
+						cbObj[0].matCb[numIns].materialNo = 2;
+						cbObj[1].matCb[numIns].materialNo = 2;
+						break;
 
-			case EMISSIVE:
-				cbObj[0].matCb[i].materialNo = 2;
-				cbObj[1].matCb[i].materialNo = 2;
-				break;
+					case DIRECTIONLIGHT_METALLIC:
+						cbObj[0].matCb[numIns].materialNo = 3;
+						cbObj[1].matCb[numIns].materialNo = 3;
+						break;
 
-			case DIRECTIONLIGHT_METALLIC:
-				cbObj[0].matCb[i].materialNo = 3;
-				cbObj[1].matCb[i].materialNo = 3;
-				break;
-
-			case DIRECTIONLIGHT_NONREFLECTION:
-				cbObj[0].matCb[i].materialNo = 4;
-				cbObj[1].matCb[i].materialNo = 4;
-				break;
+					case DIRECTIONLIGHT_NONREFLECTION:
+						cbObj[0].matCb[numIns].materialNo = 4;
+						cbObj[1].matCb[numIns].materialNo = 4;
+						break;
+					}
+					numIns++;
+				}
+				numMat++;
 			}
 		}
 
@@ -79,16 +86,19 @@ void DXR_Basic::createTriangleVB(UINT numMaterial) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	for (UINT i = 0; i < numParameter; i++) {
 		for (UINT j = 0; j < 2; j++)
-			PD[i]->updateDXR[j].InstanceID = std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
+			PD[i]->updateDXR[j].InstanceID =
+			std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
 	}
 	VertexBufferGPU = std::make_unique<ComPtr<ID3D12Resource>[]>(numMaterial);
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
-			dx->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
-				vv.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
-			MaterialCnt++;
+			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+				VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j][t];
+				dx->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
+					vv.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
+				MaterialCnt++;
+			}
 		}
 	}
 }
@@ -163,14 +173,16 @@ void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		bool createAS = ud.createAS;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			VertexView* vv = &ud.VviewDXR[j];
-			IndexView* iv = &PD[i]->IviewDXR[j];
-			UINT indexCnt = ud.currentIndexCount[j];
-			if (ud.firstSet && (PD[i]->updateF || !ud.createAS)) {
-				createBottomLevelAS1(com, vv, iv, indexCnt, MaterialCnt, PD[i]->updateF);
-				createAS = true;
+			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+				VertexView* vv = &ud.VviewDXR[j][t];
+				IndexView* iv = &PD[i]->IviewDXR[j];
+				UINT indexCnt = ud.currentIndexCount[j][t];
+				if (ud.firstSet && (PD[i]->updateF || !ud.createAS)) {
+					createBottomLevelAS1(com, vv, iv, indexCnt, MaterialCnt, PD[i]->updateF);
+					createAS = true;
+				}
+				MaterialCnt++;
 			}
-			MaterialCnt++;
 		}
 		ud.createAS = createAS;
 	}
@@ -222,23 +234,25 @@ void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
-				//InstanceDesc初期化
+
 				if (ud.firstSet) {
+					UINT matAddInd = 0;
+					if (PD[i]->NumMaxInstance > 1)matAddInd = k;
 					D3D12_RAYTRACING_INSTANCE_DESC& pID = pInstanceDesc[RayInstanceCnt];
-					UINT materialInstanceID = materialCnt;//max65535
+					UINT materialInstanceID = materialCnt + matAddInd;//max65535
 					UINT InstancingID = i * INSTANCE_PCS_3D + k;//max65535
 					UINT InstanceID = ((materialInstanceID << 16) & 0xffff0000) | (InstancingID & 0x0000ffff);
 					ud.InstanceID[INSTANCE_PCS_3D * j + k] = InstanceID;
 					pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
-					pID.InstanceContributionToHitGroupIndex = 0;//シェーダーテーブル内のオフセット。ジオメトリが一つの場合,オフセット0
+					pID.InstanceContributionToHitGroupIndex = 0;//使用するhitShaderインデックス
 					pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 					memcpy(pID.Transform, &ud.Transform[k], sizeof(pID.Transform));
-					pID.AccelerationStructure = asObj[buffSwap[0]].bottomLevelBuffers[materialCnt].pResult.Get()->GetGPUVirtualAddress();
+					pID.AccelerationStructure = asObj[buffSwap[0]].bottomLevelBuffers[materialCnt + matAddInd].pResult.Get()->GetGPUVirtualAddress();
 					pID.InstanceMask = ud.InstanceMask;
 				}
 				RayInstanceCnt++;
 			}
-			materialCnt++;
+			materialCnt += PD[i]->NumMaxInstance;
 		}
 	}
 
@@ -745,16 +759,18 @@ void DXR_Basic::createShaderResources() {
 	//SRVを作成 Indices(t0)
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			IndexView& iv = PD[i]->IviewDXR[j];
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1 = {};
-			srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc1.Buffer.NumElements = iv.IndexCount;
-			srvDesc1.Format = DXGI_FORMAT_UNKNOWN;
-			srvDesc1.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-			srvDesc1.Buffer.StructureByteStride = sizeof(uint32_t);
-			srvHandle.ptr += offsetSize;
-			dx->getDevice()->CreateShaderResourceView(iv.IndexBufferGPU.Get(), &srvDesc1, srvHandle);
+			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+				IndexView& iv = PD[i]->IviewDXR[j];
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1 = {};
+				srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+				srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc1.Buffer.NumElements = iv.IndexCount;
+				srvDesc1.Format = DXGI_FORMAT_UNKNOWN;
+				srvDesc1.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+				srvDesc1.Buffer.StructureByteStride = sizeof(uint32_t);
+				srvHandle.ptr += offsetSize;
+				dx->getDevice()->CreateShaderResourceView(iv.IndexBufferGPU.Get(), &srvDesc1, srvHandle);
+			}
 		}
 	}
 
@@ -762,17 +778,19 @@ void DXR_Basic::createShaderResources() {
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
-			srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc2.Buffer.NumElements = vv.VertexBufferByteSize / vv.VertexByteStride;
-			srvDesc2.Format = DXGI_FORMAT_UNKNOWN;
-			srvDesc2.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-			srvDesc2.Buffer.StructureByteStride = vv.VertexByteStride;
-			srvHandle.ptr += offsetSize;
-			dx->getDevice()->CreateShaderResourceView(VertexBufferGPU[MaterialCnt].Get(), &srvDesc2, srvHandle);
-			MaterialCnt++;
+			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+				VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j][t];
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
+				srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+				srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc2.Buffer.NumElements = vv.VertexBufferByteSize / vv.VertexByteStride;
+				srvDesc2.Format = DXGI_FORMAT_UNKNOWN;
+				srvDesc2.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+				srvDesc2.Buffer.StructureByteStride = vv.VertexByteStride;
+				srvHandle.ptr += offsetSize;
+				dx->getDevice()->CreateShaderResourceView(VertexBufferGPU[MaterialCnt].Get(), &srvDesc2, srvHandle);
+				MaterialCnt++;
+			}
 		}
 	}
 
@@ -805,29 +823,30 @@ void DXR_Basic::createShaderResources() {
 	//SRVを作成 g_texDiffuse(t0), g_texNormal(t1), g_texSpecular(t2)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3 = {};
 	for (UINT t = 0; t < 3; t++) {
-		UINT InstanceCnt = 0;
 		for (UINT i = 0; i < numParameter; i++) {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
-				ID3D12Resource* res = nullptr;
-				switch (t) {
-				case 0:
-					res = PD[i]->difTex[j];
-					break;
-				case 1:
-					res = PD[i]->norTex[j];
-					break;
-				case 2:
-					res = PD[i]->speTex[j];
-					break;
+				for (UINT ins = 0; ins < PD[i]->NumMaxInstance; ins++) {
+					ID3D12Resource* res = nullptr;
+					switch (t) {
+					case 0:
+						res = PD[i]->difTex[j];
+						break;
+					case 1:
+						res = PD[i]->norTex[j];
+						break;
+					case 2:
+						res = PD[i]->speTex[j];
+						break;
+					}
+					srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+					srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+					srvDesc3.Format = res->GetDesc().Format;
+					srvDesc3.Texture2D.MostDetailedMip = 0;
+					srvDesc3.Texture2D.ResourceMinLODClamp = 0.0f;
+					srvDesc3.Texture2D.MipLevels = res->GetDesc().MipLevels;
+					srvHandle.ptr += offsetSize;
+					dx->getDevice()->CreateShaderResourceView(res, &srvDesc3, srvHandle);
 				}
-				srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-				srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-				srvDesc3.Format = res->GetDesc().Format;
-				srvDesc3.Texture2D.MostDetailedMip = 0;
-				srvDesc3.Texture2D.ResourceMinLODClamp = 0.0f;
-				srvDesc3.Texture2D.MipLevels = res->GetDesc().MipLevels;
-				srvHandle.ptr += offsetSize;
-				dx->getDevice()->CreateShaderResourceView(res, &srvDesc3, srvHandle);
 			}
 		}
 	}
@@ -904,23 +923,24 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-
-			VECTOR4& dif = PD[i]->diffuse[j];
-			VECTOR4& spe = PD[i]->specular[j];
-			VECTOR4& amb = PD[i]->ambient[j];
-			DxrMaterialCB& mcb = cbObj->matCb[MaterialCnt];
-			mcb.vDiffuse.as(dif.x, dif.y, dif.z, 0.0f);
-			mcb.vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
-			mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
-			mcb.shininess = ud.shininess;
-			memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
-			if (PD[i]->alphaTest) {
-				mcb.alphaTest = 1.0f;
+			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+				VECTOR4& dif = PD[i]->diffuse[j];
+				VECTOR4& spe = PD[i]->specular[j];
+				VECTOR4& amb = PD[i]->ambient[j];
+				DxrMaterialCB& mcb = cbObj->matCb[MaterialCnt];
+				mcb.vDiffuse.as(dif.x, dif.y, dif.z, 0.0f);
+				mcb.vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
+				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
+				mcb.shininess = ud.shininess;
+				memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
+				if (PD[i]->alphaTest) {
+					mcb.alphaTest = 1.0f;
+				}
+				else {
+					mcb.alphaTest = 0.0f;
+				}
+				MaterialCnt++;
 			}
-			else {
-				mcb.alphaTest = 0.0f;
-			}
-			MaterialCnt++;
 		}
 	}
 }
@@ -945,7 +965,9 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
-				if (cbObj->matCb[MaterialCnt].materialNo == 2) {
+				UINT matAddInd = 0;
+				if (PD[i]->NumMaxInstance > 1)matAddInd = k;
+				if (cbObj->matCb[MaterialCnt + k].materialNo == 2) {
 					for (UINT v = 0; v < PD[i]->numVertex; v++) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));
@@ -976,7 +998,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 				}
 				if (breakF)break;
 			}
-			MaterialCnt++;
+			MaterialCnt += PD[i]->NumMaxInstance;
 			if (breakF)break;
 		}
 		if (breakF)break;
@@ -1011,19 +1033,21 @@ void DXR_Basic::updateVertexBuffer(int comNo) {
 	Dx12Process_sub& d = dx->dx_sub[comNo];
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
-			VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j];
+			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
+				VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j][t];
 
-			d.delayResourceBarrierBefore(VertexBufferGPU[MaterialCnt].Get(),
-				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-			d.delayResourceBarrierBefore(vv.VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			d.delayCopyResource(VertexBufferGPU[MaterialCnt].Get(), vv.VertexBufferGPU.Get());
-			d.delayResourceBarrierAfter(VertexBufferGPU[MaterialCnt].Get(),
-				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-			d.delayResourceBarrierAfter(vv.VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+				d.delayResourceBarrierBefore(VertexBufferGPU[MaterialCnt].Get(),
+					D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+				d.delayResourceBarrierBefore(vv.VertexBufferGPU.Get(),
+					D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+				d.delayCopyResource(VertexBufferGPU[MaterialCnt].Get(), vv.VertexBufferGPU.Get());
+				d.delayResourceBarrierAfter(VertexBufferGPU[MaterialCnt].Get(),
+					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+				d.delayResourceBarrierAfter(vv.VertexBufferGPU.Get(),
+					D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-			MaterialCnt++;
+				MaterialCnt++;
+			}
 		}
 	}
 	d.RunDelayResourceBarrierBefore();
@@ -1140,4 +1164,10 @@ void DXR_Basic::raytrace_g(int comNo) {
 void DXR_Basic::raytrace_c(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	raytrace(&dx->dx_subCom[comNo]);
+}
+
+DXR_Basic::~DXR_Basic() {
+	S_DELETE(sCB);
+	S_DELETE(material);
+	S_DELETE(wvp);
 }

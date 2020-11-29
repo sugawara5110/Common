@@ -35,7 +35,7 @@ protected:
 public:
 	Wave();
 	~Wave();
-	void GetVBarray();
+	void GetVBarray(int numMaxInstance);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 	bool Create(int texNo, bool blend, bool alpha, float waveHeight, float divide);

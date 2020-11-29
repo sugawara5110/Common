@@ -125,7 +125,7 @@ public:
 	void copyDepthBuffer(int comNo);
 	void setASswapIndex(int index) { buffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
-	~DXR_Basic() { S_DELETE(sCB); S_DELETE(material); S_DELETE(wvp); }
+	~DXR_Basic();
 };
 
 #endif

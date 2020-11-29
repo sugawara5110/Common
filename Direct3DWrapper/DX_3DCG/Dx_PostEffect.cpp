@@ -61,7 +61,7 @@ bool PostEffect::ComCreate(int no) {
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
-	mRootSignatureCom = CreateRootSignatureCompute(0, 1, 2);
+	mRootSignatureCom = CreateRootSignatureCompute(0, 1, 2, 0, 0);
 	if (mRootSignatureCom == nullptr)return false;
 
 	cs = dx->pComputeShader_Post[no].Get();
