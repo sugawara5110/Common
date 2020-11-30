@@ -237,7 +237,7 @@ void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
 
 				if (ud.firstSet) {
 					UINT matAddInd = 0;
-					if (PD[i]->NumMaxInstance > 1)matAddInd = k;
+					if (PD[i]->hs)matAddInd = k;
 					D3D12_RAYTRACING_INSTANCE_DESC& pID = pInstanceDesc[RayInstanceCnt];
 					UINT materialInstanceID = materialCnt + matAddInd;//max65535
 					UINT InstancingID = i * INSTANCE_PCS_3D + k;//max65535
@@ -966,8 +966,8 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
 				UINT matAddInd = 0;
-				if (PD[i]->NumMaxInstance > 1)matAddInd = k;
-				if (cbObj->matCb[MaterialCnt + k].materialNo == 2) {
+				if (PD[i]->hs)matAddInd = k;
+				if (cbObj->matCb[MaterialCnt + matAddInd].materialNo == 2) {
 					for (UINT v = 0; v < PD[i]->numVertex; v++) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));

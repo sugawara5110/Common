@@ -449,7 +449,10 @@ void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		mCList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCList->SetPipelineState(para.PSO_DXR[i].Get());
 		int loop = 1;
-		if (hs)loop = ud.NumInstance;
+		if (hs) {
+			loop = ud.NumInstance;
+			dxr.hs = true;
+		}
 		for (int t = 0; t < loop; t++) {
 
 			if (hs) {

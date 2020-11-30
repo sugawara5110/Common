@@ -623,6 +623,7 @@ struct UpdateDXR {
 struct ParameterDXR {
 	int NumMaterial = 0;
 	UINT NumMaxInstance = 1;
+	bool hs = false;
 	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
 	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
 	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
