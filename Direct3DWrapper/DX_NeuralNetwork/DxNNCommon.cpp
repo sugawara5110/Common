@@ -104,7 +104,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	created = true;
 }
 
-void DxNNCommon::TextureCopy(ID3D12Resource *texture, int comNo) {
+void DxNNCommon::TextureCopy(ID3D12Resource* texture, int comNo) {
 	if (!created)return;
 	dx->Bigin(comNo);
 	mCommandList->SetPipelineState(mPSOCom2.Get());
@@ -120,6 +120,7 @@ void DxNNCommon::TextureCopy(ID3D12Resource *texture, int comNo) {
 	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB2->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(texWid / shaderThreadNum2[0], texHei / shaderThreadNum2[1], 1);
 	dx->End(comNo);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -267,6 +268,7 @@ void DxNNCommon::CopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
 		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 		dx->End(com_no);
+		dx->RunGpu();
 		dx->WaitFence();
 		return;
 	}
@@ -290,5 +292,6 @@ void DxNNCommon::CopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
 	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB2Copy->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb2Copy.NumNode, 1, inputSetNum);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }

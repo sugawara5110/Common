@@ -82,6 +82,9 @@ public:
 	void StreamOutput();
 	void StreamOutputBillboard();
 	ParameterDXR* getParameter();
+	void setRefractiveIndex(float index) {
+		dxrPara.updateDXR[dx->dxrBuffSwap[0]].RefractiveIndex = index;
+	}
 };
 
 #endif

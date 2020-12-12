@@ -17,6 +17,7 @@ char* ShaderParametersDXR =
 "    float4 AddObjColor;\n"
 "    float shininess;\n"
 "    float alphaTest;\n"//1.0f:on, 0.0f:off 
+"    float RefractiveIndex;\n"//‹üÜ—¦
 "    uint materialNo;\n"
 "};\n"
 

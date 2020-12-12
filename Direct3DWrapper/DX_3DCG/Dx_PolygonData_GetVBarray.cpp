@@ -26,6 +26,8 @@ PolygonData::PolygonData() {
 	sg.vAmbient.z = 0.0f;
 	sg.vAmbient.w = 0.0f;
 
+	sg.uvSwitch.x = 0.0f;
+
 	divArr[0].distance = 1000.0f;
 	divArr[0].divide = 2;//í∏ì_êî 3 Å® 3 * 6 = 18
 	divArr[1].distance = 500.0f;

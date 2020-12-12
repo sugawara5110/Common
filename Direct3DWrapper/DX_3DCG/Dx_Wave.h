@@ -68,6 +68,9 @@ public:
 	void UpdateDxrDivideBuffer() {
 		mObj.UpdateDxrDivideBuffer();
 	}
+	void setRefractiveIndex(float index) {
+		mObj.setRefractiveIndex(index);
+	}
 };
 
 #endif

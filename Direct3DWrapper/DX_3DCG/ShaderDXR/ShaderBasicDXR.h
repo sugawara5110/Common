@@ -88,6 +88,8 @@ char* ShaderBasicDXR =
 "       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
 //反射方向への光線
 "       difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, normalMap);\n"
+//半透明
+"       difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, difTex, normalMap);\n"
 //アルファテスト
 "       difTex.xyz = AlphaTest(payload.RecursionCnt, payload.hitPosition, difTex);\n"
 "    }\n"
@@ -116,7 +118,7 @@ char* ShaderBasicDXR =
 "    }\n"
 //////平行光源
 "    if(payload.mNo == 3) {\n"
-"       if(mNo > 2) {\n"//平行光源発生マテリアルか?
+"       if(mNo == 3 || mNo == 4) {\n"//平行光源発生マテリアルか?
 "          payload.color = dLightColor.xyz;\n"
 "       }\n"
 "       if(mNo == 2) {\n"//点光源の場合素通り

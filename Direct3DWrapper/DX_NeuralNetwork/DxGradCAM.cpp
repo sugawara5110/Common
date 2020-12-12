@@ -155,6 +155,7 @@ void DxGradCAM::ComGAP() {
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.NumFil, 1, 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -169,6 +170,7 @@ void DxGradCAM::ComGradCAM(UINT inputsetnum) {
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.SizeFeatureMapW * cb.SizeFeatureMapH, 1, inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -186,6 +188,7 @@ void DxGradCAM::SetPixel3ch(ID3D12Resource* pi) {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -193,6 +196,7 @@ void DxGradCAM::SetPixel3ch(BYTE* pi) {
 	dx->Bigin(com_no);
 	SubresourcesUp(pi, cb.srcWid * 4, mInputColBuffer, mInputColUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -211,6 +215,7 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.srcWid, cb.srcHei, 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	dx->Bigin(com_no);
@@ -221,12 +226,13 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.srcConvMapW, cb.srcConvMapH, 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	dx->Bigin(com_no);
 	mCommandList->SetPipelineState(mPSOCom[4].Get());
 
-	ID3D12DescriptorHeap * descriptorHeaps[] = { mUavHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mUavHeap.Get() };
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -236,6 +242,7 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(cb.srcWid, cb.srcHei, 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 

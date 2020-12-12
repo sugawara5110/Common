@@ -43,6 +43,7 @@ void DxNeuralNetwork::SetDropOut() {
 		SubresourcesUp(dropout[k], NumNode[k], mDropOutFBuffer[k], mDropOutFUpBuffer[k]);
 	}
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -282,6 +283,7 @@ void DxNeuralNetwork::ForwardPropagation() {
 		mCommandList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputSetNumCur);
 		repInd++;
 		dx->End(com_no);
+		dx->RunGpu();
 		dx->WaitFence();
 
 		if (i == Depth - 2) {
@@ -326,6 +328,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][1], 1, inputSetNumCur);
 		repInd++;
 		dx->End(com_no);
+		dx->RunGpu();
 		dx->WaitFence();
 	}
 
@@ -336,6 +339,7 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -360,6 +364,7 @@ void DxNeuralNetwork::BackPropagation() {
 			NumNode[i + 1] / shaderThreadNum[repInd][3], 1);
 		repInd++;
 		dx->End(com_no);
+		dx->RunGpu();
 		dx->WaitFence();
 	}
 	//オプティマイザー
@@ -375,6 +380,7 @@ void DxNeuralNetwork::BackPropagation() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -439,6 +445,7 @@ void DxNeuralNetwork::InputResourse() {
 	dx->Bigin(com_no);
 	SubresourcesUp(input, NumNode[0] * inputSetNum, mNodeBuffer[0], mNodeUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 	firstIn = false;
 }
@@ -566,5 +573,6 @@ void DxNeuralNetwork::LoadData(char* pass) {
 	dx->Bigin(com_no);
 	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }

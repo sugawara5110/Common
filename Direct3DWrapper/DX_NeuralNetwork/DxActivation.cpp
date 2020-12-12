@@ -111,6 +111,7 @@ void DxActivation::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(NumNode / shaderThreadNum[0], 1, inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	dx->Bigin(com_no);
@@ -120,6 +121,7 @@ void DxActivation::ForwardPropagation(UINT inputsetnum) {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 	CopyOutputResourse();
 }
@@ -150,6 +152,7 @@ void DxActivation::BackPropagation() {
 	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch(NumNode / shaderThreadNum[0], 1, inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	dx->Bigin(com_no);
@@ -159,6 +162,7 @@ void DxActivation::BackPropagation() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 	CopyOutErrResourse();
 }

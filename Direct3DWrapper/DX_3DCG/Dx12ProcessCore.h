@@ -34,7 +34,7 @@
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
 
-#define COM_NO 7
+#define COM_NO 32
 using Microsoft::WRL::ComPtr;
 
 //前方宣言
@@ -373,11 +373,15 @@ public:
 	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
 	void setStreamOutputSwapIndex(int index) { dxrBuffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { dxrBuffSwap[1] = index; }
+	void RunGpuNotLock();
+	void RunGpu();
 	void WaitFenceNotLock();
 	void WaitFence();
 	void DrawScreen();
 	void BiginCom(int com_no);
 	void EndCom(int com_no);
+	void RunGpuNotLockCom();
+	void RunGpuCom();
 	void WaitFenceNotLockCom();
 	void WaitFenceCom();
 	void Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up = { 0.0f,0.0f,1.0f });
@@ -604,6 +608,7 @@ struct UpdateDXR {
 	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ
 	bool createAS = false;//ASの最初の構築完了フラグ
 	UINT InstanceMask = 0xFF;
+	float RefractiveIndex = 0.0f;//屈折率
 
 	void InstanceMaskChange(bool DrawOn) {
 		if (DrawOn)InstanceMask = 0xFF;
@@ -650,6 +655,11 @@ struct ParameterDXR {
 		}
 		updateDXR[0].create(numMaterial, numMaxInstance);
 		updateDXR[1].create(numMaterial, numMaxInstance);
+	}
+
+	void resetCreateAS() {
+		updateDXR[0].createAS = false;
+		updateDXR[1].createAS = false;
 	}
 
 	bool alphaTest;
@@ -911,6 +921,9 @@ public:
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
 	void UpdateDxrDivideBuffer();
+	void setRefractiveIndex(float index) {
+		dxrPara.updateDXR[dx->dxrBuffSwap[0]].RefractiveIndex = index;
+	}
 };
 
 //*********************************PolygonData2Dクラス*************************************//

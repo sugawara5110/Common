@@ -269,7 +269,7 @@ Dx12Process::~Dx12Process() {
 	ARR_DELETE(texture);
 }
 
-void Dx12Process::WaitFenceNotLock() {
+void Dx12Process::RunGpuNotLock() {
 	//クローズ後リストに加える
 	static ID3D12CommandList* cmdsLists[COM_NO] = {};
 	UINT cnt = 0;
@@ -280,7 +280,16 @@ void Dx12Process::WaitFenceNotLock() {
 	}
 
 	graphicsQueue.setCommandList(cnt, cmdsLists);
+}
+
+void Dx12Process::WaitFenceNotLock() {
 	graphicsQueue.waitFence();
+}
+
+void Dx12Process::RunGpu() {
+	mtxGraphicsQueue.lock();
+	RunGpuNotLock();
+	mtxGraphicsQueue.unlock();
 }
 
 void Dx12Process::WaitFence() {
@@ -297,7 +306,7 @@ void Dx12Process::EndCom(int com_no) {
 	dx_subCom[com_no].End();
 }
 
-void Dx12Process::WaitFenceNotLockCom() {
+void Dx12Process::RunGpuNotLockCom() {
 	static ID3D12CommandList* cmdsLists[COM_NO] = {};
 	UINT cnt = 0;
 	for (int i = 0; i < COM_NO; i++) {
@@ -307,7 +316,16 @@ void Dx12Process::WaitFenceNotLockCom() {
 	}
 
 	computeQueue.setCommandList(cnt, cmdsLists);
+}
+
+void Dx12Process::WaitFenceNotLockCom() {
 	computeQueue.waitFence();
+}
+
+void Dx12Process::RunGpuCom() {
+	mtxComputeQueue.lock();
+	RunGpuNotLockCom();
+	mtxComputeQueue.unlock();
 }
 
 void Dx12Process::WaitFenceCom() {
@@ -946,6 +964,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	StreamView::createResetBuffer(0);
 
 	dx_sub[0].End();
+	RunGpu();
 	WaitFence();
 
 	//ビューポート

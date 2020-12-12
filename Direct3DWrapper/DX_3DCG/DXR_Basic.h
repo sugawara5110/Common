@@ -46,6 +46,7 @@ struct DxrMaterialCB {
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess = 4.0f;//スペキュラ強さ
 	float alphaTest = 0.0f;//1.0f:on, 0.0f:off 
+	float RefractiveIndex = 0.0f;//屈折率
 	UINT materialNo = 0;
 };
 
@@ -54,7 +55,8 @@ enum MaterialType {
 	NONREFLECTION,
 	EMISSIVE,
 	DIRECTIONLIGHT_METALLIC,
-	DIRECTIONLIGHT_NONREFLECTION
+	DIRECTIONLIGHT_NONREFLECTION,
+	TRANSLUCENCE
 };
 
 struct ASobj {

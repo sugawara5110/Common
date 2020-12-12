@@ -128,6 +128,13 @@ public:
 		for (int i = 0; i < numMesh; i++)
 			mObj[i].UpdateDxrDivideBuffer();
 	}
+	void setRefractiveIndex(int meshIndex, float RefractiveIndex) {
+		mObj[meshIndex].setRefractiveIndex(RefractiveIndex);
+	}
+	void setAllRefractiveIndex(float Index) {
+		for (int i = 0; i < numMesh; i++)
+			mObj[i].setRefractiveIndex(Index);
+	}
 };
 
 #endif

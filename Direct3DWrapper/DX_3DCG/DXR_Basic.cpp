@@ -69,6 +69,11 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 						cbObj[0].matCb[numIns].materialNo = 4;
 						cbObj[1].matCb[numIns].materialNo = 4;
 						break;
+
+					case TRANSLUCENCE:
+						cbObj[0].matCb[numIns].materialNo = 5;
+						cbObj[1].matCb[numIns].materialNo = 5;
+						break;
 					}
 					numIns++;
 				}
@@ -932,6 +937,7 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 				mcb.vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
 				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 				mcb.shininess = ud.shininess;
+				mcb.RefractiveIndex = ud.RefractiveIndex;
 				memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
 				if (PD[i]->alphaTest) {
 					mcb.alphaTest = 1.0f;

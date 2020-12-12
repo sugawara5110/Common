@@ -240,7 +240,7 @@ char* ShaderCommonDXR =
 "    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor;\n"
 
-"    if(mNo == 0 || mNo == 3) {\n"//metallicのみ
+"    if(mNo == 0 || mNo == 3) {\n"//METALLIC
 
 "       RayPayload payload;\n"
 "       RecursionCnt++;\n"
@@ -276,6 +276,42 @@ char* ShaderCommonDXR =
 "    return ret;\n"
 "}\n"
 
+////////////////////////////////////////半透明//////////////////////////////////////////
+"float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor, in float3 normal)\n"
+"{\n"
+"    uint materialID = getMaterialID();\n"
+"    uint mNo = material[materialID].materialNo;\n"
+"    float3 ret = difTexColor.xyz;\n"
+
+"    if(mNo == 5) {\n"
+
+"       float Alpha = difTexColor.w;\n"
+"       RayPayload payload;\n"
+"       RecursionCnt++;\n"
+"       payload.RecursionCnt = RecursionCnt;\n"
+"       RayDesc ray; \n"
+"       ray.TMin = 0.01;\n"
+"       ray.TMax = 100000;\n"
+//視線ベクトル 
+"       float3 eyeVec = WorldRayDirection();\n"
+"       ray.Direction = normalize(eyeVec + -normal * material[materialID].RefractiveIndex);\n"
+
+"       if (RecursionCnt <= maxRecursion) {\n"
+"           bool loop = true;\n"
+"           payload.hitPosition = hitPosition;\n"
+"           while(loop){\n"
+"              ray.Origin = payload.hitPosition;\n"
+"              TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                       0xFF, 0, 0, 0, ray, payload);\n"
+"              loop = payload.reTry; \n"
+"           }\n"
+"       }\n"
+//アルファ値の比率で元の色と光線衝突先の色を配合
+"       ret = payload.color * (1.0f - Alpha) + difTexColor * Alpha;\n"
+"    }\n"
+"    return ret;\n"
+"}\n"
+
 ////////////////////////////////////アルファテスト//////////////////////////////////////
 "bool AlphaTestSw(in float Alpha)\n"
 "{\n"
@@ -289,9 +325,10 @@ char* ShaderCommonDXR =
 "float3 AlphaTest(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
+"    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor.xyz;\n"
 
-"    if(material[materialID].alphaTest == 1.0f) {\n"
+"    if(material[materialID].alphaTest == 1.0f && mNo != 5) {\n"
 
 "       float Alpha = difTexColor.w;\n"
 "       RayPayload payload;\n"

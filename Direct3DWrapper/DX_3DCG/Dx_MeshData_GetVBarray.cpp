@@ -293,8 +293,9 @@ bool MeshData::SetVertex() {
 		ambient->y += addAmbient;
 		ambient->z += addAmbient;
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
-		sg.vDiffuse = *specular;//スペキュラーをシェーダーに渡す
+		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
+		sg.uvSwitch.x = 0.0f;
 		mObj.mObjectCB1->CopyData(i, sg);
 		mObj.setColorDXR(i, sg);
 	}

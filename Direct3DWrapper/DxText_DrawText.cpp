@@ -61,6 +61,7 @@ DxText::DxText() {
 		value[i].SetText(0);
 	}
 	dx->End(0);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 

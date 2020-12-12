@@ -99,6 +99,7 @@ void DxConvolution::SetDropOut() {
 	}
 	SubresourcesUp(dropout, Numdrop, mDropOutFBuffer, mDropOutFUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -420,6 +421,7 @@ void DxConvolution::ForwardPropagation() {
 	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	//inputŠg‘å
@@ -429,6 +431,7 @@ void DxConvolution::ForwardPropagation() {
 	SetGPUVirtualAddressExpIn();
 	mCommandList->Dispatch(Width / shaderThreadNum[0], Height * FilNum / shaderThreadNum[1], inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	setshaderStep(1);
@@ -437,6 +440,7 @@ void DxConvolution::ForwardPropagation() {
 	SetGPUVirtualAddress();
 	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * FilNum / shaderThreadNum[3], inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	ac->SetInputResource(mOutputBuffer.Get());
@@ -450,6 +454,7 @@ void DxConvolution::ForwardPropagation() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -467,6 +472,7 @@ void DxConvolution::BackPropagation0() {
 	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
 	mCommandList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	//inErrŠg‘å
@@ -476,6 +482,7 @@ void DxConvolution::BackPropagation0() {
 	SetGPUVirtualAddressExpErr();
 	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	setshaderStep(3);
@@ -484,6 +491,7 @@ void DxConvolution::BackPropagation0() {
 	SetGPUVirtualAddress();
 	mCommandList->Dispatch(Width / shaderThreadNum[6], Height * FilNum / shaderThreadNum[7], inputSetNumCur);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	dx->Bigin(com_no);
@@ -493,6 +501,7 @@ void DxConvolution::BackPropagation0() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -505,6 +514,7 @@ void DxConvolution::BackPropagationNoWeightUpdate() {
 	SetGPUVirtualAddress();
 	mCommandList->Dispatch(elNumWid / shaderThreadNum[8], elNumWid * FilNum / shaderThreadNum[9], 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -517,6 +527,7 @@ void DxConvolution::BackPropagation() {
 	SetGPUVirtualAddress();
 	mCommandList->Dispatch(elNumWid / shaderThreadNum[8], elNumWid * FilNum / shaderThreadNum[9], 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	optFil->SetInputGradientBuffer(mGradientBuffer.Get());
@@ -530,6 +541,7 @@ void DxConvolution::BackPropagation() {
 	SetGPUVirtualAddress();
 	mCommandList->Dispatch(FilNum / shaderThreadNum[10], 1, 1);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 
 	optBias->SetInputGradientBuffer(mGradBiasBuffer.Get());
@@ -550,6 +562,7 @@ void DxConvolution::BackPropagation() {
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
@@ -667,6 +680,7 @@ void DxConvolution::InputResourse() {
 	dx->Bigin(com_no);
 	SubresourcesUp(input, input_outerrOneNum * FilNum * inputSetNum, mInputBuffer, mInputUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 	firstIn = false;
 }
@@ -676,6 +690,7 @@ void DxConvolution::InputErrResourse() {
 	dx->Bigin(com_no);
 	SubresourcesUp(inputError, output_inerrOneNum * FilNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 	firstInErr = false;
 }
@@ -790,6 +805,7 @@ void DxConvolution::LoadData(char* pass) {
 	SubresourcesUp(fil, ElNum * FilNum, mFilterBuffer, mFilterUpBuffer);
 	SubresourcesUp(bias, FilNum, mBiasBuffer, mBiasUpBuffer);
 	dx->End(com_no);
+	dx->RunGpu();
 	dx->WaitFence();
 }
 
