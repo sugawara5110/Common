@@ -7,12 +7,13 @@
 #include "Win.h"
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	Control *co = Control::GetInstance();
-	co->Input(msg, wParam);
+	Control* co = Control::GetInstance();
+	co->Input(msg, wParam, lParam);
 	return DefWindowProc(hWnd, msg, wParam, lParam);//アプリケーションが処理しないウィンドウメッセージに対しての既定の処理実行
 }
 
-int Createwindow(HWND *hWnd, HINSTANCE hInstance, int nCmdShow, UINT Width, UINT Height, TCHAR *clsname) {
+int Createwindow(HWND* hWnd, HINSTANCE hInstance, int nCmdShow,
+	UINT Width, UINT Height, TCHAR* clsname, UINT Timer) {
 
 	//ウインドウクラスの初期化
 	WNDCLASSEX wcex;
@@ -23,7 +24,7 @@ int Createwindow(HWND *hWnd, HINSTANCE hInstance, int nCmdShow, UINT Width, UINT
 	wcex.cbWndExtra = 0;      //通常は0					
 	wcex.hInstance = hInstance; //インスタンスへのハンドル				
 	wcex.hIcon = NULL;         //アイコン (無し)				
-	wcex.hCursor = NULL;      //カーソルの形				
+	wcex.hCursor = NULL;      //カーソルの形	
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); //背景				
 	wcex.lpszMenuName = NULL;               //メニュー無し				
 	wcex.lpszClassName = clsname;          //クラス名               
@@ -51,10 +52,12 @@ int Createwindow(HWND *hWnd, HINSTANCE hInstance, int nCmdShow, UINT Width, UINT
 	// WM_PAINTが呼ばれないようにする
 	ValidateRect(*hWnd, 0);
 
+	SetTimer(*hWnd, 1, Timer, NULL);//HWND, timerID, time(ミリ秒), callBack関数
+
 	return 0;
 }
 
-bool DispatchMSG(MSG *msg) {
+bool DispatchMSG(MSG* msg) {
 	if (PeekMessage(msg, NULL, 0, 0, PM_REMOVE)) {
 		if ((*msg).message == WM_QUIT) {  // PostQuitMessage()が呼ばれた(×押された)
 			return FALSE;	//アプリ終了

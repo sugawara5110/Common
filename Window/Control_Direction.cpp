@@ -15,106 +15,70 @@ Control *Control::GetInstance() {
 
 Control::Control() {
 
-	keydownhistory = NOTPRESS;
-	directionkey = NOTPRESS;
-	directionkey2[2] = { NOTPRESS };
-	keyOffCount = 0;
 }
 
 void Control::DeleteInstance() {
 	delete co;
 }
 
-void Control::Input(UINT msg, WPARAM wParam) {
+void Control::Input(UINT msg, WPARAM wParam, LPARAM lParam) {
+
+	DxInput* di = DxInput::GetInstance();
+
 	switch (msg) {
 	case WM_CLOSE:			//×ボタン
 		PostQuitMessage(0);//アプリケーション終了処理,メッセージキューにWM_QUITをポスト
 		break;
-	case WM_KEYDOWN:
-		switch ((CHAR)wParam) {
-		case VK_ESCAPE:
-			PostQuitMessage(0);
-			break;
-		case VK_LEFT:
-			directionkey = LEFT;
-			break;
-		case VK_RIGHT:
-			directionkey = RIGHT;
-			break;
-		case VK_UP:
-			directionkey = UP;
-			break;
-		case VK_DOWN:
-			directionkey = DOWN;
-			break;
-		case VK_CONTROL:
-			directionkey = ENTER;
-			break;
-		case VK_DELETE:
-			directionkey = CANCEL;
-			break;
-		default:
-			directionkey = NOTPRESS;
-			break;
-		}
+	case WM_MOUSEMOVE:
+		di->SetCursorPos(LOWORD(lParam), HIWORD(lParam));
 		break;
-	default:
-		directionkey = NOTPRESS;
+	case WM_TIMER:
+		di->KeyboardUpdate();
+		di->MouseUpdate();
 		break;
 	}
 }
 
 Directionkey Control::Direction() {
 
-	directionkey2[0] = directionkey;
-	switch (directionkey2[0]) {
+	DxInput* di = DxInput::GetInstance();
+	switch (di->checkKeyActionNo()) {
 
-	case LEFT:
-		if (keydownhistory == LEFT)directionkey2[0] = TWOPRESS;
-		else keydownhistory = LEFT;
-		break;
-	case RIGHT:
-		if (keydownhistory == RIGHT)directionkey2[0] = TWOPRESS;
-		else keydownhistory = RIGHT;
-		break;
-	case UP:
-		if (keydownhistory == UP)directionkey2[0] = TWOPRESS;
-		else keydownhistory = UP;
-		break;
-	case DOWN:
-		if (keydownhistory == DOWN)directionkey2[0] = TWOPRESS;
-		else keydownhistory = DOWN;
-		break;
-	case ENTER:
-		if (keydownhistory == ENTER)directionkey2[0] = TWOPRESS;
-		else keydownhistory = ENTER;
-		break;
-	case CANCEL:
-		if (keydownhistory == CANCEL)directionkey2[0] = TWOPRESS;
-		else keydownhistory = CANCEL;
-		break;
-	case NOTPRESS:
-		keydownhistory = NOTPRESS;
+	case DIK_LEFT:
+		return LEFT;
+	case DIK_RIGHT:
+		return RIGHT;
+	case DIK_UP:
+		return UP;
+	case DIK_DOWN:
+		return DOWN;
+	case DIK_RCONTROL:
+		return ENTER;
+	case DIK_DELETE:
+		return CANCEL;
 		break;
 	}
-	return directionkey2[0];
+	return NOTPRESS;
 }
 
 Directionkey Control::Direction(bool f) {
 
-	//DxText::GetInstance()->UpDateValue(directionkey2[1], 400, 400, 30.0f, 5, { 0.3f, 1.0f, 0.3f, 1.0f });
+	DxInput* di = DxInput::GetInstance();
+	switch (di->checkKeyDownNo()) {
 
-	Directionkey dir = directionkey;
-
-	if (dir == NOTPRESS) { keyOffCount++; }
-	else {
-		directionkey2[1] = dir; keyOffCount = 0;
+	case DIK_LEFT:
+		return LEFT;
+	case DIK_RIGHT:
+		return RIGHT;
+	case DIK_UP:
+		return UP;
+	case DIK_DOWN:
+		return DOWN;
+	case DIK_RCONTROL:
+		return ENTER;
+	case DIK_DELETE:
+		return CANCEL;
+		break;
 	}
-
-	if (keyOffCount >= T_float::GetUps() / 10) {
-		directionkey2[1] = NOTPRESS;
-		keyOffCount = 0;
-	}
-
-	return directionkey2[1];
+	return NOTPRESS;
 }

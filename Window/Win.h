@@ -9,6 +9,7 @@
 
 #include <Windows.h>
 #include "Control.h"
+#pragma comment(lib,"winmm.lib")
 
 //-------------------------------------------------------------
 // メッセージ処理用コールバック関数
@@ -22,7 +23,8 @@
 //-------------------------------------------------------------
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-int Createwindow(HWND *hWnd, HINSTANCE hInstance, int nCmdShow, UINT Width, UINT Height, TCHAR *clsname);
+int Createwindow(HWND* hWnd, HINSTANCE hInstance, int nCmdShow,
+	UINT Width, UINT Height, TCHAR* clsname, UINT Timer);
 
 bool DispatchMSG(MSG *msg);
 
