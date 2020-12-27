@@ -503,7 +503,7 @@ void SkinMesh::GetShaderByteCode(bool disp) {
 	}
 }
 
-bool SkinMesh::CreateFromFBX(bool disp) {
+bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;
 	const int numCbv = 3;
@@ -515,7 +515,7 @@ bool SkinMesh::CreateFromFBX(bool disp) {
 		o.createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
 		int numUav = 0;
 		Dx12Process* dx = o.dx;
-		o.createParameterDXR(alpha);
+		o.createParameterDXR(alpha, divideBufferMagnification);
 		if (!sk[i].createParameterDXR())return false;
 		if (!o.createPSO(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 		if (!o.createPSO_DXR(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;

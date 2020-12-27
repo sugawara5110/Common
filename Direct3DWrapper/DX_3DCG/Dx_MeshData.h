@@ -50,7 +50,7 @@ public:
 	void SetState(bool alpha, bool blend, bool disp, float diffuse = 0.0f, float specu = 0.0f, float ambi = 0.0f);
 	bool GetBuffer(char* FileName, int numMaxInstance);
 	bool SetVertex();
-	bool CreateMesh();
+	bool CreateMesh(float divideBufferMagnification = 1.0f);
 	ID3D12PipelineState* GetPipelineState(int index);
 
 	void Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size);

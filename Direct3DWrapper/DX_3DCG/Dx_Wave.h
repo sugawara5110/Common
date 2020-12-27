@@ -29,7 +29,7 @@ protected:
 
 	void GetShaderByteCode();
 	bool ComCreate();
-	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha);
+	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divideBufferMagnification = 1.0f);
 	void Compute(int com_no);
 
 public:

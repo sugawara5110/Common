@@ -121,7 +121,7 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 	sg.vAmbient.z = amB;
 }
 
-bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
+bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divideBufferMagnification) {
 	mObj.dpara.material[0].diftex_no = texNo;
 	mObj.dpara.material[0].nortex_no = nortNo;
 	mObj.dpara.material[0].spetex_no = mObj.dx->GetTexNumber("dummyDifSpe.");
@@ -134,7 +134,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha) {
 	mObj.setDivideArr(divArr, numDiv);
 	mObj.createDefaultBuffer(mObj.ver, mObj.index, true);
 	int numUav = 0;
-	mObj.createParameterDXR(alpha);
+	mObj.createParameterDXR(alpha, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);
 	if (!mObj.createPSO(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
 	if (!mObj.createPSO_DXR(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
@@ -210,7 +210,6 @@ void Wave::Draw(int com_no) {
 }
 
 void Wave::StreamOutput(int com_no) {
-	if (!mObj.firstCbSet[mObj.dx->cBuffSwap[1]] | !mObj.DrawOn)return;
 	Dx12Process* dx = mObj.dx;
 	Compute(com_no);
 	mObj.StreamOutput(com_no);

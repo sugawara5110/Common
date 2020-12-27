@@ -281,7 +281,7 @@ void PolygonData::createBufferDXR(int numMaterial, int numMaxInstance) {
 	dxrPara.create(numMaterial, numMaxInstance);
 }
 
-void PolygonData::createParameterDXR(bool alpha) {
+void PolygonData::createParameterDXR(bool alpha, float divideBufferMagnification) {
 	dxrPara.alphaTest = alpha;
 	int NumMaterial = dxrPara.NumMaterial;
 
@@ -293,7 +293,7 @@ void PolygonData::createParameterDXR(bool alpha) {
 	if (hs) {
 		float maxDiv = 0.0f;
 		const float minDiv = 2.0f;
-		const float minDivPolygon = 3;
+		float minDivPolygon = 6 * divideBufferMagnification;
 		for (int i = 0; i < numDiv; i++) {
 			if (divArr[i].divide >= minDiv && (int)divArr[i].divide % 2 == 1)divArr[i].divide += 1.0f;//ãÙêîÇ…Ç∑ÇÈ
 			if (divArr[i].divide < minDiv)divArr[i].divide = minDiv;
@@ -343,7 +343,9 @@ void PolygonData::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 	dxrPara.ambient[materialIndex].as(sg.vAmbient.x, sg.vAmbient.y, sg.vAmbient.z, sg.vAmbient.w);
 }
 
-bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha) {
+bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
+	float divideBufferMagnification) {
+
 	dpara.material[0].diftex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
 	dpara.material[0].spetex_no = spetNo;
@@ -351,7 +353,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	mObjectCB1->CopyData(0, sg);
 
 	createDefaultBuffer(ver, index, true);
-	createParameterDXR(alpha);
+	createParameterDXR(alpha, divideBufferMagnification);
 	setColorDXR(0, sg);
 
 	const int numSrvTex = 3;

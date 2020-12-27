@@ -418,7 +418,7 @@ bool MeshData::SetVertex() {
 	return true;
 }
 
-bool MeshData::CreateMesh() {
+bool MeshData::CreateMesh(float divideBufferMagnification) {
 	Dx12Process* dx = mObj.dx;
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;
@@ -426,7 +426,7 @@ bool MeshData::CreateMesh() {
 	mObj.setDivideArr(divArr, numDiv);
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
 	int numUav = 0;
-	mObj.createParameterDXR(alpha);
+	mObj.createParameterDXR(alpha, divideBufferMagnification);
 
 	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
