@@ -33,6 +33,8 @@ private:
 
 	long posX = 0;//マウス座標
 	long posY = 0;
+	float correctionX = 1.0f;
+	float correctionY = 1.0f;
 
 	bool LDown = false;//Update時点のボタン状態
 	bool RDown = false;
@@ -59,8 +61,10 @@ public:
 	bool checkKeyAction(int key) { return KeyAction[key]; }
 
 	void MouseUpdate();
-	long PosX() { return posX; }
-	long PosY() { return posY; }
+	void setCorrectionX(float x) { correctionX = x; }
+	void setCorrectionY(float y) { correctionY = y; }
+	long PosX() { return (long)(posX * correctionX); }
+	long PosY() { return (long)(posY * correctionY); }
 
 	bool isLAction() { return LAction; }
 	bool isRAction() { return RAction; }
