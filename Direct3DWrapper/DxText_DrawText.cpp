@@ -11,6 +11,77 @@
 #include <stdarg.h>
 #include <locale.h>
 
+void TextObj::SetTextParameter(int width, int height, int textCount,
+	TEXTMETRIC** TM, GLYPHMETRICS** GM, BYTE** ptr, DWORD** allsize) {
+
+	Twidth = width;
+	Theight = height;
+	Tcount = textCount;
+	Tm = new TEXTMETRIC[Tcount]();
+	memcpy(Tm, *TM, sizeof(TEXTMETRIC) * Tcount);
+	Gm = new GLYPHMETRICS[Tcount]();
+	memcpy(Gm, *GM, sizeof(GLYPHMETRICS) * Tcount);
+	Allsize = new DWORD[Tcount]();
+	memcpy(Allsize, *allsize, sizeof(DWORD) * Tcount);
+	Ptr = new BYTE[Allsize[Tcount - 1]]();
+	memcpy(Ptr, *ptr, sizeof(BYTE) * Allsize[Tcount - 1]);
+	CreateTextOn = true;
+}
+
+void TextObj::SetText(int com) {
+
+	if (!CreateTextOn)return;
+
+	texture[0].Reset();
+	textureUp[0].Reset();
+
+	UCHAR* pBits = new UCHAR[Twidth * 4 * Theight];
+	memset(pBits, 0, Twidth * 4 * Theight);//0埋め
+	UINT temp = (UINT)(Twidth * 4 / Tcount / 4);
+	UINT s_rowPitch = temp * 4;
+	for (int cnt = 0; cnt < Tcount; cnt++) {
+
+		UINT offset1 = s_rowPitch * cnt;//4の倍数になっている事
+		// フォント情報の書き込み
+		// iOfs_x, iOfs_y : 書き出し位置(左上)
+		// iBmp_w, iBmp_h : フォントビットマップの幅高
+		// Level : α値の段階 (GGO_GRAY4_BITMAPなので17段階)
+		int iOfs_x = Gm[cnt].gmptGlyphOrigin.x;
+		int iOfs_y = Tm[cnt].tmAscent - Gm[cnt].gmptGlyphOrigin.y;
+		int iBmp_w = Gm[cnt].gmBlackBoxX + (4 - (Gm[cnt].gmBlackBoxX % 4)) % 4;
+		int iBmp_h = Gm[cnt].gmBlackBoxY;
+		int Level = 17;
+		int x, y;
+		DWORD Alpha, Color;
+
+		for (y = iOfs_y; y < iOfs_y + iBmp_h; y++) {
+			for (x = iOfs_x; x < iOfs_x + iBmp_w; x++) {
+				int offset2;
+				if (cnt == 0)offset2 = 0; else {
+					offset2 = Allsize[cnt - 1];
+				}
+				Alpha = (255 * Ptr[(x - iOfs_x + iBmp_w * (y - iOfs_y)) + offset2]) / (Level - 1);
+				Color = 0x00ffffff | (Alpha << 24);
+				memcpy(&pBits[Twidth * 4 * y + 4 * x + offset1], &Color, sizeof(DWORD));
+			}
+		}
+	}
+
+	dx->createTexture(com, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
+		textureUp[0].ReleaseAndGetAddressOf(), texture[0].ReleaseAndGetAddressOf(),
+		Twidth, Twidth * 4, Theight);
+
+	CreateSrvTexture(mDescHeap.Get(), 0, texture[0].GetAddressOf(), 1);
+
+	ARR_DELETE(pBits);
+	ARR_DELETE(Tm);
+	ARR_DELETE(Gm);
+	ARR_DELETE(Ptr);
+	ARR_DELETE(Allsize);
+
+	CreateTextOn = false;
+}
+
 DxText *DxText::textobj = nullptr;
 
 void DxText::InstanceCreate() {
@@ -69,7 +140,7 @@ DxText::~DxText(){
 
 }
 
-int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
+int DxText::CreateText(TextObj* p2, TCHAR* c, int texNo, float fontsize) {
 
 	MAT2 Mat = { { 0, 1 }, { 0, 0 }, { 0, 0 }, { 0, 1 } };
 	int fsize = 100;
@@ -144,7 +215,7 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 			code = c[0];
 #endif
 		DWORD size;
-		BYTE *p;
+		BYTE* p;
 		if (cnt == 0) {
 			size = allsize[0];
 			p = &ptr[0];
@@ -156,21 +227,17 @@ int DxText::CreateText(PolygonData2D *p2, TCHAR *c, int texNo, float fontsize) {
 		GetGlyphOutline(hdc, code, GGO_GRAY4_BITMAP, &GM[cnt], size, p, &Mat);
 	}
 
-	UINT w = 0;
+	int w = 0;
 	for (int cnt = 0; cnt < count; cnt++) {
 		w += GM[cnt].gmCellIncX;
 	}
 
-	p2[texNo].SetTextParameter((int)(w * 1.3f), TM[0].tmHeight, count, &TM, &GM, &ptr, &allsize);//1.3は表示範囲幅補正
+	p2[texNo].SetTextParameter(w, TM[0].tmHeight, count, &TM, &GM, &ptr, &allsize);
 
-	delete TM;
-	TM = nullptr;
-	delete GM;
-	GM = nullptr;
-	delete allsize;
-	allsize = nullptr;
-	delete[] ptr;
-	ptr = nullptr;
+	ARR_DELETE(TM);
+	ARR_DELETE(GM);
+	ARR_DELETE(allsize);
+	ARR_DELETE(ptr);
 
 	// デバイスコンテキストとフォントハンドルの開放
 	SelectObject(hdc, oldFont);
@@ -407,6 +474,19 @@ void DxText::UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, floa
 }
 
 void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
+	UpDateText(true, c, x, y, fontsize, cl);
+}
+
+void DxText::UpDateText(bool ChangeImmediately, char* c, float x, float y, float fontsize, VECTOR4 cl) {
+	TCHAR str[STR_MAX_LENGTH] = {};
+	int len = (int)strlen(c);
+	if (len > STR_MAX_LENGTH - 1)len = STR_MAX_LENGTH - 1;
+	mbstowcs(str, c, sizeof(TCHAR) * len);
+	str[len] = '\0';
+	UpDateText(ChangeImmediately, str, x, y, fontsize, cl);
+}
+
+void DxText::UpDateText(char* c, float x, float y, float fontsize, VECTOR4 cl) {
 	UpDateText(true, c, x, y, fontsize, cl);
 }
 

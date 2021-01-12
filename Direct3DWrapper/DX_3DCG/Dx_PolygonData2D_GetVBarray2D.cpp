@@ -75,117 +75,6 @@ void PolygonData2D::SetConstBf(CONSTANT_BUFFER2D *cb, float x, float y, float z,
 	ins_no++;
 }
 
-void PolygonData2D::SetTextParameter(int width, int height, int textCount,
-	TEXTMETRIC **TM, GLYPHMETRICS **GM, BYTE **ptr, DWORD **allsize) {
-
-	Twidth = width;
-	Theight = height;
-	Tcount = textCount;
-	Tm = new TEXTMETRIC[Tcount]();
-	memcpy(Tm, *TM, sizeof(TEXTMETRIC)*Tcount);
-	Gm = new GLYPHMETRICS[Tcount]();
-	memcpy(Gm, *GM, sizeof(GLYPHMETRICS)*Tcount);
-	Allsize = new DWORD[Tcount]();
-	memcpy(Allsize, *allsize, sizeof(DWORD)*Tcount);
-	Ptr = new BYTE[Allsize[Tcount - 1]]();
-	memcpy(Ptr, *ptr, sizeof(BYTE)*Allsize[Tcount - 1]);
-	CreateTextOn = true;
-}
-
-void PolygonData2D::SetText(int com) {
-
-	if (!CreateTextOn)return;
-
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-
-	texture[0].Reset();
-	textureUp[0].Reset();
-
-	dx->createDefaultResourceTEXTURE2D(texture[0].GetAddressOf(), Twidth, Theight,
-		DXGI_FORMAT_B8G8R8A8_UNORM, D3D12_RESOURCE_STATE_COMMON);
-
-	UINT64 uploadBufferSize = dx->getRequiredIntermediateSize(texture[0].Get());
-	dx->createUploadResource(textureUp[0].GetAddressOf(), uploadBufferSize);
-
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT  footprint;
-	UINT64  total_bytes = 0;
-	D3D12_RESOURCE_DESC texDesc = texture[0].Get()->GetDesc();
-	dx->md3dDevice->GetCopyableFootprints(&texDesc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
-
-	D3D12_TEXTURE_COPY_LOCATION dest, src;
-
-	memset(&dest, 0, sizeof(dest));
-	dest.pResource = texture[0].Get();
-	dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-	dest.SubresourceIndex = 0;
-
-	memset(&src, 0, sizeof(src));
-	src.pResource = textureUp[0].Get();
-	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-	src.PlacedFootprint = footprint;
-
-	dx->dx_sub[com].ResourceBarrier(texture[0].Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	D3D12_SUBRESOURCE_DATA texResource;
-	textureUp[0].Get()->Map(0, nullptr, reinterpret_cast<void**>(&texResource));
-	BYTE* pBits = (BYTE*)texResource.pData;
-	texResource.RowPitch = footprint.Footprint.RowPitch;
-	memset(pBits, 0, texResource.RowPitch * Theight);//0埋め
-	for (int cnt = 0; cnt < Tcount; cnt++) {
-
-		UINT temp = (UINT)(texResource.RowPitch / Tcount / 4);
-		UINT s_rowPitch = temp * 4;
-		UINT offset1 = s_rowPitch * cnt;//4の倍数になっている事
-
-		// フォント情報の書き込み
-		// iOfs_x, iOfs_y : 書き出し位置(左上)
-		// iBmp_w, iBmp_h : フォントビットマップの幅高
-		// Level : α値の段階 (GGO_GRAY4_BITMAPなので17段階)
-		int iOfs_x = Gm[cnt].gmptGlyphOrigin.x;
-		int iOfs_y = Tm[cnt].tmAscent - Gm[cnt].gmptGlyphOrigin.y;
-		int iBmp_w = Gm[cnt].gmBlackBoxX + (4 - (Gm[cnt].gmBlackBoxX % 4)) % 4;
-		int iBmp_h = Gm[cnt].gmBlackBoxY;
-		int Level = 17;
-		int x, y;
-		DWORD Alpha, Color;
-
-		for (y = iOfs_y; y < iOfs_y + iBmp_h; y++) {
-			for (x = iOfs_x; x < iOfs_x + iBmp_w; x++) {
-				int offset2;
-				if (cnt == 0)offset2 = 0; else {
-					offset2 = Allsize[cnt - 1];
-				}
-				Alpha = (255 * Ptr[(x - iOfs_x + iBmp_w * (y - iOfs_y)) + offset2]) / (Level - 1);
-				Color = 0x00ffffff | (Alpha << 24);
-				memcpy((BYTE*)pBits + texResource.RowPitch * y + 4 * x + offset1, &Color, sizeof(DWORD));
-			}
-		}
-	}
-	textureUp[0].Get()->Unmap(0, nullptr);
-
-	mCList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
-
-	dx->dx_sub[com].ResourceBarrier(texture[0].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	srvDesc.Format = texture[0].Get()->GetDesc().Format;
-	srvDesc.Texture2D.MipLevels = texture[0].Get()->GetDesc().MipLevels;
-	dx->md3dDevice->CreateShaderResourceView(texture[0].Get(), &srvDesc, hDescriptor);
-
-	ARR_DELETE(Tm);
-	ARR_DELETE(Gm);
-	ARR_DELETE(Ptr);
-	ARR_DELETE(Allsize);
-
-	CreateTextOn = false;
-}
-
 ID3D12PipelineState *PolygonData2D::GetPipelineState() {
 	return mPSO.Get();
 }
@@ -262,7 +151,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 
 	createTextureResource(0, 1, &te);
 	mDescHeap = dx->CreateDescHeap(numSrv + numCbv);
-	CreateSrvTexture(mDescHeap.Get(), 0, texture->GetAddressOf(), 1);
+	CreateSrvTexture(mDescHeap.Get(), 0, texture[0].GetAddressOf(), 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
 	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);

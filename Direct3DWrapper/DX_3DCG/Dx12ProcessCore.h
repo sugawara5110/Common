@@ -60,6 +60,7 @@ class DxActivation;
 class DxOptimizer;
 class DXR_Basic;
 class SkinnedCom;
+class TextObj;
 struct StreamView;
 void ErrorMessage(char* E_mes);
 //前方宣言
@@ -166,6 +167,7 @@ private:
 	friend DXR_Basic;
 	friend SkinnedCom;
 	friend StreamView;
+	friend TextObj;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<ID3D12Device5> md3dDevice;
@@ -951,20 +953,10 @@ protected:
 	//頂点バッファOBJ
 	std::unique_ptr<VertexView> Vview = nullptr;
 	std::unique_ptr<IndexView> Iview = nullptr;
-
 	ComPtr<ID3D12PipelineState> mPSO = nullptr;
 
-	//テクスチャ保持,DxText classでしか使わない
+	//テクスチャ保持
 	bool tex_on = false;
-	//SetTextParameter
-	int Twidth;
-	int Theight;
-	int Tcount;
-	TEXTMETRIC* Tm;
-	GLYPHMETRICS* Gm;
-	BYTE* Ptr;
-	DWORD* Allsize;
-	bool CreateTextOn = false;
 
 	int  ins_no = 0;
 	int  insNum[2] = {};//Drawで読み込み用
@@ -975,9 +967,8 @@ protected:
 	float magY = 1.0f;
 
 	void GetShaderByteCode();
-	void SetConstBf(CONSTANT_BUFFER2D* cb2, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
-	void SetTextParameter(int width, int height, int textCount, TEXTMETRIC** TM, GLYPHMETRICS** GM, BYTE** ptr, DWORD** allsize);
-	void SetText(int com_no);//DxText classでしか使わない
+	void SetConstBf(CONSTANT_BUFFER2D* cb2, float x, float y, float z,
+		float r, float g, float b, float a, float sizeX, float sizeY);
 	void CbSwap();
 
 public:

@@ -12,12 +12,33 @@
 #define STR_MAX_LENGTH 125
 #define VAL_PCS 10
 
+class DxText;
+
+class TextObj :public PolygonData2D {
+
+private:
+	friend DxText;
+	int Twidth = 0;
+	int Theight = 0;
+	int Tcount = 0;
+	TEXTMETRIC* Tm = nullptr;
+	GLYPHMETRICS* Gm = nullptr;
+	BYTE* Ptr = nullptr;
+	DWORD* Allsize = nullptr;
+	bool CreateTextOn = false;
+
+	void SetTextParameter(int width, int height, int textCount,
+		TEXTMETRIC** TM, GLYPHMETRICS** GM, BYTE** ptr, DWORD** allsize);
+
+	void SetText(int com_no);
+};
+
 class DxText {
 
 private:
 	Dx12Process* dx;
-	PolygonData2D text[STRTEX_MAX_PCS];       //文字描画用
-	PolygonData2D value[VAL_PCS];              //可変数字用
+	TextObj text[STRTEX_MAX_PCS];       //文字描画用
+	TextObj value[VAL_PCS];              //可変数字用
 	TCHAR str[STRTEX_MAX_PCS][STR_MAX_LENGTH]; //登録テキスト
 	bool Using[STRTEX_MAX_PCS];
 	float f_size[STRTEX_MAX_PCS];              //登録テキストのフォントサイズ
@@ -48,7 +69,7 @@ private:
 	void operator=(const DxText& obj);// 代入演算子禁止
 	DxText();
 	~DxText();
-	int CreateText(PolygonData2D* p2, TCHAR* c, int texNo, float fontsize);
+	int CreateText(TextObj* p2, TCHAR* c, int texNo, float fontsize);
 	TCHAR* CreateTextValue(int val);
 	char* CreateTextValueCh(int val);
 	char* CreateTextValueCh(double val, int Numdig);
@@ -60,6 +81,8 @@ public:
 	TCHAR* getStr(char* str, ...);
 	void UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDateText(TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateText(bool ChangeImmediately, char* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateText(char* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDate();
 	void Draw(int com_no);
