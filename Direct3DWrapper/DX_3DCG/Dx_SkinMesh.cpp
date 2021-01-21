@@ -114,8 +114,10 @@ void SkinMesh::DestroyFBX() {
 	ARR_DELETE(fbx);
 }
 
-void SkinMesh::ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB) {
+void SkinMesh::ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB, meshCenterPos* cenPos) {
 
+	cenPos->bBoneWeight = 0.0f;
+	int addWeightCnt = 0;
 	//各Boneのウエイト,インデックスを調べ頂点配列に加える
 	for (int i = 0; i < numBone; i++) {
 		Deformer* defo = mesh->getDeformer(i);
@@ -131,13 +133,16 @@ void SkinMesh::ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB) {
 				//各Bone毎に影響を受ける頂点のウエイトを一番大きい数値に更新していく
 				if (weight > pvVB[index].bBoneWeight[m]) {//調べたウエイトの方が大きい
 					pvVB[index].bBoneIndex[m] = i;//Boneインデックス登録
+					cenPos->bBoneIndex = i;//とりあえずどれか
 					pvVB[index].bBoneWeight[m] = (float)weight;//ウエイト登録
+					cenPos->bBoneWeight += (float)weight;
+					addWeightCnt++;
 					break;
 				}
 			}
 		}
 	}
-
+	cenPos->bBoneWeight /= (float)addWeightCnt;
 	//ウエイト正規化
 	for (UINT i = 0; i < mesh->getNumVertices(); i++) {
 		float we = 0;
@@ -175,6 +180,7 @@ void SkinMesh::GetBuffer(float end_frame) {
 	FbxLoader* fbL = fbx[0].fbxL;
 	numMesh = fbL->getNumFbxMeshNode();
 	newIndex = new UINT * *[numMesh];
+	centerPos = std::make_unique<meshCenterPos[]>(numMesh);
 
 	mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
 
@@ -206,6 +212,16 @@ void SkinMesh::GetBuffer(float end_frame) {
 		mObj[i].SetCommandList(com_no);
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), 1, divArr, numDiv);
 		sk[i].getBuffer(&mObj[i], fbL->getFbxMeshNode(i)->getNumMaterial());
+		if (mObj[i].dx->DXR_CreateResource) {
+			UpdateDXR& u0 = mObj[i].dxrPara.updateDXR[0];
+			UpdateDXR& u1 = mObj[i].dxrPara.updateDXR[1];
+			u0.useVertex = true;
+			u0.numVertex = 1;
+			u0.v = std::make_unique<VECTOR3[]>(1);
+			u1.useVertex = true;
+			u1.numVertex = 1;
+			u1.v = std::make_unique<VECTOR3[]>(1);
+		}
 	}
 }
 
@@ -220,7 +236,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 
 		MY_VERTEX_S* tmpVB = new MY_VERTEX_S[mesh->getNumVertices()];
 		//ボーンウエイト
-		ReadSkinInfo(mesh, tmpVB);
+		ReadSkinInfo(mesh, tmpVB, &centerPos[m]);
 
 		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 		auto ver = mesh->getVertices();//頂点取得
@@ -243,6 +259,9 @@ void SkinMesh::SetVertex(bool lclOn) {
 		SameVertexList* svList = new SameVertexList[mesh->getNumVertices()];
 		pvVB[m] = new MY_VERTEX_S[mesh->getNumPolygonVertices()];
 
+		meshCenterPos& cp = centerPos[m];
+		VECTOR3& cpp = cp.pos;
+		int cppAddCnt = 0;
 		MY_VERTEX_S* vb = pvVB[m];
 		for (UINT i = 0; i < mesh->getNumPolygonVertices(); i++) {
 			//index順で頂点を整列しながら頂点格納
@@ -253,15 +272,16 @@ void SkinMesh::SetVertex(bool lclOn) {
 					(float)ver[index[i] * 3 + 1] * -gSet.FrontAxisSign,
 					(float)ver[index[i] * 3 + 2] * gSet.UpAxisSign
 				};
-				v->vPos.x = tmpv[gSet.CoordAxis] * (float)mesh->getLcl().Scaling[0];
-				v->vPos.y = tmpv[gSet.FrontAxis] * (float)mesh->getLcl().Scaling[1];
-				v->vPos.z = tmpv[gSet.UpAxis] * (float)mesh->getLcl().Scaling[2];
+				cpp.x += v->vPos.x = tmpv[gSet.CoordAxis] * (float)mesh->getLcl().Scaling[0];
+				cpp.y += v->vPos.y = tmpv[gSet.FrontAxis] * (float)mesh->getLcl().Scaling[1];
+				cpp.z += v->vPos.z = tmpv[gSet.UpAxis] * (float)mesh->getLcl().Scaling[2];
 			}
 			else {
-				v->vPos.x = (float)ver[index[i] * 3];
-				v->vPos.y = (float)ver[index[i] * 3 + 1];
-				v->vPos.z = (float)ver[index[i] * 3 + 2];
+				cpp.x += v->vPos.x = (float)ver[index[i] * 3];
+				cpp.y += v->vPos.y = (float)ver[index[i] * 3 + 1];
+				cpp.z += v->vPos.z = (float)ver[index[i] * 3 + 2];
 			}
+			cppAddCnt++;
 			v->vNorm.x = (float)nor[i * 3];
 			v->vNorm.y = (float)nor[i * 3 + 1];
 			v->vNorm.z = (float)nor[i * 3 + 2];
@@ -280,7 +300,9 @@ void SkinMesh::SetVertex(bool lclOn) {
 			}
 		}
 		ARR_DELETE(tmpVB);
-
+		cpp.x /= (float)cppAddCnt;
+		cpp.y /= (float)cppAddCnt;
+		cpp.z /= (float)cppAddCnt;
 		//同一座標頂点の法線統一化(テセレーション用)
 		for (UINT i = 0; i < mesh->getNumVertices(); i++) {
 			int indVB = 0;
@@ -693,6 +715,22 @@ MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 	return ret;
 }
 
+void SkinMesh::GetMeshCenterPos() {
+	for (int i = 0; i < numMesh; i++) {
+		if (mObj[i].dx->DXR_CreateResource) {
+			VECTOR3 cp = centerPos[i].pos;
+			float w = centerPos[i].bBoneWeight;
+			UINT ind = centerPos[i].bBoneIndex;
+			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[mObj[i].dx->dxrBuffSwap[0]];
+			VECTOR3* vv = &ud.v[0];
+			vv->as(cp.x, cp.y, cp.z);
+			MATRIX m = GetCurrentPoseMatrix(ind);
+			VectorMatrixMultiply(vv, &m);
+			VectorMultiply(vv, w);
+		}
+	}
+}
+
 VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
 	float thetaZ, float thetaY, float thetaX, float scal) {
 
@@ -733,6 +771,7 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 		MatrixTranspose(&mat);
 		sgb->mBone[i] = mat;
 	}
+	GetMeshCenterPos();
 }
 
 bool SkinMesh::Update(int ind, float ti, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,

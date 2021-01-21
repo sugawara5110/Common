@@ -60,6 +60,13 @@ protected:
 	char* boneName = nullptr;
 	int InternalAnimationIndex = 0;
 
+	struct meshCenterPos {
+		VECTOR3 pos = {};
+		UINT bBoneIndex = {};
+		float bBoneWeight = {};
+	};
+	std::unique_ptr<meshCenterPos[]> centerPos = nullptr;
+
 	//FBX
 	int numMesh = 0;
 	SkinMesh_sub* fbx = nullptr;
@@ -73,12 +80,13 @@ protected:
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
-	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB);
+	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB, meshCenterPos* centerPos);
 	MATRIX GetCurrentPoseMatrix(int index);
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
 	bool SetNewPoseMatrices(float time, int ind);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
 	void GetShaderByteCode(bool disp);
+	void GetMeshCenterPos();
 
 public:
 	SkinMesh();

@@ -109,7 +109,7 @@ void DXR_Basic::createTriangleVB(UINT numMaterial) {
 }
 
 void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
-	IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update) {
+	IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update, bool alphaTest) {
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlag =
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE |
@@ -131,7 +131,10 @@ void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
 	if (bLB.firstSet)geomDesc.Triangles.IndexCount = currentIndexCount;
 	geomDesc.Triangles.IndexFormat = iv->IndexFormat;
 	geomDesc.Triangles.Transform3x4 = 0;
-	geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+	if (alphaTest)
+		geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;//anyhit起動可
+	else
+		geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;//anyhit起動不可
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
 	inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
@@ -183,7 +186,7 @@ void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com) {
 				IndexView* iv = &PD[i]->IviewDXR[j];
 				UINT indexCnt = ud.currentIndexCount[j][t];
 				if (ud.firstSet && (PD[i]->updateF || !ud.createAS)) {
-					createBottomLevelAS1(com, vv, iv, indexCnt, MaterialCnt, PD[i]->updateF);
+					createBottomLevelAS1(com, vv, iv, indexCnt, MaterialCnt, PD[i]->updateF, PD[i]->alphaTest);
 					createAS = true;
 				}
 				MaterialCnt++;
@@ -293,6 +296,7 @@ void DXR_Basic::createAccelerationStructures() {
 }
 
 static const WCHAR* kRayGenShader = L"rayGen";
+static const WCHAR* kAnyBasicClosestHitShader = L"anyBasicHit";
 static const WCHAR* kBasicMissShader = L"basicMiss";
 static const WCHAR* kBasicClosestHitShader = L"basicHit";
 static const WCHAR* kBasicHitGroup = L"basicHitGroup";
@@ -389,7 +393,7 @@ static DxilLibrary createDxilLibrary(char* add_shader) {
 	//シェーダーのコンパイル
 	ComPtr<ID3DBlob> pDxilLib = CompileLibrary(dxrShader[2].str, L"ShaderBasicDXR", L"lib_6_3");
 	const WCHAR* entryPoints[] = { kRayGenShader,
-		kBasicMissShader, kBasicClosestHitShader,
+		kAnyBasicClosestHitShader, kBasicMissShader, kBasicClosestHitShader,
 		kEmissiveMiss, kEmissiveHitShader
 	};
 	return DxilLibrary(pDxilLib, entryPoints, ARRAY_SIZE(entryPoints));
@@ -645,7 +649,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = dxilLib.stateSubobject;
 
 	//BasicHitShader SUBOBJECT作成
-	HitProgram basicHitProgram(nullptr, kBasicClosestHitShader, kBasicHitGroup);
+	HitProgram basicHitProgram(kAnyBasicClosestHitShader, kBasicClosestHitShader, kBasicHitGroup);
 	subobjects[index++] = basicHitProgram.subObject;
 
 	//EmissiveHitShader SUBOBJECT作成
@@ -667,7 +671,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//↑のbasicHitShader, basicMissShader 共有ルートシグネチャとbasicHitShader, basicMissShader関連付け, SUBOBJECT作成
 	uint32_t basicHitMissRootIndex = index++;
-	const WCHAR* basicMissHitExportName[] = { kBasicMissShader, kBasicClosestHitShader };
+	const WCHAR* basicMissHitExportName[] = { kAnyBasicClosestHitShader, kBasicMissShader, kBasicClosestHitShader };
 	ExportAssociation basicMissHitRootAssociation(basicMissHitExportName, ARRAY_SIZE(basicMissHitExportName),
 		&(subobjects[basicHitMissRootIndex]));
 	subobjects[index++] = basicMissHitRootAssociation.subobject;
@@ -692,7 +696,7 @@ void DXR_Basic::createRtPipelineState() {
 	uint32_t shaderConfigIndex = index++;
 	const WCHAR* shaderExports[] = {
 		kRayGenShader,
-		kBasicClosestHitShader,kBasicMissShader,
+		kAnyBasicClosestHitShader, kBasicMissShader, kBasicClosestHitShader,
 		kEmissiveHitShader, kEmissiveMiss
 	};
 	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), &(subobjects[shaderConfigIndex]));
@@ -939,12 +943,6 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;
 				memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
-				if (PD[i]->alphaTest) {
-					mcb.alphaTest = 1.0f;
-				}
-				else {
-					mcb.alphaTest = 0.0f;
-				}
 				MaterialCnt++;
 			}
 		}
@@ -974,13 +972,13 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 				UINT matAddInd = 0;
 				if (PD[i]->hs)matAddInd = k;
 				if (cbObj->matCb[MaterialCnt + matAddInd].materialNo == 2) {
-					for (UINT v = 0; v < PD[i]->numVertex; v++) {
+					for (UINT v = 0; v < ud.numVertex; v++) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));
 						MatrixTranspose(&Transpose);
 						VECTOR3 v3;
-						if (PD[i]->useVertex) {
-							v3.as(PD[i]->v[v].x, PD[i]->v[v].y, PD[i]->v[v].z);
+						if (ud.useVertex) {
+							v3.as(ud.v[v].x, ud.v[v].y, ud.v[v].z);
 							VectorMatrixMultiply(&v3, &Transpose);
 						}
 						else {

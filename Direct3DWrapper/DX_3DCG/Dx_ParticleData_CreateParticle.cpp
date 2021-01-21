@@ -131,9 +131,14 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 void ParticleData::GetBufferBill(int v) {
 	ver = v;
 	if (dx->DXR_CreateResource) {
-		dxrPara.useVertex = true;
-		dxrPara.numVertex = ver;
-		dxrPara.v = std::make_unique<VECTOR3[]>(ver);
+		UpdateDXR& u0 = dxrPara.updateDXR[0];
+		UpdateDXR& u1 = dxrPara.updateDXR[1];
+		u0.useVertex = true;
+		u1.useVertex = true;
+		u0.numVertex = ver;
+		u1.numVertex = ver;
+		u0.v = std::make_unique<VECTOR3[]>(ver);
+		u1.v = std::make_unique<VECTOR3[]>(ver);
 	}
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
@@ -436,7 +441,8 @@ void ParticleData::SetVertex(int i, VECTOR3 pos, VECTOR3 nor) {
 	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
 	P_pos[i].normal.as(nor.x, nor.y, nor.z);
 	if (dx->DXR_CreateResource) {
-		dxrPara.v[i].as(pos.x, pos.y, pos.z);
+		dxrPara.updateDXR[0].v[i].as(pos.x, pos.y, pos.z);
+		dxrPara.updateDXR[1].v[i].as(pos.x, pos.y, pos.z);
 	}
 }
 

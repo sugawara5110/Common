@@ -45,7 +45,6 @@ struct DxrMaterialCB {
 	VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
 	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess = 4.0f;//スペキュラ強さ
-	float alphaTest = 0.0f;//1.0f:on, 0.0f:off 
 	float RefractiveIndex = 0.0f;//屈折率
 	UINT materialNo = 0;
 };
@@ -101,7 +100,7 @@ private:
 
 	void createTriangleVB(UINT numMaterial);
 	void createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
-		IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update);
+		IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update, bool alphaTest);
 	void createBottomLevelAS(Dx12Process_sub* com);
 	void createTopLevelAS(Dx12Process_sub* com);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);

@@ -37,15 +37,12 @@ char* ShaderBasicDXR =
      //この関数からRayがスタートする
      //payloadに各hit, miss シェーダーで計算された値が格納される
 "    payload.RecursionCnt = 1;\n"
-"    bool loop = true;\n"
 "    payload.hitPosition = ray.Origin;\n"
 "    gDepthOut[index] = 1.0f;\n"
 "    payload.depth = -1.0f;\n"
-"    while(loop){\n"
-"       ray.Origin = payload.hitPosition;\n"
-"       TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
-"       loop = payload.reTry;\n"
-"    }\n"
+"    ray.Origin = payload.hitPosition;\n"
+"    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
+
 "    if(payload.depth != -1.0f)"
 "       gDepthOut[index] = payload.depth;\n"
 "    float3 col = linearToSrgb(payload.color);\n"
@@ -57,7 +54,22 @@ char* ShaderBasicDXR =
 "}\n"
 //**************************************rayGen_Shader*******************************************************************//
 
-//**************************************basicMiss_Shader*******************************************************************//
+//*************************************anyBasicHit_Shader***************************************************************//
+"[shader(\"anyhit\")]\n"
+"void anyBasicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"{\n"
+//テクスチャ取得
+"    float4 difTex = getDifPixel(attr);\n"
+"    float Alpha = difTex.w;\n"
+
+"    if (Alpha <= 0.0f)\n"
+"    {\n"
+"        IgnoreHit();\n"
+"    }\n"
+"}\n"
+//*************************************anyBasicHit_Shader***************************************************************//
+
+//**************************************basicMiss_Shader****************************************************************//
 "[shader(\"miss\")]\n"
 "void basicMiss(inout RayPayload payload)\n"
 "{\n"
@@ -65,9 +77,9 @@ char* ShaderBasicDXR =
 "    payload.hit = false;\n"
 "    payload.reTry = false;\n"
 "}\n"
-//**************************************basicMiss_Shader*******************************************************************//
+//**************************************basicMiss_Shader****************************************************************//
 
-//**************************************basicHit_Shader*******************************************************************//
+//**************************************basicHit_Shader*****************************************************************//
 "[shader(\"closesthit\")]\n"
 "void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
@@ -77,27 +89,25 @@ char* ShaderBasicDXR =
 "    float3 normalMap = getNorPixel(attr);\n"
 "    float3 speTex = getSpePixel(attr);\n"
 
-"    payload.reTry = true;\n"
-"    if(AlphaTestSw(difTex.w)) {\n"
-"       payload.reTry = false;\n"
+"    payload.reTry = false;\n"
 //深度取得
-"       if(payload.depth == -1.0f) {\n"
-"          payload.depth = getDepth(attr);\n"
-"       }\n"
-//光源への光線
-"       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
-//反射方向への光線
-"       difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, normalMap);\n"
-//半透明
-"       difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, difTex, normalMap);\n"
-//アルファテスト
-"       difTex.xyz = AlphaTest(payload.RecursionCnt, payload.hitPosition, difTex);\n"
+"    if(payload.depth == -1.0f) {\n"
+"       payload.depth = getDepth(attr);\n"
 "    }\n"
+//光源への光線
+"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
+//反射方向への光線
+"    difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, normalMap);\n"
+//半透明
+"    difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, difTex, normalMap);\n"
+//アルファブレンド
+"    difTex.xyz = AlphaBlend(payload.RecursionCnt, payload.hitPosition, difTex);\n"
+
 "    payload.color = difTex.xyz;\n"
 "    payload.hit = true;\n"
 "    payload.Alpha = difTex.w;\n"
 "}\n"
-//**************************************basicHit_Shader*******************************************************************//
+//**************************************basicHit_Shader*****************************************************************//
 
 //***********************************emissiveHit_Shader*****************************************************************//
 "[shader(\"closesthit\")]\n"
@@ -112,7 +122,7 @@ char* ShaderBasicDXR =
 //////点光源
 "    if(payload.mNo == 2 && mNo == 2) {\n"
 "       payload.color = difTex.xyz;\n"
-"       if(InstanceID() != payload.instanceID) {\n"//目標の点光源か?
+"       if(InstanceID() != payload.instanceID || difTex.w <= 0.0f) {\n"
 "          payload.reTry = true;\n"//目標の点光源以外の場合素通り
 "       }\n"
 "    }\n"

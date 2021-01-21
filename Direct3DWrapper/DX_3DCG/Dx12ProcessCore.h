@@ -612,6 +612,11 @@ struct UpdateDXR {
 	UINT InstanceMask = 0xFF;
 	float RefractiveIndex = 0.0f;//屈折率
 
+	//ParticleData, SkinMesh用
+	bool useVertex = false;
+	UINT numVertex = 1;
+	std::unique_ptr<VECTOR3[]> v = nullptr;
+
 	void InstanceMaskChange(bool DrawOn) {
 		if (DrawOn)InstanceMask = 0xFF;
 		else InstanceMask = 0x00;
@@ -664,11 +669,7 @@ struct ParameterDXR {
 		updateDXR[1].createAS = false;
 	}
 
-	bool alphaTest;
-	//ParticleData用
-	bool useVertex = false;
-	UINT numVertex = 1;
-	std::unique_ptr<VECTOR3[]> v = nullptr;
+	bool alphaTest = false;
 };
 
 //**********************************Commonクラス*************************************//
