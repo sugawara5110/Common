@@ -430,7 +430,8 @@ TCHAR* DxText::getStr(char* str, ...) {
 	return tc;
 }
 
-void DxText::UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
+void DxText::UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize,
+	CoordTf::VECTOR4 cl) {
 
 	int texNo = -1;
 
@@ -473,11 +474,13 @@ void DxText::UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, floa
 	draw_f = true;
 }
 
-void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize, VECTOR4 cl) {
+void DxText::UpDateText(TCHAR* c, float x, float y, float fontsize,
+	CoordTf::VECTOR4 cl) {
+
 	UpDateText(true, c, x, y, fontsize, cl);
 }
 
-void DxText::UpDateText(bool ChangeImmediately, char* c, float x, float y, float fontsize, VECTOR4 cl) {
+void DxText::UpDateText(bool ChangeImmediately, char* c, float x, float y, float fontsize, CoordTf::VECTOR4 cl) {
 	TCHAR str[STR_MAX_LENGTH] = {};
 	int len = (int)strlen(c);
 	if (len > STR_MAX_LENGTH - 1)len = STR_MAX_LENGTH - 1;
@@ -486,11 +489,11 @@ void DxText::UpDateText(bool ChangeImmediately, char* c, float x, float y, float
 	UpDateText(ChangeImmediately, str, x, y, fontsize, cl);
 }
 
-void DxText::UpDateText(char* c, float x, float y, float fontsize, VECTOR4 cl) {
+void DxText::UpDateText(char* c, float x, float y, float fontsize, CoordTf::VECTOR4 cl) {
 	UpDateText(true, c, x, y, fontsize, cl);
 }
 
-void DxText::UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl) {
+void DxText::UpDateValue(int val, float x, float y, float fontsize, int pcs, CoordTf::VECTOR4 cl) {
 
 	//åÖêîÉJÉEÉìÉg
 	int cnt = 0;

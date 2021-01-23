@@ -34,7 +34,11 @@ void ParticleData::GetShaderByteCode() {
 	ps = dx->pPixelShader_P.Get();
 }
 
-void ParticleData::update(CONSTANT_BUFFER_P* cb, VECTOR3 pos, VECTOR4 color, float angle, float size, float speed) {
+void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
+	CoordTf::VECTOR4 color, float angle, float size, float speed) {
+
+	using namespace CoordTf;
+
 	MATRIX mov;
 	MATRIX rot;
 	MATRIX world;
@@ -137,8 +141,8 @@ void ParticleData::GetBufferBill(int v) {
 		u1.useVertex = true;
 		u0.numVertex = ver;
 		u1.numVertex = ver;
-		u0.v = std::make_unique<VECTOR3[]>(ver);
-		u1.v = std::make_unique<VECTOR3[]>(ver);
+		u0.v = std::make_unique<CoordTf::VECTOR3[]>(ver);
+		u1.v = std::make_unique<CoordTf::VECTOR3[]>(ver);
 	}
 	P_pos = (PartPos*)malloc(sizeof(PartPos) * ver);
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
@@ -385,7 +389,7 @@ void ParticleData::CbSwap(bool init) {
 	DrawOn = true;
 }
 
-void ParticleData::Update(VECTOR3 pos, VECTOR4 color, float angle, float size, bool init, float speed) {
+void ParticleData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed) {
 	update(&cbP[dx->cBuffSwap[0]], pos, color, angle, size, speed);
 	CbSwap(init);
 }
@@ -418,7 +422,7 @@ void ParticleData::Draw() {
 	Draw(com_no);
 }
 
-void ParticleData::Update(float size, VECTOR4 color) {
+void ParticleData::Update(float size, CoordTf::VECTOR4 color) {
 	update(&cbP[dx->cBuffSwap[0]], { 0, 0, 0 }, color, 0, size, 1.0f);
 	CbSwap(true);
 }
@@ -437,7 +441,7 @@ void ParticleData::DrawBillboard() {
 	DrawBillboard(com_no);
 }
 
-void ParticleData::SetVertex(int i, VECTOR3 pos, VECTOR3 nor) {
+void ParticleData::SetVertex(int i, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 nor) {
 	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
 	P_pos[i].normal.as(nor.x, nor.y, nor.z);
 	if (dx->DXR_CreateResource) {
@@ -506,7 +510,7 @@ static float AngleCalculation360(float distA, float distB) {
 	return angle;
 }
 
-MATRIX ParticleData::BillboardAngleCalculation(float angle) {
+CoordTf::MATRIX ParticleData::BillboardAngleCalculation(float angle) {
 	//float distanceZ = dx->posZ - dx->dirZ;
 	float distanceY = dx->upd[dx->cBuffSwap[0]].pos.y - dx->upd[dx->cBuffSwap[0]].dir.y;
 	float distanceX = dx->upd[dx->cBuffSwap[0]].pos.x - dx->upd[dx->cBuffSwap[0]].dir.x;
@@ -515,6 +519,7 @@ MATRIX ParticleData::BillboardAngleCalculation(float angle) {
 	//float angleY = AngleCalculation360(distanceZ, distanceX);
 	//float angleX = AngleCalculation360(distanceZ, distanceY);
 
+	using namespace CoordTf;
 	MATRIX rotZ, inv;
 	MatrixRotationZ(&rotZ, angleZ);
 	MatrixInverse(&inv, &rotZ);

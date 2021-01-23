@@ -10,7 +10,7 @@
 #include "Dx12ProcessCore.h"
 
 struct uvSW {
-	VECTOR4 uvSw;//.x‚Ì‚Ý
+	CoordTf::VECTOR4 uvSw;//.x‚Ì‚Ý
 };
 
 class SkinnedCom {

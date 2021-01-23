@@ -24,7 +24,7 @@ protected:
 	float cy = 0.0f;
 	float cz = 0.0f;
 	float connect_step;
-	MATRIX rotZYX = {};
+	CoordTf::MATRIX rotZYX = {};
 
 	SkinMesh_sub();
 	~SkinMesh_sub();
@@ -61,7 +61,7 @@ protected:
 	int InternalAnimationIndex = 0;
 
 	struct meshCenterPos {
-		VECTOR3 pos = {};
+		CoordTf::VECTOR3 pos = {};
 		UINT bBoneIndex = {};
 		float bBoneWeight = {};
 	};
@@ -71,7 +71,7 @@ protected:
 	int numMesh = 0;
 	SkinMesh_sub* fbx = nullptr;
 	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
-	MATRIX* m_pLastBoneMatrix = nullptr;
+	CoordTf::MATRIX* m_pLastBoneMatrix = nullptr;
 	int AnimLastInd;
 	float BoneConnect;
 	PolygonData* mObj = nullptr;
@@ -81,7 +81,7 @@ protected:
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
 	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB, meshCenterPos* centerPos);
-	MATRIX GetCurrentPoseMatrix(int index);
+	CoordTf::MATRIX GetCurrentPoseMatrix(int index);
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
 	bool SetNewPoseMatrices(float time, int ind);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
@@ -111,7 +111,8 @@ public:
 	void CreateFromFBX_SubAnimation(int ind);
 	void setInternalAnimationIndex(int index) { InternalAnimationIndex = index; }
 
-	bool Update(int ind, float time, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+	bool Update(int ind, float time, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
 		float disp = 1.0f, float shininess = 4.0f);
 
 	void DrawOff();
@@ -119,7 +120,7 @@ public:
 	void StreamOutput(int com_no);
 	void Draw();
 	void StreamOutput();
-	VECTOR3 GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
+	CoordTf::VECTOR3 GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
 		float thetaZ, float thetaY, float thetaX, float scale);
 
 	void SetCommandList(int no);

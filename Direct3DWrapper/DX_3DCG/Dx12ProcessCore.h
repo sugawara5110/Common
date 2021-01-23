@@ -265,12 +265,12 @@ private:
 	static std::mutex mtxComputeQueue;
 
 	struct Update {
-		MATRIX mProj = {};
-		MATRIX mView = {};
+		CoordTf::MATRIX mProj = {};
+		CoordTf::MATRIX mView = {};
 
-		VECTOR3 pos = {};
-		VECTOR3 dir = {};
-		VECTOR3 up = {};
+		CoordTf::VECTOR3 pos = {};
+		CoordTf::VECTOR3 dir = {};
+		CoordTf::VECTOR3 up = {};
 
 		PointLight plight = {};
 		int lightNum = 0;
@@ -278,7 +278,7 @@ private:
 	};
 	Update upd[2] = {};//cBuffSwap
 
-	MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
+	CoordTf::MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
 	Fog fog;
 
 	//カメラ画角
@@ -289,7 +289,7 @@ private:
 	float NearPlane;
 	//farプレーン
 	float FarPlane;
-	VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
+	CoordTf::VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
 	int cBuffSwap[2] = { 0,0 };
 	int dxrBuffSwap[2] = { 0,0 };
@@ -313,9 +313,9 @@ private:
 
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
-	void Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
+	void Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
-	void InstancingUpdate(CONSTANT_BUFFER* cb, VECTOR4 Color, float disp,
+	void InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
 		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
 
 	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
@@ -386,15 +386,15 @@ public:
 	void RunGpuCom();
 	void WaitFenceNotLockCom();
 	void WaitFenceCom();
-	void Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up = { 0.0f,0.0f,1.0f });
+	void Cameraset(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 dir, CoordTf::VECTOR3 up = { 0.0f,0.0f,1.0f });
 
 	void ResetPointLight();
 	void setGlobalAmbientLight(float r, float g, float b) {
 		GlobalAmbientLight.as(r, g, b, 0.0f);
 	}
 
-	bool PointLightPosSet(int Idx, VECTOR3 pos, VECTOR4 Color, bool on_off,
-		float range, VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+	bool PointLightPosSet(int Idx, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
 	void DirectionLight(float x, float y, float z, float r, float g, float b);
 	void SetDirectionLight(bool onoff);
@@ -602,9 +602,9 @@ struct UpdateDXR {
 	UINT NumInstance = 1;
 	std::unique_ptr<std::unique_ptr<VertexView[]>[]> VviewDXR = nullptr;
 	std::unique_ptr<std::unique_ptr<UINT[]>[]> currentIndexCount = nullptr;
-	MATRIX Transform[INSTANCE_PCS_3D] = {};
-	MATRIX WVP[INSTANCE_PCS_3D] = {};
-	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
+	CoordTf::MATRIX Transform[INSTANCE_PCS_3D] = {};
+	CoordTf::MATRIX WVP[INSTANCE_PCS_3D] = {};
+	CoordTf::VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
 	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ
@@ -615,7 +615,7 @@ struct UpdateDXR {
 	//ParticleData, SkinMesh用
 	bool useVertex = false;
 	UINT numVertex = 1;
-	std::unique_ptr<VECTOR3[]> v = nullptr;
+	std::unique_ptr<CoordTf::VECTOR3[]> v = nullptr;
 
 	void InstanceMaskChange(bool DrawOn) {
 		if (DrawOn)InstanceMask = 0xFF;
@@ -639,9 +639,9 @@ struct ParameterDXR {
 	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
 	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
 	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
-	std::unique_ptr<VECTOR4[]> diffuse = nullptr;
-	std::unique_ptr<VECTOR4[]> specular = nullptr;
-	std::unique_ptr<VECTOR4[]> ambient = nullptr;
+	std::unique_ptr<CoordTf::VECTOR4[]> diffuse = nullptr;
+	std::unique_ptr<CoordTf::VECTOR4[]> specular = nullptr;
+	std::unique_ptr<CoordTf::VECTOR4[]> ambient = nullptr;
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
 	std::unique_ptr<std::unique_ptr<StreamView[]>[]> SviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
@@ -653,9 +653,9 @@ struct ParameterDXR {
 		difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
 		norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
 		speTex = std::make_unique<ID3D12Resource* []>(numMaterial);
-		diffuse = std::make_unique<VECTOR4[]>(numMaterial);
-		specular = std::make_unique<VECTOR4[]>(numMaterial);
-		ambient = std::make_unique<VECTOR4[]>(numMaterial);
+		diffuse = std::make_unique<CoordTf::VECTOR4[]>(numMaterial);
+		specular = std::make_unique<CoordTf::VECTOR4[]>(numMaterial);
+		ambient = std::make_unique<CoordTf::VECTOR4[]>(numMaterial);
 		SviewDXR = std::make_unique<std::unique_ptr<StreamView[]>[]>(numMaterial);
 		for (int i = 0; i < numMaterial; i++) {
 			SviewDXR[i] = std::make_unique<StreamView[]>(numMaxInstance);
@@ -906,12 +906,12 @@ public:
 		getIndexBuffer(0, ibByteSize, numIndex);
 	}
 
-	void Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
+	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
-	void InstancingUpdate(VECTOR4 Color, float disp, float shininess = 4.0f,
+	void InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
-	void Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size, float disp, float shininess = 4.0f,
+	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
 	void DrawOff();
@@ -976,7 +976,7 @@ public:
 	MY_VERTEX2* d2varray;  //頂点配列
 	std::uint16_t* d2varrayI;//頂点インデックス
 
-	static void Pos2DCompute(VECTOR3* p);//3D座標→2D座標変換(magnificationX, magnificationYは無視される)
+	static void Pos2DCompute(CoordTf::VECTOR3* p);//3D座標→2D座標変換(magnificationX, magnificationYは無視される)
 	static void SetMagnification(float x, float y);//表示倍率
 
 	PolygonData2D();

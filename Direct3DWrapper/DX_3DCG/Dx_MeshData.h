@@ -17,9 +17,9 @@ protected:
 	int FaceCount = 0;  //ポリゴン数カウンター
 	char mFileName[255] = {};
 	//一時保管
-	VECTOR3* pvCoord;
-	VECTOR3* pvNormal;
-	VECTOR2* pvTexture;
+	CoordTf::VECTOR3* pvCoord;
+	CoordTf::VECTOR3* pvNormal;
+	CoordTf::VECTOR2* pvTexture;
 	int ins_no = 0;
 	int insNum[2] = {};
 
@@ -53,11 +53,12 @@ public:
 	bool CreateMesh(float divideBufferMagnification = 1.0f);
 	ID3D12PipelineState* GetPipelineState(int index);
 
-	void Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
+	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
-	void InstancingUpdate(VECTOR4 Color, float disp, float shininess = 4.0f);
+	void InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess = 4.0f);
 
-	void Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size, float disp, float shininess = 4.0f);
+	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess = 4.0f);
 
 	void DrawOff();
 	void Draw(int com_no);

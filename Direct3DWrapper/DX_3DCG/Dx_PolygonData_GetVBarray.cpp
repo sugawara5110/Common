@@ -370,7 +370,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
 
-void PolygonData::Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+void PolygonData::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 	dx->Instancing(ins_no, &cb[dx->cBuffSwap[0]], pos, angle, size);
 }
 
@@ -381,12 +381,15 @@ void PolygonData::CbSwap() {
 	DrawOn = true;
 }
 
-void PolygonData::InstancingUpdate(VECTOR4 Color, float disp, float shininess, float px, float py, float mx, float my) {
+void PolygonData::InstancingUpdate(CoordTf::VECTOR4 Color,
+	float disp, float shininess, float px, float py, float mx, float my) {
+
 	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], Color, disp, px, py, mx, my, divArr, numDiv, shininess);
 	CbSwap();
 }
 
-void PolygonData::Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+void PolygonData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
 	float disp, float shininess, float px, float py, float mx, float my) {
 
 	dx->Instancing(ins_no, &cb[dx->cBuffSwap[0]], pos, angle, size);
@@ -489,11 +492,11 @@ void PolygonData::ParameterDXR_Update() {
 	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
 	ud.NumInstance = dpara.insNum;
 	ud.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
-	memcpy(&ud.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(VECTOR4));
+	memcpy(&ud.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(CoordTf::VECTOR4));
 	memcpy(ud.Transform,
-		&cb[dx->cBuffSwap[1]].World, sizeof(MATRIX) * ud.NumInstance);
+		&cb[dx->cBuffSwap[1]].World, sizeof(CoordTf::MATRIX) * ud.NumInstance);
 	memcpy(ud.WVP,
-		&cb[dx->cBuffSwap[1]].WVP, sizeof(MATRIX) * ud.NumInstance);
+		&cb[dx->cBuffSwap[1]].WVP, sizeof(CoordTf::MATRIX) * ud.NumInstance);
 }
 
 void PolygonData::Draw(int com) {

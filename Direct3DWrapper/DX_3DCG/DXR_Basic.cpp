@@ -926,6 +926,7 @@ void DXR_Basic::createShaderTable() {
 
 void DXR_Basic::updateMaterial(CBobj* cbObj) {
 
+	using namespace CoordTf;
 	Dx12Process* dx = Dx12Process::GetInstance();
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
@@ -950,6 +951,7 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 }
 
 void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
+	using namespace CoordTf;
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX VP;
 	Dx12Process::Update& upd = dx->upd[dx->cBuffSwap[1]];

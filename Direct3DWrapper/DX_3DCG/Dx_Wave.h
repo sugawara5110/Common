@@ -42,12 +42,13 @@ public:
 	bool Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide);
 	void SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd);
 
-	void Instancing(float speed, VECTOR3 pos, VECTOR3 angle, VECTOR3 size);
+	void Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
-	void InstancingUpdate(VECTOR4 Color, float disp, float shininess = 4.0f,
+	void InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
-	void Update(float speed, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+	void Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
 		float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 

@@ -1064,7 +1064,7 @@ void Dx12Process::DrawScreen() {
 	mCurrBackBuffer = mSwapChain->GetCurrentBackBufferIndex();
 }
 
-void Dx12Process::Cameraset(VECTOR3 pos, VECTOR3 dir, VECTOR3 up) {
+void Dx12Process::Cameraset(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 dir, CoordTf::VECTOR3 up) {
 	//カメラの位置と方向を設定
 	MatrixLookAtLH(&upd[cBuffSwap[0]].mView,
 		pos, //カメラの位置
@@ -1089,8 +1089,8 @@ void Dx12Process::ResetPointLight() {
 	upd[1].lightNum = 0;
 }
 
-bool Dx12Process::PointLightPosSet(int Idx, VECTOR3 pos, VECTOR4 Color, bool on_off,
-	float range, VECTOR3 atten) {
+bool Dx12Process::PointLightPosSet(int Idx, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
 
 	if (Idx > LIGHT_PCS - 1 || Idx < 0) {
 		ErrorMessage("lightNumの値が範囲外です");
@@ -1277,8 +1277,12 @@ ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR
 	return byteCode;
 }
 
-void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 	if (insNum > INSTANCE_PCS_3D - 1)insNum--;
+
+	using namespace CoordTf;
+
 	MATRIX mov;
 	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
 	MATRIX scale;
@@ -1307,8 +1311,10 @@ void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, VECTOR3 pos, VECT
 	insNum++;
 }
 
-void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, VECTOR4 Color, float disp,
+void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
 	float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
+
+	using namespace CoordTf;
 
 	cb->C_Pos.as(upd[cBuffSwap[0]].pos.x,
 		upd[cBuffSwap[0]].pos.y,

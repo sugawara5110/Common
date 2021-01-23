@@ -76,6 +76,7 @@ void SkinMesh::ObjCentering(bool f, int ind) {
 }
 
 void SkinMesh::CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind) {
+	using namespace CoordTf;
 	MATRIX rotZ, rotY, rotX, rotZY;
 	MatrixIdentity(&fbx[ind].rotZYX);
 	MatrixRotationZ(&rotZ, thetaZ);
@@ -189,6 +190,8 @@ void SkinMesh::GetBuffer(float end_frame) {
 	boneName = new char[numBone * 255];
 
 	m_BoneArray = new BONE[numBone];
+
+	using namespace CoordTf;
 	m_pLastBoneMatrix = new MATRIX[numBone];
 
 	for (int i = 0; i < numBone; i++) {
@@ -230,6 +233,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 	FbxLoader* fbL = fbx[0].fbxL;
 	GlobalSettings gSet = fbL->getGlobalSettings();
 
+	using namespace CoordTf;
 	for (int m = 0; m < numMesh; m++) {
 
 		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);//メッシュ毎に処理する
@@ -651,6 +655,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	}
 	defo->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
+	using namespace CoordTf;
 	MATRIX mat0_mov;
 	MatrixIdentity(&mat0_mov);
 	if (fbx[ind].offset) {
@@ -705,7 +710,8 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 }
 
 //ポーズ行列を返す
-MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
+CoordTf::MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
+	using namespace CoordTf;
 	MATRIX inv;
 	MatrixIdentity(&inv);
 	MatrixInverse(&inv, &m_BoneArray[index].mBindPose);//FBXのバインドポーズは初期姿勢（絶対座標）
@@ -716,6 +722,7 @@ MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 }
 
 void SkinMesh::GetMeshCenterPos() {
+	using namespace CoordTf;
 	for (int i = 0; i < numMesh; i++) {
 		if (mObj[i].dx->DXR_CreateResource) {
 			VECTOR3 cp = centerPos[i].pos;
@@ -731,9 +738,10 @@ void SkinMesh::GetMeshCenterPos() {
 	}
 }
 
-VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
+CoordTf::VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
 	float thetaZ, float thetaY, float thetaX, float scal) {
 
+	using namespace CoordTf;
 	//頂点にボーン行列を掛け出力
 	VECTOR3 ret, pos;
 	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
@@ -765,6 +773,7 @@ VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, fl
 
 void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 
+	using namespace CoordTf;
 	for (int i = 0; i < numBone; i++)
 	{
 		MATRIX mat = GetCurrentPoseMatrix(i);
@@ -774,7 +783,8 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 	GetMeshCenterPos();
 }
 
-bool SkinMesh::Update(int ind, float ti, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
 	float disp, float shininess) {
 
 	bool frame_end = false;

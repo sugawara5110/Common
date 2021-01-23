@@ -58,7 +58,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
 	}
 	char line[200] = { 0 };//1行読み込み用
 	char key[110] = { 0 };//1単語読み込み用
-	VECTOR4 v = { 0, 0, 0, 1 };
+	CoordTf::VECTOR4 v = { 0, 0, 0, 1 };
 
 	//マテリアル数を調べる
 	while (!feof(fp))
@@ -204,6 +204,7 @@ bool MeshData::GetBuffer(char* FileName, int numMaxInstance) {
 	fclose(fp);
 
 	//一時的なメモリ確保
+	using namespace CoordTf;
 	pvCoord = new VECTOR3[VCount];
 	pvNormal = new VECTOR3[VNCount];
 	pvTexture = new VECTOR2[VTCount];
@@ -274,12 +275,14 @@ bool MeshData::SetVertex() {
 		}
 	}
 
+	using namespace CoordTf;
 	//同一座標頂点リスト
 	SameVertexList* svList = new SameVertexList[VCount];
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	for (int i = 0; i < mObj.dpara.NumMaterial; i++) {
 		CONSTANT_BUFFER2 sg;
+
 		VECTOR4* diffuse = &mObj.dpara.material[i].diffuse;
 		diffuse->x += addDiffuse;
 		diffuse->y += addDiffuse;
@@ -436,15 +439,17 @@ bool MeshData::CreateMesh(float divideBufferMagnification) {
 	return true;
 }
 
-void MeshData::Instancing(VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+void MeshData::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 	mObj.Instancing(pos, angle, size);
 }
 
-void MeshData::InstancingUpdate(VECTOR4 Color, float disp, float shininess) {
+void MeshData::InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess) {
 	mObj.InstancingUpdate(Color, disp, shininess);
 }
 
-void MeshData::Update(VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size, float disp, float shininess) {
+void MeshData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess) {
+
 	mObj.Update(pos, Color, angle, size, disp, shininess);
 }
 

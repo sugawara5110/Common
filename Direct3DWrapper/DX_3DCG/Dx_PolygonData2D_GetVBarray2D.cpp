@@ -9,7 +9,8 @@
 float PolygonData2D::magnificationX = 1.0f;
 float PolygonData2D::magnificationY = 1.0f;
 
-void PolygonData2D::Pos2DCompute(VECTOR3* p) {
+void PolygonData2D::Pos2DCompute(CoordTf::VECTOR3* p) {
+	using namespace CoordTf;
 	MATRIX VP, VP_VP;
 	Dx12Process* dx = Dx12Process::GetInstance();
 	//“ü—Í3DÀ•W‚©‚ç•ÏŠ·s—ñæ“¾

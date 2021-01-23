@@ -160,19 +160,20 @@ bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 	return DrawCreate(texNo, nortNo, blend, alpha);
 }
 
-void Wave::Instancing(float speed, VECTOR3 pos, VECTOR3 angle, VECTOR3 size) {
+void Wave::Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 	cbw.speed = speed;
 	mObjectCB_WAVE->CopyData(0, cbw);
 	mObj.Instancing(pos, angle, size);
 }
 
-void Wave::InstancingUpdate(VECTOR4 Color, float disp, float shininess,
+void Wave::InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess,
 	float px, float py, float mx, float my) {
 
 	mObj.InstancingUpdate(Color, disp, shininess, px, py, mx, my);
 }
 
-void Wave::Update(float speed, VECTOR3 pos, VECTOR4 Color, VECTOR3 angle, VECTOR3 size,
+void Wave::Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
 	float disp, float shininess,
 	float px, float py, float mx, float my) {
 

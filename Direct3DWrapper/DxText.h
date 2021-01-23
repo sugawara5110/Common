@@ -79,11 +79,16 @@ public:
 	static DxText* GetInstance();
 	static void DeleteInstance();
 	TCHAR* getStr(char* str, ...);
-	void UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
-	void UpDateText(TCHAR* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
-	void UpDateText(bool ChangeImmediately, char* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
-	void UpDateText(char* c, float x, float y, float fontsize = 15.0f, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
-	void UpDateValue(int val, float x, float y, float fontsize, int pcs, VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateText(bool ChangeImmediately, TCHAR* c, float x, float y, float fontsize = 15.0f,
+		CoordTf::VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateText(TCHAR* c, float x, float y, float fontsize = 15.0f,
+		CoordTf::VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateText(bool ChangeImmediately, char* c, float x, float y, float fontsize = 15.0f,
+		CoordTf::VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateText(char* c, float x, float y, float fontsize = 15.0f,
+		CoordTf::VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void UpDateValue(int val, float x, float y, float fontsize, int pcs,
+		CoordTf::VECTOR4 cl = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void UpDate();
 	void Draw(int com_no);
 };

@@ -49,7 +49,8 @@ protected:
 	ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
 
 	void GetShaderByteCode();
-	void update(CONSTANT_BUFFER_P* cb_p, VECTOR3 pos, VECTOR4 color, float angle, float size, float speed);
+	void update(CONSTANT_BUFFER_P* cb_p, CoordTf::VECTOR3 pos,
+		CoordTf::VECTOR4 color, float angle, float size, float speed);
 	void update2(CONSTANT_BUFFER_P* cb_p, bool init);
 	void GetVbColarray(int texture_no, float size, float density);
 	void CreateVbObj();
@@ -60,21 +61,21 @@ protected:
 	void DrawParts2StreamOutput(int com);
 	void CbSwap(bool init);
 	void createDxr();
-	MATRIX BillboardAngleCalculation(float angle);
+	CoordTf::MATRIX BillboardAngleCalculation(float angle);
 
 public:
 	ParticleData();
 	~ParticleData();
 	void GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
 	void GetBufferBill(int v);
-	void SetVertex(int i, VECTOR3 pos, VECTOR3 nor);
+	void SetVertex(int i, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 nor);
 	bool CreateParticle(int texpar);//パーティクル1個のテクスチャナンバー
 	bool CreateBillboard();//ver個の四角形を生成
-	void Update(VECTOR3 pos, VECTOR4 color, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ
+	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ
 	void DrawOff();
 	void Draw(int com);
 	void Draw();
-	void Update(float size, VECTOR4 color);
+	void Update(float size, CoordTf::VECTOR4 color);
 	void DrawBillboard(int com);
 	void DrawBillboard();
 	void StreamOutput(int com);

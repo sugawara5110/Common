@@ -7,7 +7,7 @@
 #ifndef Class_DxStruct_Header
 #define Class_DxStruct_Header
 
-#include "DxFunction.h"
+#include "../../../CoordTf/CoordTf.h"
 #include <windows.h>
 #include <wrl.h>//Microsoft::WRL
 #include <dxgi1_4.h>
@@ -26,88 +26,88 @@
 //シェーダー受け渡し用バッファ3D用
 struct CONSTANT_BUFFER {
 
-	MATRIX World[INSTANCE_PCS_3D];
-	MATRIX WVP[INSTANCE_PCS_3D];
-	VECTOR4 C_Pos;       //視点位置
-	VECTOR4 viewUp;      //視点上方向
-	VECTOR4 AddObjColor;//オブジェクトの色変化用
+	CoordTf::MATRIX World[INSTANCE_PCS_3D];
+	CoordTf::MATRIX WVP[INSTANCE_PCS_3D];
+	CoordTf::VECTOR4 C_Pos;       //視点位置
+	CoordTf::VECTOR4 viewUp;      //視点上方向
+	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
 
 	//グローバルアンビエント
-	VECTOR4 GlobalAmbientLight;
+	CoordTf::VECTOR4 GlobalAmbientLight;
 
 	//ポイントライト
-	VECTOR4 pLightPos[LIGHT_PCS];//xyz:Pos, w:オンオフ
-	VECTOR4 pLightColor[LIGHT_PCS];
-	VECTOR4 pLightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
-	VECTOR4 numLight;//x:ライト個数
+	CoordTf::VECTOR4 pLightPos[LIGHT_PCS];//xyz:Pos, w:オンオフ
+	CoordTf::VECTOR4 pLightColor[LIGHT_PCS];
+	CoordTf::VECTOR4 pLightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
+	CoordTf::VECTOR4 numLight;//x:ライト個数
 
 	//ディレクショナルライト
-	VECTOR4 dDirection;
-	VECTOR4 dLightColor;
-	VECTOR4 dLightst;//x:オンオフ
+	CoordTf::VECTOR4 dDirection;
+	CoordTf::VECTOR4 dLightColor;
+	CoordTf::VECTOR4 dLightst;//x:オンオフ
 
 	//フォグ
-	VECTOR4  FogAmo_Density; //フォグ量x, フォグの密度y, onoffz
-	VECTOR4  FogColor;   //フォグの色
+	CoordTf::VECTOR4  FogAmo_Density; //フォグ量x, フォグの密度y, onoffz
+	CoordTf::VECTOR4  FogColor;   //フォグの色
 
 	//x:ディスプレイトメントマッピングの起伏量
 	//y:divide配列数
 	//z:shininess
-	VECTOR4  DispAmount;
+	CoordTf::VECTOR4  DispAmount;
 
 	//divide配列 x:distance, y:divide
-	VECTOR4 Divide[16];
+	CoordTf::VECTOR4 Divide[16];
 
 	//UV座標移動用
-	VECTOR4 pXpYmXmY;
+	CoordTf::VECTOR4 pXpYmXmY;
 };
 
 struct CONSTANT_BUFFER2 {
-	VECTOR4 vDiffuse;//ディフューズ色
-	VECTOR4 vSpeculer;//スぺキュラ色
-	VECTOR4 vAmbient;//アンビエント
-	VECTOR4 uvSwitch;//.xのみ
+	CoordTf::VECTOR4 vDiffuse;//ディフューズ色
+	CoordTf::VECTOR4 vSpeculer;//スぺキュラ色
+	CoordTf::VECTOR4 vAmbient;//アンビエント
+	CoordTf::VECTOR4 uvSwitch;//.xのみ
 };
 
 struct cbInstanceID {
-	VECTOR4 instanceID;//x:ID, y:1.0f on 0.0f off
+	CoordTf::VECTOR4 instanceID;//x:ID, y:1.0f on 0.0f off
 };
 
 //コンスタントバッファ2D用
 struct CONSTANT_BUFFER2D {
-	VECTOR4 Pos[INSTANCE_PCS_2D];
-	VECTOR4 Color[INSTANCE_PCS_2D];
-	VECTOR4 sizeXY[INSTANCE_PCS_2D];
-	VECTOR4 WidHei;//ウインドウwh
+	CoordTf::VECTOR4 Pos[INSTANCE_PCS_2D];
+	CoordTf::VECTOR4 Color[INSTANCE_PCS_2D];
+	CoordTf::VECTOR4 sizeXY[INSTANCE_PCS_2D];
+	CoordTf::VECTOR4 WidHei;//ウインドウwh
 };
 
 //コンスタントバッファパーティクル用
 struct CONSTANT_BUFFER_P {
-	MATRIX  WV;
-	MATRIX  invRot;
-	MATRIX  Proj;
-	VECTOR4 size;//xパーティクル大きさ, yパーティクル初期化フラグ, zスピード
-	VECTOR4 AddObjColor;//オブジェクトの色変化用
+	CoordTf::MATRIX  WV;
+	CoordTf::MATRIX  invRot;
+	CoordTf::MATRIX  Proj;
+	CoordTf::VECTOR4 size;//xパーティクル大きさ, yパーティクル初期化フラグ, zスピード
+	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
 };
 
 //ポイントライト
 struct PointLight {
-	VECTOR4 LightPos[LIGHT_PCS];   //xyz:Pos, w:オンオフ
-	VECTOR4 LightColor[LIGHT_PCS];//色
-	VECTOR4 Lightst[LIGHT_PCS];  //レンジ, 減衰1, 減衰2, 減衰3
+	CoordTf::VECTOR4 LightPos[LIGHT_PCS];   //xyz:Pos, w:オンオフ
+	CoordTf::VECTOR4 LightColor[LIGHT_PCS];//色
+	CoordTf::VECTOR4 Lightst[LIGHT_PCS];  //レンジ, 減衰1, 減衰2, 減衰3
 	int     LightPcs;     //ライト個数
 };
 
 //平行光源
 struct DirectionLight {
-	VECTOR4 Direction;  //方向
-	VECTOR4 LightColor;//色
+	CoordTf::VECTOR4 Direction;  //方向
+	CoordTf::VECTOR4 LightColor;//色
 	float onoff;
 };
 
 //フォグ
 struct Fog {
-	VECTOR4  FogColor;//フォグの色
+	CoordTf::VECTOR4  FogColor;//フォグの色
 	float    Amount;  //フォグ量
 	float    Density;//密度
 	float    on_off;
@@ -115,55 +115,55 @@ struct Fog {
 
 //頂点3DTexture無し
 struct VertexBC {
-	VECTOR3 Pos;       //位置
-	VECTOR4 color;   //色
+	CoordTf::VECTOR3 Pos;       //位置
+	CoordTf::VECTOR4 color;   //色
 };
 
 //頂点2D
 struct MY_VERTEX2 {
-	VECTOR3 Pos;       
-	VECTOR4 color;
-	VECTOR2 tex;    
+	CoordTf::VECTOR3 Pos;
+	CoordTf::VECTOR4 color;
+	CoordTf::VECTOR2 tex;
 };
 
 //パーティクル頂点
 struct PartPos {
-	VECTOR3 CurrentPos; //描画に使う
-	VECTOR3 PosSt;     //開始位置
-	VECTOR3 PosEnd;   //終了位置
-	VECTOR3 normal;
+	CoordTf::VECTOR3 CurrentPos; //描画に使う
+	CoordTf::VECTOR3 PosSt;     //開始位置
+	CoordTf::VECTOR3 PosEnd;   //終了位置
+	CoordTf::VECTOR3 normal;
 };
 
 //頂点3DTexture有り
 struct Vertex {
-	VECTOR3 Pos;       //位置
-	VECTOR3 normal;   //法線
-	VECTOR2 tex;    //テクスチャ座標
+	CoordTf::VECTOR3 Pos;       //位置
+	CoordTf::VECTOR3 normal;   //法線
+	CoordTf::VECTOR2 tex;    //テクスチャ座標
 };
 
 //Mesh.obj
 struct VertexM {
-	VECTOR3 Pos;       //位置
-	VECTOR3 normal;   //法線
-	VECTOR3 geoNormal;
-	VECTOR2 tex;    //テクスチャ座標
+	CoordTf::VECTOR3 Pos;       //位置
+	CoordTf::VECTOR3 normal;   //法線
+	CoordTf::VECTOR3 geoNormal;
+	CoordTf::VECTOR2 tex;    //テクスチャ座標
 };
 
 //以下スキンメッシュ
 struct MY_VERTEX_S {
-	VECTOR3 vPos = {};//頂点
-	VECTOR3 vNorm = {};//法線
-	VECTOR3 vGeoNorm = {};//ジオメトリ法線
-	VECTOR2 vTex0 = {};//UV座標0
-	VECTOR2 vTex1 = {};//UV座標1
+	CoordTf::VECTOR3 vPos = {};//頂点
+	CoordTf::VECTOR3 vNorm = {};//法線
+	CoordTf::VECTOR3 vGeoNorm = {};//ジオメトリ法線
+	CoordTf::VECTOR2 vTex0 = {};//UV座標0
+	CoordTf::VECTOR2 vTex1 = {};//UV座標1
 	UINT bBoneIndex[4] = {};//ボーン　番号
 	float bBoneWeight[4] = {};//ボーン　重み
 };
 
 struct MY_MATERIAL_S {
-	VECTOR4 diffuse = {};
-	VECTOR4 specular = {};
-	VECTOR4 ambient = {};
+	CoordTf::VECTOR4 diffuse = {};
+	CoordTf::VECTOR4 specular = {};
+	CoordTf::VECTOR4 ambient = {};
 	CHAR difUvName[255] = {};
 	CHAR norUvName[255] = {};
 	CHAR speUvName[255] = {};
@@ -172,9 +172,9 @@ struct MY_MATERIAL_S {
 	int spetex_no = -1;
 };
 
-struct BONE{
-	MATRIX mBindPose;//初期ポーズ
-	MATRIX mNewPose;//現在のポーズ
+struct BONE {
+	CoordTf::MATRIX mBindPose;//初期ポーズ
+	CoordTf::MATRIX mNewPose;//現在のポーズ
 
 	BONE()
 	{
@@ -183,7 +183,7 @@ struct BONE{
 };
 
 struct SHADER_GLOBAL_BONES {
-	MATRIX mBone[MAX_BONES];
+	CoordTf::MATRIX mBone[MAX_BONES];
 	SHADER_GLOBAL_BONES()
 	{
 		for (int i = 0; i < MAX_BONES; i++)
@@ -231,7 +231,7 @@ struct WaveData
 };
 
 struct CONSTANT_BUFFER_WAVE {
-	VECTOR4 wHei_divide;//x:waveHeight, y:分割数
+	CoordTf::VECTOR4 wHei_divide;//x:waveHeight, y:分割数
 	float speed = 0.0f;
 };
 
@@ -276,8 +276,8 @@ struct MovieTexture {
 
 //ポストエフェクト
 struct CONSTANT_BUFFER_PostMosaic {
-	VECTOR4 mosaicSize;//x
-	VECTOR4 blur;//xy:座標, z:強さ
+	CoordTf::VECTOR4 mosaicSize;//x
+	CoordTf::VECTOR4 blur;//xy:座標, z:強さ
 };
 
 struct DivideArr {
@@ -286,9 +286,9 @@ struct DivideArr {
 };
 
 struct VERTEX_DXR {
-	VECTOR3 Pos = {};//頂点
-	VECTOR3 Nor = {};//法線
-	VECTOR2 Tex[2] = {};//UV座標
+	CoordTf::VECTOR3 Pos = {};//頂点
+	CoordTf::VECTOR3 Nor = {};//法線
+	CoordTf::VECTOR2 Tex[2] = {};//UV座標
 };
 
 #endif

@@ -19,31 +19,31 @@ struct AccelerationStructureBuffers
 };
 
 struct WVP_CB {
-	MATRIX wvp;
-	MATRIX world;
+	CoordTf::MATRIX wvp;
+	CoordTf::MATRIX world;
 };
 
 struct DxrConstantBuffer
 {
-	MATRIX projectionToWorld;
-	VECTOR4 cameraUp;
-	VECTOR4 cameraPosition;
-	VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
-	VECTOR4 numEmissive;//.xのみ
-	VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
-	VECTOR4 GlobalAmbientColor;
-	VECTOR4 emissiveNo[LIGHT_PCS];//.xのみ
-	VECTOR4 dDirection;
-	VECTOR4 dLightColor;
-	VECTOR4 dLightst;//x:オンオフ
+	CoordTf::MATRIX projectionToWorld;
+	CoordTf::VECTOR4 cameraUp;
+	CoordTf::VECTOR4 cameraPosition;
+	CoordTf::VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
+	CoordTf::VECTOR4 numEmissive;//.xのみ
+	CoordTf::VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
+	CoordTf::VECTOR4 GlobalAmbientColor;
+	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//.xのみ
+	CoordTf::VECTOR4 dDirection;
+	CoordTf::VECTOR4 dLightColor;
+	CoordTf::VECTOR4 dLightst;//x:オンオフ
 	UINT maxRecursion;
 };
 
 struct DxrMaterialCB {
-	VECTOR4 vDiffuse = { 0.8f,0.8f,0.8f,1.0f };//ディフューズ色
-	VECTOR4 vSpeculer = { 0.6f,0.6f,0.6f,1.0f };//スぺキュラ色
-	VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
-	VECTOR4 AddObjColor = {};//オブジェクトの色変化用
+	CoordTf::VECTOR4 vDiffuse = { 0.8f,0.8f,0.8f,1.0f };//ディフューズ色
+	CoordTf::VECTOR4 vSpeculer = { 0.6f,0.6f,0.6f,1.0f };//スぺキュラ色
+	CoordTf::VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
+	CoordTf::VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess = 4.0f;//スペキュラ強さ
 	float RefractiveIndex = 0.0f;//屈折率
 	UINT materialNo = 0;
