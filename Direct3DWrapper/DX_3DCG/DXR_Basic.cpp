@@ -100,7 +100,7 @@ void DXR_Basic::createTriangleVB(UINT numMaterial) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
 				VertexView& vv = PD[i]->updateDXR[dx->dxrBuffSwap[1]].VviewDXR[j][t];
-				dx->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
+				dx->device->createDefaultResourceBuffer(VertexBufferGPU[MaterialCnt].GetAddressOf(),
 					vv.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 				MaterialCnt++;
 			}
@@ -149,9 +149,9 @@ void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
 
 	if (!bLB.firstSet) {
 		//リソース要件を元にUAV作成
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
+		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
+		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
 			D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 	}
 
@@ -224,11 +224,11 @@ void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
 
 	if (!tLB.firstSet) {
 		//リソース要件を元にUAV作成
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pScratch.GetAddressOf(),
+		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pScratch.GetAddressOf(),
 			info.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		dx->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pResult.GetAddressOf(),
+		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pResult.GetAddressOf(),
 			info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
-		dx->createUploadResource(tLB.pInstanceDesc.GetAddressOf(),
+		dx->device->createUploadResource(tLB.pInstanceDesc.GetAddressOf(),
 			sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
 	}
 
@@ -434,7 +434,7 @@ struct ExportAssociation {
 };
 
 ComPtr<ID3D12RootSignature> DXR_Basic::createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc) {
-	return Dx12Process::GetInstance()->CreateRsCommon(&desc);
+	return Dx12Process::GetInstance()->device->CreateRsCommon(&desc);
 }
 
 struct LocalRootSignature {
@@ -716,7 +716,7 @@ void DXR_Basic::createRtPipelineState() {
 	desc.pSubobjects = subobjects.data();
 	desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
 
-	HRESULT hr = dx->md3dDevice.Get()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
+	HRESULT hr = dx->getDevice()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
 	if (FAILED(hr)) {
 		ErrorMessage("DXR_Basic::createRtPipelineState() Error");
 	}
@@ -725,12 +725,12 @@ void DXR_Basic::createRtPipelineState() {
 void DXR_Basic::createShaderResources() {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpOutputResource.GetAddressOf(),
+	dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpOutputResource.GetAddressOf(),
 		dx->mClientWidth,
 		dx->mClientHeight,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	dx->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpDepthResource.GetAddressOf(),
+	dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpDepthResource.GetAddressOf(),
 		dx->mClientWidth,
 		dx->mClientHeight,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
@@ -752,7 +752,7 @@ void DXR_Basic::createShaderResources() {
 	int numHeap = numSkipLocalHeap + num_t00 + num_t01 + num_t02;
 
 	//Local
-	mpSrvUavCbvHeap = dx->CreateDescHeap(numHeap);
+	mpSrvUavCbvHeap = dx->device->CreateDescHeap(numHeap);
 	D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 	UINT offsetSize = dx->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -872,7 +872,7 @@ void DXR_Basic::createShaderResources() {
 	samLinear.MinLOD = 0.0f;
 	samLinear.MaxLOD = D3D12_FLOAT32_MAX;
 
-	mpSamplerHeap = dx->CreateSamplerDescHeap(samLinear);
+	mpSamplerHeap = dx->device->CreateSamplerDescHeap(samLinear);
 }
 
 void DXR_Basic::createShaderTable() {
@@ -889,7 +889,7 @@ void DXR_Basic::createShaderTable() {
 	mShaderTableEntrySize = ALIGNMENT_TO(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mShaderTableEntrySize);
 	uint32_t shaderTableSize = mShaderTableEntrySize * 5;//raygen + miss * 2 + hit * 2
 
-	Dx12Process::GetInstance()->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
+	Dx12Process::GetInstance()->device->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
 
 	uint8_t* pData;
 	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);

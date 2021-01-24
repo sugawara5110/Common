@@ -118,7 +118,7 @@ void SearchPixel::ComCreate() {
 	uavHeapDesc.NumDescriptors = 1;
 	uavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	uavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	dx->md3dDevice->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
+	dx->getDevice()->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
 
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -135,7 +135,7 @@ void SearchPixel::ComCreate() {
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	//RWTexture2D—pgInputCol
-	dx->md3dDevice->CreateCommittedResource(
+	dx->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
@@ -164,7 +164,7 @@ void SearchPixel::ComCreate() {
 	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	//up—pgInputCol
-	dx->md3dDevice->CreateCommittedResource(
+	dx->getDevice()->CreateCommittedResource(
 		&HeapPropsUp,
 		D3D12_HEAP_FLAG_NONE,
 		&BufferDesc,
@@ -178,7 +178,7 @@ void SearchPixel::ComCreate() {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap->GetCPUDescriptorHandleForHeapStart());
-	dx->md3dDevice->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	dx->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));

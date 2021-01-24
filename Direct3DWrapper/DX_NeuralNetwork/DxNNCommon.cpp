@@ -35,7 +35,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	uavHeapDesc.NumDescriptors = 1;
 	uavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	uavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	dx->md3dDevice->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap2));
+	dx->getDevice()->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap2));
 
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -52,7 +52,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	//RWTexture2D—p
-	dx->md3dDevice->CreateCommittedResource(
+	dx->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
@@ -66,7 +66,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap2->GetCPUDescriptorHandleForHeapStart());
-	dx->md3dDevice->CreateUnorderedAccessView(mTextureBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	dx->getDevice()->CreateUnorderedAccessView(mTextureBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mTextureBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
@@ -124,8 +124,8 @@ void DxNNCommon::TextureCopy(ID3D12Resource* texture, int comNo) {
 	dx->WaitFence();
 }
 
-void DxNNCommon::CreateResourceDef(Microsoft::WRL::ComPtr<ID3D12Resource> &def, UINT64 size) {
-	dx->md3dDevice->CreateCommittedResource(
+void DxNNCommon::CreateResourceDef(Microsoft::WRL::ComPtr<ID3D12Resource>& def, UINT64 size) {
+	dx->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(size, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
@@ -134,8 +134,8 @@ void DxNNCommon::CreateResourceDef(Microsoft::WRL::ComPtr<ID3D12Resource> &def, 
 		IID_PPV_ARGS(&def));
 }
 
-void DxNNCommon::CreateResourceUp(Microsoft::WRL::ComPtr<ID3D12Resource> &up, UINT64 size) {
-	dx->md3dDevice->CreateCommittedResource(
+void DxNNCommon::CreateResourceUp(Microsoft::WRL::ComPtr<ID3D12Resource>& up, UINT64 size) {
+	dx->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(size),
@@ -144,8 +144,8 @@ void DxNNCommon::CreateResourceUp(Microsoft::WRL::ComPtr<ID3D12Resource> &up, UI
 		IID_PPV_ARGS(&up));
 }
 
-void DxNNCommon::CreateResourceRead(Microsoft::WRL::ComPtr<ID3D12Resource> &re, UINT64 size) {
-	dx->md3dDevice->CreateCommittedResource(
+void DxNNCommon::CreateResourceRead(Microsoft::WRL::ComPtr<ID3D12Resource>& re, UINT64 size) {
+	dx->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(size),

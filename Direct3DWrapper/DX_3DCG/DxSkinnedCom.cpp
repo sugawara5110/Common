@@ -26,7 +26,7 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 		const int numDesc = numSrv + numCbv + numUav;
 		NumDesc = numDesc;
 		const int numHeap = numDesc * NumMaterial;
-		descHeap = dx->CreateDescHeap(numHeap);
+		descHeap = dx->device->CreateDescHeap(numHeap);
 		if (descHeap == nullptr)return false;
 
 		UINT cbSize[2] = {};
@@ -88,7 +88,7 @@ bool SkinnedCom::createParameterDXR() {
 			dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
 			dxI.IndexBufferByteSize = bytesize;
 			dxI.IndexCount = indCnt;
-			if (FAILED(dx->createDefaultResourceBuffer(dxI.IndexBufferGPU.GetAddressOf(),
+			if (FAILED(dx->device->createDefaultResourceBuffer(dxI.IndexBufferGPU.GetAddressOf(),
 				dxI.IndexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ))) {
 				ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 				return false;
@@ -104,13 +104,13 @@ bool SkinnedCom::createParameterDXR() {
 				bytesize = vCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
-				if (FAILED(dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+				if (FAILED(dx->device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 					dxV.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ))) {
 					ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 					return false;
 				}
 			}
-			if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(SkinnedVer[i].GetAddressOf(),
+			if (FAILED(dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(SkinnedVer[i].GetAddressOf(),
 				bytesize, D3D12_RESOURCE_STATE_UNORDERED_ACCESS))) {
 				ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 				return false;

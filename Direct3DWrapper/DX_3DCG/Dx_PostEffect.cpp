@@ -30,13 +30,13 @@ bool PostEffect::ComCreate(int no) {
 	HeapDesc.NumDescriptors = 3;
 	HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	if (FAILED(dx->md3dDevice->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&mDescHeap)))) {
+	if (FAILED(dx->getDevice()->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&mDescHeap)))) {
 		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
-	if (FAILED(dx->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mOutputBuffer, dx->mClientWidth, dx->mClientHeight))) {
+	if (FAILED(dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mOutputBuffer, dx->mClientWidth, dx->mClientHeight))) {
 		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
-	if (FAILED(dx->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBuffer, dx->mClientWidth, dx->mClientHeight))) {
+	if (FAILED(dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBuffer, dx->mClientWidth, dx->mClientHeight))) {
 		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
 
@@ -50,9 +50,9 @@ bool PostEffect::ComCreate(int no) {
 	UINT size = mObjectCB->getSizeInBytes();
 	CreateCbv(mDescHeap.Get(), 0, &ad, &size, 1);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
-	dx->md3dDevice->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	dx->getDevice()->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
-	dx->md3dDevice->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	dx->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
 	dx->dx_sub[com_no].ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

@@ -256,7 +256,7 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 	if (hs)numUav = 1;
 	dpara.numDesc = numSrvTex + numSrvBuf + numCbv + numUav;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
-	dpara.descHeap = dx->CreateDescHeap(numHeap);
+	dpara.descHeap = dx->device->CreateDescHeap(numHeap);
 	ARR_DELETE(te);
 	if (dpara.descHeap == nullptr)return false;
 	const int numMaxCB = 3;
@@ -324,13 +324,13 @@ void PolygonData::createParameterDXR(bool alpha, float divideBufferMagnification
 				bytesize = indCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
-				dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+				dx->device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 					dxV.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 			}
 			StreamView& dxS = dxrPara.SviewDXR[i][t];
 			dxS.StreamByteStride = sizeof(VERTEX_DXR);
 			dxS.StreamBufferByteSize = bytesize;
-			dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
+			dxS.StreamBufferGPU = dx->device->CreateStreamBuffer(dxS.StreamBufferByteSize);
 		}
 	}
 }

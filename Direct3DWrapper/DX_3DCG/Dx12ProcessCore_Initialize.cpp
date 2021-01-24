@@ -37,7 +37,7 @@ bool Dx12Process_sub::ListCreate(bool Compute) {
 
 	for (int i = 0; i < 2; i++) {
 		//コマンドアロケータ生成(コマンドリストに積むバッファを確保するObj)
-		if (FAILED(Dx12Process::dx->md3dDevice->CreateCommandAllocator(
+		if (FAILED(Dx12Process::dx->getDevice()->CreateCommandAllocator(
 			type,
 			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf())))) {
 			ErrorMessage("CreateCommandAllocator Error");
@@ -46,7 +46,7 @@ bool Dx12Process_sub::ListCreate(bool Compute) {
 	}
 
 	//コマンドリスト生成
-	if (FAILED(Dx12Process::dx->md3dDevice->CreateCommandList(
+	if (FAILED(Dx12Process::dx->getDevice()->CreateCommandList(
 		0,
 		type,
 		mCmdListAlloc[0].Get(),
@@ -494,221 +494,11 @@ int Dx12Process::GetTexNumber(CHAR* fileName) {
 	return -1;
 }
 
-static HRESULT createDefaultResourceCommon(ID3D12Device* dev, ID3D12Resource** def,
-	D3D12_RESOURCE_DIMENSION dimension, UINT64 width, UINT height,
-	DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags,
-	D3D12_RESOURCE_STATES firstState) {
-
-	D3D12_RESOURCE_DESC desc = {};
-	desc.Dimension = dimension;
-	desc.Width = width;
-	desc.Height = height;
-	desc.DepthOrArraySize = 1;
-	desc.MipLevels = 1;
-	desc.Format = format;
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	if (dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	desc.Flags = flags;
-
-	D3D12_HEAP_PROPERTIES HeapProps = {};
-	HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	HeapProps.CreationNodeMask = 1;
-	HeapProps.VisibleNodeMask = 1;
-
-	//デフォルトバッファ生成
-	return dev->CreateCommittedResource(
-		&HeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&desc,
-		firstState,
-		nullptr,
-		IID_PPV_ARGS(def));
-}
-
-HRESULT Dx12Process::createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
-	DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState) {
-
-	return createDefaultResourceCommon(md3dDevice.Get(), def,
-		D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height,
-		format, D3D12_RESOURCE_FLAG_NONE, firstState);
-}
-
-HRESULT Dx12Process::createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height,
-	D3D12_RESOURCE_STATES firstState,
-	DXGI_FORMAT format) {
-
-	return createDefaultResourceCommon(md3dDevice.Get(), def,
-		D3D12_RESOURCE_DIMENSION_TEXTURE2D, width, height,
-		format, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		firstState);
-}
-
-HRESULT Dx12Process::createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize,
-	D3D12_RESOURCE_STATES firstState) {
-
-	return createDefaultResourceCommon(md3dDevice.Get(), def,
-		D3D12_RESOURCE_DIMENSION_BUFFER, bufferSize, 1,
-		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE,
-		firstState);
-}
-
-HRESULT Dx12Process::createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize,
-	D3D12_RESOURCE_STATES firstState) {
-
-	return createDefaultResourceCommon(md3dDevice.Get(), def,
-		D3D12_RESOURCE_DIMENSION_BUFFER, bufferSize, 1,
-		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		firstState);
-}
-
-HRESULT Dx12Process::createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize) {
-	D3D12_HEAP_PROPERTIES HeapPropsUp = {};
-	HeapPropsUp.Type = D3D12_HEAP_TYPE_UPLOAD;
-	HeapPropsUp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	HeapPropsUp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	HeapPropsUp.CreationNodeMask = 1;
-	HeapPropsUp.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC BufferDesc = {};
-	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	BufferDesc.Alignment = 0;
-	BufferDesc.Width = uploadBufferSize;
-	BufferDesc.Height = 1;
-	BufferDesc.DepthOrArraySize = 1;
-	BufferDesc.MipLevels = 1;
-	BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-	BufferDesc.SampleDesc.Count = 1;
-	BufferDesc.SampleDesc.Quality = 0;
-	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	return md3dDevice->CreateCommittedResource(&HeapPropsUp, D3D12_HEAP_FLAG_NONE,
-		&BufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(up));
-}
-
-HRESULT Dx12Process::createReadBackResource(ID3D12Resource** ba, UINT64 BufferSize) {
-	D3D12_HEAP_PROPERTIES heap = {};
-	heap.Type = D3D12_HEAP_TYPE_READBACK;
-	heap.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	heap.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	heap.CreationNodeMask = 1;
-	heap.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC desc = {};
-	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	desc.Alignment = 0;
-	desc.Width = BufferSize;
-	desc.Height = 1;
-	desc.DepthOrArraySize = 1;
-	desc.MipLevels = 1;
-	desc.Format = DXGI_FORMAT_UNKNOWN;
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	return md3dDevice->CreateCommittedResource(
-		&heap,
-		D3D12_HEAP_FLAG_NONE,
-		&desc,
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		nullptr,
-		IID_PPV_ARGS(ba));
-}
-
-HRESULT Dx12Process::textureInit(int width, int height,
-	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
-	D3D12_RESOURCE_STATES firstState) {
-
-	HRESULT hr = createDefaultResourceTEXTURE2D(def, width, height, format, firstState);
-	if (FAILED(hr)) {
-		return hr;
-	}
-
-	//upload
-	UINT64 uploadBufferSize = getRequiredIntermediateSize(*def);
-	hr = createUploadResource(up, uploadBufferSize);
-	if (FAILED(hr)) {
-		return hr;
-	}
-	return S_OK;
-}
-
-ComPtr<ID3D12RootSignature> Dx12Process::CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC* rootSigDesc)
-{
-	ComPtr<ID3D12RootSignature>rs;
-
-	ComPtr<ID3DBlob> serializedRootSig = nullptr;
-	ComPtr<ID3DBlob> errorBlob = nullptr;
-
-	HRESULT hr = D3D12SerializeRootSignature(rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
-
-	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateRsCommon Error!!");
-		ErrorMessage((char*)errorBlob.Get()->GetBufferPointer());
-		return nullptr;
-	}
-
-	//RootSignature生成
-	hr = md3dDevice.Get()->CreateRootSignature(
-		0,
-		serializedRootSig->GetBufferPointer(),
-		serializedRootSig->GetBufferSize(),
-		IID_PPV_ARGS(rs.GetAddressOf()));
-
-	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateRsCommon Error!!"); return nullptr;
-	}
-
-	return rs;
-}
-
-ComPtr <ID3D12DescriptorHeap> Dx12Process::CreateDescHeap(int numDesc) {
-	ComPtr <ID3D12DescriptorHeap>heap;
-
-	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-	desc.NumDescriptors = numDesc;
-	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-	HRESULT hr;
-	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
-	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateDescHeap Error!!"); return nullptr;
-	}
-	return heap;
-}
-
-ComPtr<ID3D12DescriptorHeap> Dx12Process::CreateSamplerDescHeap(D3D12_SAMPLER_DESC& descSampler) {
-	ComPtr <ID3D12DescriptorHeap>heap;
-
-	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-	desc.NumDescriptors = 1;
-	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-	HRESULT hr;
-	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
-	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateSamplerDescHeap Error!!"); return nullptr;
-	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE handle = heap.Get()->GetCPUDescriptorHandleForHeapStart();
-	md3dDevice->CreateSampler(&descSampler, handle);
-	return heap;
-}
-
 HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
 	ID3D12Resource** up, ID3D12Resource** def,
 	int width, LONG_PTR RowPitch, int height) {
 
-	HRESULT hr = textureInit(width, height, up, def, format,
+	HRESULT hr = device->textureInit(width, height, up, def, format,
 		D3D12_RESOURCE_STATE_COMMON);
 	if (FAILED(hr)) {
 		return hr;
@@ -777,10 +567,8 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 
 	//デバイス生成
-	HRESULT hardwareResult = D3D12CreateDevice(
-		nullptr,             // default adapter
-		D3D_FEATURE_LEVEL_11_0,
-		IID_PPV_ARGS(&md3dDevice));
+	device = std::make_unique<Dx_Device>();
+	HRESULT hardwareResult = device.get()->createDevice();
 
 	//↑ハードウエア処理不可の場合ソフトウエア処理にする,ソフトウエア処理デバイス生成
 	if (FAILED(hardwareResult))
@@ -791,17 +579,18 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			return false;
 		}
 
+		ID3D12Device5* dev = device->getDevice();
 		if (FAILED(D3D12CreateDevice(
 			pWarpAdapter.Get(),
 			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&md3dDevice)))) {
+			IID_PPV_ARGS(&dev)))) {
 			ErrorMessage("D3D12CreateDevice Error");
 			return false;
 		}
 	}
 	else if (DXR_CreateResource) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
-		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+		HRESULT hr = device->getDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
 		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 		{
 			ErrorMessage("DXR not supported");
@@ -811,9 +600,9 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 
 	//Descriptor のアドレス計算で使用
-	mRtvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	mDsvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	mRtvDescriptorSize = device->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	mDsvDescriptorSize = device->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	mCbvSrvUavDescriptorSize = device->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	//MultiSampleレベルチェック
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
@@ -821,7 +610,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	msQualityLevels.SampleCount = 4;
 	msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 	msQualityLevels.NumQualityLevels = 0;
-	if (FAILED(md3dDevice->CheckFeatureSupport(
+	if (FAILED(device->getDevice()->CheckFeatureSupport(
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&msQualityLevels,     //機能のサポートを示すデータが格納
 		sizeof(msQualityLevels)))) {
@@ -833,8 +622,8 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
 
 	//コマンドキュー生成
-	if (!graphicsQueue.Create(md3dDevice.Get(), false))return false;
-	if (!computeQueue.Create(md3dDevice.Get(), true))return false;
+	if (!graphicsQueue.Create(device->getDevice(), false))return false;
+	if (!computeQueue.Create(device->getDevice(), true))return false;
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
@@ -882,7 +671,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;   //RenderTargetView
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; //シェーダからアクセスしないのでNONEでOK
 	rtvHeapDesc.NodeMask = 0;
-	if (FAILED(md3dDevice->CreateDescriptorHeap(
+	if (FAILED(device->getDevice()->CreateDescriptorHeap(
 		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())))) {
 		ErrorMessage("CreateDescriptorHeap Error");
 		return false;
@@ -894,7 +683,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
-	if (FAILED(md3dDevice->CreateDescriptorHeap(
+	if (FAILED(device->getDevice()->CreateDescriptorHeap(
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())))) {
 		ErrorMessage("CreateDescriptorHeap Error");
 		return false;
@@ -909,7 +698,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			return false;
 		}
 		//レンダーターゲットビュー(Descriptor)生成,DescriptorHeapにDescriptorが記録される
-		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
+		device->getDevice()->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		//ヒープ位置オフセット(2個あるので2個目記録位置にDescriptorSize分オフセット)
 		rtvHeapHandle.ptr += mRtvDescriptorSize;
 	}
@@ -940,7 +729,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 	//深度ステンシルバッファ領域確保
-	if (FAILED(md3dDevice->CreateCommittedResource(
+	if (FAILED(device->getDevice()->CreateCommittedResource(
 		&depthStencilHeapProps,
 		D3D12_HEAP_FLAG_NONE,
 		&depthStencilDesc,
@@ -954,7 +743,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
 	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 	//深度ステンシルビュー生成
-	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(), nullptr, mDsvHeapHeapHandle);
+	device->getDevice()->CreateDepthStencilView(mDepthStencilBuffer.Get(), nullptr, mDsvHeapHeapHandle);
 
 	dx_sub[0].Bigin();
 
@@ -1133,13 +922,6 @@ void Dx12Process::Fog(float r, float g, float b, float amount, float density, bo
 	fog.Density = density;
 }
 
-UINT64 Dx12Process::getRequiredIntermediateSize(ID3D12Resource* res) {
-	D3D12_RESOURCE_DESC desc = res->GetDesc();
-	UINT64  total_bytes = 0;
-	dx->md3dDevice->GetCopyableFootprints(&desc, 0, 1, 0, nullptr, nullptr, nullptr, &total_bytes);
-	return total_bytes;
-}
-
 HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 	const void* initData, LONG_PTR RowPitch) {
 
@@ -1159,7 +941,7 @@ HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Re
 
 	if (copyTexture) {
 		UINT64  total_bytes = 0;
-		dx->md3dDevice->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+		dx->getDevice()->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
 
 		memset(&dest, 0, sizeof(dest));
 		dest.pResource = def;
@@ -1222,18 +1004,18 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	D3D12_RESOURCE_STATES after = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 	if (uav) {
-		hr = createDefaultResourceBuffer_UNORDERED_ACCESS(defaultBuffer.GetAddressOf(), byteSize);
+		hr = device->createDefaultResourceBuffer_UNORDERED_ACCESS(defaultBuffer.GetAddressOf(), byteSize);
 		after = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 	}
 	else {
-		hr = createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
+		hr = device->createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
 	}
 	if (FAILED(hr)) {
 		return nullptr;
 	}
 
-	UINT64 uploadBufferSize = getRequiredIntermediateSize(defaultBuffer.Get());
-	hr = createUploadResource(uploadBuffer.GetAddressOf(), uploadBufferSize);
+	UINT64 uploadBufferSize = device->getRequiredIntermediateSize(defaultBuffer.Get());
+	hr = device->createUploadResource(uploadBuffer.GetAddressOf(), uploadBufferSize);
 	if (FAILED(hr)) {
 		return nullptr;
 	}
@@ -1244,18 +1026,6 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 		return nullptr;
 	}
 	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, after);
-
-	return defaultBuffer;
-}
-
-ComPtr<ID3D12Resource> Dx12Process::CreateStreamBuffer(UINT64 byteSize)
-{
-	ComPtr<ID3D12Resource> defaultBuffer;
-
-	createDefaultResourceCommon(md3dDevice.Get(), defaultBuffer.GetAddressOf(),
-		D3D12_RESOURCE_DIMENSION_BUFFER, byteSize, 1,
-		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE,
-		D3D12_RESOURCE_STATE_STREAM_OUT);
 
 	return defaultBuffer;
 }
@@ -1440,9 +1210,4 @@ float T_float::Add(float f) {
 	if (r <= 0.0f)return 0.01f;
 	if (r >= 1000000.0f)return 1000000.0f;
 	return r;
-}
-
-//エラーメッセージ
-void ErrorMessage(char *E_mes) {
-	MessageBoxA(0, E_mes, 0, MB_OK);
 }

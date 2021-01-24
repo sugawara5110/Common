@@ -54,7 +54,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 	for (int i = 0; i < MaterialNum; i++) {
 		//diffuse, 動画テクスチャ
 		if (to[i].diffuse < 0 || movOn[i].m_on) {
-			hr = dx->textureInit(movOn[i].width, movOn[i].height,
+			hr = dx->device->textureInit(movOn[i].width, movOn[i].height,
 				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				DXGI_FORMAT_R8G8B8A8_UNORM,
 				D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -109,7 +109,7 @@ void Common::CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12
 	for (int i = 0; i < texNum; i++) {
 		srvDesc.Format = tex[i]->GetDesc().Format;
 		srvDesc.Texture2D.MipLevels = tex[i]->GetDesc().MipLevels;
-		dx->md3dDevice->CreateShaderResourceView(tex[i], &srvDesc, hDescriptor);
+		dx->getDevice()->CreateShaderResourceView(tex[i], &srvDesc, hDescriptor);
 		hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	}
 }
@@ -127,7 +127,7 @@ void Common::CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12R
 	for (int i = 0; i < bufNum; i++) {
 		srvDesc.Buffer.StructureByteStride = StructureByteStride[i];
 		srvDesc.Buffer.NumElements = (UINT)buffer[i]->GetDesc().Width / StructureByteStride[i];
-		dx->md3dDevice->CreateShaderResourceView(buffer[i], &srvDesc, hDescriptor);
+		dx->getDevice()->CreateShaderResourceView(buffer[i], &srvDesc, hDescriptor);
 		hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	}
 }
@@ -141,7 +141,7 @@ void Common::CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
 	for (int i = 0; i < bufNum; i++) {
 		bufferDesc.SizeInBytes = sizeInBytes[i];
 		bufferDesc.BufferLocation = virtualAddress[i];
-		dx->md3dDevice->CreateConstantBufferView(&bufferDesc, hDescriptor);
+		dx->getDevice()->CreateConstantBufferView(&bufferDesc, hDescriptor);
 		hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	}
 }
@@ -161,7 +161,7 @@ void Common::CreateUavBuffer(ID3D12DescriptorHeap* heap, int offsetHeap,
 	for (int i = 0; i < bufNum; i++) {
 		uavDesc.Buffer.StructureByteStride = byteStride[i];
 		uavDesc.Buffer.NumElements = bufferSize[i];
-		dx->md3dDevice->CreateUnorderedAccessView(buffer[i], nullptr, &uavDesc, hDescriptor);
+		dx->getDevice()->CreateUnorderedAccessView(buffer[i], nullptr, &uavDesc, hDescriptor);
 		hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	}
 }
@@ -256,7 +256,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER
 	desc.pStaticSamplers = &linearWrap;
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	return dx->CreateRsCommon(&desc);
+	return dx->device->CreateRsCommon(&desc);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
@@ -267,7 +267,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_RO
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	return dx->CreateRsCommon(&desc);
+	return dx->device->CreateRsCommon(&desc);
 }
 
 ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
@@ -281,7 +281,7 @@ ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	return dx->CreateRsCommon(&desc);
+	return dx->device->CreateRsCommon(&desc);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
@@ -291,7 +291,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 	desc.pParameters = slotRootParameter;
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
-	return dx->CreateRsCommon(&desc);
+	return dx->device->CreateRsCommon(&desc);
 }
 
 ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
@@ -455,7 +455,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	psoDesc.DSVFormat = dx->mDepthStencilFormat;
 
 	HRESULT hr;
-	hr = dx->md3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+	hr = dx->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
 	if (FAILED(hr)) {
 		ErrorMessage("Common::CreatePSO Error!!"); return nullptr;
 	}
@@ -520,7 +520,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 	PsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
 	HRESULT hr;
-	hr = dx->md3dDevice->CreateComputePipelineState(&PsoDesc, IID_PPV_ARGS(&pso));
+	hr = dx->getDevice()->CreateComputePipelineState(&PsoDesc, IID_PPV_ARGS(&pso));
 	if (FAILED(hr)) {
 		ErrorMessage("Common::CreatePsoCompute Error!!"); return nullptr;
 	}

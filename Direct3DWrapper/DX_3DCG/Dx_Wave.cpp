@@ -76,7 +76,7 @@ bool Wave::ComCreate() {
 		return false;
 	}
 
-	if (FAILED(dx->createDefaultResourceBuffer_UNORDERED_ACCESS(&mOutputBuffer, byteSize))) {
+	if (FAILED(dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(&mOutputBuffer, byteSize))) {
 		ErrorMessage("Wave::ComCreate Error!!");
 		return false;
 	}

@@ -151,7 +151,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	te.specular = -1;
 
 	createTextureResource(0, 1, &te);
-	mDescHeap = dx->CreateDescHeap(numSrv + numCbv);
+	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
 	CreateSrvTexture(mDescHeap.Get(), 0, texture[0].GetAddressOf(), 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();

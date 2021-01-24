@@ -167,7 +167,7 @@ void ParticleData::CreateVbObj() {
 	Vview->VertexBufferByteSize = vbByteSize;
 
 	for (int i = 0; i < 2; i++) {
-		Sview[i].StreamBufferGPU = dx->CreateStreamBuffer(vbByteSize);
+		Sview[i].StreamBufferGPU = dx->device->CreateStreamBuffer(vbByteSize);
 
 		Sview[i].StreamByteStride = sizeof(PartPos);
 		Sview[i].StreamBufferByteSize = vbByteSize;
@@ -217,7 +217,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	createTextureResource(0, 1, &te);
-	mDescHeap = dx->CreateDescHeap(numSrv + numCbv);
+	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
 	if (mDescHeap == nullptr)return false;
 	CreateSrvTexture(mDescHeap.Get(), 0, texture->GetAddressOf(), 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
@@ -247,7 +247,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 			bytesize = verCnt * sizeof(VERTEX_DXR);
 			dxV.VertexByteStride = sizeof(VERTEX_DXR);
 			dxV.VertexBufferByteSize = bytesize;
-			dx->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+			dx->device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 				dxV.VertexBufferByteSize);
 			dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -255,7 +255,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 		StreamView& dxS = dxrPara.SviewDXR[0][0];
 		dxS.StreamByteStride = sizeof(VERTEX_DXR);
 		dxS.StreamBufferByteSize = bytesize;
-		dxS.StreamBufferGPU = dx->CreateStreamBuffer(dxS.StreamBufferByteSize);
+		dxS.StreamBufferGPU = dx->device->CreateStreamBuffer(dxS.StreamBufferByteSize);
 
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0);
 		if (rootSignatureDXR == nullptr)return false;

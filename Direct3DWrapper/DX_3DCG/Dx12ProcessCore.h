@@ -13,11 +13,8 @@
 #endif
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "DxStruct.h"
+#include "Dx_Device.h"
 #include "DxEnum.h"
-#include <d3d12.h>
-#include "../MicroSoftLibrary/d3dx12.h"
-#include <d3d10_1.h>
 #include <D3Dcompiler.h>
 #include <DirectXColors.h>
 #include <stdlib.h>
@@ -31,8 +28,6 @@
 #include <typeinfo>
 
 #pragma comment(lib,"d3dcompiler.lib")
-#pragma comment(lib, "D3D12.lib")
-#pragma comment(lib, "dxgi.lib")
 
 #define COM_NO 32
 using Microsoft::WRL::ComPtr;
@@ -62,7 +57,6 @@ class DXR_Basic;
 class SkinnedCom;
 class TextObj;
 struct StreamView;
-void ErrorMessage(char* E_mes);
 //前方宣言
 
 class Dx12Process_sub final {
@@ -170,8 +164,8 @@ private:
 	friend TextObj;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
-	ComPtr<ID3D12Device5> md3dDevice;
 	ComPtr<IDXGISwapChain3> mSwapChain;
+	std::unique_ptr<Dx_Device> device = nullptr;
 	bool DXR_CreateResource = false;
 
 	//MultiSampleレベルチェック
@@ -302,14 +296,11 @@ private:
 	~Dx12Process();
 
 	bool CreateShaderByteCode();
-	UINT64 getRequiredIntermediateSize(ID3D12Resource* res);
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 		const void* initData, LONG_PTR RowPitch);
 
 	ComPtr<ID3D12Resource> CreateDefaultBuffer(int com_no,
 		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
-
-	ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
 
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
@@ -318,34 +309,9 @@ private:
 	void InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
 		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
 
-	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
-		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
-
-	HRESULT createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 width, UINT height,
-		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON,
-		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
-
-	HRESULT createDefaultResourceBuffer(ID3D12Resource** def, UINT64 bufferSize,
-		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
-
-	HRESULT createDefaultResourceBuffer_UNORDERED_ACCESS(ID3D12Resource** def, UINT64 bufferSize,
-		D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);
-
-	HRESULT createUploadResource(ID3D12Resource** up, UINT64 uploadBufferSize);
-
-	HRESULT createReadBackResource(ID3D12Resource** ba, UINT64 BufferSize);
-
-	HRESULT textureInit(int width, int height,
-		ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
-		D3D12_RESOURCE_STATES firstState);
-
 	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
-
-	ComPtr<ID3D12RootSignature> CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC* rootSigDesc);
-	ComPtr<ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
-	ComPtr<ID3D12DescriptorHeap> CreateSamplerDescHeap(D3D12_SAMPLER_DESC& descSampler);
 
 public:
 	static void InstanceCreate();
@@ -359,7 +325,7 @@ public:
 
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
-	ID3D12Device5* getDevice() { return md3dDevice.Get(); }
+	ID3D12Device5* getDevice() { return device->getDevice(); }
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
@@ -479,8 +445,8 @@ struct StreamView {
 
 	StreamView() {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		BufferFilledSizeBufferGPU = dx->CreateStreamBuffer(sizeof(UINT64));
-		dx->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
+		BufferFilledSizeBufferGPU = dx->device->CreateStreamBuffer(sizeof(UINT64));
+		dx->device->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
 	}
 
 	void ResetFilledSizeBuffer(int com) {
@@ -544,7 +510,7 @@ public:
 		//コンスタントバッファサイズは256バイトでアライメント
 		mElementByteSize = ALIGNMENT_TO(256, sizeof(T));
 
-		if (FAILED(dx->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
+		if (FAILED(dx->device->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
 			ErrorMessage("ConstantBufferエラー");
 		}
 
