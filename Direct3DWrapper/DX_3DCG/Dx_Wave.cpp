@@ -134,7 +134,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divid
 	mObj.setDivideArr(divArr, numDiv);
 	mObj.createDefaultBuffer(mObj.ver, mObj.index, true);
 	int numUav = 0;
-	mObj.createParameterDXR(alpha, divideBufferMagnification);
+	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);
 	if (!mObj.createPSO(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
 	if (!mObj.createPSO_DXR(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;

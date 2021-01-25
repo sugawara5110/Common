@@ -281,8 +281,9 @@ void PolygonData::createBufferDXR(int numMaterial, int numMaxInstance) {
 	dxrPara.create(numMaterial, numMaxInstance);
 }
 
-void PolygonData::createParameterDXR(bool alpha, float divideBufferMagnification) {
+void PolygonData::createParameterDXR(bool alpha, bool blend, float divideBufferMagnification) {
 	dxrPara.alphaTest = alpha;
+	dxrPara.alphaBlend = blend;
 	int NumMaterial = dxrPara.NumMaterial;
 
 	if (hs || vs == dx->pVertexShader_SKIN.Get())dxrPara.updateF = true;
@@ -353,7 +354,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	mObjectCB1->CopyData(0, sg);
 
 	createDefaultBuffer(ver, index, true);
-	createParameterDXR(alpha, divideBufferMagnification);
+	createParameterDXR(alpha, blend, divideBufferMagnification);
 	setColorDXR(0, sg);
 
 	const int numSrvTex = 3;

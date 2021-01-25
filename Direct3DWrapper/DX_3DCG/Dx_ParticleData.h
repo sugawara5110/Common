@@ -53,14 +53,14 @@ protected:
 		CoordTf::VECTOR4 color, float angle, float size, float speed);
 	void update2(CONSTANT_BUFFER_P* cb_p, bool init);
 	void GetVbColarray(int texture_no, float size, float density);
-	void CreateVbObj();
+	void CreateVbObj(bool alpha, bool blend);
 	bool CreatePartsCom();
-	bool CreatePartsDraw(int texpar);
+	bool CreatePartsDraw(int texNo, bool alpha, bool blend);
 	void DrawParts1(int com);
 	void DrawParts2(int com);
 	void DrawParts2StreamOutput(int com);
 	void CbSwap(bool init);
-	void createDxr();
+	void createDxr(bool alpha, bool blend);
 	CoordTf::MATRIX BillboardAngleCalculation(float angle);
 
 public:
@@ -69,8 +69,8 @@ public:
 	void GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
 	void GetBufferBill(int v);
 	void SetVertex(int i, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 nor);
-	bool CreateParticle(int texpar);//パーティクル1個のテクスチャナンバー
-	bool CreateBillboard();//ver個の四角形を生成
+	bool CreateParticle(int texNo, bool alpha, bool blend);//パーティクル1個のテクスチャナンバー
+	bool CreateBillboard(bool alpha, bool blend);//ver個の四角形を生成
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ
 	void DrawOff();
 	void Draw(int com);

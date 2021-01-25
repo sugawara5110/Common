@@ -310,10 +310,11 @@ char* ShaderCommonDXR =
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor.xyz;\n"
+"    float blend = material[materialID].AlphaBlend;\n"
+"    float Alpha = difTexColor.w;\n"
 
-"    if(mNo != 5) {\n"
+"    if(blend == 1.0f && mNo != 5 && Alpha < 1.0f) {\n"
 
-"       float Alpha = difTexColor.w;\n"
 "       RayPayload payload;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"

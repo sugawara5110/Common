@@ -635,6 +635,7 @@ struct ParameterDXR {
 		updateDXR[1].createAS = false;
 	}
 
+	bool alphaBlend = false;
 	bool alphaTest = false;
 };
 
@@ -808,7 +809,7 @@ protected:
 
 	void createBufferDXR(int numMaterial, int numMaxInstance);
 
-	void createParameterDXR(bool alpha, float divideBufferMagnification);
+	void createParameterDXR(bool alpha, bool blend, float divideBufferMagnification);
 
 	void setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg);
 

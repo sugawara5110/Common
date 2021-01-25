@@ -296,7 +296,7 @@ void DXR_Basic::createAccelerationStructures() {
 }
 
 static const WCHAR* kRayGenShader = L"rayGen";
-static const WCHAR* kAnyBasicClosestHitShader = L"anyBasicHit";
+static const WCHAR* kBasicAnyHitShader = L"anyBasicHit";
 static const WCHAR* kBasicMissShader = L"basicMiss";
 static const WCHAR* kBasicClosestHitShader = L"basicHit";
 static const WCHAR* kBasicHitGroup = L"basicHitGroup";
@@ -393,7 +393,7 @@ static DxilLibrary createDxilLibrary(char* add_shader) {
 	//シェーダーのコンパイル
 	ComPtr<ID3DBlob> pDxilLib = CompileLibrary(dxrShader[2].str, L"ShaderBasicDXR", L"lib_6_3");
 	const WCHAR* entryPoints[] = { kRayGenShader,
-		kAnyBasicClosestHitShader, kBasicMissShader, kBasicClosestHitShader,
+		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
 		kEmissiveMiss, kEmissiveHitShader
 	};
 	return DxilLibrary(pDxilLib, entryPoints, ARRAY_SIZE(entryPoints));
@@ -649,7 +649,7 @@ void DXR_Basic::createRtPipelineState() {
 	subobjects[index++] = dxilLib.stateSubobject;
 
 	//BasicHitShader SUBOBJECT作成
-	HitProgram basicHitProgram(kAnyBasicClosestHitShader, kBasicClosestHitShader, kBasicHitGroup);
+	HitProgram basicHitProgram(kBasicAnyHitShader, kBasicClosestHitShader, kBasicHitGroup);
 	subobjects[index++] = basicHitProgram.subObject;
 
 	//EmissiveHitShader SUBOBJECT作成
@@ -671,7 +671,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//↑のbasicHitShader, basicMissShader 共有ルートシグネチャとbasicHitShader, basicMissShader関連付け, SUBOBJECT作成
 	uint32_t basicHitMissRootIndex = index++;
-	const WCHAR* basicMissHitExportName[] = { kAnyBasicClosestHitShader, kBasicMissShader, kBasicClosestHitShader };
+	const WCHAR* basicMissHitExportName[] = { kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader };
 	ExportAssociation basicMissHitRootAssociation(basicMissHitExportName, ARRAY_SIZE(basicMissHitExportName),
 		&(subobjects[basicHitMissRootIndex]));
 	subobjects[index++] = basicMissHitRootAssociation.subobject;
@@ -696,7 +696,7 @@ void DXR_Basic::createRtPipelineState() {
 	uint32_t shaderConfigIndex = index++;
 	const WCHAR* shaderExports[] = {
 		kRayGenShader,
-		kAnyBasicClosestHitShader, kBasicMissShader, kBasicClosestHitShader,
+		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
 		kEmissiveHitShader, kEmissiveMiss
 	};
 	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), &(subobjects[shaderConfigIndex]));
@@ -944,6 +944,12 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;
 				memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
+				if (PD[i]->alphaBlend) {
+					mcb.AlphaBlend = 1.0f;
+				}
+				else {
+					mcb.AlphaBlend = 0.0f;
+				}
 				MaterialCnt++;
 			}
 		}

@@ -541,7 +541,7 @@ bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 		o.createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
 		int numUav = 0;
 		Dx12Process* dx = o.dx;
-		o.createParameterDXR(alpha, divideBufferMagnification);
+		o.createParameterDXR(alpha, blend, divideBufferMagnification);
 		if (!sk[i].createParameterDXR())return false;
 		if (!o.createPSO(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 		if (!o.createPSO_DXR(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;

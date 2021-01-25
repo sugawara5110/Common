@@ -429,7 +429,7 @@ bool MeshData::CreateMesh(float divideBufferMagnification) {
 	mObj.setDivideArr(divArr, numDiv);
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
 	int numUav = 0;
-	mObj.createParameterDXR(alpha, divideBufferMagnification);
+	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 
 	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 

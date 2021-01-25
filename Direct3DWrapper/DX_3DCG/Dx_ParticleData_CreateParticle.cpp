@@ -150,15 +150,16 @@ void ParticleData::GetBufferBill(int v) {
 	Sview = std::make_unique<StreamView[]>(2);
 }
 
-void ParticleData::createDxr() {
+void ParticleData::createDxr(bool alpha, bool blend) {
 	dxrPara.NumMaterial = 1;
 	dxrPara.create(1, 1);
 	dxrPara.updateDXR[0].shininess = 1.0f;
 	dxrPara.updateDXR[1].shininess = 1.0f;
-	dxrPara.alphaTest = true;
+	dxrPara.alphaTest = alpha;
+	dxrPara.alphaBlend = blend;
 }
 
-void ParticleData::CreateVbObj() {
+void ParticleData::CreateVbObj(bool alpha, bool blend) {
 	const UINT vbByteSize = ver * sizeof(PartPos);
 
 	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, P_pos, vbByteSize, Vview->VertexBufferUploader, false);
@@ -174,7 +175,7 @@ void ParticleData::CreateVbObj() {
 	}
 
 	if (dx->DXR_CreateResource) {
-		createDxr();
+		createDxr(alpha, blend);
 	}
 }
 
@@ -201,9 +202,9 @@ bool ParticleData::CreatePartsCom() {
 	return true;
 }
 
-bool ParticleData::CreatePartsDraw(int texpar) {
+bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 
-	if (texpar != -1)texpar_on = true;
+	if (texNo != -1)texpar_on = true;
 
 	const int numSrv = 1;
 	const int numCbv = 1;
@@ -212,7 +213,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	if (mRootSignature_draw == nullptr)return false;
 
 	TextureNo te;
-	te.diffuse = texpar;
+	te.diffuse = texNo;
 	te.normal = dx->GetTexNumber("dummyNor.");;
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
@@ -225,7 +226,7 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);
 
 	//パイプラインステートオブジェクト生成(Draw)
-	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, true, true);
+	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, alpha, blend);
 	if (mPSO_draw == nullptr)return false;
 
 	if (dx->DXR_CreateResource) {
@@ -281,19 +282,19 @@ bool ParticleData::CreatePartsDraw(int texpar) {
 	return true;
 }
 
-bool ParticleData::CreateParticle(int texpar) {
+bool ParticleData::CreateParticle(int texNo, bool alpha, bool blend) {
 	GetShaderByteCode();
-	CreateVbObj();
+	CreateVbObj(alpha, blend);
 	dxrPara.updateF = true;
 	if (!CreatePartsCom())return false;
-	return CreatePartsDraw(texpar);
+	return CreatePartsDraw(texNo, alpha, blend);
 }
 
-bool ParticleData::CreateBillboard() {
+bool ParticleData::CreateBillboard(bool alpha, bool blend) {
 	GetShaderByteCode();
-	CreateVbObj();
+	CreateVbObj(alpha, blend);
 	dxrPara.updateF = true;
-	return CreatePartsDraw(-1);
+	return CreatePartsDraw(-1, alpha, blend);
 }
 
 void ParticleData::DrawParts1(int com) {
