@@ -37,11 +37,17 @@ char* ShaderBasicDXR =
      //この関数からRayがスタートする
      //payloadに各hit, miss シェーダーで計算された値が格納される
 "    payload.RecursionCnt = 1;\n"
+"    bool loop = true;\n"
 "    payload.hitPosition = ray.Origin;\n"
 "    gDepthOut[index] = 1.0f;\n"
 "    payload.depth = -1.0f;\n"
-"    ray.Origin = payload.hitPosition;\n"
-"    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
+"    payload.reTry = false;\n"
+
+"    while(loop){\n"
+"       ray.Origin = payload.hitPosition;\n"
+"       TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
+"       loop = payload.reTry;\n"
+"    }\n"
 
 "    if(payload.depth != -1.0f)"
 "       gDepthOut[index] = payload.depth;\n"
