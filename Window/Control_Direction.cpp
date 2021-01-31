@@ -32,10 +32,6 @@ void Control::Input(UINT msg, WPARAM wParam, LPARAM lParam) {
 	case WM_MOUSEMOVE:
 		di->SetCursorPos(LOWORD(lParam), HIWORD(lParam));
 		break;
-	case WM_TIMER:
-		di->KeyboardUpdate();
-		di->MouseUpdate();
-		break;
 	}
 }
 

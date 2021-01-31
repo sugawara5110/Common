@@ -24,7 +24,7 @@
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int Createwindow(HWND* hWnd, HINSTANCE hInstance, int nCmdShow,
-	UINT Width, UINT Height, TCHAR* clsname, UINT Timer);
+	UINT Width, UINT Height, TCHAR* clsname);
 
 bool DispatchMSG(MSG *msg);
 

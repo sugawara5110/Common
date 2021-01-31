@@ -13,7 +13,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 int Createwindow(HWND* hWnd, HINSTANCE hInstance, int nCmdShow,
-	UINT Width, UINT Height, TCHAR* clsname, UINT Timer) {
+	UINT Width, UINT Height, TCHAR* clsname) {
 
 	//ウインドウクラスの初期化
 	WNDCLASSEX wcex;
@@ -52,12 +52,13 @@ int Createwindow(HWND* hWnd, HINSTANCE hInstance, int nCmdShow,
 	// WM_PAINTが呼ばれないようにする
 	ValidateRect(*hWnd, 0);
 
-	SetTimer(*hWnd, 1, Timer, NULL);//HWND, timerID, time(ミリ秒), callBack関数
-
 	return 0;
 }
 
 bool DispatchMSG(MSG* msg) {
+	DxInput* di = DxInput::GetInstance();
+	di->KeyboardUpdate();
+	di->MouseUpdate();
 	if (PeekMessage(msg, NULL, 0, 0, PM_REMOVE)) {
 		if ((*msg).message == WM_QUIT) {  // PostQuitMessage()が呼ばれた(×押された)
 			return FALSE;	//アプリ終了
