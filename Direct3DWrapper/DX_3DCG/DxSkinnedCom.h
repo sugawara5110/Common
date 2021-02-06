@@ -7,7 +7,7 @@
 #ifndef Class_DxSkinnedCom_Header
 #define Class_DxSkinnedCom_Header
 
-#include "Dx12ProcessCore.h"
+#include "Core/Dx12ProcessCore.h"
 
 struct uvSW {
 	CoordTf::VECTOR4 uvSw;//.x‚Ì‚Ý

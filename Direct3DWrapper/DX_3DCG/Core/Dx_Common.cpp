@@ -541,6 +541,6 @@ D3D12_RESOURCE_STATES Common::GetTextureStates() {
 }
 
 ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
-	return dx->CompileShader(szFileName, size, szFuncName, szProfileName);
+	return dx->shaderH->CompileShader(szFileName, size, szFuncName, szProfileName);
 }
 

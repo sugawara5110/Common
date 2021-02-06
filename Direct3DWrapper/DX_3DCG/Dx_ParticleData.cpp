@@ -1,7 +1,7 @@
 //*****************************************************************************************//
 //**                                                                                     **//
 //**                   　　　         ParticleDataクラス                                 **//
-//**                                  CreateParticle関数                                 **//
+//**                                                                                     **//
 //*****************************************************************************************//
 
 #include "Dx_ParticleData.h"
@@ -27,11 +27,12 @@ ParticleData::~ParticleData() {
 }
 
 void ParticleData::GetShaderByteCode() {
-	gsSO = dx->pGeometryShader_PSO.Get();
-	gs = dx->pGeometryShader_P.Get();
-	vsSO = dx->pVertexShader_PSO.Get();
-	vs = dx->pVertexShader_P.Get();
-	ps = dx->pPixelShader_P.Get();
+	Dx_ShaderHolder* sh = dx->shaderH.get();
+	gsSO = sh->pGeometryShader_PSO.Get();
+	gs = sh->pGeometryShader_P.Get();
+	vsSO = sh->pVertexShader_PSO.Get();
+	vs = sh->pVertexShader_P.Get();
+	ps = sh->pPixelShader_P.Get();
 }
 
 void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
@@ -191,9 +192,10 @@ bool ParticleData::CreatePartsCom() {
 	if (mRootSignature_com == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(STREAM_OUTPUT)
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	mPSO_com = CreatePsoStreamOutput(vsSO, nullptr, nullptr, gsSO, mRootSignature_com.Get(),
-		dx->pVertexLayout_P, &dx->pDeclaration_PSO,
-		(UINT)dx->pDeclaration_PSO.size(),
+		sh->pVertexLayout_P, &sh->pDeclaration_PSO,
+		(UINT)sh->pDeclaration_PSO.size(),
 		&Sview[0].StreamByteStride,
 		1,
 		POINt);
@@ -225,8 +227,9 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	UINT size = mObjectCB->getSizeInBytes();
 	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);
 
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	//パイプラインステートオブジェクト生成(Draw)
-	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), dx->pVertexLayout_P, alpha, blend);
+	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), sh->pVertexLayout_P, alpha, blend);
 	if (mPSO_draw == nullptr)return false;
 
 	if (dx->DXR_CreateResource) {
@@ -265,11 +268,11 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		dxrPara.norTex[0] = texture[1].Get();
 		dxrPara.speTex[0] = texture[2].Get();
 
-		gs = dx->pGeometryShader_P_Output.Get();
+		gs = sh->pGeometryShader_P_Output.Get();
 		PSO_DXR = CreatePsoStreamOutput(vs, nullptr, nullptr, gs, rootSignatureDXR.Get(),
-			dx->pVertexLayout_P,
-			&dx->pDeclaration_Output,
-			(UINT)dx->pDeclaration_Output.size(),
+			sh->pVertexLayout_P,
+			&sh->pDeclaration_Output,
+			(UINT)sh->pDeclaration_Output.size(),
 			&dxrPara.SviewDXR[0][0].StreamByteStride,
 			1,
 			POINt);
@@ -347,7 +350,7 @@ void ParticleData::DrawParts2(int com) {
 void ParticleData::DrawParts2StreamOutput(int com) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-	Dx12Process_sub& d = dx->dx_sub[com];
+	Dx_CommandListObj& d = dx->dx_sub[com];
 
 	mCList->SetPipelineState(PSO_DXR.Get());
 

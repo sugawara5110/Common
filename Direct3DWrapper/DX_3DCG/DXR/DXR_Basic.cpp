@@ -108,7 +108,7 @@ void DXR_Basic::createTriangleVB(UINT numMaterial) {
 	}
 }
 
-void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
+void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 	IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update, bool alphaTest) {
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlag =
@@ -174,7 +174,7 @@ void DXR_Basic::createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
 	com->delayUavResourceBarrier(bLB.pResult.Get());
 }
 
-void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com) {
+void DXR_Basic::createBottomLevelAS(Dx_CommandListObj* com) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
@@ -197,7 +197,7 @@ void DXR_Basic::createBottomLevelAS(Dx12Process_sub* com) {
 	com->RunDelayUavResourceBarrier();
 }
 
-void DXR_Basic::createTopLevelAS(Dx12Process_sub* com) {
+void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	AccelerationStructureBuffers& tLB = asObj[buffSwap[0]].topLevelBuffers;
@@ -644,7 +644,7 @@ void DXR_Basic::createRtPipelineState() {
 
 	//DXIL library 初期化, SUBOBJECT作成
 	addChar str;
-	str.addStr(dx->ShaderNormalTangentCopy.get(), dx->ShaderCalculateLightingCopy.get());
+	str.addStr(dx->shaderH->ShaderNormalTangentCopy.get(), dx->shaderH->ShaderCalculateLightingCopy.get());
 	DxilLibrary dxilLib = createDxilLibrary(str.str);//Dx12Processに保持してるshaderを入力
 	subobjects[index++] = dxilLib.stateSubobject;
 
@@ -1033,7 +1033,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	}
 }
 
-void DXR_Basic::updateAS(Dx12Process_sub* com, UINT numRecursion) {
+void DXR_Basic::updateAS(Dx_CommandListObj* com, UINT numRecursion) {
 	createBottomLevelAS(com);
 	createTopLevelAS(com);
 	updateCB(&cbObj[buffSwap[0]], numRecursion);
@@ -1042,7 +1042,7 @@ void DXR_Basic::updateAS(Dx12Process_sub* com, UINT numRecursion) {
 void DXR_Basic::updateVertexBuffer(int comNo) {
 	UINT MaterialCnt = 0;
 	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx12Process_sub& d = dx->dx_sub[comNo];
+	Dx_CommandListObj& d = dx->dx_sub[comNo];
 	for (UINT i = 0; i < numParameter; i++) {
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
@@ -1072,7 +1072,7 @@ void DXR_Basic::setCB() {
 	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, cbObj[buffSwap[1]].matCb[i]);
 }
 
-void DXR_Basic::raytrace(Dx12Process_sub* com) {
+void DXR_Basic::raytrace(Dx_CommandListObj* com) {
 
 	if (!asObj[buffSwap[1]].topLevelBuffers.firstSet)return;
 
@@ -1122,7 +1122,7 @@ void DXR_Basic::raytrace(Dx12Process_sub* com) {
 void DXR_Basic::copyBackBuffer(int comNo) {
 	//結果をバックバッファにコピー
 	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx12Process_sub& d = dx->dx_sub[comNo];
+	Dx_CommandListObj& d = dx->dx_sub[comNo];
 	d.delayResourceBarrierBefore(mpOutputResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
@@ -1142,7 +1142,7 @@ void DXR_Basic::copyBackBuffer(int comNo) {
 void DXR_Basic::copyDepthBuffer(int comNo) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx12Process_sub& d = dx->dx_sub[comNo];
+	Dx_CommandListObj& d = dx->dx_sub[comNo];
 	d.delayResourceBarrierBefore(mpDepthResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 

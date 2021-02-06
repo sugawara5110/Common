@@ -64,7 +64,7 @@ bool PostEffect::ComCreate(int no) {
 	mRootSignatureCom = CreateRootSignatureCompute(0, 1, 2, 0, 0);
 	if (mRootSignatureCom == nullptr)return false;
 
-	cs = dx->pComputeShader_Post[no].Get();
+	cs = dx->shaderH->pComputeShader_Post[no].Get();
 
 	//PSO
 	mPSOCom = CreatePsoCompute(cs, mRootSignatureCom.Get());
@@ -94,7 +94,7 @@ void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, f
 	if (!On)return;
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-	Dx12Process_sub& d = dx->dx_sub[com];
+	Dx_CommandListObj& d = dx->dx_sub[com];
 
 	CONSTANT_BUFFER_PostMosaic cb;
 	cb.mosaicSize.x = (float)size;

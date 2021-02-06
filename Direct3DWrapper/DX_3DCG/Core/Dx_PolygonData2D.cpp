@@ -1,7 +1,7 @@
 //*****************************************************************************************//
 //**                                                                                     **//
 //**                   　　　          PolygonData2Dクラス                               **//
-//**                                    GetVBarray2D関数                                 **//
+//**                                                                                     **//
 //*****************************************************************************************//
 
 #include "Dx12ProcessCore.h"
@@ -95,13 +95,14 @@ void PolygonData2D::TexOn() {
 
 void PolygonData2D::GetShaderByteCode() {
 
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (!tex_on) {
-		vs = dx->pVertexShader_2D.Get();
-		ps = dx->pPixelShader_2D.Get();
+		vs = sh->pVertexShader_2D.Get();
+		ps = sh->pPixelShader_2D.Get();
 	}
 	else {
-		vs = dx->pVertexShader_2DTC.Get();
-		ps = dx->pPixelShader_2DTC.Get();
+		vs = sh->pVertexShader_2DTC.Get();
+		ps = sh->pPixelShader_2DTC.Get();
 	}
 }
 
@@ -171,7 +172,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	Iview->IndexCount = (int)(ver * 1.5);
 
 	//パイプラインステートオブジェクト生成
-	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->pVertexLayout_2D, alpha, blend, SQUARE);
+	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->shaderH->pVertexLayout_2D, alpha, blend, SQUARE);
 	if (mPSO == nullptr)return false;
 
 	return true;

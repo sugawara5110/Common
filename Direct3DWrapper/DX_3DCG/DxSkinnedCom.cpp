@@ -20,7 +20,7 @@ void SkinnedCom::getBuffer(PolygonData* p, int numMaterial) {
 bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_CreateResource && pd->vs == dx->pVertexShader_SKIN.Get()) {
+	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
 		int NumMaterial = pd->dpara.NumMaterial;
 
 		const int numDesc = numSrv + numCbv + numUav;
@@ -60,11 +60,11 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 bool SkinnedCom::createPSO() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_CreateResource && pd->vs == dx->pVertexShader_SKIN.Get()) {
+	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
 		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav, 0, 0);
 		if (rootSignature == nullptr)return false;
 
-		ID3DBlob* cs = pd->dx->pVertexShader_SKIN_Com.Get();
+		ID3DBlob* cs = pd->dx->shaderH->pVertexShader_SKIN_Com.Get();
 
 		PSO = pd->CreatePsoCompute(cs, rootSignature.Get());
 		if (PSO == nullptr)return false;
@@ -75,7 +75,7 @@ bool SkinnedCom::createPSO() {
 bool SkinnedCom::createParameterDXR() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_CreateResource && pd->vs == dx->pVertexShader_SKIN.Get()) {
+	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
 
 		int NumMaterial = pd->dxrPara.NumMaterial;
 
@@ -124,7 +124,7 @@ void SkinnedCom::skinning(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	ID3D12GraphicsCommandList* mCList = pd->dx->dx_sub[comNo].mCommandList.Get();
-	Dx12Process_sub& d = dx->dx_sub[comNo];
+	Dx_CommandListObj& d = dx->dx_sub[comNo];
 	mCList->SetPipelineState(PSO.Get());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { descHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -158,7 +158,7 @@ void SkinnedCom::skinning(int comNo) {
 void SkinnedCom::Skinning(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (pd->vs == dx->pVertexShader_SKIN.Get()) {
+	if (pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
 
 		UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwap[0]];
 		ud.InstanceMaskChange(pd->DrawOn);

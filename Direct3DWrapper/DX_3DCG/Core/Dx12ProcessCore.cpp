@@ -1,245 +1,16 @@
 //*****************************************************************************************//
 //**                                                                                     **//
 //**                   　　　          Dx12ProcessCoreクラス                             **//
-//**                                   Initialize関数                                    **//
+//**                                                                                     **//
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
 #include <WindowsX.h>
-#include "./ShaderCG/ShaderCommonParameters.h"
-#include "./ShaderCG/ShaderNormalTangent.h"
-#include "./ShaderCG/Shader2D.h"
-#include "./ShaderCG/Shader3D.h"
-#include "./ShaderCG/ShaderMesh.h"
-#include "./ShaderCG/ShaderMesh_D.h"
-#include "./ShaderCG/ShaderParticle.h"
-#include "./ShaderCG/ShaderSkinMesh.h"
-#include "./ShaderCG/ShaderSkinMesh_D.h"
-#include "./ShaderCG/ShaderWaveCom.h"
-#include "./ShaderCG/ShaderWaveDraw.h"
-#include "./ShaderCG/ShaderCommonPS.h"
-#include "./ShaderCG/ShaderCommonTriangleGS.h"
-#include "./ShaderCG/ShaderCommonTriangleHSDS.h"
-#include "./ShaderCG/ShaderPostEffect.h"
-#include "./ShaderCG/ShaderCalculateLighting.h"
-#include "./ShaderCG/ShaderGsOutput.h"
-#include "./ShaderCG/ShaderSkinMeshCom.h"
 #include <locale.h>
 
 ComPtr<ID3D12Resource> StreamView::UpresetBuffer = nullptr;
 ComPtr<ID3D12Resource> StreamView::resetBuffer = nullptr;
-
-bool Dx12Process_sub::ListCreate(bool Compute) {
-
-	D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	if (Compute)type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-
-	for (int i = 0; i < 2; i++) {
-		//コマンドアロケータ生成(コマンドリストに積むバッファを確保するObj)
-		if (FAILED(Dx12Process::dx->getDevice()->CreateCommandAllocator(
-			type,
-			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf())))) {
-			ErrorMessage("CreateCommandAllocator Error");
-			return false;
-		}
-	}
-
-	//コマンドリスト生成
-	if (FAILED(Dx12Process::dx->getDevice()->CreateCommandList(
-		0,
-		type,
-		mCmdListAlloc[0].Get(),
-		nullptr,
-		IID_PPV_ARGS(mCommandList.GetAddressOf())))) {
-		ErrorMessage("CreateCommandList Error");
-		return false;
-	}
-
-	//最初は閉じた方が良い
-	mCommandList->Close();
-	mCommandList->Reset(mCmdListAlloc[0].Get(), nullptr);
-	mCommandList->Close();
-	mComState = USED;
-
-	return true;
-}
-
-void Dx12Process_sub::ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
-	D3D12_RESOURCE_BARRIER BarrierDesc;
-	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	BarrierDesc.Transition.pResource = res;
-	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	BarrierDesc.Transition.StateBefore = before;
-	BarrierDesc.Transition.StateAfter = after;
-	mCommandList->ResourceBarrier(1, &BarrierDesc);
-}
-
-void Dx12Process_sub::CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src) {
-	ResourceBarrier(dest,
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	ResourceBarrier(src,
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
-
-	mCommandList->CopyResource(dest, src);
-
-	ResourceBarrier(dest,
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-	ResourceBarrier(src,
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
-}
-
-void Dx12Process_sub::Bigin() {
-	mComState = OPEN;
-	mAloc_Num = 1 - mAloc_Num;
-	mCmdListAlloc[mAloc_Num]->Reset();
-	mCommandList->Reset(mCmdListAlloc[mAloc_Num].Get(), nullptr);
-}
-
-void Dx12Process_sub::End() {
-	RunDelayResourceBarrierBefore();
-	RunDelayCopyResource();
-	RunDelayResourceBarrierAfter();
-	//コマンドクローズ
-	mCommandList->Close();
-	mComState = CLOSE;
-}
-
-int Dx12Process_sub::NumResourceBarrier = 512;
-
-void Dx12Process_sub::createResourceBarrierList() {
-	beforeBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
-	copy = std::make_unique<CopyList[]>(NumResourceBarrier);
-	afterBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
-}
-
-void Dx12Process_sub::createUavResourceBarrierList() {
-	uavBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
-}
-
-void Dx12Process_sub::delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before,
-	D3D12_RESOURCE_STATES after) {
-
-	if (beforeCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
-	}
-	D3D12_RESOURCE_BARRIER& ba = beforeBa[beforeCnt];
-	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	ba.Transition.pResource = res;
-	ba.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	ba.Transition.StateBefore = before;
-	ba.Transition.StateAfter = after;
-	beforeCnt++;
-}
-
-void Dx12Process_sub::delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
-
-	if (copyCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
-	}
-	copy[copyCnt].dest = dest;
-	copy[copyCnt].src = src;
-	copyCnt++;
-}
-
-void Dx12Process_sub::delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before,
-	D3D12_RESOURCE_STATES after) {
-
-	if (afterCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
-	}
-	D3D12_RESOURCE_BARRIER& ba = afterBa[afterCnt];
-	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	ba.Transition.pResource = res;
-	ba.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	ba.Transition.StateBefore = before;
-	ba.Transition.StateAfter = after;
-	afterCnt++;
-}
-
-void Dx12Process_sub::delayUavResourceBarrier(ID3D12Resource* res) {
-
-	if (uavCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
-	}
-	D3D12_RESOURCE_BARRIER& ba = uavBa[uavCnt];
-	//バリアしたリソースへのUAVアクセスに於いて次のUAVアクセス開始前に現在のUAVアクセスが終了する必要がある事を示す
-	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-	ba.UAV.pResource = res;
-	uavCnt++;
-}
-
-void Dx12Process_sub::RunDelayResourceBarrierBefore() {
-	if (beforeCnt <= 0)return;
-	mCommandList->ResourceBarrier(beforeCnt, beforeBa.get());
-	beforeCnt = 0;
-}
-
-void Dx12Process_sub::RunDelayCopyResource() {
-	for (int i = 0; i < copyCnt; i++)
-		mCommandList->CopyResource(copy[i].dest, copy[i].src);
-
-	copyCnt = 0;
-}
-
-void Dx12Process_sub::RunDelayResourceBarrierAfter() {
-	if (afterCnt <= 0)return;
-	mCommandList->ResourceBarrier(afterCnt, afterBa.get());
-	afterCnt = 0;
-}
-
-void Dx12Process_sub::RunDelayUavResourceBarrier() {
-	if (uavCnt <= 0)return;
-	mCommandList->ResourceBarrier(uavCnt, uavBa.get());
-	uavCnt = 0;
-}
-
-bool DxCommandQueue::Create(ID3D12Device5* dev, bool Compute) {
-	//フェンス生成
-	//Command Queueに送信したCommand Listの完了を検知するために使用
-	if (FAILED(dev->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(&mFence)))) {
-		ErrorMessage("CreateFence Error");
-		return false;
-	}
-	//コマンドキュー生成
-	D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	if (Compute)type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-	queueDesc.Type = type;
-	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; //GPUタイムアウトが有効
-	if (FAILED(dev->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)))) {
-		ErrorMessage("CreateCommandQueue Error");
-		return false;
-	}
-	return true;
-}
-
-void DxCommandQueue::setCommandList(UINT numList, ID3D12CommandList* const* cmdsLists) {
-	mCommandQueue->ExecuteCommandLists(numList, cmdsLists);
-}
-
-void DxCommandQueue::waitFence() {
-	//インクリメントされたことで描画完了と判断
-	mCurrentFence++;
-	//GPU上で実行されているコマンド完了後,自動的にフェンスにmCurrentFenceを書き込む
-	//(mFence->GetCompletedValue()で得られる値がmCurrentFenceと同じになる)
-	mCommandQueue->Signal(mFence.Get(), mCurrentFence);//この命令以前のコマンドリストが待つ対象になる
-	//ここまででコマンドキューが終了してしまうと
-	//↓のイベントが正しく処理されない可能性有る為↓ifでチェックしている
-	//GetCompletedValue():Fence内部UINT64のカウンタ取得(初期値0)
-	if (mFence->GetCompletedValue() < mCurrentFence) {
-		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-		//このFenceにおいて,mCurrentFence の値になったらイベントを発火させる
-		mFence->SetEventOnCompletion(mCurrentFence, eventHandle);
-		//イベントが発火するまで待つ(GPUの処理待ち)これによりGPU上の全コマンド実行終了まで待たせる
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
-	}
-}
 
 Dx12Process *Dx12Process::dx = nullptr;
 std::mutex Dx12Process::mtx;
@@ -332,148 +103,6 @@ void Dx12Process::WaitFenceCom() {
 	mtxComputeQueue.lock();
 	WaitFenceNotLockCom();
 	mtxComputeQueue.unlock();
-}
-
-bool Dx12Process::CreateShaderByteCode() {
-
-	size_t norS_size = strlen(ShaderNormalTangent) + 1;
-	size_t norL_size = strlen(ShaderCalculateLighting) + 1;
-	ShaderNormalTangentCopy = std::make_unique<char[]>(norS_size);
-	ShaderCalculateLightingCopy = std::make_unique<char[]>(norL_size);
-	memcpy(ShaderNormalTangentCopy.get(), ShaderNormalTangent, norS_size);
-	memcpy(ShaderCalculateLightingCopy.get(), ShaderCalculateLighting, norL_size);
-
-	//各Shader結合
-	addChar D3, Mesh, MeshD, Skin, SkinD, Wave, ComPS, ComHSDS, ComGS, ParaNor, Lighting, GsOut;
-	char* com = ShaderCommonParameters;
-	ParaNor.addStr(com, ShaderNormalTangent);
-	Lighting.addStr(ParaNor.str, ShaderCalculateLighting);
-	D3.addStr(com, Shader3D);
-	Mesh.addStr(com, ShaderMesh);
-	MeshD.addStr(com, ShaderMesh_D);
-	Skin.addStr(com, ShaderSkinMesh);
-	SkinD.addStr(com, ShaderSkinMesh_D);
-	Wave.addStr(com, ShaderWaveDraw);
-	ComPS.addStr(Lighting.str, ShaderCommonPS);
-	ComHSDS.addStr(com, ShaderCommonTriangleHSDS);
-	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS);
-	GsOut.addStr(com, ShaderGsOutput);
-
-	//CommonPS
-	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
-	pPixelShader_3D_NoNormalMap = CompileShader(ComPS.str, ComPS.size, "PS_L_NoNormalMap", "ps_5_0");
-	pPixelShader_Emissive = CompileShader(ComPS.str, ComPS.size, "PS", "ps_5_0");
-	//CommonHSDS(Triangle)
-	pHullShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "HS", "hs_5_0");
-	pDomainShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "DS", "ds_5_0");
-	//CommonGS
-	pGeometryShader_Before_ds = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds", "gs_5_0");
-	pGeometryShader_Before_vs = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs", "gs_5_0");
-	pGeometryShader_Before_ds_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap", "gs_5_0");
-	pGeometryShader_Before_vs_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs_NoNormalMap", "gs_5_0");
-
-	//ポストエフェクト
-	pComputeShader_Post[0] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "MosaicCS", "cs_5_0");
-	pComputeShader_Post[1] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "BlurCS", "cs_5_0");
-
-	//スキンメッシュ
-	pVertexLayout_SKIN =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "GEO_NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 44, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "BONE_INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 52, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "BONE_WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 68, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	};
-	pVertexShader_SKIN = CompileShader(Skin.str, Skin.size, "VSSkin", "vs_5_0");
-	//テセレーター有
-	pVertexShader_SKIN_D = CompileShader(SkinD.str, SkinD.size, "VS", "vs_5_0");
-
-	//ストリーム出力データ定義(パーティクル用)
-	pDeclaration_PSO =
-	{
-		{ 0, "POSITION", 0, 0, 3, 0 }, //「x,y,z」をスロット「0」の「POSITION」に出力
-		{ 0, "POSITION", 1, 0, 3, 0 },
-		{ 0, "POSITION", 2, 0, 3, 0 },
-		{ 0, "NORMAL", 0, 0, 3, 0 }
-	};
-	//ストリーム出力
-	pVertexShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS_SO", "vs_5_0");
-	pGeometryShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point_SO", "gs_5_0");
-
-	//パーティクル頂点インプットレイアウトを定義
-	pVertexLayout_P =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "POSITION", 2, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3 * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-	};
-	//パーティクル
-	pVertexShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS", "vs_5_0");
-	pGeometryShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point", "gs_5_0");
-	pPixelShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "PS", "ps_5_0");
-
-	//メッシュレイアウト
-	pVertexLayout_MESH =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "GEO_NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-	};
-	//メッシュ
-	pVertexShader_MESH = CompileShader(Mesh.str, Mesh.size, "VSMesh", "vs_5_0");
-	//テセレーター有メッシュ
-	pVertexShader_MESH_D = CompileShader(MeshD.str, MeshD.size, "VSMesh", "vs_5_0");
-
-	//3Dレイアウト基本色
-	pVertexLayout_3DBC =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	};
-	//テクスチャ3D
-	pVertexShader_TC = CompileShader(D3.str, D3.size, "VSTextureColor", "vs_5_0");
-	//基本色3D
-	pVertexShader_BC = CompileShader(D3.str, D3.size, "VSBaseColor", "vs_5_0");
-	pPixelShader_BC = CompileShader(D3.str, D3.size, "PSBaseColor", "ps_5_0");
-	//Wave
-	pComputeShader_Wave = CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_0");
-	pDomainShader_Wave = CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_0");
-
-	//2Dレイアウト
-	pVertexLayout_2D =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 4 * 3 + 4 * 4, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-	};
-	//テクスチャ2D
-	pVertexShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "VSTextureColor", "vs_5_0");
-	pPixelShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "PSTextureColor", "ps_5_0");
-	//2D
-	pVertexShader_2D = CompileShader(Shader2D, strlen(Shader2D), "VSBaseColor", "vs_5_0");
-	pPixelShader_2D = CompileShader(Shader2D, strlen(Shader2D), "PSBaseColor", "ps_5_0");
-
-	//DXRへのOutput
-	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_0");
-	pGeometryShader_Before_ds_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds", "gs_5_0");
-	pDeclaration_Output =
-	{
-		{ 0, "POSITION", 0, 0, 3, 0 },
-		{ 0, "NORMAL",   0, 0, 3, 0 },
-		{ 0, "TEXCOORD", 0, 0, 2, 0 },
-		{ 0, "TEXCOORD", 1, 0, 2, 0 }
-	};
-
-	pGeometryShader_P_Output = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_PointDxr", "gs_5_0");
-
-	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom, strlen(ShaderSkinMeshCom), "VSSkinCS", "cs_5_0");
-
-	return CreateShaderByteCodeBool;
 }
 
 int Dx12Process::GetTexNumber(CHAR* fileName) {
@@ -627,10 +256,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
-		if (!dx_sub[i].ListCreate(false))return false;
+		if (!dx_sub[i].ListCreate(false, device.get()->getDevice()))return false;
 		dx_sub[i].createResourceBarrierList();
 		dx_sub[i].createUavResourceBarrierList();
-		if (!dx_subCom[i].ListCreate(true))return false;
+		if (!dx_subCom[i].ListCreate(true, device.get()->getDevice()))return false;
 		dx_subCom[i].createUavResourceBarrierList();
 	}
 
@@ -801,7 +430,8 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	fog.Density = 0.0f;
 	fog.on_off = 0.0f;
 
-	return CreateShaderByteCode();
+	shaderH = std::make_unique<Dx_ShaderHolder>();
+	return shaderH.get()->CreateShaderByteCode();
 }
 
 void Dx12Process::setPerspectiveFov(float ViewAngle, float nearPlane, float farPlane) {
@@ -1030,23 +660,6 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	return defaultBuffer;
 }
 
-ComPtr<ID3DBlob> Dx12Process::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
-
-	HRESULT hr;
-	ComPtr<ID3DBlob> byteCode = nullptr;
-	ComPtr<ID3DBlob> errors = nullptr;
-	hr = D3DCompile(szFileName, size, nullptr, nullptr, nullptr, szFuncName, szProfileName,
-		D3D10_SHADER_DEBUG | D3D10_SHADER_SKIP_OPTIMIZATION, 0, &byteCode, &errors);
-	if (FAILED(hr)) {
-		CreateShaderByteCodeBool = false;
-	}
-
-	if (errors != nullptr)
-		ErrorMessage((char*)errors->GetBufferPointer());
-
-	return byteCode;
-}
-
 void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 	if (insNum > INSTANCE_PCS_3D - 1)insNum--;
@@ -1145,15 +758,6 @@ char* Dx12Process::GetNameFromPass(char* pass) {
 	}
 
 	return pass;//ポインタ操作してるので返り値を使用させる
-}
-
-void addChar::addStr(char* str1, char* str2) {
-	size_t size1 = strlen(str1);
-	size_t size2 = strlen(str2);
-	size = size1 + size2 + 1;
-	str = new char[size];
-	memcpy(str, str1, size1 + 1);
-	strncat(str, str2, size2 + 1);
 }
 
 //移動量一定化

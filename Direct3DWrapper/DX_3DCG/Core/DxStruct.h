@@ -7,7 +7,7 @@
 #ifndef Class_DxStruct_Header
 #define Class_DxStruct_Header
 
-#include "../../../CoordTf/CoordTf.h"
+#include "../../../../CoordTf/CoordTf.h"
 #include <windows.h>
 #include <wrl.h>//Microsoft::WRL
 #include <dxgi1_4.h>

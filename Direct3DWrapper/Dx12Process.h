@@ -12,6 +12,6 @@
 #include "DX_3DCG\Dx_PostEffect.h"
 #include "DX_3DCG\Dx_SkinMesh.h"
 #include "DX_3DCG\Dx_Wave.h"
-#include "DX_3DCG/DXR_Basic.h"
+#include "DX_3DCG/DXR/DXR_Basic.h"
 
 #endif

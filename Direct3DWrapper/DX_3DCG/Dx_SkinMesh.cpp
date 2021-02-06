@@ -506,26 +506,27 @@ void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int 
 
 void SkinMesh::GetShaderByteCode(bool disp) {
 	Dx12Process* dx = mObj[0].dx;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	for (int i = 0; i < numMesh; i++) {
 		PolygonData& o = mObj[i];
 		if (disp) {
-			o.vs = dx->pVertexShader_SKIN_D.Get();
-			o.hs = dx->pHullShaderTriangle.Get();
-			o.ds = dx->pDomainShaderTriangle.Get();
-			o.gs = dx->pGeometryShader_Before_ds.Get();
-			o.gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+			o.vs = sh->pVertexShader_SKIN_D.Get();
+			o.hs = sh->pHullShaderTriangle.Get();
+			o.ds = sh->pDomainShaderTriangle.Get();
+			o.gs = sh->pGeometryShader_Before_ds.Get();
+			o.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
 			o.primType_create = CONTROL_POINT;
 			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 		}
 		else {
-			o.vs = dx->pVertexShader_SKIN.Get();
-			o.gs = dx->pGeometryShader_Before_vs.Get();
-			o.gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
+			o.vs = sh->pVertexShader_SKIN.Get();
+			o.gs = sh->pGeometryShader_Before_vs.Get();
+			o.gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
 			o.primType_create = SQUARE;
 			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		}
-		o.ps = dx->pPixelShader_3D.Get();
-		o.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
+		o.ps = sh->pPixelShader_3D.Get();
+		o.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
 	}
 }
 
@@ -543,8 +544,8 @@ bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 		Dx12Process* dx = o.dx;
 		o.createParameterDXR(alpha, blend, divideBufferMagnification);
 		if (!sk[i].createParameterDXR())return false;
-		if (!o.createPSO(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
-		if (!o.createPSO_DXR(dx->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
+		if (!o.createPSO(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
+		if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
 		if (!sk[i].createPSO())return false;
 		UINT cbSize = mObject_BONES->getSizeInBytes();
 		D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();

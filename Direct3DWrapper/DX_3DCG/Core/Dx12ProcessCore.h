@@ -13,13 +13,10 @@
 #endif
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "Dx_Device.h"
-#include "DxEnum.h"
-#include <D3Dcompiler.h>
+#include "Dx_ShaderHolder.h"
 #include <DirectXColors.h>
 #include <stdlib.h>
 #include <string>
-#include <vector>
 #include <array>
 #include <assert.h>
 #include <Process.h>
@@ -29,112 +26,7 @@
 
 #pragma comment(lib,"d3dcompiler.lib")
 
-#define COM_NO 32
 using Microsoft::WRL::ComPtr;
-
-//前方宣言
-template<class T>
-class ConstantBuffer;
-class Dx12Process;
-class MeshData;
-class PolygonData;
-class PolygonData2D;
-class ParticleData;
-class SkinMesh;
-class DxText;
-class Wave;
-class PostEffect;
-class Common;
-class DxNNCommon;
-class DxNeuralNetwork;
-class DxPooling;
-class DxConvolution;
-class SearchPixel;
-class DxGradCAM;
-class DxActivation;
-class DxOptimizer;
-class DXR_Basic;
-class SkinnedCom;
-class TextObj;
-struct StreamView;
-//前方宣言
-
-class Dx12Process_sub final {
-
-private:
-	friend Dx12Process;
-	friend MeshData;
-	friend PolygonData;
-	friend PolygonData2D;
-	friend ParticleData;
-	friend SkinMesh;
-	friend Wave;
-	friend PostEffect;
-	friend Common;
-	friend DxNNCommon;
-	friend DxNeuralNetwork;
-	friend DxPooling;
-	friend DxConvolution;
-	friend SearchPixel;
-	friend DxGradCAM;
-	friend DxActivation;
-	friend DxOptimizer;
-	friend DXR_Basic;
-	friend SkinnedCom;
-	friend StreamView;
-
-	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
-	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
-	int mAloc_Num = 0;
-	volatile ComListState mComState = {};
-
-	bool ListCreate(bool Compute);
-	void ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-	void CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src);
-	void Bigin();
-	void End();
-
-	static int NumResourceBarrier;
-
-	struct CopyList {
-		ID3D12Resource* dest;
-		ID3D12Resource* src;
-	};
-
-	std::unique_ptr<D3D12_RESOURCE_BARRIER[]> beforeBa = nullptr;
-	int beforeCnt = 0;
-	std::unique_ptr<CopyList[]> copy = nullptr;
-	int copyCnt = 0;
-	std::unique_ptr <D3D12_RESOURCE_BARRIER[]> afterBa = nullptr;
-	int afterCnt = 0;
-	std::unique_ptr <D3D12_RESOURCE_BARRIER[]> uavBa = nullptr;
-	int uavCnt = 0;
-
-	void createResourceBarrierList();
-	void createUavResourceBarrierList();
-	void delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-	void delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src);
-	void delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-	void delayUavResourceBarrier(ID3D12Resource* res);
-	void RunDelayResourceBarrierBefore();
-	void RunDelayCopyResource();
-	void RunDelayResourceBarrierAfter();
-	void RunDelayUavResourceBarrier();
-};
-
-class DxCommandQueue final {
-
-private:
-	friend Dx12Process;
-
-	ComPtr<ID3D12CommandQueue> mCommandQueue;
-	ComPtr<ID3D12Fence> mFence;
-	UINT64 mCurrentFence = 0;
-
-	bool Create(ID3D12Device5* dev, bool Compute);
-	void setCommandList(UINT numList, ID3D12CommandList* const* cmdsLists);
-	void waitFence();
-};
 
 class Dx12Process final {
 
@@ -146,7 +38,7 @@ private:
 	friend PolygonData2D;
 	friend ParticleData;
 	friend SkinMesh;
-	friend Dx12Process_sub;
+	friend Dx_CommandListObj;
 	friend Wave;
 	friend PostEffect;
 	friend Common;
@@ -174,8 +66,8 @@ private:
 
 	DxCommandQueue graphicsQueue;
 	DxCommandQueue computeQueue;
-	Dx12Process_sub dx_sub[COM_NO];
-	Dx12Process_sub dx_subCom[COM_NO];
+	Dx_CommandListObj dx_sub[COM_NO];
+	Dx_CommandListObj dx_subCom[COM_NO];
 
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
@@ -185,57 +77,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 
-	//シェーダーバイトコード
-	ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_vs = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_P_Output = nullptr;
-
-	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
-
-	ComPtr<ID3DBlob> pDomainShader_Wave = nullptr;
-	ComPtr<ID3DBlob> pDomainShaderTriangle = nullptr;
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_SKIN;
-	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_PSO;
-	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_Output;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_P;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_MESH;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3DBC;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_2D;
-
-	ComPtr<ID3DBlob> pVertexShader_SKIN = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_SKIN_D = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_PSO = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_P = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_MESH_D = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_MESH = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_TC = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_BC = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_2D = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_2DTC = nullptr;
-
-	ComPtr<ID3DBlob> pPixelShader_P = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_3D = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_3D_NoNormalMap = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_Emissive = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_BC = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_2D = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_2DTC = nullptr;
-
-	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
-	ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
-	ComPtr<ID3DBlob> pVertexShader_SKIN_Com = nullptr;
-
-	std::unique_ptr<char[]> ShaderNormalTangentCopy = nullptr;
-	std::unique_ptr<char[]> ShaderCalculateLightingCopy = nullptr;
-
-	bool CreateShaderByteCodeBool = true;
+	std::unique_ptr<Dx_ShaderHolder> shaderH = nullptr;
 
 	D3D12_VIEWPORT mScreenViewport;
 	D3D12_RECT mScissorRect;
@@ -295,14 +137,11 @@ private:
 	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
 	~Dx12Process();
 
-	bool CreateShaderByteCode();
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 		const void* initData, LONG_PTR RowPitch);
 
 	ComPtr<ID3D12Resource> CreateDefaultBuffer(int com_no,
 		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
-
-	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 	void Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
@@ -321,7 +160,7 @@ public:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
-	void setNumResourceBarrier(int num) { Dx12Process_sub::NumResourceBarrier = num; }
+	void setNumResourceBarrier(int num) { Dx_CommandListObj::NumResourceBarrier = num; }
 
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
@@ -962,20 +801,6 @@ public:
 	void DrawOff();
 	void Draw(int com_no);
 	void Draw();
-};
-
-//************************************addCharクラス****************************************//
-class addChar {
-
-public:
-	char* str = nullptr;
-	size_t size;
-
-	void addStr(char* str1, char* str2);
-
-	~addChar() {
-		S_DELETE(str);
-	}
 };
 
 class T_float {

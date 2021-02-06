@@ -7,7 +7,7 @@
 #ifndef Class_DxNNstruct_Header
 #define Class_DxNNstruct_Header
 
-#include "../DX_3DCG/Dx12ProcessCore.h"
+#include "../DX_3DCG/Core/Dx12ProcessCore.h"
 
 #define MAX_DEPTH_NUM 32
 #define MAX_OUTPUT_NUM 255

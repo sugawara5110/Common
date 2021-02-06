@@ -46,14 +46,15 @@ void Wave::GetVBarray(int numMaxInstance) {
 
 void Wave::GetShaderByteCode() {
 	Dx12Process* dx = mObj.dx;
-	mObj.cs = dx->pComputeShader_Wave.Get();
-	mObj.vs = dx->pVertexShader_MESH_D.Get();
-	mObj.ps = dx->pPixelShader_3D.Get();
-	mObj.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
-	mObj.hs = dx->pHullShaderTriangle.Get();
-	mObj.ds = dx->pDomainShader_Wave.Get();
-	mObj.gs = dx->pGeometryShader_Before_ds.Get();
-	mObj.gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+	Dx_ShaderHolder* sh = dx->shaderH.get();
+	mObj.cs = sh->pComputeShader_Wave.Get();
+	mObj.vs = sh->pVertexShader_MESH_D.Get();
+	mObj.ps = sh->pPixelShader_3D.Get();
+	mObj.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
+	mObj.hs = sh->pHullShaderTriangle.Get();
+	mObj.ds = sh->pDomainShader_Wave.Get();
+	mObj.gs = sh->pGeometryShader_Before_ds.Get();
+	mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
 }
 
 bool Wave::ComCreate() {
@@ -136,8 +137,8 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divid
 	int numUav = 0;
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);
-	if (!mObj.createPSO(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
-	if (!mObj.createPSO_DXR(mObj.dx->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
+	if (!mObj.createPSO(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
+	if (!mObj.createPSO_DXR(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};

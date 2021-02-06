@@ -7,8 +7,8 @@
 #ifndef Class_DXR_Basic_Header
 #define Class_DXR_Basic_Header
 
-#include "Dx12ProcessCore.h"
-#include "../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
+#include "../Core/Dx12ProcessCore.h"
+#include "../../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
 
 struct AccelerationStructureBuffers
 {
@@ -100,10 +100,10 @@ private:
 	UINT maxNumInstancing = 0;
 
 	void createTriangleVB(UINT numMaterial);
-	void createBottomLevelAS1(Dx12Process_sub* com, VertexView* vv,
+	void createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 		IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update, bool alphaTest);
-	void createBottomLevelAS(Dx12Process_sub* com);
-	void createTopLevelAS(Dx12Process_sub* com);
+	void createBottomLevelAS(Dx_CommandListObj* com);
+	void createTopLevelAS(Dx_CommandListObj* com);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
 	void createAccelerationStructures();
 	void createRtPipelineState();
@@ -112,9 +112,9 @@ private:
 
 	void updateMaterial(CBobj* cbObj);
 	void updateCB(CBobj* cbObj, UINT numRecursion);
-	void updateAS(Dx12Process_sub* com, UINT numRecursion);
+	void updateAS(Dx_CommandListObj* com, UINT numRecursion);
 	void setCB();
-	void raytrace(Dx12Process_sub* com);
+	void raytrace(Dx_CommandListObj* com);
 
 public:
 	void initDXR(UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);

@@ -1,7 +1,7 @@
 //*****************************************************************************************//
 //**                                                                                     **//
 //**                   　　　          PolygonDataクラス                                 **//
-//**                                   GetVBarray関数                                    **//
+//**                                                                                     **//
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
@@ -105,47 +105,48 @@ void PolygonData::GetVBarray(PrimitiveType type, int numMaxInstance) {
 
 void PolygonData::GetShaderByteCode(bool light, int tNo) {
 	bool disp = false;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (primType_create == CONTROL_POINT)disp = true;
 	if (tNo == -1 && movOn[0].m_on == false) {
-		vs = dx->pVertexShader_BC.Get();
-		ps = dx->pPixelShader_BC.Get();
-		ps_NoMap = dx->pPixelShader_BC.Get();
+		vs = sh->pVertexShader_BC.Get();
+		ps = sh->pPixelShader_BC.Get();
+		ps_NoMap = sh->pPixelShader_BC.Get();
 		return;
 	}
 	if (!disp && light) {
-		vs = dx->pVertexShader_TC.Get();
-		gs = dx->pGeometryShader_Before_vs.Get();
-		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
-		ps = dx->pPixelShader_3D.Get();
-		ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
+		vs = sh->pVertexShader_TC.Get();
+		gs = sh->pGeometryShader_Before_vs.Get();
+		gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
+		ps = sh->pPixelShader_3D.Get();
+		ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
 		return;
 	}
 	if (!disp && !light) {
-		vs = dx->pVertexShader_TC.Get();
-		gs = dx->pGeometryShader_Before_vs.Get();
-		gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
-		ps = dx->pPixelShader_Emissive.Get();
-		ps_NoMap = dx->pPixelShader_Emissive.Get();
+		vs = sh->pVertexShader_TC.Get();
+		gs = sh->pGeometryShader_Before_vs.Get();
+		gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
+		ps = sh->pPixelShader_Emissive.Get();
+		ps_NoMap = sh->pPixelShader_Emissive.Get();
 		return;
 	}
 	if (disp && light) {
-		vs = dx->pVertexShader_MESH_D.Get();
-		ps = dx->pPixelShader_3D.Get();
-		ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
-		hs = dx->pHullShaderTriangle.Get();
-		ds = dx->dx->pDomainShaderTriangle.Get();
-		gs = dx->pGeometryShader_Before_ds.Get();
-		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+		vs = sh->pVertexShader_MESH_D.Get();
+		ps = sh->pPixelShader_3D.Get();
+		ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
+		hs = sh->pHullShaderTriangle.Get();
+		ds = sh->pDomainShaderTriangle.Get();
+		gs = sh->pGeometryShader_Before_ds.Get();
+		gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
 		return;
 	}
 	if (disp && !light) {
-		vs = dx->pVertexShader_MESH_D.Get();
-		ps = dx->pPixelShader_Emissive.Get();
-		ps_NoMap = dx->pPixelShader_Emissive.Get();
-		hs = dx->pHullShaderTriangle.Get();
-		ds = dx->dx->pDomainShaderTriangle.Get();
-		gs = dx->pGeometryShader_Before_ds.Get();
-		gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+		vs = sh->pVertexShader_MESH_D.Get();
+		ps = sh->pPixelShader_Emissive.Get();
+		ps_NoMap = sh->pPixelShader_Emissive.Get();
+		hs = sh->pHullShaderTriangle.Get();
+		ds = sh->pDomainShaderTriangle.Get();
+		gs = sh->pGeometryShader_Before_ds.Get();
+		gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
 		return;
 	}
 }
@@ -193,14 +194,15 @@ bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 	const int numSrv, const int numCbv, const int numUav) {
 
-	if (!dx->DXR_CreateResource || vs == dx->pVertexShader_SKIN.Get())return true;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
+	if (!dx->DXR_CreateResource || vs == sh->pVertexShader_SKIN.Get())return true;
 
 	if (hs) {
-		gs = dx->pGeometryShader_Before_ds_Output.Get();
+		gs = sh->pGeometryShader_Before_ds_Output.Get();
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true, 1, 3);
 	}
 	else {
-		gs = dx->pGeometryShader_Before_vs_Output.Get();
+		gs = sh->pGeometryShader_Before_vs_Output.Get();
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, false, 1, 3);
 	}
 	if (dpara.rootSignature == nullptr)return false;
@@ -209,8 +211,8 @@ bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLay
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs, hs, ds, gs, dpara.rootSignatureDXR.Get(),
 			vertexLayout,
-			&dx->pDeclaration_Output,
-			(UINT)dx->pDeclaration_Output.size(),
+			&sh->pDeclaration_Output,
+			(UINT)sh->pDeclaration_Output.size(),
 			&dxrPara.SviewDXR[i][0].StreamByteStride,
 			1,
 			primType_create);
@@ -286,9 +288,10 @@ void PolygonData::createParameterDXR(bool alpha, bool blend, float divideBufferM
 	dxrPara.alphaBlend = blend;
 	int NumMaterial = dxrPara.NumMaterial;
 
-	if (hs || vs == dx->pVertexShader_SKIN.Get())dxrPara.updateF = true;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
+	if (hs || vs == sh->pVertexShader_SKIN.Get())dxrPara.updateF = true;
 
-	if (!dx->DXR_CreateResource || vs == dx->pVertexShader_SKIN.Get())return;
+	if (!dx->DXR_CreateResource || vs == sh->pVertexShader_SKIN.Get())return;
 
 	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
 	if (hs) {
@@ -360,12 +363,13 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	int numUav = 0;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (tNo == -1 && !movOn[0].m_on) {
-		if (!createPSO(dx->pVertexLayout_3DBC, numSrvTex, numCbv, numUav, blend, alpha))return false;
+		if (!createPSO(sh->pVertexLayout_3DBC, numSrvTex, numCbv, numUav, blend, alpha))return false;
 	}
 	else {
-		if (!createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-		if (!createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
+		if (!createPSO(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
+		if (!createPSO_DXR(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
 	}
 
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
@@ -431,7 +435,7 @@ void PolygonData::draw(int com, drawPara& para) {
 void PolygonData::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-	Dx12Process_sub& d = dx->dx_sub[com];
+	Dx_CommandListObj& d = dx->dx_sub[com];
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	UpdateDXR& ud = dxr.updateDXR[dx->dxrBuffSwap[0]];
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -510,7 +514,7 @@ void PolygonData::Draw(int com) {
 
 void PolygonData::StreamOutput(int com) {
 
-	if (vs != dx->pVertexShader_SKIN.Get()) {
+	if (vs != dx->shaderH->pVertexShader_SKIN.Get()) {
 
 		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
 		ud.InstanceMaskChange(DrawOn);

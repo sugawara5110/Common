@@ -1,7 +1,7 @@
 //*****************************************************************************************//
 //**                                                                                     **//
 //**                   　　　          MeshDataクラス                                    **//
-//**                                   GetVBarray関数                                    **//
+//**                                                                                     **//
 //*****************************************************************************************//
 
 #include "Dx_MeshData.h"
@@ -30,20 +30,21 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 
 void MeshData::GetShaderByteCode(bool disp) {
 	Dx12Process* dx = mObj.dx;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (disp) {
-		mObj.vs = dx->pVertexShader_MESH_D.Get();
-		mObj.hs = dx->pHullShaderTriangle.Get();
-		mObj.ds = dx->pDomainShaderTriangle.Get();
-		mObj.gs = dx->pGeometryShader_Before_ds.Get();
-		mObj.gs_NoMap = dx->pGeometryShader_Before_ds_NoNormalMap.Get();
+		mObj.vs = sh->pVertexShader_MESH_D.Get();
+		mObj.hs = sh->pHullShaderTriangle.Get();
+		mObj.ds = sh->pDomainShaderTriangle.Get();
+		mObj.gs = sh->pGeometryShader_Before_ds.Get();
+		mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
 	}
 	else {
-		mObj.vs = dx->pVertexShader_MESH.Get();
-		mObj.gs = dx->pGeometryShader_Before_vs.Get();
-		mObj.gs_NoMap = dx->pGeometryShader_Before_vs_NoNormalMap.Get();
+		mObj.vs = sh->pVertexShader_MESH.Get();
+		mObj.gs = sh->pGeometryShader_Before_vs.Get();
+		mObj.gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
 	}
-	mObj.ps = dx->pPixelShader_3D.Get();
-	mObj.ps_NoMap = dx->pPixelShader_3D_NoNormalMap.Get();
+	mObj.ps = sh->pPixelShader_3D.Get();
+	mObj.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
@@ -431,9 +432,9 @@ bool MeshData::CreateMesh(float divideBufferMagnification) {
 	int numUav = 0;
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 
-	if (!mObj.createPSO(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
+	if (!mObj.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
-	if (!mObj.createPSO_DXR(dx->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
+	if (!mObj.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
 
 	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
