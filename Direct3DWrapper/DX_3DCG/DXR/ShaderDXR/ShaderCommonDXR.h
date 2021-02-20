@@ -35,17 +35,28 @@ char* ShaderCommonDXR =
 "    return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();\n"
 "}\n"
 
-///////////////////////////////////////深度値取得//////////////////////////////////////////////////
-"float getDepth(in BuiltInTriangleIntersectionAttributes attr)\n"
+///////////////////////////////////////頂点取得////////////////////////////////////////////////////
+"Vertex3 getVertex()\n"
 "{\n"
 "    uint indicesPerTriangle = 3;\n"
 "    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
 "    uint materialID = getMaterialID();\n"
 
+"    Vertex3 ver = {\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 0]],\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 1]],\n"
+"        Vertices[materialID][Indices[materialID][baseIndex + 2]]\n"
+"    };\n"
+"    return ver;\n"
+"}\n"
+
+///////////////////////////////////////深度値取得//////////////////////////////////////////////////
+"float getDepth(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"
+"{\n"
 "    float3 vertex[3] = {\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 0]].Pos,\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 1]].Pos,\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 2]].Pos\n"
+"        v3.v[0].Pos,\n"
+"        v3.v[1].Pos,\n"
+"        v3.v[2].Pos\n"
 "    };\n"
 
 "    float3 v = vertex[0] + \n"
@@ -67,16 +78,12 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////法線取得//////////////////////////////////////////////////////////
-"float3 getNormal(in BuiltInTriangleIntersectionAttributes attr)\n"
+"float3 getNormal(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"
 "{\n"
-"    uint indicesPerTriangle = 3;\n"
-"    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
-"    uint materialID = getMaterialID();\n"
-
 "    float3 vertexNormals[3] = {\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 0]].normal,\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 1]].normal,\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 2]].normal\n"
+"        v3.v[0].normal,\n"
+"        v3.v[1].normal,\n"
+"        v3.v[2].normal\n"
 "    };\n"
 "    return getCenterNormal(vertexNormals, attr);\n"
 "}\n"
@@ -90,16 +97,12 @@ char* ShaderCommonDXR =
 "}\n"
 
 ////////////////////////////////UV取得//////////////////////////////////////////////////////////
-"float2 getUV(in BuiltInTriangleIntersectionAttributes attr, in uint uvNo)\n"
+"float2 getUV(in BuiltInTriangleIntersectionAttributes attr, in uint uvNo, Vertex3 v3)\n"
 "{\n"
-"    uint indicesPerTriangle = 3;\n"
-"    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;\n"
-"    uint materialID = getMaterialID();\n"
-
 "    float2 vertexUVs[3] = {\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 0]].tex[uvNo],\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 1]].tex[uvNo],\n"
-"        Vertices[materialID][Indices[materialID][baseIndex + 2]].tex[uvNo]\n"
+"        v3.v[0].tex[uvNo],\n"
+"        v3.v[1].tex[uvNo],\n"
+"        v3.v[2].tex[uvNo]\n"
 "    };\n"
 "    return getCenterUV(vertexUVs, attr);\n"
 "}\n"
@@ -120,11 +123,11 @@ char* ShaderCommonDXR =
 
 //////////////////////////////////////ピクセル値取得///////////////////////////////////////////
 //////////////ディフェーズ
-"float4 getDifPixel(in BuiltInTriangleIntersectionAttributes attr)\n"
+"float4 getDifPixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 //UV計算
-"    float2 UV = getUV(attr, 0);\n"
+"    float2 UV = getUV(attr, 0, v3);\n"
 //ピクセル値
 "    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, UV, 0.0);\n"
 "    float4 add = material[materialID].AddObjColor;\n"
@@ -135,22 +138,22 @@ char* ShaderCommonDXR =
 "    return difTex;\n"
 "}\n"
 //////////////ノーマル
-"float3 getNorPixel(in BuiltInTriangleIntersectionAttributes attr)\n"
+"float3 getNorPixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 //UV計算
-"    float2 UV = getUV(attr, 0);\n"
+"    float2 UV = getUV(attr, 0, v3);\n"
 //法線の計算
-"    float3 triangleNormal = getNormal(attr);\n"
+"    float3 triangleNormal = getNormal(attr, v3);\n"
 //ノーマルマップからの法線出力
 "    return getNormalMap(triangleNormal, UV);\n"
 "}\n"
 //////////////スペキュラ
-"float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr)\n"
+"float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 //UV計算
-"    float2 UV = getUV(attr, 1);\n"
+"    float2 UV = getUV(attr, 1, v3);\n"
 //ピクセル値
 "    float4 spe = g_texSpecular[materialID].SampleLevel(g_samLinear, UV, 0.0);\n"
 "    return spe.xyz;\n"
@@ -161,7 +164,8 @@ char* ShaderCommonDXR =
 "                                in float3 difTexColor, in float3 speTexColor, in float3 normal)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
-"    uint mNo = material[materialID].materialNo;\n"
+"    MaterialCB mcb = material[materialID];\n"
+"    uint mNo = mcb.materialNo;\n"
 "    float3 ret = difTexColor;\n"
 
 "    if(mNo != 2) {\n"//emissive以外
@@ -175,10 +179,10 @@ char* ShaderCommonDXR =
 "       ray.TMax = 100000;\n"
 "       RecursionCnt++;\n"
 
-"       float3 SpeculerCol = material[materialID].Speculer.xyz;\n"
-"       float3 Diffuse = material[materialID].Diffuse.xyz;\n"
-"       float3 Ambient = material[materialID].Ambient.xyz;\n"
-"       float shininess = material[materialID].shininess;\n"
+"       float3 SpeculerCol = mcb.Speculer.xyz;\n"
+"       float3 Diffuse = mcb.Diffuse.xyz;\n"
+"       float3 Ambient = mcb.Ambient.xyz;\n"
+"       float shininess = mcb.shininess;\n"
 
 "       if(RecursionCnt <= maxRecursion) {\n"
 //点光源計算
@@ -276,7 +280,8 @@ char* ShaderCommonDXR =
 "float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor, in float3 normal)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
-"    uint mNo = material[materialID].materialNo;\n"
+"    MaterialCB mcb = material[materialID];\n"
+"    uint mNo = mcb.materialNo;\n"
 "    float3 ret = difTexColor.xyz;\n"
 
 "    if(mNo == 5) {\n"
@@ -290,7 +295,7 @@ char* ShaderCommonDXR =
 "       ray.TMax = 100000;\n"
 //視線ベクトル 
 "       float3 eyeVec = WorldRayDirection();\n"
-"       ray.Direction = normalize(eyeVec + -normal * material[materialID].RefractiveIndex);\n"
+"       ray.Direction = normalize(eyeVec + -normal * mcb.RefractiveIndex);\n"
 
 "       if (RecursionCnt <= maxRecursion) {\n"
 "           payload.hitPosition = hitPosition;\n"
@@ -308,9 +313,10 @@ char* ShaderCommonDXR =
 "float3 AlphaBlend(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
-"    uint mNo = material[materialID].materialNo;\n"
+"    MaterialCB mcb = material[materialID];\n"
+"    uint mNo = mcb.materialNo;\n"
 "    float3 ret = difTexColor.xyz;\n"
-"    float blend = material[materialID].AlphaBlend;\n"
+"    float blend = mcb.AlphaBlend;\n"
 "    float Alpha = difTexColor.w;\n"
 
 "    if(blend == 1.0f && mNo != 5 && Alpha < 1.0f) {\n"

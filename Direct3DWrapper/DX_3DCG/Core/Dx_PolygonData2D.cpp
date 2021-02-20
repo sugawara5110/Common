@@ -106,7 +106,10 @@ void PolygonData2D::GetShaderByteCode() {
 	}
 }
 
-bool PolygonData2D::CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha) {
+bool PolygonData2D::CreateBox(float x, float y, float z,
+	float sizex, float sizey,
+	float r, float g, float b, float a,
+	bool blend, bool alpha, int noTex) {
 
 	//verÇ™4ÇÃéûÇÃÇ›é¿çsâ¬
 	if (ver != 4)return false;
@@ -133,10 +136,10 @@ bool PolygonData2D::CreateBox(float x, float y, float z, float sizex, float size
 	d2varrayI[4] = 3;
 	d2varrayI[5] = 2;
 
-	return Create(blend, alpha);
+	return Create(blend, alpha, noTex);
 }
 
-bool PolygonData2D::Create(bool blend, bool alpha) {
+bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 
 	GetShaderByteCode();
 
@@ -147,7 +150,7 @@ bool PolygonData2D::Create(bool blend, bool alpha) {
 	if (mRootSignature == nullptr)return false;
 
 	TextureNo te;
-	te.diffuse = -1;
+	te.diffuse = noTex;
 	te.normal = -1;
 	te.specular = -1;
 

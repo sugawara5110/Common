@@ -290,6 +290,7 @@ void PolygonData::createParameterDXR(bool alpha, bool blend, float divideBufferM
 
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (hs || vs == sh->pVertexShader_SKIN.Get())dxrPara.updateF = true;
+	if (hs)dxrPara.tessellationF = true;
 
 	if (!dx->DXR_CreateResource || vs == sh->pVertexShader_SKIN.Get())return;
 

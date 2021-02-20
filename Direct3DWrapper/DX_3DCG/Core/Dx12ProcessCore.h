@@ -451,6 +451,7 @@ struct ParameterDXR {
 	std::unique_ptr<std::unique_ptr<StreamView[]>[]> SviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
 	bool updateF = false;//AS構築後のupdateの有無
+	bool tessellationF = false;//テセレーション有無
 
 	void create(int numMaterial, int numMaxInstance) {
 		NumMaxInstance = numMaxInstance;
@@ -791,8 +792,11 @@ public:
 	ID3D12PipelineState* GetPipelineState();
 	void GetVBarray2D(int pcs);
 	void TexOn();
-	bool CreateBox(float x, float y, float z, float sizex, float sizey, float r, float g, float b, float a, bool blend, bool alpha);
-	bool Create(bool blend, bool alpha);
+	bool CreateBox(float x, float y, float z,
+		float sizex, float sizey,
+		float r, float g, float b, float a,
+		bool blend, bool alpha, int noTex = -1);
+	bool Create(bool blend, bool alpha, int noTex = -1);
 	void InstancedSetConstBf(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
 	void InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void InstanceUpdate();

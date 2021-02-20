@@ -65,7 +65,8 @@ char* ShaderBasicDXR =
 "void anyBasicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 //テクスチャ取得
-"    float4 difTex = getDifPixel(attr);\n"
+"    Vertex3 v3 = getVertex();\n"
+"    float4 difTex = getDifPixel(attr, v3);\n"
 "    float Alpha = difTex.w;\n"
 
 "    if (Alpha <= 0.0f)\n"
@@ -90,15 +91,16 @@ char* ShaderBasicDXR =
 "void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
 "    payload.hitPosition = HitWorldPosition();\n"
+"    Vertex3 v3 = getVertex();\n"
 //テクスチャ取得
-"    float4 difTex = getDifPixel(attr);\n"
-"    float3 normalMap = getNorPixel(attr);\n"
-"    float3 speTex = getSpePixel(attr);\n"
+"    float4 difTex = getDifPixel(attr, v3);\n"
+"    float3 normalMap = getNorPixel(attr, v3);\n"
+"    float3 speTex = getSpePixel(attr, v3);\n"
 
 "    payload.reTry = false;\n"
 //深度取得
 "    if(payload.depth == -1.0f) {\n"
-"       payload.depth = getDepth(attr);\n"
+"       payload.depth = getDepth(attr, v3);\n"
 "    }\n"
 //光源への光線
 "    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
@@ -121,7 +123,8 @@ char* ShaderBasicDXR =
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
-"    float4 difTex = getDifPixel(attr);\n"
+"    Vertex3 v3 = getVertex();\n"
+"    float4 difTex = getDifPixel(attr, v3);\n"
 "    payload.hitPosition = HitWorldPosition();\n"
 "    payload.reTry = false;\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する

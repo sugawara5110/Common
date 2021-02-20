@@ -78,7 +78,6 @@ private:
 	ASobj asObj[2] = {};
 	CBobj cbObj[2] = {};
 	int buffSwap[2] = { 0,0 };
-	std::unique_ptr<ComPtr<ID3D12Resource>[]> VertexBufferGPU = nullptr;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -90,7 +89,7 @@ private:
 	uint32_t mShaderTableEntrySize = 0;
 	ComPtr<ID3D12Resource> mpOutputResource;
 	ComPtr<ID3D12Resource> mpDepthResource;
-	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap;
+	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[2];
 	uint32_t numSkipLocalHeap = 0;
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
 
@@ -99,9 +98,10 @@ private:
 	UINT maxRecursion = 1;
 	UINT maxNumInstancing = 0;
 
-	void createTriangleVB(UINT numMaterial);
+	void createInstanceIdBuffer(UINT numMaterial);
 	void createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
-		IndexView* iv, UINT currentIndexCount, UINT MaterialNo, bool update, bool alphaTest);
+		IndexView* iv, UINT currentIndexCount, UINT MaterialNo,
+		bool update, bool tessellation, bool alphaTest);
 	void createBottomLevelAS(Dx_CommandListObj* com);
 	void createTopLevelAS(Dx_CommandListObj* com);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
@@ -114,13 +114,13 @@ private:
 	void updateCB(CBobj* cbObj, UINT numRecursion);
 	void updateAS(Dx_CommandListObj* com, UINT numRecursion);
 	void setCB();
+	void swapSrvUavCbvHeap();
 	void raytrace(Dx_CommandListObj* com);
 
 public:
 	void initDXR(UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
-	void updateVertexBuffer(int comNo);
 	void raytrace_g(int comNo);
 	void raytrace_c(int comNo);
 	void copyBackBuffer(int comNo);
