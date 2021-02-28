@@ -26,8 +26,6 @@ PolygonData::PolygonData() {
 	sg.vAmbient.z = 0.0f;
 	sg.vAmbient.w = 0.0f;
 
-	sg.uvSwitch.x = 0.0f;
-
 	divArr[0].distance = 1000.0f;
 	divArr[0].divide = 2;//’¸“_” 3 ¨ 3 * 6 = 18
 	divArr[1].distance = 500.0f;
@@ -357,7 +355,17 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	GetShaderByteCode(light, tNo);
 	mObjectCB1->CopyData(0, sg);
 
-	createDefaultBuffer(ver, index, true);
+	UINT* indexCntArr = new UINT[dpara.NumMaterial];
+	for (int m = 0; m < dpara.NumMaterial; m++) {
+		indexCntArr[m] = dpara.Iview[m].IndexCount;
+	}
+	if (tNo >= 0 || movOn[0].m_on) {
+		Dx_Util::createTangent(dpara.NumMaterial, indexCntArr,
+			ver, index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+	}
+	ARR_DELETE(indexCntArr);
+	createDefaultBuffer(ver, index);
+	ARR_DELETE(index);
 	createParameterDXR(alpha, blend, divideBufferMagnification);
 	setColorDXR(0, sg);
 
@@ -366,9 +374,13 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	int numUav = 0;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (tNo == -1 && !movOn[0].m_on) {
+		VertexBC* v = (VertexBC*)ver;
+		ARR_DELETE(v);
 		if (!createPSO(sh->pVertexLayout_3DBC, numSrvTex, numCbv, numUav, blend, alpha))return false;
 	}
 	else {
+		VertexM* vm = (VertexM*)ver;
+		ARR_DELETE(vm);
 		if (!createPSO(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 		if (!createPSO_DXR(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
 	}
@@ -561,5 +573,18 @@ void PolygonData::UpdateDxrDivideBuffer() {
 				ud.currentIndexCount[i][t] = sCnt;
 			}
 		}
+	}
+}
+
+void PolygonData::createDefaultBuffer(void* vertexArr, UINT** indexArr) {
+	dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, vertexArr,
+		dpara.Vview->VertexBufferByteSize,
+		dpara.Vview->VertexBufferUploader, false);
+
+	for (int i = 0; i < dpara.NumMaterial; i++) {
+		if (dpara.Iview[i].IndexCount <= 0)continue;
+		dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, indexArr[i],
+			dpara.Iview[i].IndexBufferByteSize,
+			dpara.Iview[i].IndexBufferUploader, false);
 	}
 }

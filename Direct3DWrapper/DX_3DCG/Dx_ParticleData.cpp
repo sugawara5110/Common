@@ -119,7 +119,6 @@ void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 				P_pos[P_no].CurrentPos.as(xst, yst, zst);
 				P_pos[P_no].PosSt.as(xst, yst, zst);
 				P_pos[P_no].PosEnd.as(xp, yp, 0.0f);//0,0,0‚ð’†S‚É‚·‚é
-				P_pos[P_no].normal.as(0.0f, 0.0f, -1.0f);
 				P_no++;
 			}
 		}
@@ -445,9 +444,8 @@ void ParticleData::DrawBillboard() {
 	DrawBillboard(com_no);
 }
 
-void ParticleData::SetVertex(int i, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 nor) {
+void ParticleData::SetVertex(int i, CoordTf::VECTOR3 pos) {
 	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
-	P_pos[i].normal.as(nor.x, nor.y, nor.z);
 	if (dx->DXR_CreateResource) {
 		dxrPara.updateDXR[0].v[i].as(pos.x, pos.y, pos.z);
 		dxrPara.updateDXR[1].v[i].as(pos.x, pos.y, pos.z);

@@ -20,13 +20,11 @@ char *ShaderParticle =
 "	float3 Pos    : POSITION0;\n"
 "   float3 Pos_S  : POSITION1;\n"
 "   float3 Pos_E  : POSITION2;\n"
-"   float3 Nor    : NORMAL;\n"
 "};\n"
 
 "struct PS_INPUT\n"
 "{\n"
 "	float4 Pos   : SV_POSITION;\n"
-"   float3 Nor   : NORMAL;\n"
 "	float2 UV    : TEXCOORD;\n"
 "};\n"
 
@@ -88,25 +86,21 @@ char *ShaderParticle =
 //左上
 "	p.Pos = pos + float4(-g_size.x, g_size.x, 0, 0);\n"
 "	p.Pos = mul(p.Pos, g_Proj);\n"
-"   p.Nor = Input[0].Nor;\n"
 "	p.UV = float2(0, 0);\n"
 "	ParticleStream.Append(p);\n"
 //右上
 "	p.Pos = pos + float4(g_size.x, g_size.x, 0, 0);\n"
 "	p.Pos = mul(p.Pos, g_Proj);\n"
-"   p.Nor = Input[0].Nor;\n"
 "	p.UV = float2(1, 0);\n"
 "	ParticleStream.Append(p);\n"
 //左下
 "	p.Pos = pos + float4(-g_size.x, -g_size.x, 0, 0);\n"
 "	p.Pos = mul(p.Pos, g_Proj);\n"
-"   p.Nor = Input[0].Nor;\n"
 "	p.UV = float2(0, 1);\n"
 "	ParticleStream.Append(p);\n"
 //右下
 "	p.Pos = pos + float4(g_size.x, -g_size.x, 0, 0);\n"
 "	p.Pos = mul(p.Pos, g_Proj);\n"
-"   p.Nor = Input[0].Nor;\n"
 "	p.UV = float2(1, 1);\n"
 "	ParticleStream.Append(p);\n"
 
@@ -126,6 +120,7 @@ char *ShaderParticle =
 "{\n"
 "    float3 Pos      : POSITION;\n"
 "    float3 Nor      : NORMAL;\n"
+"    float3 Tangent  : TANGENT;\n"
 "    float2 Tex0     : TEXCOORD0;\n"
 "    float2 Tex1     : TEXCOORD1;\n"
 "};\n"
@@ -133,7 +128,7 @@ char *ShaderParticle =
 "[maxvertexcount(12)]\n"
 "void GS_PointDxr(point GS_INPUT Input[1], inout TriangleStream <DXR_INPUT> ParticleStream)\n"
 "{\n"
-"	DXR_INPUT p = (DXR_INPUT)0;\n"
+"	DXR_INPUT p;\n"
 "   float3 pos = Input[0].Pos;\n"
 
 "   float3 pos4[4];\n"
@@ -149,17 +144,20 @@ char *ShaderParticle =
 
 //左上
 "	p.Pos = pos4[0] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, -1.0f, 0.0f);\n"
+"   p.Tangent = float3(1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(0, 0);\n"
 "	ParticleStream.Append(p);\n"
 //右下
 "	p.Pos = pos4[3] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, -1.0f, 0.0f);\n"
+"   p.Tangent = float3(1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(1, 1);\n"
 "	ParticleStream.Append(p);\n"
 //右上
 "	p.Pos = pos4[1] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, -1.0f, 0.0f);\n"
+"   p.Tangent = float3(1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(1, 0);\n"
 "	ParticleStream.Append(p);\n"
 
@@ -167,17 +165,20 @@ char *ShaderParticle =
 
 //左下
 "	p.Pos = pos4[2] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, -1.0f, 0.0f);\n"
+"   p.Tangent = float3(1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(0, 1);\n"
 "	ParticleStream.Append(p);\n"
 //右下
 "	p.Pos = pos4[3] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, -1.0f, 0.0f);\n"
+"   p.Tangent = float3(1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(1, 1);\n"
 "	ParticleStream.Append(p);\n"
 //左上
 "	p.Pos = pos4[0] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, -1.0f, 0.0f);\n"
+"   p.Tangent = float3(1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(0, 0);\n"
 "	ParticleStream.Append(p);\n"
 
@@ -185,17 +186,20 @@ char *ShaderParticle =
 
 //左上
 "	p.Pos = pos4[0] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, 1.0f, 0.0f);\n"
+"   p.Tangent = float3(-1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(0, 0);\n"
 "	ParticleStream.Append(p);\n"
 //右上
 "	p.Pos = pos4[1] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, 1.0f, 0.0f);\n"
+"   p.Tangent = float3(-1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(1, 0);\n"
 "	ParticleStream.Append(p);\n"
 //右下
 "	p.Pos = pos4[3] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, 1.0f, 0.0f);\n"
+"   p.Tangent = float3(-1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(1, 1);\n"
 "	ParticleStream.Append(p);\n"
 
@@ -203,17 +207,20 @@ char *ShaderParticle =
 
 //左下
 "	p.Pos = pos4[2] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, 1.0f, 0.0f);\n"
+"   p.Tangent = float3(-1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(0, 1);\n"
 "	ParticleStream.Append(p);\n"
 //左上
 "	p.Pos = pos4[0] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, 1.0f, 0.0f);\n"
+"   p.Tangent = float3(-1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(0, 0);\n"
 "	ParticleStream.Append(p);\n"
 //右下
 "	p.Pos = pos4[3] + pos;\n"
-"   p.Nor = Input[0].Nor;\n"
+"   p.Nor = float3(0.0f, 1.0f, 0.0f);\n"
+"   p.Tangent = float3(-1.0f, 0.0f, 0.0f);\n"
 "	p.Tex0 = p.Tex1 = float2(1, 1);\n"
 "	ParticleStream.Append(p);\n"
 

@@ -29,7 +29,6 @@ struct CONSTANT_BUFFER {
 	CoordTf::MATRIX World[INSTANCE_PCS_3D];
 	CoordTf::MATRIX WVP[INSTANCE_PCS_3D];
 	CoordTf::VECTOR4 C_Pos;       //視点位置
-	CoordTf::VECTOR4 viewUp;      //視点上方向
 	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
 
 	//グローバルアンビエント
@@ -66,7 +65,6 @@ struct CONSTANT_BUFFER2 {
 	CoordTf::VECTOR4 vDiffuse;//ディフューズ色
 	CoordTf::VECTOR4 vSpeculer;//スぺキュラ色
 	CoordTf::VECTOR4 vAmbient;//アンビエント
-	CoordTf::VECTOR4 uvSwitch;//.xのみ
 };
 
 struct cbInstanceID {
@@ -115,7 +113,7 @@ struct Fog {
 
 //頂点3DTexture無し
 struct VertexBC {
-	CoordTf::VECTOR3 Pos;       //位置
+	CoordTf::VECTOR3 Pos;     //位置
 	CoordTf::VECTOR4 color;   //色
 };
 
@@ -131,28 +129,29 @@ struct PartPos {
 	CoordTf::VECTOR3 CurrentPos; //描画に使う
 	CoordTf::VECTOR3 PosSt;     //開始位置
 	CoordTf::VECTOR3 PosEnd;   //終了位置
-	CoordTf::VECTOR3 normal;
 };
 
 //頂点3DTexture有り
 struct Vertex {
-	CoordTf::VECTOR3 Pos;       //位置
-	CoordTf::VECTOR3 normal;   //法線
+	CoordTf::VECTOR3 Pos;    //位置
+	CoordTf::VECTOR3 normal; //法線
 	CoordTf::VECTOR2 tex;    //テクスチャ座標
 };
 
 //Mesh.obj
 struct VertexM {
-	CoordTf::VECTOR3 Pos;       //位置
+	CoordTf::VECTOR3 Pos;      //位置
 	CoordTf::VECTOR3 normal;   //法線
+	CoordTf::VECTOR3 tangent;  //接ベクトル
 	CoordTf::VECTOR3 geoNormal;
-	CoordTf::VECTOR2 tex;    //テクスチャ座標
+	CoordTf::VECTOR2 tex;      //テクスチャ座標
 };
 
 //以下スキンメッシュ
 struct MY_VERTEX_S {
 	CoordTf::VECTOR3 vPos = {};//頂点
 	CoordTf::VECTOR3 vNorm = {};//法線
+	CoordTf::VECTOR3 vTangent;  //接ベクトル
 	CoordTf::VECTOR3 vGeoNorm = {};//ジオメトリ法線
 	CoordTf::VECTOR2 vTex0 = {};//UV座標0
 	CoordTf::VECTOR2 vTex1 = {};//UV座標1
@@ -288,6 +287,7 @@ struct DivideArr {
 struct VERTEX_DXR {
 	CoordTf::VECTOR3 Pos = {};//頂点
 	CoordTf::VECTOR3 Nor = {};//法線
+	CoordTf::VECTOR3 Tangent = {};//接ベクトル
 	CoordTf::VECTOR2 Tex[2] = {};//UV座標
 };
 

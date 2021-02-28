@@ -970,7 +970,6 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	MatrixTranspose(&VP);
 	DxrConstantBuffer& cb = cbObj->cb;
 	MatrixInverse(&cb.projectionToWorld, &VP);
-	cb.cameraUp.as(upd.up.x, upd.up.y, upd.up.z, 1.0f);
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
 	updateMaterial(cbObj);

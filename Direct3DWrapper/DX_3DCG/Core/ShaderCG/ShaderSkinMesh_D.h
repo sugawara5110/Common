@@ -13,6 +13,7 @@ char *ShaderSkinMesh_D =
 "{\n"
 "   float4 Pos : POSITION;\n"
 "   float3 Nor : NORMAL;\n"
+"   float3 Tan : TANGENT;\n"
 "   float3 GNor :GEO_NORMAL;\n"
 "};\n"
 //バーテックスバッファーの入力
@@ -20,6 +21,7 @@ char *ShaderSkinMesh_D =
 "{\n"
 "   float3 Pos : POSITION;\n"//頂点   
 "   float3 Nor : NORMAL;\n"//法線
+"   float3 Tan : TANGENT;\n"//接ベクトル
 "   float3 GNor : GEO_NORMAL;\n"//ジオメトリ法線
 "   float2 Tex0 : TEXCOORD0;\n"//テクスチャー座標0
 "   float2 Tex1 : TEXCOORD1;\n"//テクスチャー座標1
@@ -40,6 +42,7 @@ char *ShaderSkinMesh_D =
 
 "   float4 Pos = float4(Input.Pos, 1);\n"
 "   float3 Nor = Input.Nor;\n"
+"   float3 Tan = Input.Tan;\n"
 "   float3 GNor = Input.GNor;\n"
 //ボーン0
 "   uint iBone = Input.Bones.x;\n"
@@ -47,6 +50,7 @@ char *ShaderSkinMesh_D =
 "   matrix m = FetchBoneMatrix(iBone);\n"
 "   Output.Pos += fWeight * mul(Pos, m);\n"
 "   Output.Nor += fWeight * mul(Nor, (float3x3)m);\n"
+"   Output.Tan += fWeight * mul(Tan, (float3x3)m);\n"
 "   Output.GNor += fWeight * mul(GNor, (float3x3)m);\n"
 //ボーン1
 "   iBone = Input.Bones.y;\n"
@@ -54,6 +58,7 @@ char *ShaderSkinMesh_D =
 "   m = FetchBoneMatrix(iBone);\n"
 "   Output.Pos += fWeight * mul(Pos, m);\n"
 "   Output.Nor += fWeight * mul(Nor, (float3x3)m);\n"
+"   Output.Tan += fWeight * mul(Tan, (float3x3)m);\n"
 "   Output.GNor += fWeight * mul(GNor, (float3x3)m);\n"
 //ボーン2
 "   iBone = Input.Bones.z;\n"
@@ -61,6 +66,7 @@ char *ShaderSkinMesh_D =
 "   m = FetchBoneMatrix(iBone);\n"
 "   Output.Pos += fWeight * mul(Pos, m);\n"
 "   Output.Nor += fWeight * mul(Nor, (float3x3)m);\n"
+"   Output.Tan += fWeight * mul(Tan, (float3x3)m);\n"
 "   Output.GNor += fWeight * mul(GNor, (float3x3)m);\n"
 //ボーン3
 "   iBone = Input.Bones.w;\n"
@@ -68,6 +74,7 @@ char *ShaderSkinMesh_D =
 "   m = FetchBoneMatrix(iBone);\n"
 "   Output.Pos += fWeight * mul(Pos, m);\n"
 "   Output.Nor += fWeight * mul(Nor, (float3x3)m);\n"
+"   Output.Tan += fWeight * mul(Tan, (float3x3)m);\n"
 "   Output.GNor += fWeight * mul(GNor, (float3x3)m);\n"
 
 "   return Output;\n"
@@ -82,29 +89,11 @@ char *ShaderSkinMesh_D =
 
 "    output.Pos = vSkinned.Pos;\n"
 "    output.Nor = vSkinned.Nor;\n"
+"    output.Tan = vSkinned.Tan;\n"
 "    output.GNor = vSkinned.GNor;\n"
 "    output.instanceID = instanceID;\n"
-
-"   if(g_uvSw.x == 0.0f)\n"//切り替え無
-"   {\n"
-"      output.Tex0 = input.Tex0;\n"
-"      output.Tex1 = input.Tex1;\n"
-"   }\n"
-"   if(g_uvSw.x == 1.0f)\n"//逆転
-"   {\n"
-"      output.Tex0 = input.Tex1;\n"
-"      output.Tex1 = input.Tex0;\n"
-"   }\n"
-"   if(g_uvSw.x == 2.0f)\n"//どちらもuv0
-"   {\n"
-"      output.Tex0 = input.Tex0;\n"
-"      output.Tex1 = input.Tex0;\n"
-"   }\n"
-"   if(g_uvSw.x == 3.0f)\n"//どちらもuv1
-"   {\n"
-"      output.Tex0 = input.Tex1;\n"
-"      output.Tex1 = input.Tex1;\n"
-"   }\n"
+"    output.Tex0 = input.Tex0;\n"
+"    output.Tex1 = input.Tex1;\n"
 
 "    return output;\n"
 "}\n";

@@ -133,7 +133,19 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divid
 	const int numCbv = 3;
 	mObj.primType_create = CONTROL_POINT;
 	mObj.setDivideArr(divArr, numDiv);
-	mObj.createDefaultBuffer(mObj.ver, mObj.index, true);
+
+	UINT* indexCntArr = new UINT[mObj.dpara.NumMaterial];
+	for (int m = 0; m < mObj.dpara.NumMaterial; m++) {
+		indexCntArr[m] = mObj.dpara.Iview[m].IndexCount;
+	}
+	Dx_Util::createTangent(mObj.dpara.NumMaterial, indexCntArr,
+		mObj.ver, mObj.index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+	ARR_DELETE(indexCntArr);
+
+	mObj.createDefaultBuffer(mObj.ver, mObj.index);
+	VertexM* vm = (VertexM*)mObj.ver;
+	ARR_DELETE(vm);
+	ARR_DELETE(mObj.index);
 	int numUav = 0;
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);

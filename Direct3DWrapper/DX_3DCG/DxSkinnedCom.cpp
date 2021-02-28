@@ -11,8 +11,6 @@ void SkinnedCom::getBuffer(PolygonData* p, int numMaterial) {
 	if (dx->DXR_CreateResource) {
 		pd = p;
 		int NumMaterial = pd->dpara.NumMaterial;
-		mObjectCB = new ConstantBuffer<uvSW>(NumMaterial);
-		sw = std::make_unique<uvSW[]>(NumMaterial);
 		SkinnedVer = std::make_unique<ComPtr<ID3D12Resource>[]>(NumMaterial);
 	}
 }
@@ -29,12 +27,10 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 		descHeap = dx->device->CreateDescHeap(numHeap);
 		if (descHeap == nullptr)return false;
 
-		UINT cbSize[2] = {};
+		UINT cbSize[1] = {};
 		cbSize[0] = ad3Size;
-		cbSize[1] = mObjectCB->getSizeInBytes();
 
 		for (int i = 0; i < NumMaterial; i++) {
-			mObjectCB->CopyData(i, sw[i]);
 			ID3D12Resource* res[1];
 			res[0] = pd->dpara.Vview.get()->VertexBufferGPU.Get();
 			UINT resSize[1];
@@ -42,7 +38,6 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 			pd->CreateSrvBuffer(descHeap.Get(), numDesc * i, res, numSrv, resSize);
 			D3D12_GPU_VIRTUAL_ADDRESS ad[2];
 			ad[0] = ad3;
-			ad[1] = mObjectCB->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
 			pd->CreateCbv(descHeap.Get(), numDesc * i + numSrv, ad, cbSize, numCbv);
 			ID3D12Resource* resU[1];
 			resU[0] = SkinnedVer[i].Get();

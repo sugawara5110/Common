@@ -13,7 +13,7 @@
 #endif
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "Dx_ShaderHolder.h"
+#include "Dx_Util.h"
 #include <DirectXColors.h>
 #include <stdlib.h>
 #include <string>
@@ -165,7 +165,6 @@ public:
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 	ID3D12Device5* getDevice() { return device->getDevice(); }
-	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
 	void createTextureArr(int numTexArr, int resourceIndex, char* texName,
@@ -630,22 +629,7 @@ protected:
 	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
 	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
 
-	template<typename T>
-	void createDefaultBuffer(T* vertexArr, UINT** indexArr, bool verDelete_f) {
-		dpara.Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, vertexArr,
-			dpara.Vview->VertexBufferByteSize,
-			dpara.Vview->VertexBufferUploader, false);
-		if (verDelete_f)ARR_DELETE(vertexArr);//使わない場合解放
-
-		for (int i = 0; i < dpara.NumMaterial; i++) {
-			if (dpara.Iview[i].IndexCount <= 0)continue;
-			dpara.Iview[i].IndexBufferGPU = dx->CreateDefaultBuffer(com_no, indexArr[i],
-				dpara.Iview[i].IndexBufferByteSize,
-				dpara.Iview[i].IndexBufferUploader, false);
-			ARR_DELETE(indexArr[i]);
-		}
-		ARR_DELETE(indexArr);
-	}
+	void createDefaultBuffer(void* vertexArr, UINT** indexArr);
 
 	void createBufferDXR(int numMaterial, int numMaxInstance);
 

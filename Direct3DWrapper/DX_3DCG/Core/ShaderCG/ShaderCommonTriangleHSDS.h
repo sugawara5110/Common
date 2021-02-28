@@ -45,6 +45,7 @@ char *ShaderCommonTriangleHSDS =
 "	HS_OUTPUT output = (HS_OUTPUT)0;\n"
 "	output.Pos = ip[cpid].Pos;\n"
 "	output.Nor = ip[cpid].Nor;\n"
+"   output.Tan = ip[cpid].Tan;\n"
 "	output.GNor = ip[cpid].GNor;\n"
 "	output.Tex0 = ip[cpid].Tex0;\n"
 "	output.Tex1 = ip[cpid].Tex1;\n"
@@ -70,6 +71,9 @@ char *ShaderCommonTriangleHSDS =
 
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
+
+//接ベクトル
+"   output.Tan = patch[0].Tan * UV.x + patch[1].Tan * UV.y + patch[2].Tan * UV.z;\n"
 
 //pos座標計算
 "   output.Pos = patch[0].Pos * UV.x + patch[1].Pos * UV.y + patch[2].Pos * UV.z;\n"

@@ -9,17 +9,11 @@
 
 #include "Core/Dx12ProcessCore.h"
 
-struct uvSW {
-	CoordTf::VECTOR4 uvSw;//.x‚Ì‚Ý
-};
-
 class SkinnedCom {
 
 private:
 	friend PolygonData;
 	friend SkinMesh;
-	std::unique_ptr<uvSW[]> sw = nullptr;
-	ConstantBuffer<uvSW>* mObjectCB = nullptr;
 	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 	ComPtr<ID3D12PipelineState> PSO = nullptr;
 	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
@@ -27,7 +21,7 @@ private:
 	PolygonData* pd = nullptr;
 	int NumDesc = 0;
 	const int numSrv = 1;
-	const int numCbv = 2;
+	const int numCbv = 1;
 	const int numUav = 1;
 
 	void getBuffer(PolygonData* pd, int numMaterial);
@@ -36,14 +30,6 @@ private:
 	bool createParameterDXR();
 	void skinning(int comNo);
 	void Skinning(int comNo);
-
-	void setUvSW(int mIndex, float uvSW) {
-		sw[mIndex].uvSw.x = uvSW;
-	}
-
-	~SkinnedCom() {
-		S_DELETE(mObjectCB);
-	}
 };
 
 #endif

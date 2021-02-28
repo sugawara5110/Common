@@ -87,6 +87,16 @@ char* ShaderCommonDXR =
 "    };\n"
 "    return getCenterNormal(vertexNormals, attr);\n"
 "}\n"
+////////////////////////////////接ベクトル取得//////////////////////////////////////////////////////////
+"float3 get_tangent(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"
+"{\n"
+"    float3 vertexTangents[3] = {\n"
+"        v3.v[0].tangent,\n"
+"        v3.v[1].tangent,\n"
+"        v3.v[2].tangent\n"
+"    };\n"
+"    return getCenterNormal(vertexTangents, attr);\n"
+"}\n"
 
 ////////////////Hitの重心を使用して、頂点属性から補間されたhit位置の属性を取得(UV)////////////////
 "float2 getCenterUV(in float2 vertexUV[3], in BuiltInTriangleIntersectionAttributes attr)\n"
@@ -108,13 +118,13 @@ char* ShaderCommonDXR =
 "}\n"
 
 /////////////////////////////ノーマルテクスチャから法線取得/////////////////////////////////////
-"float3 getNormalMap(in float3 normal, float2 uv)\n"
+"float3 getNormalMap(in float3 normal, in float2 uv, in float3 tangent)\n"
 "{\n"
 "    NormalTangent tan;\n"
 "    uint instancingID = getInstancingID();\n"
 "    uint materialID = getMaterialID();\n"
 //接ベクトル計算
-"    tan = GetTangent(normal, (float3x3)wvp[getInstancingID()].world, cameraUp);\n"//ShaderCG内関数
+"    tan = GetTangent(normal, (float3x3)wvp[getInstancingID()].world, tangent);\n"//ShaderCG内関数
 //法線テクスチャ
 "    float4 Tnor = g_texNormal[materialID].SampleLevel(g_samLinear, uv, 0.0);\n"
 //ノーマルマップでの法線出力
@@ -145,8 +155,10 @@ char* ShaderCommonDXR =
 "    float2 UV = getUV(attr, 0, v3);\n"
 //法線の計算
 "    float3 triangleNormal = getNormal(attr, v3);\n"
+//接ベクトル計算
+"    float3 tan = get_tangent(attr, v3);\n"
 //ノーマルマップからの法線出力
-"    return getNormalMap(triangleNormal, UV);\n"
+"    return getNormalMap(triangleNormal, UV, tan);\n"
 "}\n"
 //////////////スペキュラ
 "float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)\n"

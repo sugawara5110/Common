@@ -7,6 +7,7 @@ char* ShaderParametersDXR =
 "struct Vertex {\n"
 "    float3 Pos;\n"
 "    float3 normal;\n"
+"    float3 tangent;\n"
 "    float2 tex[2];\n"
 "};\n"
 
@@ -37,7 +38,6 @@ char* ShaderParametersDXR =
 "cbuffer global : register(b0, space0)\n"
 "{\n"
 "    matrix projectionToWorld;\n"
-"    float4 cameraUp;"
 "    float4 cameraPosition;\n"
 "    float4 emissivePosition[256];\n"//.w:onoff
 "    float4 numEmissive;\n"//.x‚Ì‚Ý

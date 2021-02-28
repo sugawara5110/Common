@@ -37,18 +37,23 @@ char *ShaderWaveDraw =
 "   float wh = g_wHei_divide.y;\n"
 "   float sinwave = gInput[wh * wh * output.Tex0.y + wh * output.Tex0.x].sinWave;\n"
 
+//法線ベクトル
+"   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
+
+//接ベクトル
+"   output.Tan = patch[0].Tan * UV.x + patch[1].Tan * UV.y + patch[2].Tan * UV.z;\n"
+
 //pos座標計算
 "   output.Pos = patch[0].Pos * UV.x + patch[1].Pos * UV.y + patch[2].Pos * UV.z;\n"
 
 //ローカル法線の方向にhei分頂点移動
-"   output.Pos.xyz += hei * patch[0].Nor;\n"
+"   output.Pos.xyz += hei * output.Nor;\n"
 
 //ローカル法線の方向にsin波を生成
-"   float3 sinwave3 = patch[0].Nor * sinwave;\n"
+"   float3 sinwave3 = output.Nor * sinwave;\n"
 
 //頂点にsin波合成
 "   output.Pos.xyz += sinwave3;\n"
-"   output.Nor = patch[0].Nor;\n"
 "   output.instanceID = patch[0].instanceID;\n"
 
 "	return output;\n"

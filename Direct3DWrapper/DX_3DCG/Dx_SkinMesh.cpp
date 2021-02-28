@@ -310,7 +310,7 @@ void SkinMesh::SetVertex(bool lclOn) {
 		//同一座標頂点の法線統一化(テセレーション用)
 		for (UINT i = 0; i < mesh->getNumVertices(); i++) {
 			int indVB = 0;
-			VECTOR3 geo[50];
+			VECTOR3 geo[50] = {};
 			int indVb[50];
 			int indGeo = 0;
 			while (1) {
@@ -319,14 +319,14 @@ void SkinMesh::SetVertex(bool lclOn) {
 				indVb[indGeo] = indVB;
 				geo[indGeo++] = vb[indVB].vGeoNorm;
 			}
-			VECTOR3 sum;
+			VECTOR3 sum = {};
 			sum.as(0.0f, 0.0f, 0.0f);
 			for (int i1 = 0; i1 < indGeo; i1++) {
 				sum.x += geo[i1].x;
 				sum.y += geo[i1].y;
 				sum.z += geo[i1].z;
 			}
-			VECTOR3 ave;
+			VECTOR3 ave = {};
 			ave.x = sum.x / (float)indGeo;
 			ave.y = sum.y / (float)indGeo;
 			ave.z = sum.z / (float)indGeo;
@@ -344,11 +344,9 @@ void SkinMesh::SetVertex(bool lclOn) {
 		//4頂点ポリゴン分割後のIndex数カウント
 		UINT* numNewIndex = new UINT[numMaterial];
 		memset(numNewIndex, 0, sizeof(UINT) * numMaterial);
-		UINT currentMatNo = -1;
+
 		for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
-			if (mesh->getMaterialNoOfPolygon(i) != currentMatNo) {
-				currentMatNo = mesh->getMaterialNoOfPolygon(i);
-			}
+			UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
 			if (mesh->getPolygonSize(i) == 3) {
 				numNewIndex[currentMatNo] += 3;
 			}
@@ -368,19 +366,20 @@ void SkinMesh::SetVertex(bool lclOn) {
 		}
 		std::unique_ptr<UINT[]> indexCnt;
 		indexCnt = std::make_unique<UINT[]>(numMaterial);
-		currentMatNo = -1;
+
+		int* uvSw = new int[numMaterial];
+		createMaterial(m, numMaterial, mesh, uv0Name, uv1Name, uvSw);
+
 		int Icnt = 0;
 		for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
-			if (mesh->getMaterialNoOfPolygon(i) != currentMatNo) {
-				currentMatNo = mesh->getMaterialNoOfPolygon(i);
-			}
+			UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
 
 			if (mesh->getPolygonSize(i) == 3) {
 
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1;
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
-
+				swapTex(&vb[Icnt], &vb[Icnt + 1], &vb[Icnt + 2], uvSw[currentMatNo]);
 				Icnt += 3;
 			}
 			if (mesh->getPolygonSize(i) == 4) {
@@ -388,107 +387,145 @@ void SkinMesh::SetVertex(bool lclOn) {
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1;
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
+				swapTex(&vb[Icnt], &vb[Icnt + 1], &vb[Icnt + 2], uvSw[currentMatNo]);
+
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
 				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 3;
-
+				swapTex(&vb[Icnt], &vb[Icnt + 2], &vb[Icnt + 3], uvSw[currentMatNo]);
 				Icnt += 4;
 			}
 		}
-
+		ARR_DELETE(uvSw);
 		//インデックスバッファ
 		for (UINT i = 0; i < numMaterial; i++) {
 			const UINT indexSize = numNewIndex[i] * sizeof(UINT);
 			mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
 		}
 		ARR_DELETE(numNewIndex);
-		Dx12Process* dx = mObj[0].dx;
-		for (UINT i = 0; i < numMaterial; i++) {
-			//ディフェーズテクスチャId取得
-			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
-				textureType type = mesh->getDiffuseTextureType(i, tNo);
-				if (type.DiffuseColor && !type.SpecularColor ||
-					mesh->getNumDiffuseTexture(i) == 1) {
-					auto diffName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
-					mObj[m].dpara.material[i].diftex_no = dx->GetTexNumber(diffName);
-					auto str = mesh->getDiffuseTextureUVName(i, tNo);
-					if (str)strcpy(mObj[m].dpara.material[i].difUvName, str);
-					break;
-				}
-			}
-			//スペキュラテクスチャId取得
-			for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
-				textureType type = mesh->getDiffuseTextureType(i, tNo);
-				if (type.SpecularColor) {
-					auto speName = dx->GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
-					mObj[m].dpara.material[i].spetex_no = dx->GetTexNumber(speName);
-					auto str = mesh->getDiffuseTextureUVName(i, tNo);
-					if (str)strcpy(mObj[m].dpara.material[i].speUvName, str);
-					break;
-				}
-			}
-			//ノーマルテクスチャId取得
-			for (int tNo = 0; tNo < mesh->getNumNormalTexture(i); tNo++) {
-				//ディフェーズテクスチャ用のノーマルマップしか使用しないので
-				//取得済みのディフェーズテクスチャUV名と同じUV名のノーマルマップを探す
-				auto uvNorName = mesh->getNormalTextureUVName(i, tNo);
-				if (mesh->getNumNormalTexture(i) == 1 ||
-					uvNorName && !strcmp(mObj[m].dpara.material[i].difUvName, uvNorName)) {
-					auto norName = dx->GetNameFromPass(mesh->getNormalTextureName(i, tNo));
-					mObj[m].dpara.material[i].nortex_no = dx->GetTexNumber(norName);
-					auto str = mesh->getNormalTextureUVName(i, tNo);
-					if (str)strcpy(mObj[m].dpara.material[i].norUvName, str);
-					break;
-				}
-			}
-			float uvSw = 0.0f;
-			if (uv0Name != nullptr) {
-				char* difName = mObj[m].dpara.material[i].difUvName;
-				char* speName = mObj[m].dpara.material[i].speUvName;
-				//uv逆転
-				if (!strcmp(difName, uv1Name) &&
-					(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
-					uvSw = 1.0f;
-				//どちらもuv0
-				if (!strcmp(difName, uv0Name) &&
-					(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
-					uvSw = 2.0f;
-				//どちらもuv1
-				if (!strcmp(difName, uv1Name) &&
-					(!strcmp(speName, "") || !strcmp(speName, uv1Name)))
-					uvSw = 3.0f;
-			}
+	}
+}
 
-			CONSTANT_BUFFER2 sg;
-			//拡散反射光
-			VECTOR4* diffuse = &mObj[m].dpara.material[i].diffuse;
-			diffuse->x = (float)mesh->getDiffuseColor(0, 0) + addDiffuse;
-			diffuse->y = (float)mesh->getDiffuseColor(0, 1) + addDiffuse;
-			diffuse->z = (float)mesh->getDiffuseColor(0, 2) + addDiffuse;
-			diffuse->w = 0.0f;//使用してない
-			//スペキュラー
-			VECTOR4* specular = &mObj[m].dpara.material[i].specular;
-			specular->x = (float)mesh->getSpecularColor(0, 0) + addSpecular;
-			specular->y = (float)mesh->getSpecularColor(0, 1) + addSpecular;
-			specular->z = (float)mesh->getSpecularColor(0, 2) + addSpecular;
-			specular->w = 0.0f;//使用してない
-			//アンビエント
-			VECTOR4* ambient = &mObj[m].dpara.material[i].ambient;
-			ambient->x = (float)mesh->getAmbientColor(0, 0) + addAmbient;
-			ambient->y = (float)mesh->getAmbientColor(0, 1) + addAmbient;
-			ambient->z = (float)mesh->getAmbientColor(0, 2) + addAmbient;
-			ambient->w = 0.0f;//使用してない
+void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
+	char* uv0Name, char* uv1Name, int* uvSw) {
 
-			sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
-			sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
-			sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
-			sg.uvSwitch.x = uvSw;
-			mObj[m].mObjectCB1->CopyData(i, sg);
-			if (dx->DXR_CreateResource) {
-				mObj[m].setColorDXR(i, sg);
-				sk[m].setUvSW(i, uvSw);
+	Dx12Process* dx = mObj[0].dx;
+	int m = meshInd;
+	for (UINT i = 0; i < numMaterial; i++) {
+		//ディフェーズテクスチャId取得
+		for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
+			textureType type = mesh->getDiffuseTextureType(i, tNo);
+			if (type.DiffuseColor && !type.SpecularColor ||
+				mesh->getNumDiffuseTexture(i) == 1) {
+				auto diffName = Dx_Util::GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
+				mObj[m].dpara.material[i].diftex_no = dx->GetTexNumber(diffName);
+				auto str = mesh->getDiffuseTextureUVName(i, tNo);
+				if (str)strcpy(mObj[m].dpara.material[i].difUvName, str);
+				break;
 			}
 		}
+		//スペキュラテクスチャId取得
+		for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
+			textureType type = mesh->getDiffuseTextureType(i, tNo);
+			if (type.SpecularColor) {
+				auto speName = Dx_Util::GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
+				mObj[m].dpara.material[i].spetex_no = dx->GetTexNumber(speName);
+				auto str = mesh->getDiffuseTextureUVName(i, tNo);
+				if (str)strcpy(mObj[m].dpara.material[i].speUvName, str);
+				break;
+			}
+		}
+		//ノーマルテクスチャId取得
+		for (int tNo = 0; tNo < mesh->getNumNormalTexture(i); tNo++) {
+			//ディフェーズテクスチャ用のノーマルマップしか使用しないので
+			//取得済みのディフェーズテクスチャUV名と同じUV名のノーマルマップを探す
+			auto uvNorName = mesh->getNormalTextureUVName(i, tNo);
+			if (mesh->getNumNormalTexture(i) == 1 ||
+				uvNorName && !strcmp(mObj[m].dpara.material[i].difUvName, uvNorName)) {
+				auto norName = Dx_Util::GetNameFromPass(mesh->getNormalTextureName(i, tNo));
+				mObj[m].dpara.material[i].nortex_no = dx->GetTexNumber(norName);
+				auto str = mesh->getNormalTextureUVName(i, tNo);
+				if (str)strcpy(mObj[m].dpara.material[i].norUvName, str);
+				break;
+			}
+		}
+		uvSw[i] = 0;
+		if (uv0Name != nullptr) {
+			char* difName = mObj[m].dpara.material[i].difUvName;
+			char* speName = mObj[m].dpara.material[i].speUvName;
+			//uv逆転
+			if (!strcmp(difName, uv1Name) &&
+				(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
+				uvSw[i] = 1;
+			//どちらもuv0
+			if (!strcmp(difName, uv0Name) &&
+				(!strcmp(speName, "") || !strcmp(speName, uv0Name)))
+				uvSw[i] = 2;
+			//どちらもuv1
+			if (!strcmp(difName, uv1Name) &&
+				(!strcmp(speName, "") || !strcmp(speName, uv1Name)))
+				uvSw[i] = 3;
+		}
+
+		CONSTANT_BUFFER2 sg = {};
+		//拡散反射光
+		CoordTf::VECTOR4* diffuse = &mObj[m].dpara.material[i].diffuse;
+		diffuse->x = (float)mesh->getDiffuseColor(0, 0) + addDiffuse;
+		diffuse->y = (float)mesh->getDiffuseColor(0, 1) + addDiffuse;
+		diffuse->z = (float)mesh->getDiffuseColor(0, 2) + addDiffuse;
+		diffuse->w = 0.0f;//使用してない
+		//スペキュラー
+		CoordTf::VECTOR4* specular = &mObj[m].dpara.material[i].specular;
+		specular->x = (float)mesh->getSpecularColor(0, 0) + addSpecular;
+		specular->y = (float)mesh->getSpecularColor(0, 1) + addSpecular;
+		specular->z = (float)mesh->getSpecularColor(0, 2) + addSpecular;
+		specular->w = 0.0f;//使用してない
+		//アンビエント
+		CoordTf::VECTOR4* ambient = &mObj[m].dpara.material[i].ambient;
+		ambient->x = (float)mesh->getAmbientColor(0, 0) + addAmbient;
+		ambient->y = (float)mesh->getAmbientColor(0, 1) + addAmbient;
+		ambient->z = (float)mesh->getAmbientColor(0, 2) + addAmbient;
+		ambient->w = 0.0f;//使用してない
+
+		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
+		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
+		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
+		mObj[m].mObjectCB1->CopyData(i, sg);
+		if (dx->DXR_CreateResource) {
+			mObj[m].setColorDXR(i, sg);
+		}
+	}
+}
+
+static void swap(CoordTf::VECTOR2* a, CoordTf::VECTOR2* b) {
+	float tmp;
+	tmp = a->x;
+	a->x = b->x;
+	b->x = tmp;
+	tmp = a->y;
+	a->y = b->y;
+	b->y = tmp;
+}
+
+void SkinMesh::swapTex(MY_VERTEX_S* v0, MY_VERTEX_S* v1, MY_VERTEX_S* v2, int uvSw) {
+	switch (uvSw) {
+	case 0:
+		break;
+	case 1:
+		swap(v0->vTex0, v0->vTex1);
+		swap(v1->vTex0, v1->vTex1);
+		swap(v2->vTex0, v2->vTex1);
+		break;
+	case 2:
+		v0->vTex1 = v0->vTex0;
+		v1->vTex1 = v1->vTex0;
+		v2->vTex1 = v2->vTex0;
+		break;
+	case 3:
+		v0->vTex0 = v0->vTex1;
+		v1->vTex0 = v1->vTex1;
+		v2->vTex0 = v2->vTex1;
+		break;
 	}
 }
 
@@ -539,7 +576,21 @@ bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 		PolygonData& o = mObj[i];
 		o.setDivideArr(divArr, numDiv);
 		o.com_no = com_no;
-		o.createDefaultBuffer(pvVB[i], newIndex[i], pvVB_delete_f);
+
+		UINT* indexCntArr = new UINT[mObj[i].dpara.NumMaterial];
+		for (int m = 0; m < mObj[i].dpara.NumMaterial; m++) {
+			indexCntArr[m] = mObj[i].dpara.Iview[m].IndexCount;
+		}
+		Dx_Util::createTangent(mObj[i].dpara.NumMaterial, indexCntArr,
+			pvVB[i], newIndex[i], sizeof(MY_VERTEX_S), 0, 12 * 4, 6 * 4);
+		ARR_DELETE(indexCntArr);
+
+		o.createDefaultBuffer(pvVB[i], newIndex[i]);
+		if (pvVB_delete_f)ARR_DELETE(pvVB[i]);
+		for (int m = 0; m < mObj[i].dpara.NumMaterial; m++) {
+			ARR_DELETE(newIndex[i][m]);
+		}
+		ARR_DELETE(newIndex[i]);
 		int numUav = 0;
 		Dx12Process* dx = o.dx;
 		o.createParameterDXR(alpha, blend, divideBufferMagnification);

@@ -299,7 +299,6 @@ bool MeshData::SetVertex() {
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
-		sg.uvSwitch.x = 0.0f;
 		mObj.mObjectCB1->CopyData(i, sg);
 		mObj.setColorDXR(i, sg);
 	}
@@ -428,7 +427,21 @@ bool MeshData::CreateMesh(float divideBufferMagnification) {
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	mObj.setDivideArr(divArr, numDiv);
-	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer, true);
+
+	UINT* indexCntArr = new UINT[mObj.dpara.NumMaterial];
+	for (int m = 0; m < mObj.dpara.NumMaterial; m++) {
+		indexCntArr[m] = mObj.dpara.Iview[m].IndexCount;
+	}
+	Dx_Util::createTangent(mObj.dpara.NumMaterial, indexCntArr,
+		pvVertexBuffer, piFaceBuffer, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+	ARR_DELETE(indexCntArr);
+
+	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer);
+	ARR_DELETE(pvVertexBuffer);
+	for (int i = 0; i < mObj.dpara.NumMaterial; i++) {
+		ARR_DELETE(piFaceBuffer[i]);
+	}
+	ARR_DELETE(piFaceBuffer);
 	int numUav = 0;
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 

@@ -4,12 +4,14 @@
 
 char *ShaderMesh_D =
 //****************************************ÉÅÉbÉVÉÖí∏ì_**************************************************************//
-"VS_OUTPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float3 GNor : GEO_NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
+"VS_OUTPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float3 Tan : TANGENT, \n"
+"                 float3 GNor : GEO_NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
 "{\n"
 "    VS_OUTPUT output = (VS_OUTPUT)0;\n"
 
 "    output.Pos = float4(Pos, 1);\n"
 "    output.Nor = Nor;\n"
+"    output.Tan = Tan;\n"
 "    output.GNor = GNor;\n"
 "    output.Tex0 = Tex;\n"
 "    output.Tex1 = Tex;\n"

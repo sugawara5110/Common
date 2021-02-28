@@ -87,6 +87,8 @@ protected:
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
 	void GetShaderByteCode(bool disp);
 	void GetMeshCenterPos();
+	void createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh, char* uv0Name, char* uv1Name, int* uvSw);
+	void swapTex(MY_VERTEX_S* v0, MY_VERTEX_S* v1, MY_VERTEX_S* v2, int uvSw);
 
 public:
 	SkinMesh();

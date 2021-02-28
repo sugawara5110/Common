@@ -107,7 +107,7 @@ void Dx12Process::WaitFenceCom() {
 
 int Dx12Process::GetTexNumber(CHAR* fileName) {
 
-	fileName = GetNameFromPass(fileName);
+	fileName = Dx_Util::GetNameFromPass(fileName);
 
 	for (int i = 0; i < texNum; i++) {
 		if (texture[i].texName == '\0')continue;
@@ -702,9 +702,6 @@ void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, 
 	cb->C_Pos.as(upd[cBuffSwap[0]].pos.x,
 		upd[cBuffSwap[0]].pos.y,
 		upd[cBuffSwap[0]].pos.z, 0.0f);
-	cb->viewUp.as(upd[cBuffSwap[0]].up.x,
-		upd[cBuffSwap[0]].up.y,
-		upd[cBuffSwap[0]].up.z, 0.0f);
 	cb->AddObjColor.as(Color.x, Color.y, Color.z, Color.w);
 	memcpy(&cb->GlobalAmbientLight, &GlobalAmbientLight, sizeof(VECTOR4));
 	cb->numLight.as((float)upd[cBuffSwap[0]].plight.LightPcs, 0.0f, 0.0f, 0.0f);
@@ -737,27 +734,6 @@ float Dx12Process::GetNearPlane() {
 
 float Dx12Process::GetFarPlane() {
 	return FarPlane;
-}
-
-char* Dx12Process::GetNameFromPass(char* pass) {
-
-	CHAR temp[255];
-	strcpy_s(temp, pass);
-
-	bool f = false;
-
-	for (int i = 0; temp[i] != '\0' && i < 255; i++) {
-		if (temp[i] == '\\' || temp[i] == '/') { f = true; break; }
-	}
-
-	if (f) {
-		//ファイル名のみでは無い場合の処理
-		while (*pass != '\0') pass++;//終端文字までポインタを進める
-		while (*pass != '\\' && *pass != '/')pass--;//ファイル名先頭の'\'か'/'までポインタを進める
-		pass++;//'\'または'/'の次(ファイル名先頭文字)までポインタを進める
-	}
-
-	return pass;//ポインタ操作してるので返り値を使用させる
 }
 
 //移動量一定化

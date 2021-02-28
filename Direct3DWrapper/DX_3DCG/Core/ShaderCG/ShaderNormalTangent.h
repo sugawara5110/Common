@@ -3,23 +3,21 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char* ShaderNormalTangent =
+
 "struct NormalTangent\n"
 "{\n"
 "    float3 normal  : NORMAL;\n"
 "    float3 tangent : TANGENT;\n"
 "};\n"
 
-"NormalTangent GetTangent(float3 normal, float3x3 world, float4 viewUp)\n"
+"NormalTangent GetTangent(float3 normal, float3x3 world, float3 tangent)\n"
 "{\n"
 "	NormalTangent Out = (NormalTangent)0;\n"
 
 "   Out.normal = mul(normal, world);\n"
 "   Out.normal = normalize(Out.normal);\n"
-"   float3 view = normalize(viewUp.xyz);\n"
-"   Out.tangent = cross(Out.normal, view);\n"
-"   if(Out.tangent.x == 0.0f && Out.tangent.y == 0.0f && Out.tangent.z == 0.0f){"
-"      Out.tangent = cross(Out.normal, view - 0.001f);\n"
-"   }\n"
+"   Out.tangent = mul(tangent, world);\n"
+"   Out.tangent = normalize(Out.tangent);\n"
 
 "   return Out;\n"
 "}\n"

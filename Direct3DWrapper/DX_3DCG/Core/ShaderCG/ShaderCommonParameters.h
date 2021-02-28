@@ -15,8 +15,6 @@ char* ShaderCommonParameters =
 "    matrix g_WVP[256];\n"
 //視点
 "    float4 g_C_Pos;\n"
-//視点上方向
-"    float4 g_viewUp;"
 //オブジェクト追加カラー
 "    float4 g_ObjCol;\n"
 //グローバルアンビエント
@@ -53,7 +51,6 @@ char* ShaderCommonParameters =
 "    float4 g_Diffuse;\n"
 "    float4 g_Speculer; \n"
 "    float4 g_Ambient;\n"
-"    float4 g_uvSw;\n"
 "};\n"
 
 "cbuffer global_2 : register(b3)\n"
@@ -66,6 +63,7 @@ char* ShaderCommonParameters =
 "{\n"
 "    float4 Pos    : POSITION;\n"
 "    float3 Nor    : NORMAL;\n"
+"    float3 Tan    : TANGENT;\n"
 "    float3 GNor   : GEO_NORMAL;\n"
 "    float2 Tex0   : TEXCOORD0;\n"
 "    float2 Tex1   : TEXCOORD1;\n"
@@ -76,6 +74,7 @@ char* ShaderCommonParameters =
 "{\n"
 "    float4 Pos   : POSITION;\n"
 "    float3 Nor   : NORMAL;\n"
+"    float3 Tan   : TANGENT;\n"
 "    float2 Tex0  : TEXCOORD0;\n"
 "    float2 Tex1  : TEXCOORD1;\n"
 "    uint   instanceID : SV_InstanceID;\n"
@@ -101,6 +100,7 @@ char* ShaderCommonParameters =
 "{\n"
 "    float4 Pos   : POSITION;\n"
 "    float3 Nor   : NORMAL;\n"
+"    float3 Tan   : TANGENT;\n"
 "    float3 GNor  : GEO_NORMAL;\n"
 "    float2 Tex0  : TEXCOORD0;\n"
 "    float2 Tex1  : TEXCOORD1;\n"

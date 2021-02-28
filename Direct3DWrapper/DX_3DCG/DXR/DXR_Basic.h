@@ -26,7 +26,6 @@ struct WVP_CB {
 struct DxrConstantBuffer
 {
 	CoordTf::MATRIX projectionToWorld;
-	CoordTf::VECTOR4 cameraUp;
 	CoordTf::VECTOR4 cameraPosition;
 	CoordTf::VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:ƒIƒ“ƒIƒt
 	CoordTf::VECTOR4 numEmissive;//.x‚Ì‚Ý
