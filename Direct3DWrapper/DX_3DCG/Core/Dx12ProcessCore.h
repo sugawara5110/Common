@@ -24,8 +24,6 @@
 #include <new>
 #include <typeinfo>
 
-#pragma comment(lib,"d3dcompiler.lib")
-
 using Microsoft::WRL::ComPtr;
 
 class Dx12Process final {

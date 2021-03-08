@@ -35,6 +35,7 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 dDirection;
 	CoordTf::VECTOR4 dLightColor;
 	CoordTf::VECTOR4 dLightst;//x:オンオフ
+	CoordTf::VECTOR4 TMin_TMax;//x, y
 	UINT maxRecursion;
 };
 
@@ -96,6 +97,8 @@ private:
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
 	UINT maxNumInstancing = 0;
+	float TMin = 0;
+	float TMax = 0;
 
 	void createInstanceIdBuffer(UINT numMaterial);
 	void createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
@@ -118,6 +121,7 @@ private:
 
 public:
 	void initDXR(UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
+	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
 	void raytrace_g(int comNo);

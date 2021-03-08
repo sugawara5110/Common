@@ -11,6 +11,8 @@
 #include <D3Dcompiler.h>
 #include <vector>
 
+#pragma comment(lib,"d3dcompiler.lib")
+
 class addChar {
 
 public:

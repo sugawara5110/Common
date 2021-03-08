@@ -47,6 +47,7 @@ char* ShaderParametersDXR =
 "    float4 dDirection;\n"
 "    float4 dLightColor;\n"
 "    float4 dLightst;\n"//.x:ƒIƒ“ƒIƒt
+"    float4 TMin_TMax;\n"//.x, .y
 "    uint maxRecursion;\n"
 "};\n"
 

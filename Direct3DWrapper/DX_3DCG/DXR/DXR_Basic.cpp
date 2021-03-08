@@ -17,6 +17,8 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();
+	TMin = 0.001f;
+	TMax = 10000.0f;
 
 	if (dx->DXR_CreateResource) {
 		maxRecursion = MaxRecursion;
@@ -85,6 +87,11 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 		createShaderResources();
 		createShaderTable();
 	}
+}
+
+void DXR_Basic::setTMin_TMax(float tMin, float tMax) {
+	TMin = tMin;
+	TMax = tMax;
 }
 
 void DXR_Basic::createInstanceIdBuffer(UINT numMaterial) {
@@ -972,6 +979,8 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	MatrixInverse(&cb.projectionToWorld, &VP);
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
+	cb.TMin_TMax.x = TMin;
+	cb.TMin_TMax.y = TMax;
 	updateMaterial(cbObj);
 
 	int cntEm = 0;

@@ -21,9 +21,9 @@ char* ShaderBasicDXR =
 "    world.xyz /= world.w;\n"
 "    ray.Direction = normalize(world.xyz - ray.Origin);\n"
      //Œõü‚ÌÅ¬”ÍˆÍ
-"    ray.TMin = 0.001;\n"
+"    ray.TMin = TMin_TMax.x;\n"
      //Œõü‚ÌÅ‘å”ÍˆÍ
-"    ray.TMax = 10000;\n"
+"    ray.TMax = TMin_TMax.y;\n"
 
 "    RayPayload payload;\n"
      //TraceRay(AccelerationStructure, 

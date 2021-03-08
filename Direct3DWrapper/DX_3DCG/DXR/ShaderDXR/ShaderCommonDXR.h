@@ -187,8 +187,8 @@ char* ShaderCommonDXR =
 "       LightOut Out;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
-"       ray.TMin = 0.01;\n"
-"       ray.TMax = 100000;\n"
+"       ray.TMin = TMin_TMax.x;\n"
+"       ray.TMax = TMin_TMax.y;\n"
 "       RecursionCnt++;\n"
 
 "       float3 SpeculerCol = mcb.Speculer.xyz;\n"
@@ -267,8 +267,8 @@ char* ShaderCommonDXR =
 //反射ベクトル
 "       float3 reflectVec = reflect(eyeVec, normalize(normal));\n"
 "       ray.Direction = reflectVec;\n"//反射方向にRayを飛ばす
-"       ray.TMin = 0.01;\n"
-"       ray.TMax = 100000;\n"
+"       ray.TMin = TMin_TMax.x;\n"
+"       ray.TMax = TMin_TMax.y;\n"
 
 "       if (RecursionCnt <= maxRecursion) {\n"
 "           payload.hitPosition = hitPosition;\n"
@@ -303,8 +303,8 @@ char* ShaderCommonDXR =
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 "       RayDesc ray; \n"
-"       ray.TMin = 0.01;\n"
-"       ray.TMax = 100000;\n"
+"       ray.TMin = TMin_TMax.x;\n"
+"       ray.TMax = TMin_TMax.y;\n"
 //視線ベクトル 
 "       float3 eyeVec = WorldRayDirection();\n"
 "       ray.Direction = normalize(eyeVec + -normal * mcb.RefractiveIndex);\n"
@@ -337,8 +337,8 @@ char* ShaderCommonDXR =
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 "       RayDesc ray; \n"
-"       ray.TMin = 0.01;\n"
-"       ray.TMax = 100000;\n"
+"       ray.TMin = TMin_TMax.x;\n"
+"       ray.TMax = TMin_TMax.y;\n"
 "       ray.Direction = WorldRayDirection();\n"
 
 "       if (RecursionCnt <= maxRecursion) {\n"
