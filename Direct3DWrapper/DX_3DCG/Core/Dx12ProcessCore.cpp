@@ -332,7 +332,6 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		rtvHeapHandle.ptr += mRtvDescriptorSize;
 	}
 
-	//デプスステンシルビューDESC
 	D3D12_RESOURCE_DESC depthStencilDesc = {};
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
@@ -340,7 +339,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	depthStencilDesc.Height = mClientHeight;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
-	depthStencilDesc.Format = mDepthStencilFormat;
+	depthStencilDesc.Format = mDepthStencilResFormat;
 	depthStencilDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
 	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
 	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -353,7 +352,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	depthStencilHeapProps.CreationNodeMask = 1;
 	depthStencilHeapProps.VisibleNodeMask = 1;
 
-	D3D12_CLEAR_VALUE optClear;
+	D3D12_CLEAR_VALUE optClear = {};
 	optClear.Format = mDepthStencilFormat;
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
@@ -372,7 +371,11 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
 	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 	//深度ステンシルビュー生成
-	device->getDevice()->CreateDepthStencilView(mDepthStencilBuffer.Get(), nullptr, mDsvHeapHeapHandle);
+	D3D12_DEPTH_STENCIL_VIEW_DESC depthdesc = {};
+	depthdesc.Format = mDepthStencilFormat;
+	depthdesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	depthdesc.Flags = D3D12_DSV_FLAG_NONE;
+	device->getDevice()->CreateDepthStencilView(mDepthStencilBuffer.Get(), &depthdesc, mDsvHeapHeapHandle);
 
 	dx_sub[0].Bigin();
 

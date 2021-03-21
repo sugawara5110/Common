@@ -24,10 +24,14 @@ bool PostEffect::ComCreateBlur() {
 	return ComCreate(1);
 }
 
+bool PostEffect::ComCreateDepthOfField() {
+	return ComCreate(2);
+}
+
 bool PostEffect::ComCreate(int no) {
 
 	D3D12_DESCRIPTOR_HEAP_DESC HeapDesc = {};
-	HeapDesc.NumDescriptors = 3;
+	HeapDesc.NumDescriptors = 4;
 	HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	if (FAILED(dx->getDevice()->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&mDescHeap)))) {
@@ -45,10 +49,22 @@ bool PostEffect::ComCreate(int no) {
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	uavDesc.Texture2D.MipSlice = 0;
 
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+	srvDesc.Format = dx->mDepthStencilSrvFormat;
+	srvDesc.Texture2D.MipLevels = dx->mDepthStencilBuffer.Get()->GetDesc().MipLevels;
+
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+	dx->getDevice()->CreateShaderResourceView(dx->mDepthStencilBuffer.Get(), &srvDesc, hDescriptor);
+	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
+
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
-	CreateCbv(mDescHeap.Get(), 0, &ad, &size, 1);
+	CreateCbv(mDescHeap.Get(), 1, &ad, &size, 1);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	dx->getDevice()->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
@@ -61,7 +77,7 @@ bool PostEffect::ComCreate(int no) {
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
-	mRootSignatureCom = CreateRootSignatureCompute(0, 1, 2, 0, 0);
+	mRootSignatureCom = CreateRootSignatureCompute(1, 1, 2, 0, 0);
 	if (mRootSignatureCom == nullptr)return false;
 
 	cs = dx->shaderH->pComputeShader_Post[no].Get();
@@ -74,11 +90,15 @@ bool PostEffect::ComCreate(int no) {
 }
 
 void PostEffect::ComputeMosaic(int com, bool On, int size) {
-	Compute(com, On, size, 0.0f, 0.0f, 0.0f);
+	Compute(com, On, size, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 void PostEffect::ComputeBlur(int com, bool On, float blurX, float blurY, float blurLevel) {
-	Compute(com, On, 0, blurX, blurY, blurLevel);
+	Compute(com, On, 0, blurX, blurY, blurLevel, 0.0f, 0.0f);
+}
+
+void PostEffect::ComputeDepthOfField(int com, bool On, float blurLevel, float focusDepth, float focusRange) {
+	Compute(com, On, 0, 0.0f, 0.0f, blurLevel, focusDepth, focusRange);
 }
 
 void PostEffect::ComputeMosaic(bool On, int size) {
@@ -89,18 +109,26 @@ void PostEffect::ComputeBlur(bool On, float blurX, float blurY, float blurLevel)
 	ComputeBlur(com_no, On, blurX, blurY, blurLevel);
 }
 
-void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, float blurLevel) {
+void PostEffect::ComputeDepthOfField(bool On, float blurLevel, float focusDepth, float focusRange) {
+	ComputeDepthOfField(com_no, On, blurLevel, focusDepth, focusRange);
+}
+
+void PostEffect::Compute(int com, bool On, int size,
+	float blurX, float blurY, float blurLevel,
+	float focusDepth, float focusRange) {
 
 	if (!On)return;
 
 	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
 	Dx_CommandListObj& d = dx->dx_sub[com];
 
-	CONSTANT_BUFFER_PostMosaic cb;
+	CONSTANT_BUFFER_PostMosaic cb = {};
 	cb.mosaicSize.x = (float)size;
 	cb.blur.x = blurX;
 	cb.blur.y = blurY;
 	cb.blur.z = blurLevel;
+	cb.blur.w = focusDepth;
+	cb.focusRange = focusRange;
 	mObjectCB->CopyData(0, cb);
 
 	mCList->SetPipelineState(mPSOCom.Get());
@@ -109,6 +137,9 @@ void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, f
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 
+	//深度バッファ
+	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer.Get(),
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_DEPTH_READ);
 	//バックバッファをコピー元にする
 	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -127,6 +158,10 @@ void PostEffect::Compute(int com, bool On, int size, float blurX, float blurY, f
 	UINT disX = dx->mClientWidth / 32;
 	UINT disY = dx->mClientHeight / 8;
 	mCList->Dispatch(disX, disY, 1);//CS内32, 8, 1
+
+	//深度バッファ
+	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer.Get(),
+		D3D12_RESOURCE_STATE_DEPTH_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);

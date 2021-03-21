@@ -91,6 +91,7 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 	//ポストエフェクト
 	pComputeShader_Post[0] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "MosaicCS", "cs_5_0");
 	pComputeShader_Post[1] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "BlurCS", "cs_5_0");
+	pComputeShader_Post[2] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "DepthOfFieldCS", "cs_5_0");
 
 	//スキンメッシュ
 	pVertexLayout_SKIN =

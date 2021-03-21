@@ -85,7 +85,9 @@ private:
 	UINT mCbvSrvUavDescriptorSize = 0;
 
 	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT mDepthStencilResFormat = DXGI_FORMAT_R32_TYPELESS;
 	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D32_FLOAT;
+	DXGI_FORMAT mDepthStencilSrvFormat = DXGI_FORMAT_R32_FLOAT;
 	int mClientWidth;
 	int mClientHeight;
 

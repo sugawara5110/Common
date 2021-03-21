@@ -9,7 +9,6 @@
 
 #include "DxStruct.h"
 #include <d3d12.h>
-#include "../../MicroSoftLibrary/d3dx12.h"
 #include <d3d10_1.h>
 
 #pragma comment(lib, "D3D12.lib")

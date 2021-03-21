@@ -276,7 +276,8 @@ struct MovieTexture {
 //ポストエフェクト
 struct CONSTANT_BUFFER_PostMosaic {
 	CoordTf::VECTOR4 mosaicSize;//x
-	CoordTf::VECTOR4 blur;//xy:座標, z:強さ
+	CoordTf::VECTOR4 blur;//xy:座標, z:強さ, w:ピントが合う深さ
+	float focusRange;
 };
 
 struct DivideArr {

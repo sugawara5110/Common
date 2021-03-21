@@ -23,17 +23,22 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER_PostMosaic>* mObjectCB = nullptr;
 
 	bool ComCreate(int no);
-	void Compute(int com_no, bool On, int size, float blurX, float blurY, float blurLevel);
+	void Compute(int com_no, bool On, int size,
+		float blurX, float blurY, float blurLevel,
+		float focusDepth, float focusRange);
 
 public:
 	PostEffect();
 	~PostEffect();
 	bool ComCreateMosaic();
 	bool ComCreateBlur();
+	bool ComCreateDepthOfField();
 	void ComputeMosaic(int com_no, bool On, int size);
 	void ComputeBlur(int com_no, bool On, float blurX, float blurY, float blurLevel);
+	void ComputeDepthOfField(int com_no, bool On, float blurLevel, float focusDepth, float focusRange);
 	void ComputeMosaic(bool On, int size);
 	void ComputeBlur(bool On, float blurX, float blurY, float blurLevel);
+	void ComputeDepthOfField(bool On, float blurLevel, float focusDepth, float focusRange);
 };
 
 #endif

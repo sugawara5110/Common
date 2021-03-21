@@ -3,15 +3,17 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderPostEffect =
+"Texture2D<float> gDepth : register(t0);\n"
 "RWTexture2D<float4> gInput : register(u0);\n"
 "RWTexture2D<float4> gOutput : register(u1);\n"
 
 //モザイク大きさx
-//ブラー中心座標xy,ぼけ強度z
+//ブラー中心座標xy,ぼけ強度z,ピントが合う深さw
 "cbuffer global  : register(b0)\n"
 "{\n"
 "    float4 g_mosaicSize;\n"
 "    float4 g_blur;\n"
+"    float g_focusRange;\n"
 "};\n"
 
 //Dispatch(APP側)(X1, Y1, Z1)numthreads(CS側)(X, Y, Z)
@@ -67,4 +69,30 @@ char *ShaderPostEffect =
 "   Color[8] = gInput[int2(x + dx * 8.0f, y + dy * 8.0f)] * 0.03f;\n"
 "   Color[9] = gInput[int2(x + dx * 9.0f, y + dy * 9.0f)] * 0.01f;\n"
 "	gOutput[dtid] = Color[0] + Color[1] + Color[2] + Color[3] + Color[4] + Color[5] + Color[6] + Color[7] + Color[8] + Color[9];\n"
+"}\n"
+
+//被写界深度
+"[numthreads(32, 8, 1)]\n"
+"void DepthOfFieldCS(int2 dtid : SV_DispatchThreadID)\n"
+"{\n"
+"   int x = dtid.x;\n"
+"   int y = dtid.y;\n"
+
+"   float curDepth = clamp(gDepth[dtid], 0.0f, 1.0f);\n"
+"   float focusDepth = g_blur.w;\n"
+"   int wSize = (int)(max(0, abs(curDepth - focusDepth) - g_focusRange) * g_blur.z) + 1;\n"
+"   int Size = wSize * wSize;\n"
+
+"   float3 tmp = float3(0.0f, 0.0f, 0.0f);\n"
+"   for(int j = 0; j < wSize; j++) {\n"
+"     for(int i = 0; i < wSize; i++){\n"
+"       int mx = max(0, x - i);\n"
+"       int my = max(0, y - j);\n"
+"       float4 tm = gInput[int2(mx, my)];\n"
+"       tmp += tm.xyz;\n"
+"     }\n"
+"   }\n"
+"   float4 ret = gInput[dtid];\n"
+"   ret.xyz = tmp / Size;\n"
+"   gOutput[dtid] = ret;\n"
 "}\n";

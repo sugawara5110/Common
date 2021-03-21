@@ -98,7 +98,7 @@ private:
 	ComPtr<ID3DBlob> pPixelShader_2DTC = nullptr;
 
 	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
-	ComPtr<ID3DBlob> pComputeShader_Post[2] = { nullptr };
+	ComPtr<ID3DBlob> pComputeShader_Post[3] = { nullptr };
 	ComPtr<ID3DBlob> pVertexShader_SKIN_Com = nullptr;
 
 	std::unique_ptr<char[]> ShaderNormalTangentCopy = nullptr;

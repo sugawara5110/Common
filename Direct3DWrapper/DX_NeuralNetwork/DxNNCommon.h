@@ -7,6 +7,7 @@
 #ifndef Class_DxNNCommon_Header
 #define Class_DxNNCommon_Header
 
+#include "../MicroSoftLibrary/d3dx12.h"
 #include "DxNNstruct.h"
 #define Copy_SHADER_NUM 2
 
