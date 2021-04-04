@@ -19,6 +19,8 @@ namespace Dx_Util {
 	void createTangent(int numMaterial, UINT* indexCntArr,
 		void* vertexArr, UINT** indexArr, int structByteStride,
 		int posBytePos, int texBytePos, int tangentBytePos);
+
+	CoordTf::VECTOR3 normalRecalculation(CoordTf::VECTOR3 Nor[3]);
 }
 
 #endif

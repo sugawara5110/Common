@@ -228,6 +228,48 @@ void SkinMesh::GetBuffer(float end_frame) {
 	}
 }
 
+void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) {
+
+	*nor = new double[mesh->getNumPolygonVertices() * 3];
+	auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
+	auto ver = mesh->getVertices();//頂点取得
+	GlobalSettings gSet = fbx[0].fbxL->getGlobalSettings();
+
+	CoordTf::VECTOR3 tmpv[3] = {};
+	UINT indexCnt = 0;
+	for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
+		UINT pSize = mesh->getPolygonSize(i);//1ポリゴンでの頂点数
+		if (pSize >= 3) {
+			for (UINT i1 = 0; i1 < 3; i1++) {
+				UINT ind = indexCnt + i1;
+				if (lclOn) {
+					tmpv[i1].as(
+						(float)ver[index[ind] * 3] * gSet.CoordAxisSign,
+						(float)ver[index[ind] * 3 + 1] * -gSet.FrontAxisSign,
+						(float)ver[index[ind] * 3 + 2] * gSet.UpAxisSign
+					);
+				}
+				else {
+					tmpv[i1].as(
+						(float)ver[index[ind] * 3],
+						(float)ver[index[ind] * 3 + 1],
+						(float)ver[index[ind] * 3 + 2]
+					);
+				}
+			}
+			//上記3頂点から法線の方向算出
+			CoordTf::VECTOR3 N = Dx_Util::normalRecalculation(tmpv);
+			for (UINT ps = 0; ps < pSize; ps++) {
+				UINT ind = indexCnt + ps;
+				(*nor)[ind * 3] = (double)N.x;
+				(*nor)[ind * 3 + 1] = (double)N.y;
+				(*nor)[ind * 3 + 2] = (double)N.z;
+			}
+			indexCnt += pSize;
+		}
+	}
+}
+
 void SkinMesh::SetVertex(bool lclOn) {
 
 	FbxLoader* fbL = fbx[0].fbxL;
@@ -245,6 +287,12 @@ void SkinMesh::SetVertex(bool lclOn) {
 		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 		auto ver = mesh->getVertices();//頂点取得
 		auto nor = mesh->getNormal(0);//法線取得
+
+		bool norCreate = false;
+		if (!nor) {
+			normalRecalculation(lclOn, &nor, mesh);
+			norCreate = true;
+		}
 
 		double* uv0 = mesh->getAlignedUV(0);//テクスチャUV0
 		char* uv0Name = nullptr;            //テクスチャUVSet名0
@@ -304,6 +352,8 @@ void SkinMesh::SetVertex(bool lclOn) {
 			}
 		}
 		ARR_DELETE(tmpVB);
+		if (norCreate)ARR_DELETE(nor);
+
 		cpp.x /= (float)cppAddCnt;
 		cpp.y /= (float)cppAddCnt;
 		cpp.z /= (float)cppAddCnt;
@@ -336,74 +386,65 @@ void SkinMesh::SetVertex(bool lclOn) {
 		}
 
 		//頂点バッファ
-		auto numMaterial = mesh->getNumMaterial();
 		mObj[m].getVertexBuffer(sizeof(MY_VERTEX_S), mesh->getNumPolygonVertices());
 
 		ARR_DELETE(svList);
 
-		//4頂点ポリゴン分割後のIndex数カウント
-		UINT* numNewIndex = new UINT[numMaterial];
-		memset(numNewIndex, 0, sizeof(UINT) * numMaterial);
-
-		for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
-			UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
-			if (mesh->getPolygonSize(i) == 3) {
-				numNewIndex[currentMatNo] += 3;
-			}
-			if (mesh->getPolygonSize(i) == 4) {
-				numNewIndex[currentMatNo] += 6;
-			}
-		}
-
-		//分割後のIndex生成
-		newIndex[m] = new UINT * [numMaterial];
-		for (UINT ind1 = 0; ind1 < numMaterial; ind1++) {
-			if (numNewIndex[ind1] <= 0) {
-				newIndex[m][ind1] = nullptr;
-				continue;
-			}
-			newIndex[m][ind1] = new UINT[numNewIndex[ind1]];
-		}
-		std::unique_ptr<UINT[]> indexCnt;
-		indexCnt = std::make_unique<UINT[]>(numMaterial);
-
+		auto numMaterial = mesh->getNumMaterial();
 		int* uvSw = new int[numMaterial];
 		createMaterial(m, numMaterial, mesh, uv0Name, uv1Name, uvSw);
-
-		int Icnt = 0;
-		for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
-			UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
-
-			if (mesh->getPolygonSize(i) == 3) {
-
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
-				swapTex(&vb[Icnt], &vb[Icnt + 1], &vb[Icnt + 2], uvSw[currentMatNo]);
-				Icnt += 3;
-			}
-			if (mesh->getPolygonSize(i) == 4) {
-
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
-				swapTex(&vb[Icnt], &vb[Icnt + 1], &vb[Icnt + 2], uvSw[currentMatNo]);
-
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 3;
-				swapTex(&vb[Icnt], &vb[Icnt + 2], &vb[Icnt + 3], uvSw[currentMatNo]);
-				Icnt += 4;
-			}
-		}
+		swapTex(vb, mesh, uvSw);
 		ARR_DELETE(uvSw);
-		//インデックスバッファ
-		for (UINT i = 0; i < numMaterial; i++) {
-			const UINT indexSize = numNewIndex[i] * sizeof(UINT);
-			mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
-		}
-		ARR_DELETE(numNewIndex);
+		splitIndex(numMaterial, mesh, m);
 	}
+}
+
+void SkinMesh::splitIndex(UINT numMaterial, FbxMeshNode* mesh, int m) {
+
+	//ポリゴン分割後のIndex数カウント
+	UINT* numNewIndex = new UINT[numMaterial];
+	memset(numNewIndex, 0, sizeof(UINT) * numMaterial);
+
+	for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
+		UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
+		UINT pSize = mesh->getPolygonSize(i);
+		if (pSize >= 3) {
+			numNewIndex[currentMatNo] += (pSize - 2) * 3;
+		}
+	}
+
+	//分割後のIndex生成
+	newIndex[m] = new UINT * [numMaterial];
+	for (UINT ind1 = 0; ind1 < numMaterial; ind1++) {
+		if (numNewIndex[ind1] <= 0) {
+			newIndex[m][ind1] = nullptr;
+			continue;
+		}
+		newIndex[m][ind1] = new UINT[numNewIndex[ind1]];
+	}
+	std::unique_ptr<UINT[]> indexCnt;
+	indexCnt = std::make_unique<UINT[]>(numMaterial);
+
+	int Icnt = 0;
+	for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
+		UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
+		UINT pSize = mesh->getPolygonSize(i);
+		if (pSize >= 3) {
+			for (UINT ps = 0; ps < pSize - 2; ps++) {
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1 + ps;
+				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2 + ps;
+			}
+			Icnt += pSize;
+		}
+	}
+
+	//インデックスバッファ
+	for (UINT i = 0; i < numMaterial; i++) {
+		const UINT indexSize = numNewIndex[i] * sizeof(UINT);
+		mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
+	}
+	ARR_DELETE(numNewIndex);
 }
 
 void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
@@ -507,7 +548,7 @@ static void swap(CoordTf::VECTOR2* a, CoordTf::VECTOR2* b) {
 	b->y = tmp;
 }
 
-void SkinMesh::swapTex(MY_VERTEX_S* v0, MY_VERTEX_S* v1, MY_VERTEX_S* v2, int uvSw) {
+static void swaptex(MY_VERTEX_S* v0, MY_VERTEX_S* v1, MY_VERTEX_S* v2, int uvSw) {
 	switch (uvSw) {
 	case 0:
 		break;
@@ -526,6 +567,20 @@ void SkinMesh::swapTex(MY_VERTEX_S* v0, MY_VERTEX_S* v1, MY_VERTEX_S* v2, int uv
 		v1->vTex0 = v1->vTex1;
 		v2->vTex0 = v2->vTex1;
 		break;
+	}
+}
+
+void SkinMesh::swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw) {
+	int Icnt = 0;
+	for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
+		UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
+		UINT pSize = mesh->getPolygonSize(i);
+		if (pSize >= 3) {
+			for (UINT ps = 0; ps < pSize - 2; ps++) {
+				swaptex(&vb[Icnt], &vb[Icnt + 1 + ps], &vb[Icnt + 2 + ps], uvSw[currentMatNo]);
+			}
+			Icnt += pSize;
+		}
 	}
 }
 

@@ -88,7 +88,9 @@ protected:
 	void GetShaderByteCode(bool disp);
 	void GetMeshCenterPos();
 	void createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh, char* uv0Name, char* uv1Name, int* uvSw);
-	void swapTex(MY_VERTEX_S* v0, MY_VERTEX_S* v1, MY_VERTEX_S* v2, int uvSw);
+	void swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw);
+	void splitIndex(UINT numMaterial, FbxMeshNode* mesh, int meshIndex);
+	void normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh);
 
 public:
 	SkinMesh();

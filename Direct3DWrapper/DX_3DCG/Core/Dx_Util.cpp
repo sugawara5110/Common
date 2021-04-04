@@ -114,3 +114,14 @@ void Dx_Util::createTangent(int numMaterial, UINT* indexCntArr,
 		}
 	}
 }
+
+CoordTf::VECTOR3 Dx_Util::normalRecalculation(CoordTf::VECTOR3 N[3]) {
+	using namespace CoordTf;
+	VECTOR3 vecX = {};
+	VECTOR3 vecY = {};
+	vecX.as(N[0].x - N[1].x, N[0].y - N[1].y, N[0].z - N[1].z);
+	vecY.as(N[0].x - N[2].x, N[0].y - N[2].y, N[0].z - N[2].z);
+	VECTOR3 vec = {};
+	VectorCross(&vec, &vecX, &vecY);
+	return vec;
+}
