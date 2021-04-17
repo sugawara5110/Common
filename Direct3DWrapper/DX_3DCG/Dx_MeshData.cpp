@@ -383,32 +383,8 @@ bool MeshData::SetVertex() {
 	fclose(fp);
 
 	//同一座標頂点の法線統一化(テセレーション用)
-	for (int i = 0; i < VCount; i++) {
-		int indVB = 0;
-		VECTOR3 geo[50];
-		int indVb[50];
-		int indGeo = 0;
-		while (1) {
-			indVB = svList[i].Pop();
-			if (indVB == -1)break;
-			indVb[indGeo] = indVB;
-			geo[indGeo++] = pvVertexBuffer[indVB].geoNormal;
-		}
-		VECTOR3 sum;
-		sum.as(0.0f, 0.0f, 0.0f);
-		for (int i1 = 0; i1 < indGeo; i1++) {
-			sum.x += geo[i1].x;
-			sum.y += geo[i1].y;
-			sum.z += geo[i1].z;
-		}
-		VECTOR3 ave;
-		ave.x = sum.x / (float)indGeo;
-		ave.y = sum.y / (float)indGeo;
-		ave.z = sum.z / (float)indGeo;
-		for (int i1 = 0; i1 < indGeo; i1++) {
-			pvVertexBuffer[indVb[i1]].geoNormal = ave;
-		}
-	}
+	SameVertexListNormalization svn;
+	svn.Normalization(pvVertexBuffer, sizeof(VertexM), sizeof(VECTOR3) * 3, VCount, svList);
 
 	mObj.getVertexBuffer(sizeof(VertexM), FCount * 3);
 

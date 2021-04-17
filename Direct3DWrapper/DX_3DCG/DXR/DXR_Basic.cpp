@@ -997,7 +997,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));
 						MatrixTranspose(&Transpose);
-						VECTOR3 v3;
+						VECTOR3 v3 = {};
 						if (ud.useVertex) {
 							v3.as(ud.v[v].x, ud.v[v].y, ud.v[v].z);
 							VectorMatrixMultiply(&v3, &Transpose);
@@ -1059,7 +1059,7 @@ void DXR_Basic::setCB() {
 
 void DXR_Basic::swapSrvUavCbvHeap() {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	uint8_t* pData;
+	uint8_t* pData = nullptr;
 	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);
 	uint64_t heapStart = mpSrvUavCbvHeap[dx->dxrBuffSwap[1]].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
 	*(uint64_t*)(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart;

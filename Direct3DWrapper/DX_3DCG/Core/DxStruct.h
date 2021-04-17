@@ -260,6 +260,49 @@ public:
 	}
 };
 
+class SameVertexListNormalization {
+
+public:
+	void Normalization(void* Vertices, int VerByteStride, BYTE byteOffset,
+		UINT NumVertices, SameVertexList* svList) {
+
+		using namespace CoordTf;
+		float* ver = (float*)Vertices;
+		int VerFloatStride = VerByteStride / sizeof(float);
+		int floatOffset = byteOffset / sizeof(float);
+		for (UINT i = 0; i < NumVertices; i++) {
+			int indVB = 0;
+			VECTOR3 geo[50] = {};
+			int indVb[50] = {};
+			int indGeo = 0;
+			while (1) {
+				indVB = svList[i].Pop();
+				if (indVB == -1)break;
+				indVb[indGeo] = indVB;
+				float* v = &ver[indVB * VerFloatStride + floatOffset];
+				geo[indGeo++].as(v[0], v[1], v[2]);
+			}
+			VECTOR3 sum = {};
+			sum.as(0.0f, 0.0f, 0.0f);
+			for (int i1 = 0; i1 < indGeo; i1++) {
+				sum.x += geo[i1].x;
+				sum.y += geo[i1].y;
+				sum.z += geo[i1].z;
+			}
+			VECTOR3 ave = {};
+			ave.x = sum.x / (float)indGeo;
+			ave.y = sum.y / (float)indGeo;
+			ave.z = sum.z / (float)indGeo;
+			for (int i1 = 0; i1 < indGeo; i1++) {
+				float* v = &ver[indVb[i1] * VerFloatStride + floatOffset];
+				v[0] = ave.x;
+				v[1] = ave.y;
+				v[2] = ave.z;
+			}
+		}
+	}
+};
+
 struct TextureNo {
 	int diffuse;
 	int normal;

@@ -51,6 +51,7 @@ protected:
 	SHADER_GLOBAL_BONES sgb[2] = {};
 
 	MY_VERTEX_S** pvVB = nullptr;//使用後保持するか破棄するかフラグで決める,通常は破棄
+	VertexM** pvVBM = nullptr;
 	UINT*** newIndex = nullptr;
 	bool pvVB_delete_f = true;
 
@@ -103,7 +104,7 @@ public:
 	void SetConnectStep(int ind, float step);
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
-	void GetBuffer(float end_frame);
+	void GetBuffer(float end_frame, bool singleMesh = false, bool deformer = true);
 	void SetVertex(bool lclOn = false);
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
