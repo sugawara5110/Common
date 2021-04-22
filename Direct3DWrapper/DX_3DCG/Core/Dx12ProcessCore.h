@@ -487,7 +487,7 @@ protected:
 	friend ParticleData;
 	friend PostEffect;
 	friend SkinnedCom;
-	Common() {};//外部からのオブジェクト生成禁止
+	Common() {}//外部からのオブジェクト生成禁止
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
 
@@ -496,9 +496,10 @@ protected:
 	int com_no = 0;
 
 	//テクスチャ
-	ComPtr<ID3D12Resource> textureUp[256] = {};
-	ComPtr<ID3D12Resource> texture[256] = {};
-	MovieTexture movOn[256] = {};
+	std::unique_ptr<ComPtr<ID3D12Resource>[]> textureUp = nullptr;
+	std::unique_ptr<ComPtr<ID3D12Resource>[]> texture = nullptr;
+	MovieTexture* movOn = nullptr;
+	int movOnSize = 0;
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 	D3D12_TEXTURE_COPY_LOCATION dest, src;
@@ -572,6 +573,7 @@ protected:
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
 public:
+	~Common() { ARR_DELETE(movOn); }
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);

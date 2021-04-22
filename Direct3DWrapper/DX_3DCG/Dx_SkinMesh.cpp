@@ -285,7 +285,7 @@ void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) 
 	}
 }
 
-void SkinMesh::SetVertex(bool lclOn) {
+void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
 
 	FbxLoader* fbL = fbx[0].fbxL;
 	GlobalSettings gSet = fbL->getGlobalSettings();
@@ -377,6 +377,19 @@ void SkinMesh::SetVertex(bool lclOn) {
 		cpp.x /= (float)cppAddCnt;
 		cpp.y /= (float)cppAddCnt;
 		cpp.z /= (float)cppAddCnt;
+		if (VerCentering) {
+			for (UINT i = 0; i < mesh->getNumPolygonVertices(); i++) {
+				vb[i].vPos.x -= cpp.x;
+				vb[i].vPos.y -= cpp.y;
+				vb[i].vPos.z -= cpp.z;
+				vbm[i].Pos.x -= cpp.x;
+				vbm[i].Pos.y -= cpp.y;
+				vbm[i].Pos.z -= cpp.z;
+			}
+			cpp.x = 0.0f;
+			cpp.y = 0.0f;
+			cpp.z = 0.0f;
+		}
 		//同一座標頂点の法線統一化(テセレーション用)
 		SameVertexListNormalization svn;
 		if (numBone > 0) {

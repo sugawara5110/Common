@@ -105,7 +105,7 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 	bool disp = false;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (primType_create == CONTROL_POINT)disp = true;
-	if (tNo == -1 && movOn[0].m_on == false) {
+	if (tNo == -1 && (!movOn || !movOn[0].m_on)) {
 		vs = sh->pVertexShader_BC.Get();
 		ps = sh->pPixelShader_BC.Get();
 		ps_NoMap = sh->pPixelShader_BC.Get();
@@ -359,7 +359,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	for (int m = 0; m < dpara.NumMaterial; m++) {
 		indexCntArr[m] = dpara.Iview[m].IndexCount;
 	}
-	if (tNo >= 0 || movOn[0].m_on) {
+	if (tNo >= 0 || (movOn && movOn[0].m_on)) {
 		Dx_Util::createTangent(dpara.NumMaterial, indexCntArr,
 			ver, index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
 	}
@@ -373,7 +373,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	const int numCbv = 2;
 	int numUav = 0;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
-	if (tNo == -1 && !movOn[0].m_on) {
+	if (tNo == -1 && (!movOn || !movOn[0].m_on)) {
 		VertexBC* v = (VertexBC*)ver;
 		ARR_DELETE(v);
 		if (!createPSO(sh->pVertexLayout_3DBC, numSrvTex, numCbv, numUav, blend, alpha))return false;

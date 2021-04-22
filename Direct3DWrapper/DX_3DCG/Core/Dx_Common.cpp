@@ -22,6 +22,20 @@ void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, 
 }
 
 void Common::TextureInit(int width, int height, int index) {
+	if (movOnSize < index + 1) {
+		if (!movOn) {
+			movOn = new MovieTexture[index + 1];
+		}
+		else {
+			MovieTexture* movOnT = new MovieTexture[index + 1];
+			memcpy(movOnT, movOn, sizeof(MovieTexture) * movOnSize);
+			ARR_DELETE(movOn);
+			movOn = new MovieTexture[index + 1];
+			memcpy(movOn, movOnT, sizeof(MovieTexture) * index + 1);
+			ARR_DELETE(movOnT);
+		}
+		movOnSize = index + 1;
+	}
 	movOn[index].m_on = true;
 	movOn[index].width = width;
 	movOn[index].height = height;
@@ -48,6 +62,22 @@ HRESULT Common::SetTextureMPixel(BYTE* frame, int ind) {
 }
 
 HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to) {
+
+	textureUp = std::make_unique<ComPtr<ID3D12Resource>[]>(MaterialNum * 3);
+	texture = std::make_unique<ComPtr<ID3D12Resource>[]>(MaterialNum * 3);
+	if (!movOn) {
+		movOn = new MovieTexture[MaterialNum];
+	}
+	else {
+		MovieTexture* movOnT = new MovieTexture[MaterialNum];
+		if (movOnSize > MaterialNum)movOnSize = MaterialNum;
+		memcpy(movOnT, movOn, sizeof(MovieTexture) * movOnSize);
+		ARR_DELETE(movOn);
+		movOn = new MovieTexture[MaterialNum];
+		memcpy(movOn, movOnT, sizeof(MovieTexture) * MaterialNum);
+		ARR_DELETE(movOnT);
+	}
+	movOnSize = MaterialNum;
 
 	HRESULT hr = S_OK;
 	int resCnt = resourceStartIndex - 1;

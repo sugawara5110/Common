@@ -221,7 +221,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	createTextureResource(0, 1, &te);
 	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
 	if (mDescHeap == nullptr)return false;
-	CreateSrvTexture(mDescHeap.Get(), 0, texture->GetAddressOf(), 1);
+	CreateSrvTexture(mDescHeap.Get(), 0, texture[0].GetAddressOf(), 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
 	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);
