@@ -961,7 +961,7 @@ void SkinMesh::StreamOutput(int com) {
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].StreamOutput(com);
-		sk[i].Skinning(com);
+		if (sk)sk[i].Skinning(com);
 	}
 }
 
