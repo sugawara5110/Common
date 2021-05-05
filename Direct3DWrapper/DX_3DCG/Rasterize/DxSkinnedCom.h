@@ -7,7 +7,7 @@
 #ifndef Class_DxSkinnedCom_Header
 #define Class_DxSkinnedCom_Header
 
-#include "Core/Dx12ProcessCore.h"
+#include "../Core/Dx12ProcessCore.h"
 
 class SkinnedCom {
 

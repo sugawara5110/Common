@@ -31,6 +31,7 @@ class Dx12Process final {
 private:
 	template<class T>
 	friend class ConstantBuffer;
+	friend DXR_Manager;
 	friend MeshData;
 	friend PolygonData;
 	friend PolygonData2D;
@@ -588,9 +589,12 @@ class PolygonData :public Common {
 protected:
 	friend SkinMesh;
 	friend MeshData;
+	friend MeshData_DXR;
 	friend Wave;
+	friend Wave_DXR;
 	friend DXR_Basic;
 	friend SkinnedCom;
+	friend SkinMesh_DXR;
 	//ƒ|ƒCƒ“ƒ^‚ÅŽó‚¯Žæ‚é
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;

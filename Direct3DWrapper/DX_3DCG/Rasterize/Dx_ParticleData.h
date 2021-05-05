@@ -7,7 +7,7 @@
 #ifndef Class_ParticleData_Header
 #define Class_ParticleData_Header
 
-#include "Core/Dx12ProcessCore.h"
+#include "../Core/Dx12ProcessCore.h"
 
 class ParticleData :public Common {
 
