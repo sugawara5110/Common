@@ -18,17 +18,13 @@ using Microsoft::WRL::ComPtr;
 template<class T>
 class ConstantBuffer;
 class Dx12Process;
-class DXR_Manager;
 class MeshData;
-class MeshData_DXR;
 class PolygonData;
 class PolygonData2D;
 class ParticleData;
 class SkinMesh;
-class SkinMesh_DXR;
 class DxText;
 class Wave;
-class Wave_DXR;
 class PostEffect;
 class Common;
 class DxNNCommon;

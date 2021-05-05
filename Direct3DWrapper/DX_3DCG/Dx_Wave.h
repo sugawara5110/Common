@@ -7,7 +7,7 @@
 #ifndef Class_Wave_Header
 #define Class_Wave_Header
 
-#include "../Core/Dx12ProcessCore.h"
+#include "Core/Dx12ProcessCore.h"
 
 class Wave {
 

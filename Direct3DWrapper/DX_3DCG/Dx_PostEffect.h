@@ -7,7 +7,7 @@
 #ifndef Class_PostEffect_Header
 #define Class_PostEffect_Header
 
-#include "../Core/Dx12ProcessCore.h"
+#include "Core/Dx12ProcessCore.h"
 
 class PostEffect :public Common {
 
