@@ -69,6 +69,7 @@ public:
 	void GetBufferParticle(int texture_no, float size, float density);//テクスチャを元にパーティクルデータ生成, 全体サイズ倍率, 密度
 	void GetBufferBill(int v);
 	void SetVertex(int i, CoordTf::VECTOR3 pos);
+	void setMaterialType(MaterialType type);
 	bool CreateParticle(int texNo, bool alpha, bool blend);//パーティクル1個のテクスチャナンバー
 	bool CreateBillboard(bool alpha, bool blend);//ver個の四角形を生成
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ

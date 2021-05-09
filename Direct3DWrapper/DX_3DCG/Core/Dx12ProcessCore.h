@@ -436,13 +436,23 @@ struct UpdateDXR {
 	}
 };
 
+enum MaterialType {
+	METALLIC,
+	NONREFLECTION,
+	EMISSIVE,
+	DIRECTIONLIGHT_METALLIC,
+	DIRECTIONLIGHT_NONREFLECTION,
+	TRANSLUCENCE
+};
+
 struct ParameterDXR {
 	int NumMaterial = 0;
 	UINT NumMaxInstance = 1;
 	bool hs = false;
-	std::unique_ptr<ID3D12Resource* []>difTex = nullptr;
-	std::unique_ptr<ID3D12Resource* []>norTex = nullptr;
-	std::unique_ptr<ID3D12Resource* []>speTex = nullptr;
+	std::unique_ptr<MaterialType[]> mType = nullptr;
+	std::unique_ptr<ID3D12Resource* []> difTex = nullptr;
+	std::unique_ptr<ID3D12Resource* []> norTex = nullptr;
+	std::unique_ptr<ID3D12Resource* []> speTex = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> diffuse = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> specular = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> ambient = nullptr;
@@ -453,7 +463,9 @@ struct ParameterDXR {
 	bool tessellationF = false;//テセレーション有無
 
 	void create(int numMaterial, int numMaxInstance) {
+		NumMaterial = numMaterial;
 		NumMaxInstance = numMaxInstance;
+		mType = std::make_unique<MaterialType[]>(numMaterial);
 		IviewDXR = std::make_unique<IndexView[]>(numMaterial);
 		difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
 		norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
@@ -464,9 +476,15 @@ struct ParameterDXR {
 		SviewDXR = std::make_unique<std::unique_ptr<StreamView[]>[]>(numMaterial);
 		for (int i = 0; i < numMaterial; i++) {
 			SviewDXR[i] = std::make_unique<StreamView[]>(numMaxInstance);
+			mType[i] = NONREFLECTION;
 		}
 		updateDXR[0].create(numMaterial, numMaxInstance);
 		updateDXR[1].create(numMaterial, numMaxInstance);
+	}
+
+	void setAllMaterialType(MaterialType type) {
+		for (int i = 0; i < NumMaterial; i++)
+			mType[i] = type;
 	}
 
 	void resetCreateAS() {
@@ -663,6 +681,7 @@ public:
 	void GetVBarray(PrimitiveType type, int numMaxInstance);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
+	void setMaterialType(MaterialType type);
 	bool Create(bool light, int tNo, bool blend, bool alpha);
 	bool Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
 		float divideBufferMagnification = 1.0f);

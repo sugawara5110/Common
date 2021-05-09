@@ -397,6 +397,14 @@ bool MeshData::SetVertex() {
 	return true;
 }
 
+void MeshData::setMaterialType(MaterialType type, int materialIndex) {
+	if (materialIndex == -1) {
+		mObj.dxrPara.setAllMaterialType(type);
+		return;
+	}
+	mObj.dxrPara.mType[materialIndex] = type;
+}
+
 bool MeshData::CreateMesh(float divideBufferMagnification) {
 	Dx12Process* dx = mObj.dx;
 	GetShaderByteCode(disp);

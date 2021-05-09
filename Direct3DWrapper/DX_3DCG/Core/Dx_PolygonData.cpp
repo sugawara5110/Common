@@ -277,7 +277,6 @@ bool PolygonData::setDescHeap(const int numSrvTex,
 }
 
 void PolygonData::createBufferDXR(int numMaterial, int numMaxInstance) {
-	dxrPara.NumMaterial = numMaterial;
 	dxrPara.create(numMaterial, numMaxInstance);
 }
 
@@ -344,6 +343,10 @@ void PolygonData::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 	dxrPara.diffuse[materialIndex].as(sg.vDiffuse.x, sg.vDiffuse.y, sg.vDiffuse.z, sg.vDiffuse.w);
 	dxrPara.specular[materialIndex].as(sg.vSpeculer.x, sg.vSpeculer.y, sg.vSpeculer.z, sg.vSpeculer.w);
 	dxrPara.ambient[materialIndex].as(sg.vAmbient.x, sg.vAmbient.y, sg.vAmbient.z, sg.vAmbient.w);
+}
+
+void PolygonData::setMaterialType(MaterialType type) {
+	dxrPara.mType[0] = type;
 }
 
 bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,

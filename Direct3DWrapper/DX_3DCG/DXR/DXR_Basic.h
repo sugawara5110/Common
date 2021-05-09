@@ -50,15 +50,6 @@ struct DxrMaterialCB {
 	UINT materialNo = 0;
 };
 
-enum MaterialType {
-	METALLIC,
-	NONREFLECTION,
-	EMISSIVE,
-	DIRECTIONLIGHT_METALLIC,
-	DIRECTIONLIGHT_NONREFLECTION,
-	TRANSLUCENCE
-};
-
 struct ASobj {
 	ComPtr<ID3D12Resource> mpTopLevelAS;
 	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
@@ -120,7 +111,7 @@ private:
 	void raytrace(Dx_CommandListObj* com);
 
 public:
-	void initDXR(UINT numParameter, ParameterDXR** pd, MaterialType* type, UINT maxRecursion);
+	void initDXR(UINT numParameter, ParameterDXR** pd, UINT maxRecursion);
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);

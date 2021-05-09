@@ -637,6 +637,15 @@ void SkinMesh::GetShaderByteCode(bool disp) {
 	}
 }
 
+void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshIndex) {
+	if (materialIndex == -1) {
+		for (int i = 0; i < numMesh; i++)
+			mObj[i].dxrPara.setAllMaterialType(type);
+		return;
+	}
+	mObj[meshIndex].dxrPara.mType[materialIndex] = type;
+}
+
 bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 	GetShaderByteCode(disp);
 	const int numSrvTex = 3;

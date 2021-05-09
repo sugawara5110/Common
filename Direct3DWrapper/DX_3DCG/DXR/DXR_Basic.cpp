@@ -13,7 +13,7 @@
 
 static dxc::DxcDllSupport gDxcDllHelper;
 
-void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type, UINT MaxRecursion) {
+void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion) {
 
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();
@@ -41,12 +41,11 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 		createInstanceIdBuffer(numMaterial);
 		createAccelerationStructures();
 
-		int numMat = 0;
 		int numIns = 0;
 		for (UINT i = 0; i < numParameter; i++) {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
-					switch (type[numMat]) {
+					switch (PD[i]->mType[j]) {
 					case METALLIC:
 						cbObj[0].matCb[numIns].materialNo = 0;
 						cbObj[1].matCb[numIns].materialNo = 0;
@@ -79,7 +78,6 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, MaterialType* type
 					}
 					numIns++;
 				}
-				numMat++;
 			}
 		}
 

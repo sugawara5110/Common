@@ -130,6 +130,9 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 	Vview = std::make_unique<VertexView>();
 	Sview = std::make_unique<StreamView[]>(2);
 	GetVbColarray(texture_no, size, density);
+	if (dx->DXR_CreateResource) {
+		dxrPara.create(1, 1);
+	}
 }
 
 void ParticleData::GetBufferBill(int v) {
@@ -148,11 +151,12 @@ void ParticleData::GetBufferBill(int v) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
 	Sview = std::make_unique<StreamView[]>(2);
+	if (dx->DXR_CreateResource) {
+		dxrPara.create(1, 1);
+	}
 }
 
 void ParticleData::createDxr(bool alpha, bool blend) {
-	dxrPara.NumMaterial = 1;
-	dxrPara.create(1, 1);
 	dxrPara.updateDXR[0].shininess = 1.0f;
 	dxrPara.updateDXR[1].shininess = 1.0f;
 	dxrPara.alphaTest = alpha;
@@ -282,6 +286,10 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	}
 
 	return true;
+}
+
+void ParticleData::setMaterialType(MaterialType type) {
+	dxrPara.mType[0] = type;
 }
 
 bool ParticleData::CreateParticle(int texNo, bool alpha, bool blend) {

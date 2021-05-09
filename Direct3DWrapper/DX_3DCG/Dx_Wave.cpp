@@ -161,6 +161,10 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divid
 	return true;
 }
 
+void Wave::setMaterialType(MaterialType type) {
+	mObj.dxrPara.mType[0] = type;
+}
+
 bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float divide) {
 	return Create(texNo, -1, blend, alpha, waveHeight, divide);
 }

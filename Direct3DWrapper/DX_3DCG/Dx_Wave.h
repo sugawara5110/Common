@@ -38,6 +38,7 @@ public:
 	void GetVBarray(int numMaxInstance);
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
+	void setMaterialType(MaterialType type);
 	bool Create(int texNo, bool blend, bool alpha, float waveHeight, float divide);
 	bool Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide);
 	void SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd);
