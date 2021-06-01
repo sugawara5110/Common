@@ -643,7 +643,7 @@ protected:
 	drawPara dpara = {};
 	ParameterDXR dxrPara = {};
 
-	void GetShaderByteCode(bool light, int tNo);
+	void GetShaderByteCode(bool light, int tNo, bool smooth);
 	void CbSwap();
 	void getBuffer(int numMaterial, int numMaxInstance, DivideArr* divArr = nullptr, int numDiv = 0);
 	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
@@ -658,7 +658,7 @@ protected:
 	void setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg);
 
 	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-		const int numSrv, const int numCbv, const int numUav);
+		const int numSrv, const int numCbv, const int numUav, bool smooth);
 
 	void setTextureDXR();
 
@@ -684,6 +684,7 @@ public:
 	void setMaterialType(MaterialType type);
 	bool Create(bool light, int tNo, bool blend, bool alpha);
 	bool Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
+		bool smooth = false,
 		float divideBufferMagnification = 1.0f);
 
 	template<typename T>

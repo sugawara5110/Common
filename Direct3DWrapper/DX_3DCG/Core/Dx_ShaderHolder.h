@@ -57,12 +57,15 @@ private:
 	//シェーダーバイトコード
 	ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Smooth = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Edge = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap_Smooth = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap_Edge = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output_Smooth = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output_Edge = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_P_Output = nullptr;
 
 	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;

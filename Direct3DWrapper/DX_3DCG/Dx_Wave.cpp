@@ -44,7 +44,7 @@ void Wave::GetVBarray(int numMaxInstance) {
 	mObj.getBuffer(1, numMaxInstance);
 }
 
-void Wave::GetShaderByteCode() {
+void Wave::GetShaderByteCode(bool smooth) {
 	Dx12Process* dx = mObj.dx;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	mObj.cs = sh->pComputeShader_Wave.Get();
@@ -53,8 +53,14 @@ void Wave::GetShaderByteCode() {
 	mObj.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
 	mObj.hs = sh->pHullShaderTriangle.Get();
 	mObj.ds = sh->pDomainShader_Wave.Get();
-	mObj.gs = sh->pGeometryShader_Before_ds.Get();
-	mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
+	if (smooth) {
+		mObj.gs = sh->pGeometryShader_Before_ds_Smooth.Get();
+		mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+	}
+	else {
+		mObj.gs = sh->pGeometryShader_Before_ds_Edge.Get();
+		mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+	}
 }
 
 bool Wave::ComCreate() {
@@ -122,7 +128,7 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 	sg.vAmbient.z = amB;
 }
 
-bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divideBufferMagnification) {
+bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification) {
 	mObj.dpara.material[0].diftex_no = texNo;
 	mObj.dpara.material[0].nortex_no = nortNo;
 	mObj.dpara.material[0].spetex_no = mObj.dx->GetTexNumber("dummyDifSpe.");
@@ -150,7 +156,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divid
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);
 	if (!mObj.createPSO(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
-	if (!mObj.createPSO_DXR(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav))return false;
+	if (!mObj.createPSO_DXR(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, smooth))return false;
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};
@@ -165,16 +171,18 @@ void Wave::setMaterialType(MaterialType type) {
 	mObj.dxrPara.mType[0] = type;
 }
 
-bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float divide) {
-	return Create(texNo, -1, blend, alpha, waveHeight, divide);
+bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float divide, bool smooth) {
+	return Create(texNo, -1, blend, alpha, waveHeight, divide, smooth);
 }
 
-bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide) {
+bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide, bool smooth,
+	float divideBufferMagnification) {
+
 	cbw.wHei_divide.as(waveHeight, divide, 0.0f, 0.0f);
 	mObjectCB_WAVE->CopyData(0, cbw);
-	GetShaderByteCode();
+	GetShaderByteCode(smooth);
 	if (!ComCreate())return false;
-	return DrawCreate(texNo, nortNo, blend, alpha);
+	return DrawCreate(texNo, nortNo, blend, alpha, smooth, divideBufferMagnification);
 }
 
 void Wave::Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {

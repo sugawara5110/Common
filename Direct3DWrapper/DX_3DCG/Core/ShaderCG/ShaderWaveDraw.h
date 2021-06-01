@@ -46,14 +46,8 @@ char *ShaderWaveDraw =
 //pos座標計算
 "   output.Pos = patch[0].Pos * UV.x + patch[1].Pos * UV.y + patch[2].Pos * UV.z;\n"
 
-//ローカル法線の方向にhei分頂点移動
-"   output.Pos.xyz += hei * output.Nor;\n"
-
-//ローカル法線の方向にsin波を生成
-"   float3 sinwave3 = output.Nor * sinwave;\n"
-
-//頂点にsin波合成
-"   output.Pos.xyz += sinwave3;\n"
+//ローカル法線の方向に頂点移動
+"   output.AddPos = sinwave * output.Nor + hei * output.Nor;\n"
 "   output.instanceID = patch[0].instanceID;\n"
 
 "	return output;\n"

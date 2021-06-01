@@ -42,7 +42,7 @@ protected:
 	PolygonData mObj;
 
 	bool LoadMaterialFromFile(char* FileName, int numMaxInstance);
-	void GetShaderByteCode(bool disp);
+	void GetShaderByteCode(bool disp, bool smooth);
 
 public:
 	MeshData();
@@ -51,7 +51,7 @@ public:
 	bool GetBuffer(char* FileName, int numMaxInstance);
 	bool SetVertex();
 	void setMaterialType(MaterialType type, int materialIndex = -1);
-	bool CreateMesh(float divideBufferMagnification = 1.0f);
+	bool CreateMesh(bool smooth = false, float divideBufferMagnification = 1.0f);
 	ID3D12PipelineState* GetPipelineState(int index);
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);

@@ -101,7 +101,7 @@ void PolygonData::GetVBarray(PrimitiveType type, int numMaxInstance) {
 	getBuffer(1, numMaxInstance);
 }
 
-void PolygonData::GetShaderByteCode(bool light, int tNo) {
+void PolygonData::GetShaderByteCode(bool light, int tNo, bool smooth) {
 	bool disp = false;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (primType_create == CONTROL_POINT)disp = true;
@@ -133,8 +133,14 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 		ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
 		hs = sh->pHullShaderTriangle.Get();
 		ds = sh->pDomainShaderTriangle.Get();
-		gs = sh->pGeometryShader_Before_ds.Get();
-		gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
+		if (smooth) {
+			gs = sh->pGeometryShader_Before_ds_Smooth.Get();
+			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+		}
+		else {
+			gs = sh->pGeometryShader_Before_ds_Edge.Get();
+			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+		}
 		return;
 	}
 	if (disp && !light) {
@@ -143,8 +149,14 @@ void PolygonData::GetShaderByteCode(bool light, int tNo) {
 		ps_NoMap = sh->pPixelShader_Emissive.Get();
 		hs = sh->pHullShaderTriangle.Get();
 		ds = sh->pDomainShaderTriangle.Get();
-		gs = sh->pGeometryShader_Before_ds.Get();
-		gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
+		if (smooth) {
+			gs = sh->pGeometryShader_Before_ds_Smooth.Get();
+			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+		}
+		else {
+			gs = sh->pGeometryShader_Before_ds_Edge.Get();
+			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+		}
 		return;
 	}
 }
@@ -190,13 +202,17 @@ bool PolygonData::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 }
 
 bool PolygonData::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-	const int numSrv, const int numCbv, const int numUav) {
+	const int numSrv, const int numCbv, const int numUav, bool smooth) {
 
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (!dx->DXR_CreateResource || vs == sh->pVertexShader_SKIN.Get())return true;
 
 	if (hs) {
-		gs = sh->pGeometryShader_Before_ds_Output.Get();
+		if (smooth)
+			gs = sh->pGeometryShader_Before_ds_Output_Smooth.Get();
+		else
+			gs = sh->pGeometryShader_Before_ds_Output_Edge.Get();
+
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true, 1, 3);
 	}
 	else {
@@ -350,12 +366,13 @@ void PolygonData::setMaterialType(MaterialType type) {
 }
 
 bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
+	bool smooth,
 	float divideBufferMagnification) {
 
 	dpara.material[0].diftex_no = tNo;
 	dpara.material[0].nortex_no = nortNo;
 	dpara.material[0].spetex_no = spetNo;
-	GetShaderByteCode(light, tNo);
+	GetShaderByteCode(light, tNo, smooth);
 	mObjectCB1->CopyData(0, sg);
 
 	UINT* indexCntArr = new UINT[dpara.NumMaterial];
@@ -385,7 +402,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 		VertexM* vm = (VertexM*)ver;
 		ARR_DELETE(vm);
 		if (!createPSO(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-		if (!createPSO_DXR(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
+		if (!createPSO_DXR(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 	}
 
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);

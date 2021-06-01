@@ -83,9 +83,11 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 	pHullShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "HS", "hs_5_0");
 	pDomainShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "DS", "ds_5_0");
 	//CommonGS
-	pGeometryShader_Before_ds = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds", "gs_5_0");
+	pGeometryShader_Before_ds_Smooth = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_Smooth", "gs_5_0");
+	pGeometryShader_Before_ds_Edge = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_Edge", "gs_5_0");
 	pGeometryShader_Before_vs = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs", "gs_5_0");
-	pGeometryShader_Before_ds_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap", "gs_5_0");
+	pGeometryShader_Before_ds_NoNormalMap_Smooth = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap_Smooth", "gs_5_0");
+	pGeometryShader_Before_ds_NoNormalMap_Edge = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap_Edge", "gs_5_0");
 	pGeometryShader_Before_vs_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs_NoNormalMap", "gs_5_0");
 
 	//ポストエフェクト
@@ -177,7 +179,8 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	//DXRへのOutput
 	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_0");
-	pGeometryShader_Before_ds_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds", "gs_5_0");
+	pGeometryShader_Before_ds_Output_Smooth = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds_Smooth", "gs_5_0");
+	pGeometryShader_Before_ds_Output_Edge = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds_Edge", "gs_5_0");
 	pDeclaration_Output =
 	{
 		{ 0, "POSITION", 0, 0, 3, 0 },

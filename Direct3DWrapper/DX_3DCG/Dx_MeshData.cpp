@@ -28,15 +28,21 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 	return mObj.dpara.PSO[index].Get();
 }
 
-void MeshData::GetShaderByteCode(bool disp) {
+void MeshData::GetShaderByteCode(bool disp, bool smooth) {
 	Dx12Process* dx = mObj.dx;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (disp) {
 		mObj.vs = sh->pVertexShader_MESH_D.Get();
 		mObj.hs = sh->pHullShaderTriangle.Get();
 		mObj.ds = sh->pDomainShaderTriangle.Get();
-		mObj.gs = sh->pGeometryShader_Before_ds.Get();
-		mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
+		if (smooth) {
+			mObj.gs = sh->pGeometryShader_Before_ds_Smooth.Get();
+			mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+		}
+		else {
+			mObj.gs = sh->pGeometryShader_Before_ds_Edge.Get();
+			mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+		}
 	}
 	else {
 		mObj.vs = sh->pVertexShader_MESH.Get();
@@ -405,9 +411,9 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 	mObj.dxrPara.mType[materialIndex] = type;
 }
 
-bool MeshData::CreateMesh(float divideBufferMagnification) {
+bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
 	Dx12Process* dx = mObj.dx;
-	GetShaderByteCode(disp);
+	GetShaderByteCode(disp, smooth);
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	mObj.setDivideArr(divArr, numDiv);
@@ -431,7 +437,7 @@ bool MeshData::CreateMesh(float divideBufferMagnification) {
 
 	if (!mObj.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
-	if (!mObj.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
+	if (!mObj.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 
 	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;

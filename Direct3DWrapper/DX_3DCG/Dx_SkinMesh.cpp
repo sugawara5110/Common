@@ -605,7 +605,7 @@ void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int 
 	mObj[meshIndex].dpara.material[materialIndex].spetex_no = mObj[0].dx->GetTexNumber(textureName);
 }
 
-void SkinMesh::GetShaderByteCode(bool disp) {
+void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 	Dx12Process* dx = mObj[0].dx;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	for (int i = 0; i < numMesh; i++) {
@@ -617,8 +617,14 @@ void SkinMesh::GetShaderByteCode(bool disp) {
 				o.vs = sh->pVertexShader_MESH_D.Get();
 			o.hs = sh->pHullShaderTriangle.Get();
 			o.ds = sh->pDomainShaderTriangle.Get();
-			o.gs = sh->pGeometryShader_Before_ds.Get();
-			o.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap.Get();
+			if (smooth) {
+				o.gs = sh->pGeometryShader_Before_ds_Smooth.Get();
+				o.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+			}
+			else {
+				o.gs = sh->pGeometryShader_Before_ds_Edge.Get();
+				o.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+			}
 			o.primType_create = CONTROL_POINT;
 			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 		}
@@ -646,8 +652,8 @@ void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshInd
 	mObj[meshIndex].dxrPara.mType[materialIndex] = type;
 }
 
-bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
-	GetShaderByteCode(disp);
+bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnification) {
+	GetShaderByteCode(disp, smooth);
 	const int numSrvTex = 3;
 	const int numCbv = 3;
 
@@ -685,7 +691,7 @@ bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 		if (numBone > 0) {
 			if (!sk[i].createParameterDXR())return false;
 			if (!o.createPSO(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
-			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav))return false;
+			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
 			if (!sk[i].createPSO())return false;
 			UINT cbSize = mObject_BONES->getSizeInBytes();
 			D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
@@ -694,7 +700,7 @@ bool SkinMesh::CreateFromFBX(bool disp, float divideBufferMagnification) {
 		}
 		else {
 			if (!o.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav))return false;
+			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 		}
 	}

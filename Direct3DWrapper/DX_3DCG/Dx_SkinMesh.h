@@ -86,7 +86,7 @@ protected:
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
 	bool SetNewPoseMatrices(float time, int ind);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
-	void GetShaderByteCode(bool disp);
+	void GetShaderByteCode(bool disp, bool smooth);
 	void GetMeshCenterPos();
 	void createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh, char* uv0Name, char* uv1Name, int* uvSw);
 	void swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw);
@@ -110,7 +110,7 @@ public:
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);
 	void setMaterialType(MaterialType type, int materialIndex = -1, int meshIndex = -1);
-	bool CreateFromFBX(bool disp, float divideBufferMagnification = 1.0f);
+	bool CreateFromFBX(bool disp, bool smooth = false, float divideBufferMagnification = 1.0f);
 	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
 	HRESULT GetBuffer_Sub(int ind, float end_frame);

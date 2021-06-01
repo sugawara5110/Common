@@ -27,9 +27,9 @@ protected:
 	int numDiv;
 	PolygonData mObj;
 
-	void GetShaderByteCode();
+	void GetShaderByteCode(bool smooth);
 	bool ComCreate();
-	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha, float divideBufferMagnification = 1.0f);
+	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification);
 	void Compute(int com_no);
 
 public:
@@ -39,8 +39,9 @@ public:
 	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 	void setMaterialType(MaterialType type);
-	bool Create(int texNo, bool blend, bool alpha, float waveHeight, float divide);
-	bool Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide);
+	bool Create(int texNo, bool blend, bool alpha, float waveHeight, float divide, bool smooth = true);
+	bool Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, float divide, bool smooth = true,
+		float divideBufferMagnification = 1.0f);
 	void SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd);
 
 	void Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
