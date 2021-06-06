@@ -6,7 +6,7 @@
 
 #include "DxSkinnedCom.h"
 
-void SkinnedCom::getBuffer(PolygonData* p) {
+void SkinnedCom::getBuffer(BasicPolygon* p) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	if (dx->DXR_CreateResource) {
 		pd = p;
@@ -22,6 +22,8 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 		descHeap = dx->device->CreateDescHeap(numDesc);
 		if (descHeap == nullptr)return false;
 
+		D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = descHeap->GetCPUDescriptorHandleForHeapStart();
+
 		UINT cbSize[1] = {};
 		cbSize[0] = ad3Size;
 
@@ -29,18 +31,18 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 		res[0] = pd->dpara.Vview.get()->VertexBufferGPU.Get();
 		UINT resSize[1] = {};
 		resSize[0] = sizeof(MY_VERTEX_S);
-		pd->CreateSrvBuffer(descHeap.Get(), 0, res, numSrv, resSize);
+
+		dx->device->CreateSrvBuffer(hDescriptor, res, numSrv, resSize);
 		D3D12_GPU_VIRTUAL_ADDRESS ad[2] = {};
 		ad[0] = ad3;
-		pd->CreateCbv(descHeap.Get(), numSrv, ad, cbSize, numCbv);
+		dx->device->CreateCbv(hDescriptor, ad, cbSize, numCbv);
 		ID3D12Resource* resU[1] = {};
 		resU[0] = SkinnedVer.Get();
 		UINT byteStride[1] = {};
 		byteStride[0] = sizeof(VERTEX_DXR);
 		UINT size[1] = {};
 		size[0] = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
-		pd->CreateUavBuffer(descHeap.Get(), numSrv + numCbv,
-			resU, byteStride, size, numUav);
+		dx->device->CreateUavBuffer(hDescriptor, resU, byteStride, size, numUav);
 	}
 	return true;
 }
@@ -52,7 +54,7 @@ bool SkinnedCom::createPSO() {
 		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav, 0, 0);
 		if (rootSignature == nullptr)return false;
 
-		ID3DBlob* cs = pd->dx->shaderH->pVertexShader_SKIN_Com.Get();
+		ID3DBlob* cs = dx->shaderH->pVertexShader_SKIN_Com.Get();
 
 		PSO = pd->CreatePsoCompute(cs, rootSignature.Get());
 		if (PSO == nullptr)return false;

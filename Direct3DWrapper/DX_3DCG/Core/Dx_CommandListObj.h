@@ -19,6 +19,7 @@ template<class T>
 class ConstantBuffer;
 class Dx12Process;
 class MeshData;
+class BasicPolygon;
 class PolygonData;
 class PolygonData2D;
 class ParticleData;
@@ -46,6 +47,7 @@ class Dx_CommandListObj final {
 private:
 	friend Dx12Process;
 	friend MeshData;
+	friend BasicPolygon;
 	friend PolygonData;
 	friend PolygonData2D;
 	friend ParticleData;

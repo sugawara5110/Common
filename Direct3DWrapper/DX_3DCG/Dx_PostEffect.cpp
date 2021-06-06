@@ -30,11 +30,8 @@ bool PostEffect::ComCreateDepthOfField() {
 
 bool PostEffect::ComCreate(int no) {
 
-	D3D12_DESCRIPTOR_HEAP_DESC HeapDesc = {};
-	HeapDesc.NumDescriptors = 4;
-	HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	if (FAILED(dx->getDevice()->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&mDescHeap)))) {
+	mDescHeap = dx->device->CreateDescHeap(4);
+	if (!mDescHeap) {
 		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
 	if (FAILED(dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mOutputBuffer, dx->mClientWidth, dx->mClientHeight))) {
@@ -43,6 +40,8 @@ bool PostEffect::ComCreate(int no) {
 	if (FAILED(dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBuffer, dx->mClientWidth, dx->mClientHeight))) {
 		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -57,15 +56,12 @@ bool PostEffect::ComCreate(int no) {
 	srvDesc.Format = dx->mDepthStencilSrvFormat;
 	srvDesc.Texture2D.MipLevels = dx->mDepthStencilBuffer.Get()->GetDesc().MipLevels;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
-
 	dx->getDevice()->CreateShaderResourceView(dx->mDepthStencilBuffer.Get(), &srvDesc, hDescriptor);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
-	CreateCbv(mDescHeap.Get(), 1, &ad, &size, 1);
-	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
+	dx->device->CreateCbv(hDescriptor, &ad, &size, 1);
 	dx->getDevice()->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 	dx->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);

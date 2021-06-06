@@ -111,6 +111,7 @@ private:
 	void raytrace(Dx_CommandListObj* com);
 
 public:
+	~DXR_Basic();
 	void initDXR(UINT numParameter, ParameterDXR** pd, UINT maxRecursion);
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
@@ -121,7 +122,13 @@ public:
 	void copyDepthBuffer(int comNo);
 	void setASswapIndex(int index) { buffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
-	~DXR_Basic();
+
+	void allSwapIndex() {
+		Dx12Process* dx = Dx12Process::GetInstance();
+		dx->allSwapIndex();
+		setASswapIndex(dx->sync);
+		setRaytraceSwapIndex(1 - dx->sync);
+	}
 };
 
 #endif

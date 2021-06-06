@@ -219,7 +219,7 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 
 	pvVB = new MY_VERTEX_S * [numMesh];
 	pvVBM = new VertexM * [numMesh];
-	mObj = new PolygonData[numMesh];
+	mObj = new BasicPolygon[numMesh];
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].SetCommandList(com_no);
@@ -609,7 +609,7 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 	Dx12Process* dx = mObj[0].dx;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	for (int i = 0; i < numMesh; i++) {
-		PolygonData& o = mObj[i];
+		BasicPolygon& o = mObj[i];
 		if (disp) {
 			if (numBone > 0)
 				o.vs = sh->pVertexShader_SKIN_D.Get();
@@ -658,7 +658,7 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 	const int numCbv = 3;
 
 	for (int i = 0; i < numMesh; i++) {
-		PolygonData& o = mObj[i];
+		BasicPolygon& o = mObj[i];
 		o.setDivideArr(divArr, numDiv);
 		o.com_no = com_no;
 

@@ -25,7 +25,10 @@ protected:
 	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
 	DivideArr divArr[16] = {};
 	int numDiv;
-	PolygonData mObj;
+
+	VertexM* ver = nullptr;
+	UINT* index = nullptr;
+	BasicPolygon mObj;
 
 	void GetShaderByteCode(bool smooth);
 	bool ComCreate();

@@ -7,6 +7,7 @@
 #include "Dx_Device.h"
 
 static ID3D12Device5* md3dDevice = nullptr;
+static UINT mCbvSrvUavDescriptorSize = 0;
 
 static HRESULT createDefaultResourceCommon(ID3D12Resource** def,
 	D3D12_RESOURCE_DIMENSION dimension, UINT64 width, UINT height,
@@ -45,10 +46,15 @@ static HRESULT createDefaultResourceCommon(ID3D12Resource** def,
 }
 
 HRESULT Dx_Device::createDevice() {
-	return D3D12CreateDevice(
+
+	HRESULT hr = D3D12CreateDevice(
 		nullptr,             //default adapter
 		D3D_FEATURE_LEVEL_11_0,
 		IID_PPV_ARGS(&md3dDevice));
+
+	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	return hr;
 }
 
 Dx_Device::~Dx_Device() {
@@ -251,6 +257,67 @@ ComPtr<ID3D12DescriptorHeap> Dx_Device::CreateSamplerDescHeap(D3D12_SAMPLER_DESC
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = heap.Get()->GetCPUDescriptorHandleForHeapStart();
 	md3dDevice->CreateSampler(&descSampler, handle);
 	return heap;
+}
+
+void Dx_Device::CreateSrvTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** tex, int texNum)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+	for (int i = 0; i < texNum; i++) {
+		srvDesc.Format = tex[i]->GetDesc().Format;
+		srvDesc.Texture2D.MipLevels = tex[i]->GetDesc().MipLevels;
+		md3dDevice->CreateShaderResourceView(tex[i], &srvDesc, hDescriptor);
+		hDescriptor.ptr += mCbvSrvUavDescriptorSize;
+	}
+}
+
+void Dx_Device::CreateSrvBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** buffer, int bufNum,
+	UINT* StructureByteStride)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+	for (int i = 0; i < bufNum; i++) {
+		srvDesc.Buffer.StructureByteStride = StructureByteStride[i];
+		srvDesc.Buffer.NumElements = (UINT)buffer[i]->GetDesc().Width / StructureByteStride[i];
+		md3dDevice->CreateShaderResourceView(buffer[i], &srvDesc, hDescriptor);
+		hDescriptor.ptr += mCbvSrvUavDescriptorSize;
+	}
+}
+
+void Dx_Device::CreateCbv(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
+	D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum)
+{
+	D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
+	for (int i = 0; i < bufNum; i++) {
+		bufferDesc.SizeInBytes = sizeInBytes[i];
+		bufferDesc.BufferLocation = virtualAddress[i];
+		md3dDevice->CreateConstantBufferView(&bufferDesc, hDescriptor);
+		hDescriptor.ptr += mCbvSrvUavDescriptorSize;
+	}
+}
+
+void Dx_Device::CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
+	ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum)
+{
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.CounterOffsetInBytes = 0;//pCounterResourceがnullptrの場合0
+	uavDesc.Buffer.FirstElement = 0;
+	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
+	for (int i = 0; i < bufNum; i++) {
+		uavDesc.Buffer.StructureByteStride = byteStride[i];
+		uavDesc.Buffer.NumElements = bufferSize[i];
+		md3dDevice->CreateUnorderedAccessView(buffer[i], nullptr, &uavDesc, hDescriptor);
+		hDescriptor.ptr += mCbvSrvUavDescriptorSize;
+	}
 }
 
 //エラーメッセージ

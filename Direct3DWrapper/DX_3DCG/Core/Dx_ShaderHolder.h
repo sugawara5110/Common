@@ -33,6 +33,7 @@ private:
 	friend class ConstantBuffer;
 	friend Dx12Process;
 	friend MeshData;
+	friend BasicPolygon;
 	friend PolygonData;
 	friend PolygonData2D;
 	friend ParticleData;

@@ -52,6 +52,17 @@ public:
 	ComPtr<ID3D12RootSignature> CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC* rootSigDesc);
 	ComPtr<ID3D12DescriptorHeap> CreateDescHeap(int numDesc);
 	ComPtr<ID3D12DescriptorHeap> CreateSamplerDescHeap(D3D12_SAMPLER_DESC& descSampler);
+
+	void CreateSrvTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** texture, int texNum);
+
+	void CreateSrvBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** buffer, int bufNum,
+		UINT* StructureByteStride);
+
+	void CreateCbv(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
+		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
+
+	void CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
+		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
 };
 
 void ErrorMessage(char* E_mes);

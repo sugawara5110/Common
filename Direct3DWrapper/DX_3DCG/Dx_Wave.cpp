@@ -36,7 +36,18 @@ Wave::~Wave() {
 }
 
 void Wave::SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd) {
-	mObj.setVertex(vertexArr, numVer, ind, numInd);
+	Vertex* v = vertexArr;
+	ver = new VertexM[numVer];
+	for (int i = 0; i < numVer; i++) {
+		ver[i].Pos.as(v[i].Pos.x, v[i].Pos.y, v[i].Pos.z);
+		ver[i].normal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
+		ver[i].geoNormal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
+		ver[i].tex.as(v[i].tex.x, v[i].tex.y);
+	}
+	mObj.getVertexBuffer(sizeof(VertexM), numVer);
+	index = new UINT[numInd];
+	memcpy(index, ind, sizeof(UINT) * numInd);
+	mObj.getIndexBuffer(0, sizeof(UINT) * numInd, numInd);
 }
 
 void Wave::GetVBarray(int numMaxInstance) {
@@ -145,13 +156,12 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth
 		indexCntArr[m] = mObj.dpara.Iview[m].IndexCount;
 	}
 	Dx_Util::createTangent(mObj.dpara.NumMaterial, indexCntArr,
-		mObj.ver, mObj.index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+		ver, &index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
 	ARR_DELETE(indexCntArr);
 
-	mObj.createDefaultBuffer(mObj.ver, mObj.index);
-	VertexM* vm = (VertexM*)mObj.ver;
-	ARR_DELETE(vm);
-	ARR_DELETE(mObj.index);
+	mObj.createDefaultBuffer(ver, &index);
+	ARR_DELETE(ver);
+	ARR_DELETE(index);
 	int numUav = 0;
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);

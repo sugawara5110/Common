@@ -75,7 +75,7 @@ protected:
 	CoordTf::MATRIX* m_pLastBoneMatrix = nullptr;
 	int AnimLastInd;
 	float BoneConnect;
-	PolygonData* mObj = nullptr;
+	BasicPolygon* mObj = nullptr;
 	SkinnedCom* sk = nullptr;
 	int com_no = 0;
 

@@ -39,7 +39,7 @@ protected:
 
 	DivideArr divArr[16] = {};
 	int numDiv = 0;
-	PolygonData mObj;
+	BasicPolygon mObj;
 
 	bool LoadMaterialFromFile(char* FileName, int numMaxInstance);
 	void GetShaderByteCode(bool disp, bool smooth);

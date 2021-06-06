@@ -156,10 +156,12 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 
 	createTextureResource(0, 1, &te);
 	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
-	CreateSrvTexture(mDescHeap.Get(), 0, texture[0].GetAddressOf(), 1);
+	Dx_Device* d = dx->device.get();
+	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDescHeap->GetCPUDescriptorHandleForHeapStart());
+	d->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
-	CreateCbv(mDescHeap.Get(), numSrv, &ad, &size, numCbv);
+	d->CreateCbv(hDescriptor, &ad, &size, numCbv);
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);

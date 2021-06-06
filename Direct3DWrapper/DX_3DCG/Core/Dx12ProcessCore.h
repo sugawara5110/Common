@@ -32,6 +32,7 @@ private:
 	template<class T>
 	friend class ConstantBuffer;
 	friend MeshData;
+	friend BasicPolygon;
 	friend PolygonData;
 	friend PolygonData2D;
 	friend ParticleData;
@@ -132,6 +133,8 @@ private:
 
 	bool wireframe = false;
 
+	int sync = 0;
+
 	Dx12Process() {}//外部からのオブジェクト生成禁止
 	Dx12Process(const Dx12Process& obj) {}   // コピーコンストラクタ禁止
 	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
@@ -210,6 +213,14 @@ public:
 	InternalTexture* getInternalTexture(int index) { return &texture[index]; }
 	void wireFrameTest(bool f) { wireframe = f; }
 	void setPerspectiveFov(float ViewAngle, float NearPlane, float FarPlane);
+
+	void allSwapIndex() {
+		sync = 1 - sync;
+		setUpSwapIndex(sync);
+		setDrawSwapIndex(1 - sync);
+		setStreamOutputSwapIndex(sync);
+		setRaytraceSwapIndex(1 - sync);
+	}
 };
 
 struct VertexView {
@@ -524,17 +535,6 @@ protected:
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
 
-	void CreateSrvTexture(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** texture, int texNum);
-
-	void CreateSrvBuffer(ID3D12DescriptorHeap* heap, int offsetHeap, ID3D12Resource** buffer, int bufNum,
-		UINT* StructureByteStride);
-
-	void CreateCbv(ID3D12DescriptorHeap* heap, int offsetHeap,
-		D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum);
-
-	void CreateUavBuffer(ID3D12DescriptorHeap* heap, int offsetHeap,
-		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
-
 	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav, UINT numCbvPara, UINT RegisterStNoCbv);
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
@@ -600,8 +600,8 @@ public:
 	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
 };
 
-//*********************************PolygonDataクラス*************************************//
-class PolygonData :public Common {
+//*********************************BasicPolygonクラス*************************************//
+class BasicPolygon :public Common {
 
 protected:
 	friend SkinMesh;
@@ -609,6 +609,7 @@ protected:
 	friend Wave;
 	friend DXR_Basic;
 	friend SkinnedCom;
+
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -619,10 +620,13 @@ protected:
 	ID3DBlob* gs_NoMap = nullptr;
 	ID3DBlob* cs = nullptr;
 
+	PrimitiveType primType_create;
+
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
 	ConstantBuffer<cbInstanceID>* mObjectCB_Ins = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+
 	CONSTANT_BUFFER cb[2];
 	bool firstCbSet[2];
 	CONSTANT_BUFFER2 sg;
@@ -633,34 +637,24 @@ protected:
 	int ins_no = 0;
 	int insNum[2] = {};
 
-	void* ver = nullptr;  //頂点配列
-	UINT** index = nullptr;//頂点インデックス
-	int numIndex;    //頂点インデックス数
-
-	PrimitiveType primType_create;
-	DivideArr divArr[16] = {};
-	int numDiv;
 	drawPara dpara = {};
 	ParameterDXR dxrPara = {};
 
-	void GetShaderByteCode(bool light, int tNo, bool smooth);
+	DivideArr divArr[16] = {};
+	int numDiv;
+
+	void createBufferDXR(int numMaterial, int numMaxInstance);
+	void setTextureDXR();
 	void CbSwap();
+	void draw(int com_no, drawPara& para);
+	void ParameterDXR_Update();
+	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
+
 	void getBuffer(int numMaterial, int numMaxInstance, DivideArr* divArr = nullptr, int numDiv = 0);
 	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
 	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
-
-	void createDefaultBuffer(void* vertexArr, UINT** indexArr);
-
-	void createBufferDXR(int numMaterial, int numMaxInstance);
-
-	void createParameterDXR(bool alpha, bool blend, float divideBufferMagnification);
-
 	void setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg);
-
-	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
-		const int numSrv, const int numCbv, const int numUav, bool smooth);
-
-	void setTextureDXR();
+	void createDefaultBuffer(void* vertexArr, UINT** indexArr);
 
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool blend, bool alpha);
@@ -669,55 +663,14 @@ protected:
 		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void draw(int com_no, drawPara& para);
-	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
+	void createParameterDXR(bool alpha, bool blend, float divideBufferMagnification);
 
-	void ParameterDXR_Update();
+	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
+		const int numSrv, const int numCbv, const int numUav, bool smooth);
 
 public:
-	PolygonData();
-	~PolygonData();
-	ID3D12PipelineState* GetPipelineState();
-	void GetVBarray(PrimitiveType type, int numMaxInstance);
-	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
-		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
-	void setMaterialType(MaterialType type);
-	bool Create(bool light, int tNo, bool blend, bool alpha);
-	bool Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
-		bool smooth = false,
-		float divideBufferMagnification = 1.0f);
-
-	template<typename T>
-	void setVertex(T* vertexArr, int numVer, UINT* ind, int numInd) {
-		if (typeid(Vertex) == typeid(T)) {
-			ver = new VertexM[numVer];
-			VertexM* verM = (VertexM*)ver;
-			Vertex* v = (Vertex*)vertexArr;
-			for (int i = 0; i < numVer; i++) {
-				verM[i].Pos.as(v[i].Pos.x, v[i].Pos.y, v[i].Pos.z);
-				verM[i].normal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
-				verM[i].geoNormal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
-				verM[i].tex.as(v[i].tex.x, v[i].tex.y);
-			}
-			getVertexBuffer(sizeof(VertexM), numVer);
-		}
-		if (typeid(VertexBC) == typeid(T)) {
-			ver = new VertexBC[numVer];
-			VertexBC* v = (VertexBC*)vertexArr;
-			memcpy(ver, v, sizeof(VertexBC) * numVer);
-			getVertexBuffer(sizeof(VertexBC), numVer);
-		}
-		if (typeid(VertexBC) != typeid(T) && typeid(Vertex) != typeid(T)) {
-			ErrorMessage("PolygonData::setVertex Error!!");
-			return;
-		}
-		index = new UINT * [dpara.NumMaterial];
-		index[0] = new UINT[numInd];
-		memcpy(index[0], ind, sizeof(UINT) * numInd);
-		numIndex = numInd;
-		const UINT ibByteSize = numIndex * sizeof(UINT);
-		getIndexBuffer(0, ibByteSize, numIndex);
-	}
+	BasicPolygon();
+	~BasicPolygon();
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
@@ -727,17 +680,20 @@ public:
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
-	void DrawOff();
 	void Draw(int com_no);
 	void StreamOutput(int com_no);
 	void Draw();
 	void StreamOutput();
+	void DrawOff();
 	ParameterDXR* getParameter();
+
 	void setDivideArr(DivideArr* arr, int numdiv) {
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
+
 	void UpdateDxrDivideBuffer();
+
 	void setRefractiveIndex(float index) {
 		dxrPara.updateDXR[dx->dxrBuffSwap[0]].RefractiveIndex = index;
 	}

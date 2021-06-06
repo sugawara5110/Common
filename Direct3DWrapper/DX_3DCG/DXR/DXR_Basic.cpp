@@ -763,63 +763,50 @@ void DXR_Basic::createShaderResources() {
 		//Local
 		mpSrvUavCbvHeap[heapInd] = dx->device->CreateDescHeap(numHeap);
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[heapInd].Get()->GetCPUDescriptorHandleForHeapStart();
-		UINT offsetSize = dx->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		UINT offsetSize = dx->mCbvSrvUavDescriptorSize;
 
 		//UAV‚ğì¬ gOutput(u0)
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 		dx->getDevice()->CreateUnorderedAccessView(mpOutputResource.Get(), nullptr, &uavDesc, srvHandle);
+		srvHandle.ptr += offsetSize;
 
 		//UAV‚ğì¬ gDepthOut(u1)
-		srvHandle.ptr += offsetSize;
 		dx->getDevice()->CreateUnorderedAccessView(mpDepthResource.Get(), nullptr, &uavDesc, srvHandle);
+		srvHandle.ptr += offsetSize;
 
 		//SRV‚ğì¬ Indices(t0)
 		for (UINT i = 0; i < numParameter; i++) {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
 					IndexView& iv = PD[i]->IviewDXR[j];
-					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc1 = {};
-					srvDesc1.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-					srvDesc1.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-					srvDesc1.Buffer.NumElements = iv.IndexCount;
-					srvDesc1.Format = DXGI_FORMAT_UNKNOWN;
-					srvDesc1.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-					srvDesc1.Buffer.StructureByteStride = sizeof(uint32_t);
-					srvHandle.ptr += offsetSize;
-					dx->getDevice()->CreateShaderResourceView(iv.IndexBufferGPU.Get(), &srvDesc1, srvHandle);
+					UINT size[1] = { sizeof(uint32_t) };
+					dx->device->CreateSrvBuffer(srvHandle, iv.IndexBufferGPU.GetAddressOf(), 1, size);
 				}
 			}
 		}
 
 		//CBV‚ğì¬ cbuffer global(b0)
-		D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
-		bufferDesc.SizeInBytes = sCB->getSizeInBytes();
-		bufferDesc.BufferLocation = sCB->Resource()->GetGPUVirtualAddress();
-		srvHandle.ptr += offsetSize;
-		dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
+		D3D12_GPU_VIRTUAL_ADDRESS ad0[1] = { sCB->Resource()->GetGPUVirtualAddress() };
+		UINT size0[1] = { sCB->getSizeInBytes() };
+		dx->device->CreateCbv(srvHandle, ad0, size0, 1);
 
 		//CBV‚ğì¬ material(b1)
 		for (UINT i = 0; i < numMaterial; i++) {
-			D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
-			bufferDesc.SizeInBytes = material->getElementByteSize();
-			bufferDesc.BufferLocation = material->getGPUVirtualAddress(i);
-			srvHandle.ptr += offsetSize;
-			dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
+			D3D12_GPU_VIRTUAL_ADDRESS ad1[1] = { material->getGPUVirtualAddress(i) };
+			UINT size1[1] = { material->getElementByteSize() };
+			dx->device->CreateCbv(srvHandle, ad1, size1, 1);
 		}
 
 		//CBV‚ğì¬ wvp(b2)
 		for (UINT i = 0; i < maxNumInstancing; i++) {
-			D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
-			bufferDesc.SizeInBytes = wvp->getElementByteSize();
-			bufferDesc.BufferLocation = wvp->getGPUVirtualAddress(i);
-			srvHandle.ptr += offsetSize;
-			dx->getDevice()->CreateConstantBufferView(&bufferDesc, srvHandle);
+			D3D12_GPU_VIRTUAL_ADDRESS ad2[1] = { wvp->getGPUVirtualAddress(i) };
+			UINT size2[1] = { wvp->getElementByteSize() };
+			dx->device->CreateCbv(srvHandle, ad2, size2, 1);
 		}
 
 		//Global
 		//SRV‚ğì¬ g_texDiffuse(t0), g_texNormal(t1), g_texSpecular(t2)
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3 = {};
 		for (UINT t = 0; t < 3; t++) {
 			for (UINT i = 0; i < numParameter; i++) {
 				for (int j = 0; j < PD[i]->NumMaterial; j++) {
@@ -836,35 +823,19 @@ void DXR_Basic::createShaderResources() {
 							res = PD[i]->speTex[j];
 							break;
 						}
-						srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-						srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-						srvDesc3.Format = res->GetDesc().Format;
-						srvDesc3.Texture2D.MostDetailedMip = 0;
-						srvDesc3.Texture2D.ResourceMinLODClamp = 0.0f;
-						srvDesc3.Texture2D.MipLevels = res->GetDesc().MipLevels;
-						srvHandle.ptr += offsetSize;
-						dx->getDevice()->CreateShaderResourceView(res, &srvDesc3, srvHandle);
+						dx->device->CreateSrvTexture(srvHandle, &res, 1);
 					}
 				}
 			}
 		}
 
 		//SRV‚ğì¬ Vertex(t3)
-		UINT MaterialCnt = 0;
 		for (UINT i = 0; i < numParameter; i++) {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
 					VertexView& vv = PD[i]->updateDXR[heapInd].VviewDXR[j][t];
-					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
-					srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-					srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-					srvDesc2.Buffer.NumElements = vv.VertexBufferByteSize / vv.VertexByteStride;
-					srvDesc2.Format = DXGI_FORMAT_UNKNOWN;
-					srvDesc2.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-					srvDesc2.Buffer.StructureByteStride = vv.VertexByteStride;
-					srvHandle.ptr += offsetSize;
-					dx->getDevice()->CreateShaderResourceView(vv.VertexBufferGPU.Get(), &srvDesc2, srvHandle);
-					MaterialCnt++;
+					UINT size[1] = { vv.VertexByteStride };
+					dx->device->CreateSrvBuffer(srvHandle, vv.VertexBufferGPU.GetAddressOf(), 1, size);
 				}
 			}
 		}

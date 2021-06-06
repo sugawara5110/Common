@@ -12,18 +12,17 @@
 class SkinnedCom {
 
 private:
-	friend PolygonData;
 	friend SkinMesh;
 	ComPtr<ID3D12RootSignature> rootSignature = nullptr;
 	ComPtr<ID3D12PipelineState> PSO = nullptr;
 	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
 	ComPtr<ID3D12Resource> SkinnedVer = nullptr;
-	PolygonData* pd = nullptr;
+	BasicPolygon* pd = nullptr;
 	const int numSrv = 1;
 	const int numCbv = 1;
 	const int numUav = 1;
 
-	void getBuffer(PolygonData* pd);
+	void getBuffer(BasicPolygon* pd);
 	bool createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 	bool createPSO();
 	bool createParameterDXR();
