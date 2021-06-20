@@ -794,14 +794,14 @@ void DXR_Basic::createShaderResources() {
 		//CBV‚ğì¬ material(b1)
 		for (UINT i = 0; i < numMaterial; i++) {
 			D3D12_GPU_VIRTUAL_ADDRESS ad1[1] = { material->getGPUVirtualAddress(i) };
-			UINT size1[1] = { material->getElementByteSize() };
+			UINT size1[1] = { material->getSizeInBytes() };
 			dx->device->CreateCbv(srvHandle, ad1, size1, 1);
 		}
 
 		//CBV‚ğì¬ wvp(b2)
 		for (UINT i = 0; i < maxNumInstancing; i++) {
 			D3D12_GPU_VIRTUAL_ADDRESS ad2[1] = { wvp->getGPUVirtualAddress(i) };
-			UINT size2[1] = { wvp->getElementByteSize() };
+			UINT size2[1] = { wvp->getSizeInBytes() };
 			dx->device->CreateCbv(srvHandle, ad2, size2, 1);
 		}
 

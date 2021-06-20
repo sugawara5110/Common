@@ -115,17 +115,17 @@ private:
 	};
 	Update upd[2] = {};//cBuffSwap
 
-	CoordTf::MATRIX Vp;    //ビューポート行列(3D座標→2D座標変換時使用)
-	Fog fog;
+	CoordTf::MATRIX Vp = {};    //ビューポート行列(3D座標→2D座標変換時使用)
+	Fog fog = {};
 
 	//カメラ画角
-	float ViewY_theta;
+	float ViewY_theta = 0.0f;
 	//アスペクト比
-	float aspect;
+	float aspect = 0.0f;
 	//nearプレーン
-	float NearPlane;
+	float NearPlane = 0.0f;
 	//farプレーン
-	float FarPlane;
+	float FarPlane = 0.0f;
 	CoordTf::VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
 	int cBuffSwap[2] = { 0,0 };
@@ -260,7 +260,7 @@ struct IndexView {
 	//インデックスバッファビュー
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView()const
 	{
-		D3D12_INDEX_BUFFER_VIEW ibv;
+		D3D12_INDEX_BUFFER_VIEW ibv = {};
 		ibv.BufferLocation = IndexBufferGPU->GetGPUVirtualAddress();
 		ibv.Format = IndexFormat;
 		ibv.SizeInBytes = IndexBufferByteSize;
@@ -285,7 +285,7 @@ struct StreamView {
 
 	static void createResetBuffer(int comNo) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		UINT64 zero[1];
+		UINT64 zero[1] = {};
 		zero[0] = 0;
 		resetBuffer = dx->CreateDefaultBuffer(comNo, zero,
 			sizeof(UINT64),
@@ -335,7 +335,7 @@ struct StreamView {
 	//ストリームバッファビュー
 	D3D12_STREAM_OUTPUT_BUFFER_VIEW StreamBufferView()const
 	{
-		D3D12_STREAM_OUTPUT_BUFFER_VIEW sbv;
+		D3D12_STREAM_OUTPUT_BUFFER_VIEW sbv = {};
 		sbv.BufferLocation = StreamBufferGPU->GetGPUVirtualAddress();
 		sbv.SizeInBytes = StreamBufferByteSize;
 		sbv.BufferFilledSizeLocation = BufferFilledSizeBufferGPU.Get()->GetGPUVirtualAddress();
@@ -356,7 +356,7 @@ public:
 	ConstantBuffer(UINT elementCount) {
 
 		dx = Dx12Process::GetInstance();
-		//コンスタントバッファサイズは256バイトでアライメント
+		//コンスタントバッファサイズは256バイト単位でアライメント(例: 0→0, 10→256, 300→512)
 		mElementByteSize = ALIGNMENT_TO(256, sizeof(T));
 
 		if (FAILED(dx->device->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
@@ -382,7 +382,7 @@ public:
 	}
 
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress(UINT elementIndex) {
-		return mUploadBuffer.Get()->GetGPUVirtualAddress() + 256 * elementIndex;
+		return mUploadBuffer.Get()->GetGPUVirtualAddress() + mElementByteSize * elementIndex;
 	}
 
 	void CopyData(int elementIndex, const T& data) {
@@ -391,10 +391,6 @@ public:
 
 	UINT getSizeInBytes() {
 		return mElementByteSize;
-	}
-
-	UINT getElementByteSize() {
-		return 256;
 	}
 };
 
@@ -511,17 +507,12 @@ struct ParameterDXR {
 class Common {
 
 protected:
-	friend PolygonData;
-	friend PolygonData2D;
-	friend ParticleData;
-	friend PostEffect;
-	friend SkinnedCom;
 	Common() {}//外部からのオブジェクト生成禁止
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
 
-	Dx12Process* dx;
-	ID3D12GraphicsCommandList* mCommandList;
+	Dx12Process* dx = nullptr;
+	ID3D12GraphicsCommandList* mCommandList = nullptr;
 	int com_no = 0;
 
 	//テクスチャ
@@ -530,8 +521,9 @@ protected:
 	MovieTexture* movOn = nullptr;
 	int movOnSize = 0;
 
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-	D3D12_TEXTURE_COPY_LOCATION dest, src;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+	D3D12_TEXTURE_COPY_LOCATION dest = {};
+	D3D12_TEXTURE_COPY_LOCATION src = {};
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
 

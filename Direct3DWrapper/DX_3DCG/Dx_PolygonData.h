@@ -12,12 +12,6 @@
 class PolygonData :public BasicPolygon {
 
 protected:
-	friend SkinMesh;
-	friend MeshData;
-	friend Wave;
-	friend DXR_Basic;
-	friend SkinnedCom;
-
 	void* ver = nullptr;  //頂点配列
 	UINT** index = nullptr;//頂点インデックス
 	int numIndex;    //頂点インデックス数
