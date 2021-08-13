@@ -510,31 +510,21 @@ ParameterDXR* ParticleData::getParameter() {
 	return &dxrPara;
 }
 
-static float AngleCalculation360(float distA, float distB) {
-	static const float radian1 = 180.0f / (float)M_PI;
-	float angle = (float)atan(distA / distB) * radian1;
-	if (distA >= 0 && distB < 0) {
-		return angle + 360.0f;
-	}
-	if (distB >= 0) {
-		return angle + 180.0f;
-	}
-	return angle;
-}
-
 CoordTf::MATRIX ParticleData::BillboardAngleCalculation(float angle) {
-	//float distanceZ = dx->posZ - dx->dirZ;
-	float distanceY = dx->upd[dx->cBuffSwap[0]].pos.y - dx->upd[dx->cBuffSwap[0]].dir.y;
-	float distanceX = dx->upd[dx->cBuffSwap[0]].pos.x - dx->upd[dx->cBuffSwap[0]].dir.x;
-
-	float angleZ = (float)fmod(AngleCalculation360(distanceX, distanceY) + angle, 360.0f);
-	//float angleY = AngleCalculation360(distanceZ, distanceX);
-	//float angleX = AngleCalculation360(distanceZ, distanceY);
 
 	using namespace CoordTf;
-	MATRIX rotZ, inv;
-	MatrixRotationZ(&rotZ, angleZ);
-	MatrixInverse(&inv, &rotZ);
+	MATRIX rotZ;
+	MatrixRotationZ(&rotZ, angle);
+
+	MATRIX vi = dx->upd[dx->cBuffSwap[0]].mView;
+	vi._41 = 0.0f;
+	vi._42 = 0.0f;
+	vi._43 = 0.0f;
+
+	MATRIX rZvi;
+	MatrixMultiply(&rZvi, &rotZ, &vi);
+	MATRIX inv;
+	MatrixInverse(&inv, &rZvi);
 
 	return inv;
 }
