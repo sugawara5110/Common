@@ -130,7 +130,7 @@ char* ShaderBasicDXR =
 //ヒットした位置のテクスチャの色をpayload.color格納する
 //////点光源
 "    if(payload.mNo == 2 && mNo == 2) {\n"
-"       payload.color = difTex.xyz;\n"
+"       payload.color = difTex.xyz + GlobalAmbientColor.xyz;\n"
 "       if(InstanceID() != payload.instanceID || difTex.w <= 0.0f) {\n"
 "          payload.reTry = true;\n"//目標の点光源以外の場合素通り
 "       }\n"
@@ -138,7 +138,7 @@ char* ShaderBasicDXR =
 //////平行光源
 "    if(payload.mNo == 3) {\n"
 "       if(mNo == 3 || mNo == 4) {\n"//平行光源発生マテリアルか?
-"          payload.color = dLightColor.xyz;\n"
+"          payload.color = dLightColor.xyz + GlobalAmbientColor.xyz;\n"
 "       }\n"
 "       if(mNo == 2) {\n"//点光源の場合素通り
 "          payload.reTry = true;\n"
