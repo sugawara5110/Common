@@ -54,6 +54,7 @@ SkinMesh::~SkinMesh() {
 			ARR_DELETE(pvVBM[i]);
 		}
 	}
+	ARR_DELETE(numBone);
 	ARR_DELETE(pvVB);
 	ARR_DELETE(pvVBM);
 	ARR_DELETE(boneName);
@@ -125,10 +126,11 @@ void SkinMesh::ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB, meshCenterPos*
 
 	cenPos->bBoneWeight = 0.0f;
 	int addWeightCnt = 0;
+	int numbone = mesh->getNumDeformer();
 	//各Boneのウエイト,インデックスを調べ頂点配列に加える
-	for (int i = 0; i < numBone; i++) {
+	if (numbone <= 0)return;
+	for (int i = 0; i < numbone; i++) {
 		Deformer* defo = mesh->getDeformer(i);
-		if (!defo)return;
 		int iNumIndex = defo->getIndicesCount();//このボーンに影響を受ける頂点インデックス数
 		int* piIndex = defo->getIndices();     //このボーンに影響を受ける頂点のインデックス配列
 		double* pdWeight = defo->getWeights();//このボーンに影響を受ける頂点のウエイト配列
@@ -190,17 +192,21 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 	numMesh = fbL->getNumFbxMeshNode();
 	newIndex = new UINT * *[numMesh];
 	centerPos = std::make_unique<meshCenterPos[]>(numMesh);
+	numBone = new int[numMesh];
+	for (int i = 0; i < numMesh; i++) {
+		if (deformer)numBone[i] = fbL->getFbxMeshNode(i)->getNumDeformer();
+		else
+			numBone[i] = 0;
+	}
 
 	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);
-	numBone = mesh->getNumDeformer();
-	if (!deformer)numBone = 0;
 
-	if (numBone > 0) {
-		boneName = new char[numBone * 255];
-		m_BoneArray = new BONE[numBone];
-		m_pLastBoneMatrix = new MATRIX[numBone];
+	if (numBone[0] > 0) {
+		boneName = new char[numBone[0] * 255];
+		m_BoneArray = new BONE[numBone[0]];
+		m_pLastBoneMatrix = new MATRIX[numBone[0]];
 
-		for (int i = 0; i < numBone; i++) {
+		for (int i = 0; i < numBone[0]; i++) {
 			Deformer* defo = mesh->getDeformer(i);
 			const char* name = defo->getName();
 			strcpy(&boneName[i * 255], name);//ボーンの名前保持
@@ -224,7 +230,9 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].SetCommandList(com_no);
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), 1, divArr, numDiv);
-		if (numBone > 0)sk[i].getBuffer(&mObj[i]);
+		if (numBone[i] > 0) {
+			sk[i].getBuffer(&mObj[i]);
+		}
 		if (mObj[i].dx->DXR_CreateResource) {
 			UpdateDXR& u0 = mObj[i].dxrPara.updateDXR[0];
 			UpdateDXR& u1 = mObj[i].dxrPara.updateDXR[1];
@@ -297,7 +305,7 @@ void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
 
 		MY_VERTEX_S* tmpVB = new MY_VERTEX_S[mesh->getNumVertices()];
 		//ボーンウエイト
-		if (numBone > 0)ReadSkinInfo(mesh, tmpVB, &centerPos[m]);
+		ReadSkinInfo(mesh, tmpVB, &centerPos[m]);
 
 		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 		auto ver = mesh->getVertices();//頂点取得
@@ -363,7 +371,7 @@ void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
 			v->vTex1.x = (float)uv1[i * 2];
 			v->vTex1.y = 1.0f - (float)uv1[i * 2 + 1];//(1.0f-UV)
 			svList[index[i]].Push(i);
-			if (numBone > 0) {
+			if (numBone[m] > 0) {
 				for (int bi = 0; bi < 4; bi++) {
 					//ReadSkinInfo(tmpVB)で読み込んだ各パラメータコピー
 					v->bBoneIndex[bi] = tmpVB[index[i]].bBoneIndex[bi];
@@ -392,7 +400,7 @@ void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
 		}
 		//同一座標頂点の法線統一化(テセレーション用)
 		SameVertexListNormalization svn;
-		if (numBone > 0) {
+		if (numBone[m] > 0) {
 			svn.Normalization(vb, sizeof(MY_VERTEX_S), sizeof(VECTOR3) * 3, mesh->getNumVertices(), svList);
 			//頂点バッファ
 			mObj[m].getVertexBuffer(sizeof(MY_VERTEX_S), mesh->getNumPolygonVertices());
@@ -408,7 +416,7 @@ void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
 		auto numMaterial = mesh->getNumMaterial();
 		int* uvSw = new int[numMaterial];
 		createMaterial(m, numMaterial, mesh, uv0Name, uv1Name, uvSw);
-		if (numBone > 0)swapTex(vb, mesh, uvSw);
+		if (numBone[m] > 0)swapTex(vb, mesh, uvSw);
 		ARR_DELETE(uvSw);
 		splitIndex(numMaterial, mesh, m);
 	}
@@ -611,7 +619,7 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 	for (int i = 0; i < numMesh; i++) {
 		BasicPolygon& o = mObj[i];
 		if (disp) {
-			if (numBone > 0)
+			if (numBone[i] > 0)
 				o.vs = sh->pVertexShader_SKIN_D.Get();
 			else
 				o.vs = sh->pVertexShader_MESH_D.Get();
@@ -629,7 +637,7 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 		}
 		else {
-			if (numBone > 0)
+			if (numBone[i] > 0)
 				o.vs = sh->pVertexShader_SKIN.Get();
 			else
 				o.vs = sh->pVertexShader_MESH.Get();
@@ -668,7 +676,7 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 		}
 		int vSize = sizeof(VertexM);
 		void* vertex = pvVBM[i];
-		if (numBone > 0) {
+		if (numBone[i] > 0) {
 			vSize = sizeof(MY_VERTEX_S);
 			vertex = pvVB[i];
 		}
@@ -688,7 +696,7 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 		int numUav = 0;
 		Dx12Process* dx = o.dx;
 		o.createParameterDXR(alpha, blend, divideBufferMagnification);
-		if (numBone > 0) {
+		if (numBone[i] > 0) {
 			if (!sk[i].createParameterDXR())return false;
 			if (!o.createPSO(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
@@ -739,7 +747,7 @@ HRESULT SkinMesh::GetBuffer_Sub(int ind, float end_frame) {
 	}
 
 	if (!m_ppSubAnimationBone) {
-		m_ppSubAnimationBone = new Deformer * [(FBX_PCS - 1) * numBone];
+		m_ppSubAnimationBone = new Deformer * [(FBX_PCS - 1) * numBone[0]];
 	}
 	return S_OK;
 }
@@ -748,8 +756,8 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 	int loopind = 0;
 	int searchCount = 0;
 	int name2Num = 0;
-	while (loopind < numBone) {
-		int sa_ind = (ind - 1) * numBone + loopind;
+	while (loopind < numBone[0]) {
+		int sa_ind = (ind - 1) * numBone[0] + loopind;
 		m_ppSubAnimationBone[sa_ind] = fbx[ind].fbxL->getNoneMeshDeformer(searchCount);
 		searchCount++;
 		const char* name = m_ppSubAnimationBone[sa_ind]->getName();
@@ -770,7 +778,7 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 
 //ボーンを次のポーズ位置にセットする
 bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
-	if (numBone <= 0)return true;
+	if (numBone[0] <= 0)return true;
 	if (AnimLastInd == -1)AnimLastInd = ind;//最初に描画するアニメーション番号で初期化
 	bool ind_change = false;
 	if (AnimLastInd != ind) {//アニメーションが切り替わった
@@ -782,7 +790,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (fbx[ind].end_frame <= fbx[ind].current_frame) frame_end = true;
 
 	if (frame_end || ind_change) {
-		for (int i = 0; i < numBone; i++) {
+		for (int i = 0; i < numBone[0]; i++) {
 			for (int x = 0; x < 4; x++) {
 				for (int y = 0; y < 4; y++) {
 					m_pLastBoneMatrix[i].m[y][x] = m_BoneArray[i].mNewPose.m[y][x];
@@ -808,7 +816,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 		defo = mesh->getDeformer(0);
 	}
 	else {
-		defo = m_ppSubAnimationBone[(ind - 1) * numBone];
+		defo = m_ppSubAnimationBone[(ind - 1) * numBone[0]];
 	}
 	defo->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
@@ -825,13 +833,13 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	}
 
 	MATRIX pose;
-	for (int i = 0; i < numBone; i++) {
+	for (int i = 0; i < numBone[0]; i++) {
 		Deformer* de = nullptr;
 		if (!subanm) {
 			de = mesh->getDeformer(i);
 		}
 		else {
-			de = m_ppSubAnimationBone[(ind - 1) * numBone + i];
+			de = m_ppSubAnimationBone[(ind - 1) * numBone[0] + i];
 		}
 		de->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
@@ -858,7 +866,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (BoneConnect != -1.0f) {
 		if (fbx[ind].connect_step <= 0.0f || BoneConnect > 1.0f)BoneConnect = -1.0f;
 		else {
-			for (int i = 0; i < numBone; i++) {
+			for (int i = 0; i < numBone[0]; i++) {
 				StraightLinear(&m_BoneArray[i].mNewPose, &m_pLastBoneMatrix[i], &m_BoneArray[i].mNewPose, BoneConnect += (ti / fbx[ind].connect_step));
 			}
 		}
@@ -886,7 +894,7 @@ void SkinMesh::GetMeshCenterPos() {
 			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[mObj[i].dx->dxrBuffSwap[0]];
 			VECTOR3* vv = &ud.v[0];
 			vv->as(cp.x, cp.y, cp.z);
-			if (numBone > 0) {
+			if (numBone[i] > 0) {
 				float w = centerPos[i].bBoneWeight;
 				UINT ind = centerPos[i].bBoneIndex;
 				MATRIX m = GetCurrentPoseMatrix(ind);
@@ -933,7 +941,7 @@ CoordTf::VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float ad
 void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 
 	using namespace CoordTf;
-	for (int i = 0; i < numBone; i++)
+	for (int i = 0; i < numBone[0]; i++)
 	{
 		MATRIX mat = GetCurrentPoseMatrix(i);
 		MatrixTranspose(&mat);
@@ -976,7 +984,7 @@ void SkinMesh::StreamOutput(int com) {
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].StreamOutput(com);
-		if (sk)sk[i].Skinning(com);
+		if (numBone[i] > 0)sk[i].Skinning(com);
 	}
 }
 

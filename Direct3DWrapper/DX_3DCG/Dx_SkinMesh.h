@@ -56,7 +56,7 @@ protected:
 	bool pvVB_delete_f = true;
 
 	//É{Å[Éì
-	int numBone = 0;
+	int* numBone = nullptr;
 	BONE* m_BoneArray = nullptr;
 	char* boneName = nullptr;
 	int InternalAnimationIndex = 0;
