@@ -194,19 +194,24 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 	centerPos = std::make_unique<meshCenterPos[]>(numMesh);
 	numBone = new int[numMesh];
 	for (int i = 0; i < numMesh; i++) {
-		if (deformer)numBone[i] = fbL->getFbxMeshNode(i)->getNumDeformer();
+		if (deformer) {
+			numBone[i] = fbL->getFbxMeshNode(i)->getNumDeformer();
+			if (maxNumBone < numBone[i]) {
+				maxNumBone = numBone[i];
+				maxNumBoneMeshIndex = i;
+			}
+		}
 		else
 			numBone[i] = 0;
 	}
 
-	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);
+	if (maxNumBone > 0) {
+		boneName = new char[maxNumBone * 255];
+		m_BoneArray = new BONE[maxNumBone];
+		m_pLastBoneMatrix = new MATRIX[maxNumBone];
 
-	if (numBone[0] > 0) {
-		boneName = new char[numBone[0] * 255];
-		m_BoneArray = new BONE[numBone[0]];
-		m_pLastBoneMatrix = new MATRIX[numBone[0]];
-
-		for (int i = 0; i < numBone[0]; i++) {
+		FbxMeshNode* mesh = fbL->getFbxMeshNode(maxNumBoneMeshIndex);
+		for (int i = 0; i < maxNumBone; i++) {
 			Deformer* defo = mesh->getDeformer(i);
 			const char* name = defo->getName();
 			strcpy(&boneName[i * 255], name);//ボーンの名前保持
@@ -219,6 +224,7 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 				}
 			}
 		}
+
 		sk = new SkinnedCom[numMesh];
 		mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
 	}
@@ -293,7 +299,7 @@ void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) 
 	}
 }
 
-void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
+void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 
 	FbxLoader* fbL = fbx[0].fbxL;
 	GlobalSettings gSet = fbL->getGlobalSettings();
@@ -344,21 +350,49 @@ void SkinMesh::SetVertex(bool lclOn, bool VerCentering) {
 			//index順で頂点を整列しながら頂点格納
 			MY_VERTEX_S* v = &vb[i];
 			VertexM* vm = &vbm[i];
-			if (lclOn) {
+			if (axisOn) {
 				float tmpv[3] = {
 					(float)ver[index[i] * 3] * gSet.CoordAxisSign,
 					(float)ver[index[i] * 3 + 1] * -gSet.FrontAxisSign,
 					(float)ver[index[i] * 3 + 2] * gSet.UpAxisSign
 				};
-				cpp.x += vm->Pos.x = v->vPos.x = tmpv[gSet.CoordAxis] * (float)mesh->getLcl().Scaling[0];
-				cpp.y += vm->Pos.y = v->vPos.y = tmpv[gSet.FrontAxis] * (float)mesh->getLcl().Scaling[1];
-				cpp.z += vm->Pos.z = v->vPos.z = tmpv[gSet.UpAxis] * (float)mesh->getLcl().Scaling[2];
+				v->vPos.x = tmpv[gSet.CoordAxis];
+				v->vPos.y = tmpv[gSet.FrontAxis];
+				v->vPos.z = tmpv[gSet.UpAxis];
 			}
 			else {
-				cpp.x += vm->Pos.x = v->vPos.x = (float)ver[index[i] * 3];
-				cpp.y += vm->Pos.y = v->vPos.y = (float)ver[index[i] * 3 + 1];
-				cpp.z += vm->Pos.z = v->vPos.z = (float)ver[index[i] * 3 + 2];
+				v->vPos.x = (float)ver[index[i] * 3];
+				v->vPos.y = (float)ver[index[i] * 3 + 1];
+				v->vPos.z = (float)ver[index[i] * 3 + 2];
 			}
+			if (lclOn) {
+				MATRIX mov;
+				MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
+				MATRIX scale;
+				MATRIX scro;
+				MATRIX world;
+				//拡大縮小
+				MatrixScaling(&scale,
+					(float)mesh->getLcl().Scaling[0],
+					(float)mesh->getLcl().Scaling[1],
+					(float)mesh->getLcl().Scaling[2]);
+				//表示位置
+				MatrixRotationZ(&rotZ, (float)mesh->getLcl().Rotation[2]);
+				MatrixRotationY(&rotY, (float)mesh->getLcl().Rotation[1]);
+				MatrixRotationX(&rotX, (float)mesh->getLcl().Rotation[0]);
+				MatrixMultiply(&rotZY, &rotZ, &rotY);
+				MatrixMultiply(&rotZYX, &rotZY, &rotX);
+				MatrixTranslation(&mov,
+					(float)mesh->getLcl().Translation[0],
+					(float)mesh->getLcl().Translation[1],
+					(float)mesh->getLcl().Translation[2]);
+				MatrixMultiply(&scro, &rotZYX, &scale);
+				MatrixMultiply(&world, &scro, &mov);
+				VectorMatrixMultiply(&v->vPos, &world);
+			}
+			cpp.x += vm->Pos.x = v->vPos.x;
+			cpp.y += vm->Pos.y = v->vPos.y;
+			cpp.z += vm->Pos.z = v->vPos.z;
 			cppAddCnt++;
 			vm->normal.x = v->vNorm.x = (float)nor[i * 3];
 			vm->normal.y = v->vNorm.y = (float)nor[i * 3 + 1];
@@ -747,7 +781,7 @@ HRESULT SkinMesh::GetBuffer_Sub(int ind, float end_frame) {
 	}
 
 	if (!m_ppSubAnimationBone) {
-		m_ppSubAnimationBone = new Deformer * [(FBX_PCS - 1) * numBone[0]];
+		m_ppSubAnimationBone = new Deformer * [(FBX_PCS - 1) * maxNumBone];
 	}
 	return S_OK;
 }
@@ -756,8 +790,8 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 	int loopind = 0;
 	int searchCount = 0;
 	int name2Num = 0;
-	while (loopind < numBone[0]) {
-		int sa_ind = (ind - 1) * numBone[0] + loopind;
+	while (loopind < maxNumBone) {
+		int sa_ind = (ind - 1) * maxNumBone + loopind;
 		m_ppSubAnimationBone[sa_ind] = fbx[ind].fbxL->getNoneMeshDeformer(searchCount);
 		searchCount++;
 		const char* name = m_ppSubAnimationBone[sa_ind]->getName();
@@ -778,7 +812,7 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 
 //ボーンを次のポーズ位置にセットする
 bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
-	if (numBone[0] <= 0)return true;
+	if (maxNumBone <= 0)return true;
 	if (AnimLastInd == -1)AnimLastInd = ind;//最初に描画するアニメーション番号で初期化
 	bool ind_change = false;
 	if (AnimLastInd != ind) {//アニメーションが切り替わった
@@ -790,7 +824,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (fbx[ind].end_frame <= fbx[ind].current_frame) frame_end = true;
 
 	if (frame_end || ind_change) {
-		for (int i = 0; i < numBone[0]; i++) {
+		for (int i = 0; i < maxNumBone; i++) {
 			for (int x = 0; x < 4; x++) {
 				for (int y = 0; y < 4; y++) {
 					m_pLastBoneMatrix[i].m[y][x] = m_BoneArray[i].mNewPose.m[y][x];
@@ -811,12 +845,12 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 
 	Deformer* defo = nullptr;
 	FbxLoader* fbL = fbx[0].fbxL;
-	FbxMeshNode* mesh = fbL->getFbxMeshNode(0);
+	FbxMeshNode* mesh = fbL->getFbxMeshNode(maxNumBoneMeshIndex);
 	if (!subanm) {
 		defo = mesh->getDeformer(0);
 	}
 	else {
-		defo = m_ppSubAnimationBone[(ind - 1) * numBone[0]];
+		defo = m_ppSubAnimationBone[(ind - 1) * maxNumBone];
 	}
 	defo->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
@@ -833,13 +867,13 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	}
 
 	MATRIX pose;
-	for (int i = 0; i < numBone[0]; i++) {
+	for (int i = 0; i < maxNumBone; i++) {
 		Deformer* de = nullptr;
 		if (!subanm) {
 			de = mesh->getDeformer(i);
 		}
 		else {
-			de = m_ppSubAnimationBone[(ind - 1) * numBone[0] + i];
+			de = m_ppSubAnimationBone[(ind - 1) * maxNumBone + i];
 		}
 		de->EvaluateGlobalTransform(time, InternalAnimationIndex);
 
@@ -866,7 +900,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
 	if (BoneConnect != -1.0f) {
 		if (fbx[ind].connect_step <= 0.0f || BoneConnect > 1.0f)BoneConnect = -1.0f;
 		else {
-			for (int i = 0; i < numBone[0]; i++) {
+			for (int i = 0; i < maxNumBone; i++) {
 				StraightLinear(&m_BoneArray[i].mNewPose, &m_pLastBoneMatrix[i], &m_BoneArray[i].mNewPose, BoneConnect += (ti / fbx[ind].connect_step));
 			}
 		}
@@ -941,7 +975,7 @@ CoordTf::VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float ad
 void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 
 	using namespace CoordTf;
-	for (int i = 0; i < numBone[0]; i++)
+	for (int i = 0; i < maxNumBone; i++)
 	{
 		MATRIX mat = GetCurrentPoseMatrix(i);
 		MatrixTranspose(&mat);

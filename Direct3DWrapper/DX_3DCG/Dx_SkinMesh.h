@@ -57,6 +57,8 @@ protected:
 
 	//É{Å[Éì
 	int* numBone = nullptr;
+	int maxNumBone = 0;
+	int maxNumBoneMeshIndex = 0;
 	BONE* m_BoneArray = nullptr;
 	char* boneName = nullptr;
 	int InternalAnimationIndex = 0;
@@ -105,7 +107,7 @@ public:
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
 	void GetBuffer(float end_frame, bool singleMesh = false, bool deformer = true);
-	void SetVertex(bool lclOn = false, bool VerCentering = false);
+	void SetVertex(bool lclOn = false, bool axisOn = false, bool VerCentering = false);
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);
