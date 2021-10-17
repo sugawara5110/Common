@@ -80,6 +80,8 @@ protected:
 	BasicPolygon* mObj = nullptr;
 	SkinnedCom* sk = nullptr;
 	int com_no = 0;
+	CoordTf::MATRIX Axis = {};
+	std::unique_ptr<bool[]> noUseMesh = nullptr;
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
@@ -94,6 +96,8 @@ protected:
 	void swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw);
 	void splitIndex(UINT numMaterial, FbxMeshNode* mesh, int meshIndex);
 	void normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh);
+	void createAxis();
+	void LclTransformation(FbxMeshNode* mesh, CoordTf::VECTOR3* vec);
 
 public:
 	SkinMesh();
@@ -107,6 +111,7 @@ public:
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
 	void GetBuffer(float end_frame, bool singleMesh = false, bool deformer = true);
+	void noUseMeshIndex(int meshIndex);
 	void SetVertex(bool lclOn = false, bool axisOn = false, bool VerCentering = false);
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);

@@ -4,10 +4,6 @@
 //**                                                                                     **//
 //*****************************************************************************************//
 
-//Smoothie3Dでモデル→Blenderでアニメーションの場合,-Z前方,Y上で出力する
-//makehumanでモデル→Blenderでアニメーション(カーネギーメロン大学でGETしたモーションキャプチャデータ使用)
-//の場合,Y前方,Z上で出力する
-
 #define _CRT_SECURE_NO_WARNINGS
 #define FBX_PCS 5
 #include "Dx_SkinMesh.h"
@@ -190,10 +186,12 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 	FbxLoader* fbL = fbx[0].fbxL;
 	if (singleMesh)fbL->createFbxSingleMeshNode();
 	numMesh = fbL->getNumFbxMeshNode();
+	noUseMesh = std::make_unique<bool[]>(numMesh);
 	newIndex = new UINT * *[numMesh];
 	centerPos = std::make_unique<meshCenterPos[]>(numMesh);
 	numBone = new int[numMesh];
 	for (int i = 0; i < numMesh; i++) {
+		noUseMesh[i] = false;
 		if (deformer) {
 			numBone[i] = fbL->getFbxMeshNode(i)->getNumDeformer();
 			if (maxNumBone < numBone[i]) {
@@ -252,6 +250,69 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 	}
 }
 
+static void createAxisSub(CoordTf::VECTOR3& v3, int axis, int sign) {
+	switch (axis) {
+	case 0:
+		v3.as((float)sign, 0.0f, 0.0f);
+		break;
+	case 1:
+		v3.as(0.0f, (float)sign, 0.0f);
+		break;
+	case 2:
+		v3.as(0.0f, 0.0f, (float)sign);
+		break;
+	}
+}
+void SkinMesh::createAxis() {
+	GlobalSettings gSet = fbx[0].fbxL->getGlobalSettings();
+	CoordTf::VECTOR3 upVec = {};
+	createAxisSub(upVec, gSet.UpAxis, gSet.UpAxisSign);
+	CoordTf::VECTOR3 frontVec = {};
+	createAxisSub(frontVec, gSet.FrontAxis, gSet.FrontAxisSign);
+	CoordTf::VECTOR3 coordVec = {};
+	createAxisSub(coordVec, gSet.CoordAxis, gSet.CoordAxisSign);
+
+	Axis._11 = coordVec.x; Axis._12 = coordVec.y; Axis._13 = coordVec.z; Axis._14 = 0.0f;
+	Axis._21 = upVec.x;    Axis._22 = upVec.y;    Axis._23 = upVec.z;    Axis._24 = 0.0f;
+	Axis._31 = frontVec.x; Axis._32 = frontVec.y; Axis._33 = frontVec.z; Axis._34 = 0.0f;
+	Axis._41 = 0.0f;       Axis._42 = 0.0f;       Axis._43 = 0.0f;       Axis._44 = 1.0f;
+}
+
+void SkinMesh::LclTransformation(FbxMeshNode* mesh, CoordTf::VECTOR3* vec) {
+	using namespace CoordTf;
+	MATRIX mov;
+	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
+	MATRIX scale;
+	MATRIX scro;
+	MATRIX world;
+	//拡大縮小
+	if (mesh->getLcl().Scaling[0] <= 0.0 ||
+		mesh->getLcl().Scaling[1] <= 0.0 ||
+		mesh->getLcl().Scaling[2] <= 0.0)
+	{
+		MatrixIdentity(&scale);
+	}
+	else {
+		MatrixScaling(&scale,
+			(float)mesh->getLcl().Scaling[0],
+			(float)mesh->getLcl().Scaling[1],
+			(float)mesh->getLcl().Scaling[2]);
+	}
+	//表示位置
+	MatrixRotationZ(&rotZ, (float)mesh->getLcl().Rotation[2]);
+	MatrixRotationY(&rotY, (float)mesh->getLcl().Rotation[1]);
+	MatrixRotationX(&rotX, (float)mesh->getLcl().Rotation[0]);
+	MatrixMultiply(&rotZY, &rotZ, &rotY);
+	MatrixMultiply(&rotZYX, &rotZY, &rotX);
+	MatrixTranslation(&mov,
+		(float)mesh->getLcl().Translation[0],
+		(float)mesh->getLcl().Translation[1],
+		(float)mesh->getLcl().Translation[2]);
+	MatrixMultiply(&scro, &rotZYX, &scale);
+	MatrixMultiply(&world, &scro, &mov);
+	VectorMatrixMultiply(vec, &world);
+}
+
 void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) {
 
 	*nor = new double[mesh->getNumPolygonVertices() * 3];
@@ -266,24 +327,13 @@ void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) 
 		if (pSize >= 3) {
 			for (UINT i1 = 0; i1 < 3; i1++) {
 				UINT ind = indexCnt + i1;
+				tmpv[i1].as(
+					(float)ver[index[ind] * 3],
+					(float)ver[index[ind] * 3 + 1],
+					(float)ver[index[ind] * 3 + 2]
+				);
 				if (lclOn) {
-					float v[3] = {
-						(float)ver[index[ind] * 3] * gSet.CoordAxisSign,
-						(float)ver[index[ind] * 3 + 1] * -gSet.FrontAxisSign,
-						(float)ver[index[ind] * 3 + 2] * gSet.UpAxisSign
-					};
-					tmpv[i1].as(
-						(float)ver[gSet.CoordAxis],
-						(float)ver[gSet.FrontAxis],
-						(float)ver[gSet.UpAxis]
-					);
-				}
-				else {
-					tmpv[i1].as(
-						(float)ver[index[ind] * 3],
-						(float)ver[index[ind] * 3 + 1],
-						(float)ver[index[ind] * 3 + 2]
-					);
+					LclTransformation(mesh, &tmpv[i1]);
 				}
 			}
 			//上記3頂点から法線の方向算出
@@ -299,10 +349,19 @@ void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) 
 	}
 }
 
+void SkinMesh::noUseMeshIndex(int meshIndex) {
+	noUseMesh[meshIndex] = true;
+}
+
 void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 
 	FbxLoader* fbL = fbx[0].fbxL;
-	GlobalSettings gSet = fbL->getGlobalSettings();
+	if (axisOn) {
+		createAxis();
+	}
+	else {
+		MatrixIdentity(&Axis);
+	}
 
 	using namespace CoordTf;
 	for (int m = 0; m < numMesh; m++) {
@@ -350,45 +409,11 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 			//index順で頂点を整列しながら頂点格納
 			MY_VERTEX_S* v = &vb[i];
 			VertexM* vm = &vbm[i];
-			if (axisOn) {
-				float tmpv[3] = {
-					(float)ver[index[i] * 3] * gSet.CoordAxisSign,
-					(float)ver[index[i] * 3 + 1] * -gSet.FrontAxisSign,
-					(float)ver[index[i] * 3 + 2] * gSet.UpAxisSign
-				};
-				v->vPos.x = tmpv[gSet.CoordAxis];
-				v->vPos.y = tmpv[gSet.FrontAxis];
-				v->vPos.z = tmpv[gSet.UpAxis];
-			}
-			else {
-				v->vPos.x = (float)ver[index[i] * 3];
-				v->vPos.y = (float)ver[index[i] * 3 + 1];
-				v->vPos.z = (float)ver[index[i] * 3 + 2];
-			}
+			v->vPos.x = (float)ver[index[i] * 3];
+			v->vPos.y = (float)ver[index[i] * 3 + 1];
+			v->vPos.z = (float)ver[index[i] * 3 + 2];
 			if (lclOn) {
-				MATRIX mov;
-				MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
-				MATRIX scale;
-				MATRIX scro;
-				MATRIX world;
-				//拡大縮小
-				MatrixScaling(&scale,
-					(float)mesh->getLcl().Scaling[0],
-					(float)mesh->getLcl().Scaling[1],
-					(float)mesh->getLcl().Scaling[2]);
-				//表示位置
-				MatrixRotationZ(&rotZ, (float)mesh->getLcl().Rotation[2]);
-				MatrixRotationY(&rotY, (float)mesh->getLcl().Rotation[1]);
-				MatrixRotationX(&rotX, (float)mesh->getLcl().Rotation[0]);
-				MatrixMultiply(&rotZY, &rotZ, &rotY);
-				MatrixMultiply(&rotZYX, &rotZY, &rotX);
-				MatrixTranslation(&mov,
-					(float)mesh->getLcl().Translation[0],
-					(float)mesh->getLcl().Translation[1],
-					(float)mesh->getLcl().Translation[2]);
-				MatrixMultiply(&scro, &rotZYX, &scale);
-				MatrixMultiply(&world, &scro, &mov);
-				VectorMatrixMultiply(&v->vPos, &world);
+				LclTransformation(mesh, &v->vPos);
 			}
 			cpp.x += vm->Pos.x = v->vPos.x;
 			cpp.y += vm->Pos.y = v->vPos.y;
@@ -914,9 +939,12 @@ CoordTf::MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 	MATRIX inv;
 	MatrixIdentity(&inv);
 	MatrixInverse(&inv, &m_BoneArray[index].mBindPose);//FBXのバインドポーズは初期姿勢（絶対座標）
+	MATRIX fPose;
+	MatrixIdentity(&fPose);
+	MatrixMultiply(&fPose, &inv, &m_BoneArray[index].mNewPose);//バインドポーズの逆行列とフレーム姿勢行列をかける
 	MATRIX ret;
 	MatrixIdentity(&ret);
-	MatrixMultiply(&ret, &inv, &m_BoneArray[index].mNewPose);//バインドポーズの逆行列とフレーム姿勢行列をかける
+	MatrixMultiply(&ret, &fPose, &Axis);
 	return ret;
 }
 
@@ -993,8 +1021,10 @@ bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
 	MatrixMap_Bone(&sgb[mObj[0].dx->cBuffSwap[0]]);
 
-	for (int i = 0; i < numMesh; i++)
-		mObj[i].Update(pos, Color, angle, size, disp, shininess);
+	for (int i = 0; i < numMesh; i++) {
+		if (!noUseMesh[i])
+			mObj[i].Update(pos, Color, angle, size, disp, shininess);
+	}
 
 	return frame_end;
 }
