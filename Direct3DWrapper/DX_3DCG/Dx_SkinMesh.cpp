@@ -286,18 +286,10 @@ void SkinMesh::LclTransformation(FbxMeshNode* mesh, CoordTf::VECTOR3* vec) {
 	MATRIX scro;
 	MATRIX world;
 	//拡大縮小
-	if (mesh->getLcl().Scaling[0] <= 0.0 ||
-		mesh->getLcl().Scaling[1] <= 0.0 ||
-		mesh->getLcl().Scaling[2] <= 0.0)
-	{
-		MatrixIdentity(&scale);
-	}
-	else {
-		MatrixScaling(&scale,
-			(float)mesh->getLcl().Scaling[0],
-			(float)mesh->getLcl().Scaling[1],
-			(float)mesh->getLcl().Scaling[2]);
-	}
+	MatrixScaling(&scale,
+		(float)mesh->getLcl().Scaling[0],
+		(float)mesh->getLcl().Scaling[1],
+		(float)mesh->getLcl().Scaling[2]);
 	//表示位置
 	MatrixRotationZ(&rotZ, (float)mesh->getLcl().Rotation[2]);
 	MatrixRotationY(&rotY, (float)mesh->getLcl().Rotation[1]);
@@ -318,7 +310,6 @@ void SkinMesh::normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh) 
 	*nor = new double[mesh->getNumPolygonVertices() * 3];
 	auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 	auto ver = mesh->getVertices();//頂点取得
-	GlobalSettings gSet = fbx[0].fbxL->getGlobalSettings();
 
 	CoordTf::VECTOR3 tmpv[3] = {};
 	UINT indexCnt = 0;
@@ -374,7 +365,7 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 
 		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 		auto ver = mesh->getVertices();//頂点取得
-		auto nor = mesh->getNormal(0);//法線取得
+		auto nor = mesh->getAlignedNormal(0);//法線取得
 
 		bool norCreate = false;
 		if (!nor) {
@@ -419,16 +410,20 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 			cpp.y += vm->Pos.y = v->vPos.y;
 			cpp.z += vm->Pos.z = v->vPos.z;
 			cppAddCnt++;
-			vm->normal.x = v->vNorm.x = (float)nor[i * 3];
-			vm->normal.y = v->vNorm.y = (float)nor[i * 3 + 1];
-			vm->normal.z = v->vNorm.z = (float)nor[i * 3 + 2];
-			vm->geoNormal.x = v->vGeoNorm.x = (float)nor[i * 3];
-			vm->geoNormal.y = v->vGeoNorm.y = (float)nor[i * 3 + 1];
-			vm->geoNormal.z = v->vGeoNorm.z = (float)nor[i * 3 + 2];
-			vm->tex.x = v->vTex0.x = (float)uv0[i * 2];
-			vm->tex.y = v->vTex0.y = 1.0f - (float)uv0[i * 2 + 1];//(1.0f-UV)
-			v->vTex1.x = (float)uv1[i * 2];
-			v->vTex1.y = 1.0f - (float)uv1[i * 2 + 1];//(1.0f-UV)
+			int norInd = i;
+			int uvInd = i;
+			if (strcmp(mesh->getNormalMappingInformationType(0), "ByPolygonVertex"))norInd = index[i];
+			if (strcmp(mesh->getUVMappingInformationType(0), "ByPolygonVertex"))uvInd = index[i];
+			vm->normal.x = v->vNorm.x = (float)nor[norInd * 3];
+			vm->normal.y = v->vNorm.y = (float)nor[norInd * 3 + 1];
+			vm->normal.z = v->vNorm.z = (float)nor[norInd * 3 + 2];
+			vm->geoNormal.x = v->vGeoNorm.x = (float)nor[norInd * 3];
+			vm->geoNormal.y = v->vGeoNorm.y = (float)nor[norInd * 3 + 1];
+			vm->geoNormal.z = v->vGeoNorm.z = (float)nor[norInd * 3 + 2];
+			vm->tex.x = v->vTex0.x = (float)uv0[uvInd * 2];
+			vm->tex.y = v->vTex0.y = 1.0f - (float)uv0[uvInd * 2 + 1];//(1.0f-UV)
+			v->vTex1.x = (float)uv1[uvInd * 2];
+			v->vTex1.y = 1.0f - (float)uv1[uvInd * 2 + 1];//(1.0f-UV)
 			svList[index[i]].Push(i);
 			if (numBone[m] > 0) {
 				for (int bi = 0; bi < 4; bi++) {
