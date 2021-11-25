@@ -21,6 +21,12 @@ namespace Dx_Util {
 		int posBytePos, int texBytePos, int tangentBytePos);
 
 	CoordTf::VECTOR3 normalRecalculation(CoordTf::VECTOR3 Nor[3]);
+
+	LPCWSTR charToLPCWSTR(char* str);
+
+	char* strcat2(char* s1, char* s2);
+
+	LPCWSTR charToLPCWSTR(char* s1, char* s2);
 }
 
 #endif

@@ -11,31 +11,26 @@
 #include "DxSkinnedCom.h"
 #include "../../../FbxLoader/FbxLoader.h"
 
-class SkinMesh_sub {
-
-protected:
-	friend SkinMesh;
-	FbxLoader* fbxL = nullptr;
-	float end_frame = 0.0f;
-	float current_frame = 0.0f;
-	bool centering = false;
-	bool offset = false;
-	float cx = 0.0f;
-	float cy = 0.0f;
-	float cz = 0.0f;
-	float connect_step;
-	CoordTf::MATRIX rotZYX = {};
-
-	SkinMesh_sub();
-	~SkinMesh_sub();
-	bool Create(CHAR* szFileName);
-};
-
 class SkinMesh {
 
-protected:
-	friend SkinMesh_sub;
-	friend Dx12Process;
+private:
+	class SkinMesh_sub {
+	public:
+		FbxLoader* fbxL = nullptr;
+		float end_frame = 0.0f;
+		float current_frame = 0.0f;
+		bool centering = false;
+		bool offset = false;
+		float cx = 0.0f;
+		float cy = 0.0f;
+		float cz = 0.0f;
+		float connect_step;
+		CoordTf::MATRIX rotZYX = {};
+
+		SkinMesh_sub();
+		~SkinMesh_sub();
+		bool Create(CHAR* szFileName);
+	};
 
 	bool alpha = false;
 	bool blend = false;
@@ -156,6 +151,10 @@ public:
 	void setAllRefractiveIndex(float Index) {
 		for (int i = 0; i < numMesh; i++)
 			mObj[i].setRefractiveIndex(Index);
+	}
+	void SetName(char* name) {
+		for (int i = 0; i < numMesh; i++)
+			mObj[i].SetName(name);
 	}
 };
 

@@ -58,6 +58,7 @@ private:
 	ComPtr<IDXGISwapChain3> mSwapChain;
 	std::unique_ptr<Dx_Device> device = nullptr;
 	bool DXR_CreateResource = false;
+	bool ReportLiveDeviceObjectsOn = false;
 
 	//MultiSampleレベルチェック
 	bool m4xMsaaState = false;
@@ -140,22 +141,22 @@ private:
 	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
 	~Dx12Process();
 
+	void Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+
+	void InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
+		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
+
+public:
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 		const void* initData, LONG_PTR RowPitch);
 
 	ComPtr<ID3D12Resource> CreateDefaultBuffer(int com_no,
 		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
 
-	void Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
-
-	void InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
-		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
-
 	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
 
-public:
 	static void InstanceCreate();
 	static Dx12Process* GetInstance();
 	static void DeleteInstance();
@@ -210,7 +211,7 @@ public:
 	float Getaspect();
 	float GetNearPlane();
 	float GetFarPlane();
-	InternalTexture* getInternalTexture(int index) { return &texture[index]; }
+	InternalTexture* getInternalTexture(int index) { return &texture[index + 2]; }
 	void wireFrameTest(bool f) { wireframe = f; }
 	void setPerspectiveFov(float ViewAngle, float NearPlane, float FarPlane);
 
@@ -221,6 +222,8 @@ public:
 		setStreamOutputSwapIndex(sync);
 		setRaytraceSwapIndex(1 - sync);
 	}
+
+	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
 };
 
 struct VertexView {
@@ -514,6 +517,7 @@ protected:
 	Dx12Process* dx = nullptr;
 	ID3D12GraphicsCommandList* mCommandList = nullptr;
 	int com_no = 0;
+	char objName[256] = {};
 
 	//テクスチャ
 	std::unique_ptr<ComPtr<ID3D12Resource>[]> textureUp = nullptr;
@@ -525,7 +529,7 @@ protected:
 	D3D12_TEXTURE_COPY_LOCATION dest = {};
 	D3D12_TEXTURE_COPY_LOCATION src = {};
 
-	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to);
+	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName);
 
 	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav, UINT numCbvPara, UINT RegisterStNoCbv);
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
@@ -584,11 +588,12 @@ protected:
 
 public:
 	~Common() { ARR_DELETE(movOn); }
+	void SetName(char* name);
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
 	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
-	InternalTexture* getInternalTexture(int index) { return &dx->texture[index]; }
+	InternalTexture* getInternalTexture(int index) { return &dx->texture[index + 2]; }
 	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
 };
 

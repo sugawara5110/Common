@@ -154,7 +154,7 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 	te.normal = -1;
 	te.specular = -1;
 
-	createTextureResource(0, 1, &te);
+	createTextureResource(0, 1, &te, objName);
 	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
 	Dx_Device* d = dx->device.get();
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDescHeap->GetCPUDescriptorHandleForHeapStart());

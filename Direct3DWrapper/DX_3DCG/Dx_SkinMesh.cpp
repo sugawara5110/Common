@@ -11,17 +11,17 @@
 
 using namespace std;
 
-SkinMesh_sub::SkinMesh_sub() {
+SkinMesh::SkinMesh_sub::SkinMesh_sub() {
 	fbxL = new FbxLoader();
 	MatrixIdentity(&rotZYX);
 	connect_step = 3000.0f;
 }
 
-SkinMesh_sub::~SkinMesh_sub() {
+SkinMesh::SkinMesh_sub::~SkinMesh_sub() {
 	S_DELETE(fbxL);
 }
 
-bool SkinMesh_sub::Create(CHAR *szFileName) {
+bool SkinMesh::SkinMesh_sub::Create(CHAR* szFileName) {
 	return fbxL->setFbxFile(szFileName);
 }
 

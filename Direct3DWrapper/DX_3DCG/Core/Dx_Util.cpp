@@ -6,6 +6,10 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx_Util.h"
+#include <tchar.h>
+#include <locale.h>
+#include <stdio.h>
+#include <string.h>
 
 char* Dx_Util::GetNameFromPass(char* pass) {
 
@@ -124,4 +128,33 @@ CoordTf::VECTOR3 Dx_Util::normalRecalculation(CoordTf::VECTOR3 N[3]) {
 	VECTOR3 vec = {};
 	VectorCross(&vec, &vecX, &vecY);
 	return vec;
+}
+
+LPCWSTR Dx_Util::charToLPCWSTR(char* str) {
+	//ƒƒP[ƒ‹Žw’è
+	setlocale(LC_ALL, "japanese");
+	static TCHAR buf[256] = {};
+	buf[255] = '\0';
+	//char¨TCHAR(wchar)•ÏŠ·
+	int size = (int)strlen(str) + 1;
+	if (size > 255)size = 255;
+	mbstowcs(buf, str, size);
+	static LPCWSTR buf2;
+	buf2 = buf;
+	return buf2;
+}
+
+char* Dx_Util::strcat2(char* s1, char* s2) {
+	static char str[256] = {};
+	str[255] = '\0';
+	if (strlen(s1) + strlen(s2) > 254)return "The number of characters exceeds 254.";
+	memcpy(str, s1, sizeof(char) * strlen(s1));
+	str[strlen(s1)] = '_';
+	str[strlen(s1) + 1] = '\0';
+	strcat(str, s2);
+	return str;
+}
+
+LPCWSTR Dx_Util::charToLPCWSTR(char* s1, char* s2) {
+	return charToLPCWSTR(strcat2(s1, s2));
 }

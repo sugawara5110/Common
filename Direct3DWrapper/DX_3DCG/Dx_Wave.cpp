@@ -98,6 +98,9 @@ bool Wave::ComCreate() {
 		ErrorMessage("Wave::ComCreate Error!!");
 		return false;
 	}
+	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", mObj.objName));
+	mInputUploadBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputUploadBuffer", mObj.objName));
+	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", mObj.objName));
 
 	dx->dx_sub[mObj.com_no].ResourceBarrier(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

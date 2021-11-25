@@ -256,7 +256,7 @@ bool BasicPolygon::setDescHeap(const int numSrvTex,
 			te[tCnt].specular = dpara.material[i].spetex_no;
 		tCnt++;
 	}
-	createTextureResource(0, tCnt, te);
+	createTextureResource(0, tCnt, te, objName);
 	setTextureDXR();
 
 	int numUav = 0;

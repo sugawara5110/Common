@@ -77,6 +77,7 @@ public:
 	void setRefractiveIndex(float index) {
 		mObj.setRefractiveIndex(index);
 	}
+	void SetName(char* name) { mObj.SetName(name); }
 };
 
 #endif

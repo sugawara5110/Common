@@ -38,6 +38,19 @@ void Dx12Process::DeleteInstance() {
 
 Dx12Process::~Dx12Process() {
 	ARR_DELETE(texture);
+
+#if defined(DEBUG) || defined(_DEBUG) 
+	//ReportLiveDeviceObjectsを呼び出したタイミングでの
+	//生存オブジェクトを調べる
+	if (ReportLiveDeviceObjectsOn) {
+		ID3D12DebugDevice* debugInterface;
+		if (SUCCEEDED(device->getDevice()->QueryInterface(&debugInterface)))
+		{
+			debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+			debugInterface->Release();
+		}
+	}
+#endif
 }
 
 void Dx12Process::RunGpuNotLock() {

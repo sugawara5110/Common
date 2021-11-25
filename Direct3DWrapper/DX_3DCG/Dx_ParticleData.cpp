@@ -222,7 +222,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	te.normal = dx->GetTexNumber("dummyNor.");;
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
-	createTextureResource(0, 1, &te);
+	createTextureResource(0, 1, &te, objName);
 	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
 	if (mDescHeap == nullptr)return false;
 	Dx_Device* d = dx->device.get();

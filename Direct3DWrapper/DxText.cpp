@@ -114,6 +114,7 @@ DxText::DxText() {
 	//文字列用バッファ初期化
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		Using[i] = false;
+		text[i].SetName("DxText_text");
 		text[i].SetCommandList(0);
 		text[i].GetVBarray2D(1);
 		text[i].TexOn();
@@ -124,6 +125,7 @@ DxText::DxText() {
 
 	//可変用
 	for (int i = 0; i < VAL_PCS; i++) {
+		value[i].SetName("DxText_value");
 		value[i].SetCommandList(0);
 		value[i].GetVBarray2D(1);
 		value[i].TexOn();

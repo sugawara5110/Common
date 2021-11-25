@@ -4,7 +4,13 @@
 //**                                                                                     **//
 //*****************************************************************************************//
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
+
+void Common::SetName(char* name) {
+	if (strlen(name) > 255)return;
+	strcpy(objName, name);
+}
 
 void Common::SetCommandList(int no) {
 	com_no = no;
@@ -61,7 +67,7 @@ HRESULT Common::SetTextureMPixel(BYTE* frame, int ind) {
 	return S_OK;
 }
 
-HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to) {
+HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName) {
 
 	textureUp = std::make_unique<ComPtr<ID3D12Resource>[]>(MaterialNum * 3);
 	texture = std::make_unique<ComPtr<ID3D12Resource>[]>(MaterialNum * 3);
@@ -80,22 +86,28 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 	movOnSize = MaterialNum;
 
 	HRESULT hr = S_OK;
-	int resCnt = resourceStartIndex - 1;
+	int resCnt = resourceStartIndex;
 	for (int i = 0; i < MaterialNum; i++) {
 		//diffuse, 動画テクスチャ
 		if (to[i].diffuse < 0 || movOn[i].m_on) {
 			hr = dx->device->textureInit(movOn[i].width, movOn[i].height,
-				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				textureUp[resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				DXGI_FORMAT_R8G8B8A8_UNORM,
 				D3D12_RESOURCE_STATE_GENERIC_READ);
 			movOn[i].resIndex = resCnt;
+			textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR("movTexUp", ObjName));
+			texture[resCnt]->SetName(Dx_Util::charToLPCWSTR("movTex", ObjName));
+			resCnt++;
 		}
 		else
 		{
 			InternalTexture* tex = &dx->texture[to[i].diffuse];
 			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
-				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				textureUp[resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				tex->width, tex->RowPitch, tex->height);
+			textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR("diffuseTexUp", ObjName));
+			texture[resCnt]->SetName(Dx_Util::charToLPCWSTR("diffuseTex", ObjName));
+			resCnt++;
 		}
 		if (FAILED(hr)) {
 			ErrorMessage("Common::createTextureResource Error!!");
@@ -105,8 +117,11 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 		if (to[i].normal >= 0) {
 			InternalTexture* tex = &dx->texture[to[i].normal];
 			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
-				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				textureUp[resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				tex->width, tex->RowPitch, tex->height);
+			textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR("normalTexUp", ObjName));
+			texture[resCnt]->SetName(Dx_Util::charToLPCWSTR("normalTex", ObjName));
+			resCnt++;
 		}
 		if (FAILED(hr)) {
 			ErrorMessage("Common::createTextureResource Error!!");
@@ -116,8 +131,11 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 		if (to[i].specular >= 0) {
 			InternalTexture* tex = &dx->texture[to[i].specular];
 			hr = dx->createTexture(com_no, tex->byteArr, tex->format,
-				textureUp[++resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
+				textureUp[resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				tex->width, tex->RowPitch, tex->height);
+			textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR("specularTexUp", ObjName));
+			texture[resCnt]->SetName(Dx_Util::charToLPCWSTR("specularTex", ObjName));
+			resCnt++;
 		}
 		if (FAILED(hr)) {
 			ErrorMessage("Common::createTextureResource Error!!");
