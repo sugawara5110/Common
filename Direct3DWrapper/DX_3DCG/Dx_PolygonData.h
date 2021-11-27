@@ -55,7 +55,7 @@ public:
 			getVertexBuffer(sizeof(VertexBC), numVer);
 		}
 		if (typeid(VertexBC) != typeid(T) && typeid(Vertex) != typeid(T)) {
-			ErrorMessage("PolygonData::setVertex Error!!");
+			Dx_Util::ErrorMessage("PolygonData::setVertex Error!!");
 			return;
 		}
 		index = new UINT * [dpara.NumMaterial];

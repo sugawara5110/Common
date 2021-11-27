@@ -34,8 +34,6 @@ DxPooling::DxPooling(UINT width, UINT height, UINT poolNum, UINT inputsetnum) {
 	OutWid = Width / PONUM;
 	OutHei = Height / PONUM;
 
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Pooling>(1);
 	cb.WidHei.x = (float)Width;
 	cb.WidHei.y = (float)Height;

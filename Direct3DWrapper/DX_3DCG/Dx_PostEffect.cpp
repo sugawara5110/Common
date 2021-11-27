@@ -30,15 +30,16 @@ bool PostEffect::ComCreateDepthOfField() {
 
 bool PostEffect::ComCreate(int no) {
 
-	mDescHeap = dx->device->CreateDescHeap(4);
+	Dx_Device* device = Dx_Device::GetInstance();
+	mDescHeap = device->CreateDescHeap(4);
 	if (!mDescHeap) {
-		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+		Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
-	if (FAILED(dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mOutputBuffer, dx->mClientWidth, dx->mClientHeight))) {
-		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mOutputBuffer, dx->mClientWidth, dx->mClientHeight))) {
+		Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
-	if (FAILED(dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBuffer, dx->mClientWidth, dx->mClientHeight))) {
-		ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBuffer, dx->mClientWidth, dx->mClientHeight))) {
+		Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
 	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
 	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
@@ -58,15 +59,15 @@ bool PostEffect::ComCreate(int no) {
 	srvDesc.Format = dx->mDepthStencilSrvFormat;
 	srvDesc.Texture2D.MipLevels = dx->mDepthStencilBuffer.Get()->GetDesc().MipLevels;
 
-	dx->getDevice()->CreateShaderResourceView(dx->mDepthStencilBuffer.Get(), &srvDesc, hDescriptor);
+	device->getDevice()->CreateShaderResourceView(dx->mDepthStencilBuffer.Get(), &srvDesc, hDescriptor);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
 
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
-	dx->device->CreateCbv(hDescriptor, &ad, &size, 1);
-	dx->getDevice()->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	device->CreateCbv(hDescriptor, &ad, &size, 1);
+	device->getDevice()->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.ptr += dx->mCbvSrvUavDescriptorSize;
-	dx->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
 	dx->dx_sub[com_no].ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

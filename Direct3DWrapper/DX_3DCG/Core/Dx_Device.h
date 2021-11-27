@@ -7,7 +7,7 @@
 #ifndef Class_Dx_Device_Header
 #define Class_Dx_Device_Header
 
-#include "DxStruct.h"
+#include "Dx_Util.h"
 #include <d3d12.h>
 #include <d3d10_1.h>
 
@@ -18,7 +18,14 @@ using Microsoft::WRL::ComPtr;
 
 class Dx_Device {
 
+private:
+	static Dx_Device* dev;
+
 public:
+	static void InstanceCreate();
+	static Dx_Device* GetInstance();
+	static void DeleteInstance();
+
 	HRESULT createDevice();
 	~Dx_Device();
 
@@ -64,7 +71,5 @@ public:
 	void CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
 		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
 };
-
-void ErrorMessage(char* E_mes);
 
 #endif

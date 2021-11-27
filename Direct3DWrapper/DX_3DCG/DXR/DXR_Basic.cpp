@@ -140,13 +140,14 @@ void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info = {};
 	//AccelerationStructureを構築する為のリソース要件を取得(infoに入る)
-	dx->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+	Dx_Device* device = Dx_Device::GetInstance();
+	device->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
 	if (!bLB.firstSet) {
 		//リソース要件を元にUAV作成
-		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
+		device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
+		device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
 			D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 	}
 
@@ -232,15 +233,16 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
 	//AccelerationStructureを構築する為のリソース要件を取得(infoに入る)
-	dx->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+	Dx_Device* device = Dx_Device::GetInstance();
+	device->getDevice()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
 	if (!tLB.firstSet) {
 		//リソース要件を元にUAV作成
-		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pScratch.GetAddressOf(),
+		device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pScratch.GetAddressOf(),
 			info.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pResult.GetAddressOf(),
+		device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pResult.GetAddressOf(),
 			info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
-		dx->device->createUploadResource(tLB.pInstanceDesc.GetAddressOf(),
+		device->createUploadResource(tLB.pInstanceDesc.GetAddressOf(),
 			sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
 	}
 
@@ -317,7 +319,7 @@ static ComPtr<ID3DBlob> CompileLibrary(char* shaderByte, const WCHAR* filename, 
 	//コンパイルライブラリ初期化
 	HRESULT hr_Hel = gDxcDllHelper.Initialize();
 	if (FAILED(hr_Hel)) {
-		ErrorMessage("DXR CompileLibrary gDxcDllHelper.Initialize() Error");
+		Dx_Util::ErrorMessage("DXR CompileLibrary gDxcDllHelper.Initialize() Error");
 	}
 	ComPtr<IDxcCompiler> pCompiler;
 	ComPtr<IDxcLibrary> pLibrary;
@@ -330,14 +332,14 @@ static ComPtr<ID3DBlob> CompileLibrary(char* shaderByte, const WCHAR* filename, 
 	HRESULT hr_Li = pLibrary->CreateBlobWithEncodingFromPinned((LPBYTE)shaderByte,
 		size, 0, pTextBlob.GetAddressOf());
 	if (FAILED(hr_Li)) {
-		ErrorMessage("DXR CompileLibrary CreateBlobWithEncodingFromPinned Error");
+		Dx_Util::ErrorMessage("DXR CompileLibrary CreateBlobWithEncodingFromPinned Error");
 	}
 	//Compile
 	ComPtr<IDxcOperationResult> pResult;
 	HRESULT hr_Com = pCompiler->Compile(pTextBlob.Get(), filename, L"", targetString,
 		nullptr, 0, nullptr, 0, nullptr, pResult.GetAddressOf());
 	if (FAILED(hr_Com)) {
-		ErrorMessage("DXR CompileLibrary Compile Error");
+		Dx_Util::ErrorMessage("DXR CompileLibrary Compile Error");
 	}
 
 	//Compile結果
@@ -347,8 +349,8 @@ static ComPtr<ID3DBlob> CompileLibrary(char* shaderByte, const WCHAR* filename, 
 	{
 		ComPtr<IDxcBlobEncoding> pError;
 		pResult.Get()->GetErrorBuffer(pError.GetAddressOf());
-		ErrorMessage("DXR compileLibrary Error");
-		ErrorMessage((char*)pError.Get()->GetBufferPointer());
+		Dx_Util::ErrorMessage("DXR compileLibrary Error");
+		Dx_Util::ErrorMessage((char*)pError.Get()->GetBufferPointer());
 		return nullptr;
 	}
 
@@ -442,7 +444,7 @@ struct ExportAssociation {
 };
 
 ComPtr<ID3D12RootSignature> DXR_Basic::createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc) {
-	return Dx12Process::GetInstance()->device->CreateRsCommon(&desc);
+	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
 struct LocalRootSignature {
@@ -724,21 +726,22 @@ void DXR_Basic::createRtPipelineState() {
 	desc.pSubobjects = subobjects.data();
 	desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
 
-	HRESULT hr = dx->getDevice()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
+	HRESULT hr = Dx_Device::GetInstance()->getDevice()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
 	if (FAILED(hr)) {
-		ErrorMessage("DXR_Basic::createRtPipelineState() Error");
+		Dx_Util::ErrorMessage("DXR_Basic::createRtPipelineState() Error");
 	}
 }
 
 void DXR_Basic::createShaderResources() {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpOutputResource.GetAddressOf(),
+	Dx_Device* device = Dx_Device::GetInstance();
+	device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpOutputResource.GetAddressOf(),
 		dx->mClientWidth,
 		dx->mClientHeight,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	dx->device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpDepthResource.GetAddressOf(),
+	device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpDepthResource.GetAddressOf(),
 		dx->mClientWidth,
 		dx->mClientHeight,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
@@ -761,18 +764,18 @@ void DXR_Basic::createShaderResources() {
 
 	for (int heapInd = 0; heapInd < 2; heapInd++) {
 		//Local
-		mpSrvUavCbvHeap[heapInd] = dx->device->CreateDescHeap(numHeap);
+		mpSrvUavCbvHeap[heapInd] = device->CreateDescHeap(numHeap);
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[heapInd].Get()->GetCPUDescriptorHandleForHeapStart();
 		UINT offsetSize = dx->mCbvSrvUavDescriptorSize;
 
 		//UAVを作成 gOutput(u0)
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-		dx->getDevice()->CreateUnorderedAccessView(mpOutputResource.Get(), nullptr, &uavDesc, srvHandle);
+		device->getDevice()->CreateUnorderedAccessView(mpOutputResource.Get(), nullptr, &uavDesc, srvHandle);
 		srvHandle.ptr += offsetSize;
 
 		//UAVを作成 gDepthOut(u1)
-		dx->getDevice()->CreateUnorderedAccessView(mpDepthResource.Get(), nullptr, &uavDesc, srvHandle);
+		device->getDevice()->CreateUnorderedAccessView(mpDepthResource.Get(), nullptr, &uavDesc, srvHandle);
 		srvHandle.ptr += offsetSize;
 
 		//SRVを作成 Indices(t0)
@@ -781,7 +784,7 @@ void DXR_Basic::createShaderResources() {
 				for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
 					IndexView& iv = PD[i]->IviewDXR[j];
 					UINT size[1] = { sizeof(uint32_t) };
-					dx->device->CreateSrvBuffer(srvHandle, iv.IndexBufferGPU.GetAddressOf(), 1, size);
+					device->CreateSrvBuffer(srvHandle, iv.IndexBufferGPU.GetAddressOf(), 1, size);
 				}
 			}
 		}
@@ -789,20 +792,20 @@ void DXR_Basic::createShaderResources() {
 		//CBVを作成 cbuffer global(b0)
 		D3D12_GPU_VIRTUAL_ADDRESS ad0[1] = { sCB->Resource()->GetGPUVirtualAddress() };
 		UINT size0[1] = { sCB->getSizeInBytes() };
-		dx->device->CreateCbv(srvHandle, ad0, size0, 1);
+		device->CreateCbv(srvHandle, ad0, size0, 1);
 
 		//CBVを作成 material(b1)
 		for (UINT i = 0; i < numMaterial; i++) {
 			D3D12_GPU_VIRTUAL_ADDRESS ad1[1] = { material->getGPUVirtualAddress(i) };
 			UINT size1[1] = { material->getSizeInBytes() };
-			dx->device->CreateCbv(srvHandle, ad1, size1, 1);
+			device->CreateCbv(srvHandle, ad1, size1, 1);
 		}
 
 		//CBVを作成 wvp(b2)
 		for (UINT i = 0; i < maxNumInstancing; i++) {
 			D3D12_GPU_VIRTUAL_ADDRESS ad2[1] = { wvp->getGPUVirtualAddress(i) };
 			UINT size2[1] = { wvp->getSizeInBytes() };
-			dx->device->CreateCbv(srvHandle, ad2, size2, 1);
+			device->CreateCbv(srvHandle, ad2, size2, 1);
 		}
 
 		//Global
@@ -823,7 +826,7 @@ void DXR_Basic::createShaderResources() {
 							res = PD[i]->speTex[j];
 							break;
 						}
-						dx->device->CreateSrvTexture(srvHandle, &res, 1);
+						device->CreateSrvTexture(srvHandle, &res, 1);
 					}
 				}
 			}
@@ -835,7 +838,7 @@ void DXR_Basic::createShaderResources() {
 				for (UINT t = 0; t < PD[i]->NumMaxInstance; t++) {
 					VertexView& vv = PD[i]->updateDXR[heapInd].VviewDXR[j][t];
 					UINT size[1] = { vv.VertexByteStride };
-					dx->device->CreateSrvBuffer(srvHandle, vv.VertexBufferGPU.GetAddressOf(), 1, size);
+					device->CreateSrvBuffer(srvHandle, vv.VertexBufferGPU.GetAddressOf(), 1, size);
 				}
 			}
 		}
@@ -853,7 +856,7 @@ void DXR_Basic::createShaderResources() {
 	samLinear.MinLOD = 0.0f;
 	samLinear.MaxLOD = D3D12_FLOAT32_MAX;
 
-	mpSamplerHeap = dx->device->CreateSamplerDescHeap(samLinear);
+	mpSamplerHeap = device->CreateSamplerDescHeap(samLinear);
 }
 
 void DXR_Basic::createShaderTable() {
@@ -870,7 +873,7 @@ void DXR_Basic::createShaderTable() {
 	mShaderTableEntrySize = ALIGNMENT_TO(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mShaderTableEntrySize);
 	uint32_t shaderTableSize = mShaderTableEntrySize * 5;//raygen + miss * 2 + hit * 2
 
-	Dx12Process::GetInstance()->device->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
+	Dx_Device::GetInstance()->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
 
 	uint8_t* pData;
 	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);

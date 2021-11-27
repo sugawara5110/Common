@@ -72,7 +72,7 @@ void TextObj::SetText(int com) {
 		Twidth, Twidth * 4, Theight);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
-	dx->device->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
+	Dx_Device::GetInstance()->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
 
 	ARR_DELETE(pBits);
 	ARR_DELETE(Tm);

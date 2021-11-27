@@ -16,7 +16,6 @@ DxGradCAM::DxGradCAM(UINT SizeFeatureMapW, UINT SizeFeatureMapH, UINT NumGradien
 	cb.NumConvFilElement = NumGradientEl;
 	inputSetNum = inputsetnum;
 	inputSetNumCur = inputSetNum;
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CBGradCAM>(1);
 	mObjectCB->CopyData(0, cb);
 }
@@ -50,7 +49,8 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	uavHeapDesc.NumDescriptors = 1;
 	uavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	uavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	dx->getDevice()->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
+	Dx_Device* device = Dx_Device::GetInstance();
+	device->getDevice()->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
 
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -67,7 +67,7 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	//RWTexture2D—pgInputCol
-	dx->getDevice()->CreateCommittedResource(
+	device->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
@@ -96,7 +96,7 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	//up—pgInputCol
-	dx->getDevice()->CreateCommittedResource(
+	device->getDevice()->CreateCommittedResource(
 		&HeapPropsUp,
 		D3D12_HEAP_FLAG_NONE,
 		&BufferDesc,
@@ -110,7 +110,7 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap->GetCPUDescriptorHandleForHeapStart());
-	dx->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	device->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));

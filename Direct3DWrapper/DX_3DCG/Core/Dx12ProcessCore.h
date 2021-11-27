@@ -13,7 +13,7 @@
 #endif
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "Dx_Util.h"
+#include "Dx_ShaderHolder.h"
 #include <DirectXColors.h>
 #include <stdlib.h>
 #include <string>
@@ -29,8 +29,6 @@ using Microsoft::WRL::ComPtr;
 class Dx12Process final {
 
 private:
-	template<class T>
-	friend class ConstantBuffer;
 	friend MeshData;
 	friend BasicPolygon;
 	friend PolygonData;
@@ -41,22 +39,12 @@ private:
 	friend Wave;
 	friend PostEffect;
 	friend Common;
-	friend DxNNCommon;
-	friend DxNeuralNetwork;
-	friend DxPooling;
-	friend DxConvolution;
-	friend SearchPixel;
-	friend DxGradCAM;
-	friend DxActivation;
-	friend DxOptimizer;
 	friend DXR_Basic;
 	friend SkinnedCom;
 	friend StreamView;
-	friend TextObj;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<IDXGISwapChain3> mSwapChain;
-	std::unique_ptr<Dx_Device> device = nullptr;
 	bool DXR_CreateResource = false;
 	bool ReportLiveDeviceObjectsOn = false;
 
@@ -168,7 +156,6 @@ public:
 
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
-	ID3D12Device5* getDevice() { return device->getDevice(); }
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
 	void createTextureArr(int numTexArr, int resourceIndex, char* texName,
@@ -296,9 +283,9 @@ struct StreamView {
 	}
 
 	StreamView() {
-		Dx12Process* dx = Dx12Process::GetInstance();
-		BufferFilledSizeBufferGPU = dx->device->CreateStreamBuffer(sizeof(UINT64));
-		dx->device->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
+		Dx_Device* device = Dx_Device::GetInstance();
+		BufferFilledSizeBufferGPU = device->CreateStreamBuffer(sizeof(UINT64));
+		device->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
 	}
 
 	void ResetFilledSizeBuffer(int com) {
@@ -353,17 +340,15 @@ private:
 	ComPtr<ID3D12Resource> mUploadBuffer;
 	BYTE* mMappedData = nullptr;
 	UINT mElementByteSize = 0;
-	Dx12Process* dx = nullptr;
 
 public:
 	ConstantBuffer(UINT elementCount) {
 
-		dx = Dx12Process::GetInstance();
 		//コンスタントバッファサイズは256バイト単位でアライメント(例: 0→0, 10→256, 300→512)
 		mElementByteSize = ALIGNMENT_TO(256, sizeof(T));
 
-		if (FAILED(dx->device->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
-			ErrorMessage("ConstantBufferエラー");
+		if (FAILED(Dx_Device::GetInstance()->createUploadResource(&mUploadBuffer, (UINT64)mElementByteSize * elementCount))) {
+			Dx_Util::ErrorMessage("ConstantBufferエラー");
 		}
 
 		mUploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mMappedData));
@@ -510,7 +495,7 @@ struct ParameterDXR {
 class Common {
 
 protected:
-	Common() {}//外部からのオブジェクト生成禁止
+	Common();//外部からのオブジェクト生成禁止
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
 

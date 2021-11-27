@@ -16,7 +16,7 @@ bool Dx_CommandListObj::ListCreate(bool Compute, ID3D12Device5* dev) {
 		if (FAILED(dev->CreateCommandAllocator(
 			type,
 			IID_PPV_ARGS(mCmdListAlloc[i].GetAddressOf())))) {
-			ErrorMessage("CreateCommandAllocator Error");
+			Dx_Util::ErrorMessage("CreateCommandAllocator Error");
 			return false;
 		}
 	}
@@ -28,7 +28,7 @@ bool Dx_CommandListObj::ListCreate(bool Compute, ID3D12Device5* dev) {
 		mCmdListAlloc[0].Get(),
 		nullptr,
 		IID_PPV_ARGS(mCommandList.GetAddressOf())))) {
-		ErrorMessage("CreateCommandList Error");
+		Dx_Util::ErrorMessage("CreateCommandList Error");
 		return false;
 	}
 
@@ -98,7 +98,7 @@ void Dx_CommandListObj::delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RE
 	D3D12_RESOURCE_STATES after) {
 
 	if (beforeCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
+		Dx_Util::ErrorMessage("ResourceBarrier個数上限超えてます!");
 	}
 	D3D12_RESOURCE_BARRIER& ba = beforeBa[beforeCnt];
 	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -113,7 +113,7 @@ void Dx_CommandListObj::delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RE
 void Dx_CommandListObj::delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
 
 	if (copyCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
+		Dx_Util::ErrorMessage("ResourceBarrier個数上限超えてます!");
 	}
 	copy[copyCnt].dest = dest;
 	copy[copyCnt].src = src;
@@ -124,7 +124,7 @@ void Dx_CommandListObj::delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RES
 	D3D12_RESOURCE_STATES after) {
 
 	if (afterCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
+		Dx_Util::ErrorMessage("ResourceBarrier個数上限超えてます!");
 	}
 	D3D12_RESOURCE_BARRIER& ba = afterBa[afterCnt];
 	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -139,7 +139,7 @@ void Dx_CommandListObj::delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RES
 void Dx_CommandListObj::delayUavResourceBarrier(ID3D12Resource* res) {
 
 	if (uavCnt >= NumResourceBarrier) {
-		ErrorMessage("ResourceBarrier個数上限超えてます!");
+		Dx_Util::ErrorMessage("ResourceBarrier個数上限超えてます!");
 	}
 	D3D12_RESOURCE_BARRIER& ba = uavBa[uavCnt];
 	//バリアしたリソースへのUAVアクセスに於いて次のUAVアクセス開始前に現在のUAVアクセスが終了する必要がある事を示す

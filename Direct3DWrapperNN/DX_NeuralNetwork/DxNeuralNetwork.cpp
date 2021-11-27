@@ -12,8 +12,6 @@
 
 DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inputsetnum) {
 
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_NeuralNetwork>(1);
 
 	srand((unsigned)time(NULL));
@@ -575,4 +573,12 @@ void DxNeuralNetwork::LoadData(char* pass) {
 	dx->End(com_no);
 	dx->RunGpu();
 	dx->WaitFence();
+}
+
+float* DxNeuralNetwork::getWeightArr() {
+	return weight;
+}
+
+float DxNeuralNetwork::getWeight(int depthIndex, int elIndex) {
+	return weight[NumWeightStIndex[depthIndex] + elIndex];
 }

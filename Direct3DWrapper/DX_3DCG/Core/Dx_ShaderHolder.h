@@ -14,7 +14,6 @@
 #pragma comment(lib,"d3dcompiler.lib")
 
 class addChar {
-
 public:
 	char* str = nullptr;
 	size_t size = 0;
@@ -29,8 +28,6 @@ public:
 class Dx_ShaderHolder {
 
 private:
-	template<class T>
-	friend class ConstantBuffer;
 	friend Dx12Process;
 	friend MeshData;
 	friend BasicPolygon;
@@ -38,22 +35,11 @@ private:
 	friend PolygonData2D;
 	friend ParticleData;
 	friend SkinMesh;
-	friend Dx_CommandListObj;
 	friend Wave;
 	friend PostEffect;
 	friend Common;
-	friend DxNNCommon;
-	friend DxNeuralNetwork;
-	friend DxPooling;
-	friend DxConvolution;
-	friend SearchPixel;
-	friend DxGradCAM;
-	friend DxActivation;
-	friend DxOptimizer;
 	friend DXR_Basic;
 	friend SkinnedCom;
-	friend StreamView;
-	friend TextObj;
 
 	//シェーダーバイトコード
 	ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;

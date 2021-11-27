@@ -94,6 +94,8 @@ public:
 	float GetErrorEl(UINT arrNum, UINT ElNum, UINT inputsetInd = 0);
 	void SetInputResource(ID3D12Resource* res);
 	void SetInErrorResource(ID3D12Resource* res);
+	float* getWeightArr();
+	float getWeight(int depthIndex, int elIndex);
 	ID3D12Resource* GetOutErrorResource();
 	ID3D12Resource* GetOutputResource();
 	void SaveData(char* pass = "save/save.da");

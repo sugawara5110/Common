@@ -75,8 +75,6 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, bool deconvol
 	bias = new float[FilNum];
 	ZeroMemory(bias, sizeof(float) * FilNum);
 
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Convolution>(1);
 	cb.WidHei.x = (float)Width;
 	cb.WidHei.y = (float)Height;

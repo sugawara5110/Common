@@ -17,8 +17,6 @@ DxActivation::DxActivation(UINT numNode, UINT inputsetnum) {
 	ZeroMemory(output, sizeof(float) * NumNode * inputSetNum);
 	ZeroMemory(outerr, sizeof(float) * NumNode * inputSetNum);
 
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Activation>(1);
 	cb.ActivationAlpha = 0.0f;
 	cb.NumNode = NumNode;

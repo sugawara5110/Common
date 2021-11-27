@@ -7,6 +7,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
 
+Common::Common() {
+	dx = Dx12Process::GetInstance();
+	mCommandList = dx->dx_sub[0].mCommandList.Get();
+}
+
 void Common::SetName(char* name) {
 	if (strlen(name) > 255)return;
 	strcpy(objName, name);
@@ -59,7 +64,7 @@ HRESULT Common::SetTextureMPixel(BYTE* frame, int ind) {
 	dx->dx_sub[com_no].ResourceBarrier(texture[index].Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 	HRESULT hr = dx->CopyResourcesToGPU(com_no, textureUp[index].Get(), texture[index].Get(), frame, width * 4);
 	if (FAILED(hr)) {
-		ErrorMessage("Common::SetTextureMPixel Error!!");
+		Dx_Util::ErrorMessage("Common::SetTextureMPixel Error!!");
 		return hr;
 	}
 	dx->dx_sub[com_no].ResourceBarrier(texture[index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -85,12 +90,13 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 	}
 	movOnSize = MaterialNum;
 
+	Dx_Device* device = Dx_Device::GetInstance();
 	HRESULT hr = S_OK;
 	int resCnt = resourceStartIndex;
 	for (int i = 0; i < MaterialNum; i++) {
 		//diffuse, 動画テクスチャ
 		if (to[i].diffuse < 0 || movOn[i].m_on) {
-			hr = dx->device->textureInit(movOn[i].width, movOn[i].height,
+			hr = device->textureInit(movOn[i].width, movOn[i].height,
 				textureUp[resCnt].GetAddressOf(), texture[resCnt].GetAddressOf(),
 				DXGI_FORMAT_R8G8B8A8_UNORM,
 				D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -110,7 +116,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 			resCnt++;
 		}
 		if (FAILED(hr)) {
-			ErrorMessage("Common::createTextureResource Error!!");
+			Dx_Util::ErrorMessage("Common::createTextureResource Error!!");
 			return hr;
 		}
 		//normalMapが存在する場合
@@ -124,7 +130,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 			resCnt++;
 		}
 		if (FAILED(hr)) {
-			ErrorMessage("Common::createTextureResource Error!!");
+			Dx_Util::ErrorMessage("Common::createTextureResource Error!!");
 			return hr;
 		}
 		//specularMapが存在する場合
@@ -138,7 +144,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 			resCnt++;
 		}
 		if (FAILED(hr)) {
-			ErrorMessage("Common::createTextureResource Error!!");
+			Dx_Util::ErrorMessage("Common::createTextureResource Error!!");
 			return hr;
 		}
 	}
@@ -235,7 +241,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER
 	desc.pStaticSamplers = &linearWrap;
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	return dx->device->CreateRsCommon(&desc);
+	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
@@ -246,7 +252,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_RO
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	return dx->device->CreateRsCommon(&desc);
+	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
 ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
@@ -260,7 +266,7 @@ ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT |
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	return dx->device->CreateRsCommon(&desc);
+	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
@@ -270,7 +276,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 	desc.pParameters = slotRootParameter;
 	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
-	return dx->device->CreateRsCommon(&desc);
+	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
 ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
@@ -434,9 +440,9 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	psoDesc.DSVFormat = dx->mDepthStencilFormat;
 
 	HRESULT hr;
-	hr = dx->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+	hr = Dx_Device::GetInstance()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
 	if (FAILED(hr)) {
-		ErrorMessage("Common::CreatePSO Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Common::CreatePSO Error!!"); return nullptr;
 	}
 
 	return pso;
@@ -499,9 +505,9 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 	PsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
 	HRESULT hr;
-	hr = dx->getDevice()->CreateComputePipelineState(&PsoDesc, IID_PPV_ARGS(&pso));
+	hr = Dx_Device::GetInstance()->getDevice()->CreateComputePipelineState(&PsoDesc, IID_PPV_ARGS(&pso));
 	if (FAILED(hr)) {
-		ErrorMessage("Common::CreatePsoCompute Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Common::CreatePsoCompute Error!!"); return nullptr;
 	}
 
 	return pso;

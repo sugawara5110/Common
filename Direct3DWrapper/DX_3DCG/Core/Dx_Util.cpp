@@ -11,6 +11,10 @@
 #include <stdio.h>
 #include <string.h>
 
+void Dx_Util::ErrorMessage(char* E_mes) {
+	MessageBoxA(0, E_mes, 0, MB_OK);
+}
+
 char* Dx_Util::GetNameFromPass(char* pass) {
 
 	if (strlen(pass) > 255) {

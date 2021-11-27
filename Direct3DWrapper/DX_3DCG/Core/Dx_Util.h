@@ -7,9 +7,11 @@
 #ifndef Class_Dx_Util_Header
 #define Class_Dx_Util_Header
 
-#include "Dx_ShaderHolder.h"
+#include "DxStruct.h"
 
 namespace Dx_Util {
+
+	void ErrorMessage(char* E_mes);
 
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
 

@@ -60,9 +60,6 @@ SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, flo
 		}
 	}
 
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
-
 	mObjectCB = new ConstantBuffer<CBSearchPixel>(1);
 	cb.InWH_OutWH.as((float)srcWidth, (float)srcHeight, (float)outIndW, (float)outIndH);
 	cb.seaWH_step_PDNum.as((float)seaWid, (float)seaHei, (float)Step, (float)searchNum);
@@ -118,7 +115,8 @@ void SearchPixel::ComCreate() {
 	uavHeapDesc.NumDescriptors = 1;
 	uavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	uavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	dx->getDevice()->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
+	Dx_Device* device = Dx_Device::GetInstance();
+	device->getDevice()->CreateDescriptorHeap(&uavHeapDesc, IID_PPV_ARGS(&mUavHeap));
 
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -135,7 +133,7 @@ void SearchPixel::ComCreate() {
 	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	//RWTexture2D—pgInputCol
-	dx->getDevice()->CreateCommittedResource(
+	device->getDevice()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
@@ -164,7 +162,7 @@ void SearchPixel::ComCreate() {
 	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	//up—pgInputCol
-	dx->getDevice()->CreateCommittedResource(
+	device->getDevice()->CreateCommittedResource(
 		&HeapPropsUp,
 		D3D12_HEAP_FLAG_NONE,
 		&BufferDesc,
@@ -178,7 +176,7 @@ void SearchPixel::ComCreate() {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap->GetCPUDescriptorHandleForHeapStart());
-	dx->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	device->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));

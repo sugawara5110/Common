@@ -10,8 +10,6 @@
 
 DxOptimizer::DxOptimizer(UINT numNode) {
 	NumNode = numNode;
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Optimizer>(1);
 
 	cb.Lear_b1_b2_eps.as(0.001f, 0.9f, 0.999f, 0.00000001f);

@@ -60,7 +60,7 @@ bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
 	FILE* fp = nullptr;
 	error = fopen_s(&fp, FileName, "rt");
 	if (error != 0) {
-		ErrorMessage("MeshData::LoadMaterialFromFile fopen_s Error");
+		Dx_Util::ErrorMessage("MeshData::LoadMaterialFromFile fopen_s Error");
 		return false;
 	}
 	char line[200] = { 0 };//1çsì«Ç›çûÇ›óp
@@ -155,7 +155,7 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 bool MeshData::GetBuffer(char* FileName, int numMaxInstance) {
 
 	if (0 != strcpy_s(mFileName, FileName)) {
-		ErrorMessage("MeshData::GetBuffer strcpy_s Error");
+		Dx_Util::ErrorMessage("MeshData::GetBuffer strcpy_s Error");
 		return false;
 	}
 
@@ -171,7 +171,7 @@ bool MeshData::GetBuffer(char* FileName, int numMaxInstance) {
 	FILE* fp = nullptr;
 	error = fopen_s(&fp, mFileName, "rt");
 	if (error != 0) {
-		ErrorMessage("MeshData::GetBuffer fopen_s Error");
+		Dx_Util::ErrorMessage("MeshData::GetBuffer fopen_s Error");
 		return false;
 	}
 
@@ -241,7 +241,7 @@ bool MeshData::SetVertex() {
 	FILE* fp = nullptr;
 	error = fopen_s(&fp, mFileName, "rt");
 	if (error != 0) {
-		ErrorMessage("MeshData::SetVertex fopen_s Error");
+		Dx_Util::ErrorMessage("MeshData::SetVertex fopen_s Error");
 		return false;
 	}
 	//ñ{ì«Ç›çûÇ›	

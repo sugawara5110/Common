@@ -11,7 +11,7 @@ bool DxCommandQueue::Create(ID3D12Device5* dev, bool Compute) {
 	//Command Queueに送信したCommand Listの完了を検知するために使用
 	if (FAILED(dev->CreateFence(0, D3D12_FENCE_FLAG_NONE,
 		IID_PPV_ARGS(&mFence)))) {
-		ErrorMessage("CreateFence Error");
+		Dx_Util::ErrorMessage("CreateFence Error");
 		return false;
 	}
 	//コマンドキュー生成
@@ -21,7 +21,7 @@ bool DxCommandQueue::Create(ID3D12Device5* dev, bool Compute) {
 	queueDesc.Type = type;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; //GPUタイムアウトが有効
 	if (FAILED(dev->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)))) {
-		ErrorMessage("CreateCommandQueue Error");
+		Dx_Util::ErrorMessage("CreateCommandQueue Error");
 		return false;
 	}
 	return true;

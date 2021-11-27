@@ -44,13 +44,15 @@ Dx12Process::~Dx12Process() {
 	//生存オブジェクトを調べる
 	if (ReportLiveDeviceObjectsOn) {
 		ID3D12DebugDevice* debugInterface;
-		if (SUCCEEDED(device->getDevice()->QueryInterface(&debugInterface)))
+		if (SUCCEEDED(Dx_Device::GetInstance()->getDevice()->QueryInterface(&debugInterface)))
 		{
 			debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
 			debugInterface->Release();
 		}
 	}
 #endif
+
+	Dx_Device::DeleteInstance();
 }
 
 void Dx12Process::RunGpuNotLock() {
@@ -140,7 +142,7 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 	ID3D12Resource** up, ID3D12Resource** def,
 	int width, LONG_PTR RowPitch, int height) {
 
-	HRESULT hr = device->textureInit(width, height, up, def, format,
+	HRESULT hr = Dx_Device::GetInstance()->textureInit(width, height, up, def, format,
 		D3D12_RESOURCE_STATE_COMMON);
 	if (FAILED(hr)) {
 		return hr;
@@ -192,7 +194,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	{
 		ComPtr<ID3D12Debug> debugController;
 		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
-			ErrorMessage("D3D12GetDebugInterface Error");
+			Dx_Util::ErrorMessage("D3D12GetDebugInterface Error");
 			return false;
 		}
 		debugController->EnableDebugLayer();
@@ -204,20 +206,21 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//および全画面表示モードとの間の切り替えに使用される Alt + 
 	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
 	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory)))) {
-		ErrorMessage("CreateDXGIFactory1 Error");
+		Dx_Util::ErrorMessage("CreateDXGIFactory1 Error");
 		return false;
 	}
 
 	//デバイス生成
-	device = std::make_unique<Dx_Device>();
-	HRESULT hardwareResult = device.get()->createDevice();
+	Dx_Device::InstanceCreate();
+	Dx_Device* device = Dx_Device::GetInstance();
+	HRESULT hardwareResult = device->createDevice();
 
 	//↑ハードウエア処理不可の場合ソフトウエア処理にする,ソフトウエア処理デバイス生成
 	if (FAILED(hardwareResult))
 	{
 		ComPtr<IDXGIAdapter> pWarpAdapter;
 		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter)))) {
-			ErrorMessage("EnumWarpAdapter Error");
+			Dx_Util::ErrorMessage("EnumWarpAdapter Error");
 			return false;
 		}
 
@@ -226,7 +229,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			pWarpAdapter.Get(),
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&dev)))) {
-			ErrorMessage("D3D12CreateDevice Error");
+			Dx_Util::ErrorMessage("D3D12CreateDevice Error");
 			return false;
 		}
 	}
@@ -235,7 +238,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		HRESULT hr = device->getDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
 		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 		{
-			ErrorMessage("DXR not supported");
+			Dx_Util::ErrorMessage("DXR not supported");
 			DXR_CreateResource = false;
 			return false;
 		}
@@ -256,7 +259,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&msQualityLevels,     //機能のサポートを示すデータが格納
 		sizeof(msQualityLevels)))) {
-		ErrorMessage("CheckFeatureSupport Error");
+		Dx_Util::ErrorMessage("CheckFeatureSupport Error");
 		return false;
 	}
 
@@ -269,10 +272,10 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
-		if (!dx_sub[i].ListCreate(false, device.get()->getDevice()))return false;
+		if (!dx_sub[i].ListCreate(false, device->getDevice()))return false;
 		dx_sub[i].createResourceBarrierList();
 		dx_sub[i].createUavResourceBarrierList();
-		if (!dx_subCom[i].ListCreate(true, device.get()->getDevice()))return false;
+		if (!dx_subCom[i].ListCreate(true, device->getDevice()))return false;
 		dx_subCom[i].createUavResourceBarrierList();
 	}
 
@@ -301,7 +304,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		nullptr,
 		nullptr,
 		swapChain.GetAddressOf()))) {
-		ErrorMessage("CreateSwapChain Error");
+		Dx_Util::ErrorMessage("CreateSwapChain Error");
 		return false;
 	}
 	swapChain->QueryInterface(IID_PPV_ARGS(mSwapChain.GetAddressOf()));
@@ -315,7 +318,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	rtvHeapDesc.NodeMask = 0;
 	if (FAILED(device->getDevice()->CreateDescriptorHeap(
 		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())))) {
-		ErrorMessage("CreateDescriptorHeap Error");
+		Dx_Util::ErrorMessage("CreateDescriptorHeap Error");
 		return false;
 	}
 
@@ -327,7 +330,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	dsvHeapDesc.NodeMask = 0;
 	if (FAILED(device->getDevice()->CreateDescriptorHeap(
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())))) {
-		ErrorMessage("CreateDescriptorHeap Error");
+		Dx_Util::ErrorMessage("CreateDescriptorHeap Error");
 		return false;
 	}
 
@@ -336,7 +339,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		//スワップチェインバッファ取得
 		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])))) {
-			ErrorMessage("GetSwapChainBuffer Error");
+			Dx_Util::ErrorMessage("GetSwapChainBuffer Error");
 			return false;
 		}
 		//レンダーターゲットビュー(Descriptor)生成,DescriptorHeapにDescriptorが記録される
@@ -377,7 +380,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		D3D12_RESOURCE_STATE_COMMON,
 		&optClear,
 		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())))) {
-		ErrorMessage("CreateCommittedResource DepthStencil Error");
+		Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
 		return false;
 	}
 
@@ -528,7 +531,7 @@ bool Dx12Process::PointLightPosSet(int Idx, CoordTf::VECTOR3 pos, CoordTf::VECTO
 	float range, CoordTf::VECTOR3 atten) {
 
 	if (Idx > LIGHT_PCS - 1 || Idx < 0) {
-		ErrorMessage("lightNumの値が範囲外です");
+		Dx_Util::ErrorMessage("lightNumの値が範囲外です");
 		return false;
 	}
 
@@ -587,7 +590,7 @@ HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Re
 
 	if (copyTexture) {
 		UINT64  total_bytes = 0;
-		dx->getDevice()->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+		Dx_Device::GetInstance()->getDevice()->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
 
 		memset(&dest, 0, sizeof(dest));
 		dest.pResource = def;
@@ -648,7 +651,7 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	ComPtr<ID3D12Resource> defaultBuffer;
 	HRESULT hr;
 	D3D12_RESOURCE_STATES after = D3D12_RESOURCE_STATE_GENERIC_READ;
-
+	Dx_Device* device = Dx_Device::GetInstance();
 	if (uav) {
 		hr = device->createDefaultResourceBuffer_UNORDERED_ACCESS(defaultBuffer.GetAddressOf(), byteSize);
 		after = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;

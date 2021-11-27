@@ -6,8 +6,23 @@
 
 #include "Dx_Device.h"
 
+Dx_Device* Dx_Device::dev = nullptr;
+
 static ID3D12Device5* md3dDevice = nullptr;
 static UINT mCbvSrvUavDescriptorSize = 0;
+
+void Dx_Device::InstanceCreate() {
+	if (!dev)dev = new Dx_Device();
+}
+
+Dx_Device* Dx_Device::GetInstance() {
+	if (dev)return dev;
+	return nullptr;
+}
+
+void Dx_Device::DeleteInstance() {
+	S_DELETE(dev);
+}
 
 static HRESULT createDefaultResourceCommon(ID3D12Resource** def,
 	D3D12_RESOURCE_DIMENSION dimension, UINT64 width, UINT height,
@@ -205,8 +220,8 @@ ComPtr<ID3D12RootSignature> Dx_Device::CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC*
 		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
 
 	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateRsCommon Error!!");
-		ErrorMessage((char*)errorBlob.Get()->GetBufferPointer());
+		Dx_Util::ErrorMessage("Dx12Process::CreateRsCommon Error!!");
+		Dx_Util::ErrorMessage((char*)errorBlob.Get()->GetBufferPointer());
 		return nullptr;
 	}
 
@@ -218,7 +233,7 @@ ComPtr<ID3D12RootSignature> Dx_Device::CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC*
 		IID_PPV_ARGS(rs.GetAddressOf()));
 
 	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateRsCommon Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Dx12Process::CreateRsCommon Error!!"); return nullptr;
 	}
 
 	return rs;
@@ -235,7 +250,7 @@ ComPtr <ID3D12DescriptorHeap> Dx_Device::CreateDescHeap(int numDesc) {
 	HRESULT hr;
 	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
 	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateDescHeap Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Dx12Process::CreateDescHeap Error!!"); return nullptr;
 	}
 	return heap;
 }
@@ -251,7 +266,7 @@ ComPtr<ID3D12DescriptorHeap> Dx_Device::CreateSamplerDescHeap(D3D12_SAMPLER_DESC
 	HRESULT hr;
 	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
 	if (FAILED(hr)) {
-		ErrorMessage("Dx12Process::CreateSamplerDescHeap Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Dx12Process::CreateSamplerDescHeap Error!!"); return nullptr;
 	}
 
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = heap.Get()->GetCPUDescriptorHandleForHeapStart();
@@ -320,7 +335,4 @@ void Dx_Device::CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
 	}
 }
 
-//エラーメッセージ
-void ErrorMessage(char* E_mes) {
-	MessageBoxA(0, E_mes, 0, MB_OK);
-}
+

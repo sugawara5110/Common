@@ -45,7 +45,7 @@ ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPSTR szFileName, size_t size, L
 	}
 
 	if (errors != nullptr)
-		ErrorMessage((char*)errors->GetBufferPointer());
+		Dx_Util::ErrorMessage((char*)errors->GetBufferPointer());
 
 	return byteCode;
 }

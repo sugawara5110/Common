@@ -259,11 +259,13 @@ bool BasicPolygon::setDescHeap(const int numSrvTex,
 	createTextureResource(0, tCnt, te, objName);
 	setTextureDXR();
 
+	Dx_Device* device = Dx_Device::GetInstance();
+
 	int numUav = 0;
 	if (hs)numUav = 1;
 	dpara.numDesc = numSrvTex + numSrvBuf + numCbv + numUav;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
-	dpara.descHeap = dx->device->CreateDescHeap(numHeap);
+	dpara.descHeap = device->CreateDescHeap(numHeap);
 	ARR_DELETE(te);
 	if (dpara.descHeap == nullptr)return false;
 	const int numMaxCB = 3;
@@ -273,7 +275,7 @@ bool BasicPolygon::setDescHeap(const int numSrvTex,
 	cbSize[2] = ad3Size;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(dpara.descHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < dpara.NumMaterial; i++) {
-		Dx_Device* d = dx->device.get();
+		Dx_Device* d = device;
 		d->CreateSrvTexture(hDescriptor, texture[numSrvTex * i].GetAddressOf(), numSrvTex);
 		d->CreateSrvBuffer(hDescriptor, buffer, numSrvBuf, StructureByteStride);
 		D3D12_GPU_VIRTUAL_ADDRESS ad[numMaxCB];
@@ -310,6 +312,8 @@ void BasicPolygon::createParameterDXR(bool alpha, bool blend, float divideBuffer
 		numDispPolygon = (int)mag * (int)mag * (int)minDivPolygon;//•ªŠ„Å‘å”(1ƒ|ƒŠƒSƒ“)
 	}
 
+	Dx_Device* device = Dx_Device::GetInstance();
+
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		UINT bytesize = 0;
@@ -331,13 +335,13 @@ void BasicPolygon::createParameterDXR(bool alpha, bool blend, float divideBuffer
 				bytesize = indCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
-				dx->device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+				device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 					dxV.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 			}
 			StreamView& dxS = dxrPara.SviewDXR[i][t];
 			dxS.StreamByteStride = sizeof(VERTEX_DXR);
 			dxS.StreamBufferByteSize = bytesize;
-			dxS.StreamBufferGPU = dx->device->CreateStreamBuffer(dxS.StreamBufferByteSize);
+			dxS.StreamBufferGPU = device->CreateStreamBuffer(dxS.StreamBufferByteSize);
 		}
 	}
 }

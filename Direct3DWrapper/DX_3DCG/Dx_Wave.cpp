@@ -90,12 +90,12 @@ bool Wave::ComCreate() {
 
 	mInputBuffer = dx->CreateDefaultBuffer(mObj.com_no, wdata.data(), byteSize, mInputUploadBuffer, true);
 	if (!mInputBuffer) {
-		ErrorMessage("Wave::ComCreate Error!!");
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!");
 		return false;
 	}
 
-	if (FAILED(dx->device->createDefaultResourceBuffer_UNORDERED_ACCESS(&mOutputBuffer, byteSize))) {
-		ErrorMessage("Wave::ComCreate Error!!");
+	if (FAILED(Dx_Device::GetInstance()->createDefaultResourceBuffer_UNORDERED_ACCESS(&mOutputBuffer, byteSize))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!");
 		return false;
 	}
 	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", mObj.objName));

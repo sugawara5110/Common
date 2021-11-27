@@ -172,7 +172,7 @@ void ParticleData::CreateVbObj(bool alpha, bool blend) {
 	Vview->VertexBufferByteSize = vbByteSize;
 
 	for (int i = 0; i < 2; i++) {
-		Sview[i].StreamBufferGPU = dx->device->CreateStreamBuffer(vbByteSize);
+		Sview[i].StreamBufferGPU = Dx_Device::GetInstance()->CreateStreamBuffer(vbByteSize);
 
 		Sview[i].StreamByteStride = sizeof(PartPos);
 		Sview[i].StreamBufferByteSize = vbByteSize;
@@ -222,10 +222,11 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	te.normal = dx->GetTexNumber("dummyNor.");;
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
+	Dx_Device* device = Dx_Device::GetInstance();
 	createTextureResource(0, 1, &te, objName);
-	mDescHeap = dx->device->CreateDescHeap(numSrv + numCbv);
+	mDescHeap = device->CreateDescHeap(numSrv + numCbv);
 	if (mDescHeap == nullptr)return false;
-	Dx_Device* d = dx->device.get();
+	Dx_Device* d = device;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDescHeap->GetCPUDescriptorHandleForHeapStart());
 	d->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
@@ -256,7 +257,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 			bytesize = verCnt * sizeof(VERTEX_DXR);
 			dxV.VertexByteStride = sizeof(VERTEX_DXR);
 			dxV.VertexBufferByteSize = bytesize;
-			dx->device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
+			device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 				dxV.VertexBufferByteSize);
 			dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -264,7 +265,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		StreamView& dxS = dxrPara.SviewDXR[0][0];
 		dxS.StreamByteStride = sizeof(VERTEX_DXR);
 		dxS.StreamBufferByteSize = bytesize;
-		dxS.StreamBufferGPU = dx->device->CreateStreamBuffer(dxS.StreamBufferByteSize);
+		dxS.StreamBufferGPU = device->CreateStreamBuffer(dxS.StreamBufferByteSize);
 
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0);
 		if (rootSignatureDXR == nullptr)return false;
