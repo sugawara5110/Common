@@ -1,8 +1,14 @@
 Direct3DWrapper:
 
-Directx12を使用した,3DCG, NeuralNetworkのライブラリです。
+Directx12を使用した,3DCG のライブラリです。
 
-It is a library of 3DCG, NeuralNetwork using directx12.
+It is a library of 3DCG using directx12.
+
+Direct3DWrapperNN:
+
+Directx12を使用した,NeuralNetworkのライブラリです。
+
+It is a library of NeuralNetwork using directx12.
 
 DirectShowWrapper:
 
