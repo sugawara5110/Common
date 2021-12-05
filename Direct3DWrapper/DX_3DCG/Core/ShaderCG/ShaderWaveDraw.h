@@ -8,10 +8,10 @@ char *ShaderWaveDraw =
 "	float sinWave;\n"
 "   float theta;\n"
 "};\n"
-"StructuredBuffer<WaveData> gInput : register(t3);\n"
+"StructuredBuffer<WaveData> gInput : register(t3, space0);\n"
 
 //wave
-"cbuffer cbWave  : register(b2)\n"
+"cbuffer cbWave  : register(b2, space0)\n"
 "{\n"
 //x:waveHeight, y:•ªŠ„”
 "    float4 g_wHei_divide;\n"

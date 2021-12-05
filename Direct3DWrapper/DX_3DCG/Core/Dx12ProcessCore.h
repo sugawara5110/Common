@@ -129,7 +129,8 @@ private:
 	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
 	~Dx12Process();
 
-	void Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+	void Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
+		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
 	void InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
 		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
@@ -383,6 +384,7 @@ public:
 };
 
 struct drawPara {
+	UINT NumMaxInstance = 1;
 	int NumMaterial = 0;
 	int numDesc = 0;
 	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
@@ -401,8 +403,8 @@ struct UpdateDXR {
 	UINT NumInstance = 1;
 	std::unique_ptr<std::unique_ptr<VertexView[]>[]> VviewDXR = nullptr;
 	std::unique_ptr<std::unique_ptr<UINT[]>[]> currentIndexCount = nullptr;
-	CoordTf::MATRIX Transform[INSTANCE_PCS_3D] = {};
-	CoordTf::MATRIX WVP[INSTANCE_PCS_3D] = {};
+	std::unique_ptr<CoordTf::MATRIX[]> Transform = nullptr;
+	std::unique_ptr<CoordTf::MATRIX[]> WVP = nullptr;
 	CoordTf::VECTOR4 AddObjColor = {};//オブジェクトの色変化用
 	float shininess;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
@@ -422,6 +424,8 @@ struct UpdateDXR {
 	}
 
 	void create(int numMaterial, int numMaxInstance) {
+		Transform = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
+		WVP = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 		VviewDXR = std::make_unique<std::unique_ptr<VertexView[]>[]>(numMaterial);
 		currentIndexCount = std::make_unique<std::unique_ptr<UINT[]>[]>(numMaterial);
 		for (int i = 0; i < numMaterial; i++) {
@@ -516,14 +520,19 @@ protected:
 
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName);
 
-	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav, UINT numCbvPara, UINT RegisterStNoCbv);
+	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
+		UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors);
+
 	ComPtr<ID3D12RootSignature> CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
 	ComPtr<ID3D12RootSignature> CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter);
-	ComPtr<ID3D12RootSignature> CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav, UINT numCbvPara, UINT RegisterStNoCbv);
+
+	ComPtr<ID3D12RootSignature> CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
+		UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors);
+
 	ComPtr<ID3D12RootSignature> CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav,
-		bool sampler, UINT numCbvPara, UINT RegisterStNoCbv);
+		bool sampler, UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors);
 
 	ComPtr<ID3D12PipelineState> CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
@@ -608,8 +617,10 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<cbInstanceID>* mObjectCB_Ins = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+	ConstantBuffer<WVP_CB>* wvp = nullptr;
 
-	CONSTANT_BUFFER cb[2];
+	CONSTANT_BUFFER cb[2] = {};
+	std::unique_ptr<WVP_CB[]> cbWVP[2] = {};
 	bool firstCbSet[2];
 	CONSTANT_BUFFER2 sg;
 	//DrawOn

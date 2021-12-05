@@ -154,40 +154,55 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
 	std::vector<D3D12_DESCRIPTOR_RANGE>& range,
 	std::vector<D3D12_ROOT_PARAMETER>& rootParams,
-	UINT numCbvPara, UINT RegisterStNoCbv) {
+	UINT numCbvPara, UINT RegisterStNoCbv,
+	UINT numArrCbv, UINT* numDescriptors) {
 
-	UINT numRange = numSrv + numCbv + numUav;
+	UINT numRange = numSrv + numCbv + numUav + numArrCbv;
 	range.resize(numRange);
+	int ind = 0;
 	int cnt = 0;
+	for (UINT i = 0; i < numArrCbv; i++) {
+		D3D12_DESCRIPTOR_RANGE& r = range[ind];
+		r.BaseShaderRegister = i;
+		r.NumDescriptors = numDescriptors[i];
+		r.RegisterSpace = i + 1;//–³§ŒÀ”z—ñ‚Í1ˆÈã
+		r.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		r.OffsetInDescriptorsFromTableStart = cnt;
+		cnt += numDescriptors[i];
+		ind++;
+	}
 	for (UINT i = 0; i < numSrv; i++) {
-		D3D12_DESCRIPTOR_RANGE& r = range[cnt];
+		D3D12_DESCRIPTOR_RANGE& r = range[ind];
 		r.BaseShaderRegister = i;
 		r.NumDescriptors = 1;
 		r.RegisterSpace = 0;
 		r.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		r.OffsetInDescriptorsFromTableStart = cnt;
 		cnt++;
+		ind++;
 	}
 	for (UINT i = 0; i < numCbv; i++) {
-		D3D12_DESCRIPTOR_RANGE& r = range[cnt];
+		D3D12_DESCRIPTOR_RANGE& r = range[ind];
 		r.BaseShaderRegister = i;
 		r.NumDescriptors = 1;
 		r.RegisterSpace = 0;
 		r.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		r.OffsetInDescriptorsFromTableStart = cnt;
 		cnt++;
+		ind++;
 	}
 	for (UINT i = 0; i < numUav; i++) {
-		D3D12_DESCRIPTOR_RANGE& r = range[cnt];
+		D3D12_DESCRIPTOR_RANGE& r = range[ind];
 		r.BaseShaderRegister = i;
 		r.NumDescriptors = 1;
 		r.RegisterSpace = 0;
 		r.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		r.OffsetInDescriptorsFromTableStart = cnt;
 		cnt++;
+		ind++;
 	}
 
-	UINT numPara = numCbvPara + 1;
+	UINT numPara = numCbvPara + 1;//+1‚Ícntp=0‚Ì•ª
 	rootParams.resize(numPara);
 	int cntp = 0;
 	rootParams[cntp].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -196,6 +211,7 @@ static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
 	rootParams[cntp].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	cntp++;
 	for (UINT i = 0; i < numCbvPara; i++) {
+		//DESCRIPTOR_TABLEˆÈŠO—p
 		rootParams[cntp].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		rootParams[cntp].Descriptor.ShaderRegister = RegisterStNoCbv + i;
 		rootParams[cntp].Descriptor.RegisterSpace = 0;
@@ -205,11 +221,12 @@ static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
 }
 
 ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
-	UINT numCbvPara, UINT RegisterStNoCbv) {
+	UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors) {
 
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv);
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams,
+		numCbvPara, RegisterStNoCbv, numArrCbv, numDescriptors);
 	return CreateRs(numCbvPara + 1, rootParams.data());
 }
 
@@ -280,21 +297,21 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 }
 
 ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
-	UINT numCbvPara, UINT RegisterStNoCbv) {
+	UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors) {
 
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv);
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv, numArrCbv, numDescriptors);
 
 	return CreateRsCompute(numCbvPara + 1, rootParams.data());
 }
 
 ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav,
-	bool sampler, UINT numCbvPara, UINT RegisterStNoCbv) {
+	bool sampler, UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors) {
 
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv);
+	createROOT_PARAMETER(numSrv, numCbv, numUav, range, rootParams, numCbvPara, RegisterStNoCbv, numArrCbv, numDescriptors);
 
 	if (sampler)
 		return CreateRsStreamOutputSampler(numCbvPara + 1, rootParams.data());

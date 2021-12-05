@@ -3,13 +3,13 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderPostEffect =
-"Texture2D<float> gDepth : register(t0);\n"
-"RWTexture2D<float4> gInput : register(u0);\n"
-"RWTexture2D<float4> gOutput : register(u1);\n"
+"Texture2D<float> gDepth : register(t0, space0);\n"
+"RWTexture2D<float4> gInput : register(u0, space0);\n"
+"RWTexture2D<float4> gOutput : register(u1, space0);\n"
 
 //モザイク大きさx
 //ブラー中心座標xy,ぼけ強度z,ピントが合う深さw
-"cbuffer global  : register(b0)\n"
+"cbuffer global  : register(b0, space0)\n"
 "{\n"
 "    float4 g_mosaicSize;\n"
 "    float4 g_blur;\n"

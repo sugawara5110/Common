@@ -9,11 +9,11 @@ char *ShaderWaveCom =
 "   float theta;\n"
 "};\n"
 
-"RWStructuredBuffer<WaveData> gInput : register(u0);\n"
-"RWStructuredBuffer<WaveData> gOutput : register(u1);\n"
+"RWStructuredBuffer<WaveData> gInput : register(u0, space0);\n"
+"RWStructuredBuffer<WaveData> gOutput : register(u1, space0);\n"
 
 //wave
-"cbuffer cbWave  : register(b0)\n"
+"cbuffer cbWave  : register(b0, space0)\n"
 "{\n"
 //x:waveHeight, y:•ªŠ„”
 "    float4 g_wHei_divide;\n"

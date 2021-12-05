@@ -4,15 +4,19 @@
 
 char* ShaderCommonParameters =
 //////////////////////////////////共通パラメーター////////////////////////////////////////////////////////
-"Texture2D g_texDiffuse : register(t0);\n"
-"Texture2D g_texNormal : register(t1);\n"
-"Texture2D g_texSpecular : register(t2);\n"
-"SamplerState g_samLinear : register(s0);\n"
+"Texture2D g_texDiffuse : register(t0, space0);\n"
+"Texture2D g_texNormal : register(t1, space0);\n"
+"Texture2D g_texSpecular : register(t2, space0);\n"
+"SamplerState g_samLinear : register(s0, space0);\n"
 
-"cbuffer global : register(b0)\n"
+"struct WVPCB {\n"
+"    matrix wvp;\n"
+"    matrix world;\n"
+"};\n"
+"ConstantBuffer<WVPCB> wvpCb[] : register(b0, space1);\n"
+
+"cbuffer global : register(b0, space0)\n"
 "{\n"
-"    matrix g_World[256]; \n"
-"    matrix g_WVP[256];\n"
 //視点
 "    float4 g_C_Pos;\n"
 //オブジェクト追加カラー
@@ -46,14 +50,14 @@ char* ShaderCommonParameters =
 "};\n"
 
 //マテリアル毎の色
-"cbuffer global_1 : register(b1)\n"
+"cbuffer global_1 : register(b1, space0)\n"
 "{\n"
 "    float4 g_Diffuse;\n"
 "    float4 g_Speculer; \n"
 "    float4 g_Ambient;\n"
 "};\n"
 
-"cbuffer global_2 : register(b3)\n"
+"cbuffer global_2 : register(b3, space0)\n"
 "{\n"
 //DXR用
 "    float4 g_instanceID;\n"//x:ID, y:1.0f on 0.0f off

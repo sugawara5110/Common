@@ -23,12 +23,12 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 	if (dx->DXR_CreateResource) {
 		maxRecursion = MaxRecursion;
 		numParameter = numparameter;
-		UINT cnt = 0;
+		numMaterial = 0;
+		maxNumInstancing = 0;
 		for (UINT i = 0; i < numParameter; i++) {
-			cnt += PD[i]->NumMaterial * PD[i]->NumMaxInstance;
+			numMaterial += PD[i]->NumMaterial * PD[i]->NumMaxInstance;
+			maxNumInstancing += PD[i]->NumMaxInstance;
 		}
-		numMaterial = cnt;
-		maxNumInstancing = INSTANCE_PCS_3D * numParameter;
 
 		wvp = new ConstantBuffer<WVP_CB>(maxNumInstancing);
 		cbObj[0].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
@@ -38,7 +38,7 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 		cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 
-		createInstanceIdBuffer(numMaterial);
+		createInstanceIdBuffer();
 		createAccelerationStructures();
 
 		int numIns = 0;
@@ -92,12 +92,13 @@ void DXR_Basic::setTMin_TMax(float tMin, float tMax) {
 	TMax = tMax;
 }
 
-void DXR_Basic::createInstanceIdBuffer(UINT numMaterial) {
+void DXR_Basic::createInstanceIdBuffer() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	for (UINT i = 0; i < numParameter; i++) {
-		for (UINT j = 0; j < 2; j++)
+		for (UINT j = 0; j < 2; j++) {
 			PD[i]->updateDXR[j].InstanceID =
-			std::make_unique<UINT[]>(INSTANCE_PCS_3D * PD[i]->NumMaterial);
+				std::make_unique<UINT[]>(PD[i]->NumMaxInstance * PD[i]->NumMaterial);
+		}
 	}
 }
 
@@ -221,7 +222,7 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 		if (tLB.firstSet)
 			numRayInstance += ud.NumInstance * PD[i]->NumMaterial;
 		else
-			numRayInstance += INSTANCE_PCS_3D * PD[i]->NumMaterial;
+			numRayInstance += PD[i]->NumMaxInstance * PD[i]->NumMaterial;
 	}
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
@@ -246,25 +247,29 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 			sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
 	}
 
-	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDesc;
+	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDesc = {};
 	tLB.pInstanceDesc->Map(0, nullptr, (void**)&pInstanceDesc);
 	ZeroMemory(pInstanceDesc, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
 
 	UINT RayInstanceCnt = 0;
 	UINT materialCnt = 0;
+	UINT InstancingCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UINT udInstanceIDCnt = 0;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
-
+				if (ud.NumInstance > PD[i]->NumMaxInstance) {
+					Dx_Util::ErrorMessage("NumInstance is greater than NumMaxInstanc.");
+				}
 				if (ud.firstSet) {
 					UINT matAddInd = 0;
 					if (PD[i]->hs)matAddInd = k;
 					D3D12_RAYTRACING_INSTANCE_DESC& pID = pInstanceDesc[RayInstanceCnt];
 					UINT materialInstanceID = materialCnt + matAddInd;//max65535
-					UINT InstancingID = i * INSTANCE_PCS_3D + k;//max65535
+					UINT InstancingID = InstancingCnt + k;//max65535
 					UINT InstanceID = ((materialInstanceID << 16) & 0xffff0000) | (InstancingID & 0x0000ffff);
-					ud.InstanceID[INSTANCE_PCS_3D * j + k] = InstanceID;
+					ud.InstanceID[udInstanceIDCnt + k] = InstanceID;
 					pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
 					pID.InstanceContributionToHitGroupIndex = 0;//使用するhitShaderインデックス
 					pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
@@ -274,8 +279,10 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 				}
 				RayInstanceCnt++;
 			}
+			udInstanceIDCnt += PD[i]->NumMaxInstance;
 			materialCnt += PD[i]->NumMaxInstance;
 		}
+		InstancingCnt += PD[i]->NumMaxInstance;
 	}
 
 	tLB.pInstanceDesc->Unmap(0, nullptr);
@@ -960,6 +967,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	UINT MaterialCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UINT udInstanceIDCnt = 0;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
 				UINT matAddInd = 0;
@@ -985,7 +993,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.Lightst[cntEm].y = upd.plight.Lightst[cntEm].y;
 						cb.Lightst[cntEm].z = upd.plight.Lightst[cntEm].z;
 						cb.Lightst[cntEm].w = upd.plight.Lightst[cntEm].w;
-						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[INSTANCE_PCS_3D * j + k];
+						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[udInstanceIDCnt + k];
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {
 							breakF = true;
@@ -995,6 +1003,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 				}
 				if (breakF)break;
 			}
+			udInstanceIDCnt += PD[i]->NumMaxInstance;
 			MaterialCnt += PD[i]->NumMaxInstance;
 			if (breakF)break;
 		}
@@ -1007,14 +1016,16 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	memcpy(&cb.dLightColor, &upd.dlight.LightColor, sizeof(VECTOR4));
 	memcpy(&cb.dLightst, &upd.dlight.onoff, sizeof(VECTOR4));
 
+	UINT InstancingCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
 		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
 		for (UINT k = 0; k < ud.NumInstance; k++) {
-			int index = INSTANCE_PCS_3D * i + k;
+			int index = InstancingCnt + k;
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].world, &ud.Transform[k], sizeof(MATRIX));
 			wvp->CopyData(index, cbObj->wvpCb[index]);
 		}
+		InstancingCnt += PD[i]->NumMaxInstance;
 	}
 }
 

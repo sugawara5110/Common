@@ -57,9 +57,9 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
 
 		memcpy(&dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
 		MatrixTranspose(&world);
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform,
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform.get(),
 			&world, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP,
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP.get(),
 			&wvp, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
 
 		cb->invRot = BillboardAngleCalculation(angle);
@@ -214,7 +214,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	const int numSrv = 1;
 	const int numCbv = 1;
 
-	mRootSignature_draw = CreateRootSignature(numSrv, numCbv, 0, 0, 0);
+	mRootSignature_draw = CreateRootSignature(numSrv, numCbv, 0, 0, 0, 0, nullptr);
 	if (mRootSignature_draw == nullptr)return false;
 
 	TextureNo te;
@@ -267,7 +267,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		dxS.StreamBufferByteSize = bytesize;
 		dxS.StreamBufferGPU = device->CreateStreamBuffer(dxS.StreamBufferByteSize);
 
-		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0);
+		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0, 0, nullptr);
 		if (rootSignatureDXR == nullptr)return false;
 
 		dxrPara.difTex[0] = texture[0].Get();

@@ -679,9 +679,12 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 	return defaultBuffer;
 }
 
-void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 pos,
-	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
-	if (insNum > INSTANCE_PCS_3D - 1)insNum--;
+void Dx12Process::Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
+	CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
+
+	if (insNum >= numMaxIns) {
+		Dx_Util::ErrorMessage("Error: insNum is greater than numMaxIns.");
+	}
 
 	using namespace CoordTf;
 
@@ -705,11 +708,12 @@ void Dx12Process::Instancing(int& insNum, CONSTANT_BUFFER* cb, CoordTf::VECTOR3 
 	MatrixMultiply(&world, &scro, &mov);
 
 	//ワールド、カメラ、射影行列、等
-	cb->World[insNum] = world;
+	cbArr[insNum].world = world;
 	MatrixMultiply(&WV, &world, &upd[cBuffSwap[0]].mView);
-	MatrixMultiply(&cb->WVP[insNum], &WV, &upd[cBuffSwap[0]].mProj);
-	MatrixTranspose(&cb->World[insNum]);
-	MatrixTranspose(&cb->WVP[insNum]);
+	MatrixMultiply(&cbArr[insNum].wvp, &WV, &upd[cBuffSwap[0]].mProj);
+	MatrixTranspose(&cbArr[insNum].world);
+	MatrixTranspose(&cbArr[insNum].wvp);
+
 	insNum++;
 }
 

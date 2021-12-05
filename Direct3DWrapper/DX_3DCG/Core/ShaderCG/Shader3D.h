@@ -31,7 +31,7 @@ char *Shader3D =
 "PS_INPUT_BC VSBaseColor(float4 Pos : POSITION, float4 Col : COLOR, uint instanceID : SV_InstanceID)\n"
 "{\n"
 "    PS_INPUT_BC output = (PS_INPUT_BC)0;\n"
-"    output.Pos = mul(Pos, g_WVP[instanceID]);\n"
+"    output.Pos = mul(Pos, wvpCb[instanceID].wvp);\n"
 
 "    output.Col = Col;\n"
 

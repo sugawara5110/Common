@@ -52,7 +52,7 @@ bool SkinnedCom::createPSO() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
-		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav, 0, 0);
+		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav, 0, 0, 0, nullptr);
 		if (rootSignature == nullptr)return false;
 
 		ID3DBlob* cs = dx->shaderH->pVertexShader_SKIN_Com.Get();

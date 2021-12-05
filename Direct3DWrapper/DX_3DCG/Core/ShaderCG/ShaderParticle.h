@@ -3,10 +3,10 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderParticle =
-"Texture2D g_texColor : register(t0);\n"
-"SamplerState g_samLinear : register(s0);\n"
+"Texture2D g_texColor : register(t0, space0);\n"
+"SamplerState g_samLinear : register(s0, space0);\n"
 
-"cbuffer global  : register(b0)\n"
+"cbuffer global  : register(b0, space0)\n"
 "{\n"
 "	matrix g_WV;\n"
 "	matrix g_invRot;\n"

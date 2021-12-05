@@ -3,7 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderSkinMesh_D =
-"cbuffer global_bones : register(b2)\n"//ボーンのポーズ行列が入る
+"cbuffer global_bones : register(b2, space0)\n"//ボーンのポーズ行列が入る
 "{\n"
 "   matrix g_mConstBoneWorld[256];\n"
 "};\n"

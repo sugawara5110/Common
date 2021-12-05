@@ -3,7 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char* ShaderSkinMeshCom =
-"cbuffer global_bones : register(b0)\n"//ボーンのポーズ行列が入る
+"cbuffer global_bones : register(b0, space0)\n"//ボーンのポーズ行列が入る
 "{\n"
 "   matrix g_mConstBoneWorld[256];\n"
 "};\n"
@@ -36,8 +36,8 @@ char* ShaderSkinMeshCom =
 "    float2 Tex1;\n"
 "};\n"
 
-"StructuredBuffer<VSSkinIn> VerticesSkin : register(t0);\n"
-"RWStructuredBuffer<DXR_INPUT> VerticesDXR : register(u0);\n"
+"StructuredBuffer<VSSkinIn> VerticesSkin : register(t0, space0);\n"
+"RWStructuredBuffer<DXR_INPUT> VerticesDXR : register(u0, space0);\n"
 
 //指定した番号のボーンのポーズ行列を返す
 "matrix FetchBoneMatrix(uint iBone)\n"

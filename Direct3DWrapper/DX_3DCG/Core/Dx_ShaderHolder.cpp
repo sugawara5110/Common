@@ -76,24 +76,24 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 	GsOut.addStr(ParaNor.str, ShaderGsOutput);
 
 	//CommonPS
-	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_0");
-	pPixelShader_3D_NoNormalMap = CompileShader(ComPS.str, ComPS.size, "PS_L_NoNormalMap", "ps_5_0");
-	pPixelShader_Emissive = CompileShader(ComPS.str, ComPS.size, "PS", "ps_5_0");
+	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_1");
+	pPixelShader_3D_NoNormalMap = CompileShader(ComPS.str, ComPS.size, "PS_L_NoNormalMap", "ps_5_1");
+	pPixelShader_Emissive = CompileShader(ComPS.str, ComPS.size, "PS", "ps_5_1");
 	//CommonHSDS(Triangle)
-	pHullShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "HS", "hs_5_0");
-	pDomainShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "DS", "ds_5_0");
+	pHullShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "HS", "hs_5_1");
+	pDomainShaderTriangle = CompileShader(ComHSDS.str, ComHSDS.size, "DS", "ds_5_1");
 	//CommonGS
-	pGeometryShader_Before_ds_Smooth = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_Smooth", "gs_5_0");
-	pGeometryShader_Before_ds_Edge = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_Edge", "gs_5_0");
-	pGeometryShader_Before_vs = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs", "gs_5_0");
-	pGeometryShader_Before_ds_NoNormalMap_Smooth = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap_Smooth", "gs_5_0");
-	pGeometryShader_Before_ds_NoNormalMap_Edge = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap_Edge", "gs_5_0");
-	pGeometryShader_Before_vs_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs_NoNormalMap", "gs_5_0");
+	pGeometryShader_Before_ds_Smooth = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_Smooth", "gs_5_1");
+	pGeometryShader_Before_ds_Edge = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_Edge", "gs_5_1");
+	pGeometryShader_Before_vs = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs", "gs_5_1");
+	pGeometryShader_Before_ds_NoNormalMap_Smooth = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap_Smooth", "gs_5_1");
+	pGeometryShader_Before_ds_NoNormalMap_Edge = CompileShader(ComGS.str, ComGS.size, "GS_Before_ds_NoNormalMap_Edge", "gs_5_1");
+	pGeometryShader_Before_vs_NoNormalMap = CompileShader(ComGS.str, ComGS.size, "GS_Before_vs_NoNormalMap", "gs_5_1");
 
 	//ポストエフェクト
-	pComputeShader_Post[0] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "MosaicCS", "cs_5_0");
-	pComputeShader_Post[1] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "BlurCS", "cs_5_0");
-	pComputeShader_Post[2] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "DepthOfFieldCS", "cs_5_0");
+	pComputeShader_Post[0] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "MosaicCS", "cs_5_1");
+	pComputeShader_Post[1] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "BlurCS", "cs_5_1");
+	pComputeShader_Post[2] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), "DepthOfFieldCS", "cs_5_1");
 
 	//スキンメッシュ
 	pVertexLayout_SKIN =
@@ -107,9 +107,9 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "BONE_INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 64, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "BONE_WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 80, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
-	pVertexShader_SKIN = CompileShader(Skin.str, Skin.size, "VSSkin", "vs_5_0");
+	pVertexShader_SKIN = CompileShader(Skin.str, Skin.size, "VSSkin", "vs_5_1");
 	//テセレーター有
-	pVertexShader_SKIN_D = CompileShader(SkinD.str, SkinD.size, "VS", "vs_5_0");
+	pVertexShader_SKIN_D = CompileShader(SkinD.str, SkinD.size, "VS", "vs_5_1");
 
 	//ストリーム出力データ定義(パーティクル用)
 	pDeclaration_PSO =
@@ -119,8 +119,8 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ 0, "POSITION", 2, 0, 3, 0 },
 	};
 	//ストリーム出力
-	pVertexShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS_SO", "vs_5_0");
-	pGeometryShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point_SO", "gs_5_0");
+	pVertexShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS_SO", "vs_5_1");
+	pGeometryShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point_SO", "gs_5_1");
 
 	//パーティクル頂点インプットレイアウトを定義
 	pVertexLayout_P =
@@ -130,9 +130,9 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "POSITION", 2, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3 * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 	//パーティクル
-	pVertexShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS", "vs_5_0");
-	pGeometryShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point", "gs_5_0");
-	pPixelShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "PS", "ps_5_0");
+	pVertexShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS", "vs_5_1");
+	pGeometryShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point", "gs_5_1");
+	pPixelShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "PS", "ps_5_1");
 
 	//メッシュレイアウト
 	pVertexLayout_MESH =
@@ -144,9 +144,9 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 	//メッシュ
-	pVertexShader_MESH = CompileShader(Mesh.str, Mesh.size, "VSMesh", "vs_5_0");
+	pVertexShader_MESH = CompileShader(Mesh.str, Mesh.size, "VSMesh", "vs_5_1");
 	//テセレーター有メッシュ
-	pVertexShader_MESH_D = CompileShader(MeshD.str, MeshD.size, "VSMesh", "vs_5_0");
+	pVertexShader_MESH_D = CompileShader(MeshD.str, MeshD.size, "VSMesh", "vs_5_1");
 
 	//3Dレイアウト基本色
 	pVertexLayout_3DBC =
@@ -155,13 +155,13 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 	//テクスチャ3D
-	pVertexShader_TC = CompileShader(D3.str, D3.size, "VSTextureColor", "vs_5_0");
+	pVertexShader_TC = CompileShader(D3.str, D3.size, "VSTextureColor", "vs_5_1");
 	//基本色3D
-	pVertexShader_BC = CompileShader(D3.str, D3.size, "VSBaseColor", "vs_5_0");
-	pPixelShader_BC = CompileShader(D3.str, D3.size, "PSBaseColor", "ps_5_0");
+	pVertexShader_BC = CompileShader(D3.str, D3.size, "VSBaseColor", "vs_5_1");
+	pPixelShader_BC = CompileShader(D3.str, D3.size, "PSBaseColor", "ps_5_1");
 	//Wave
-	pComputeShader_Wave = CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_0");
-	pDomainShader_Wave = CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_0");
+	pComputeShader_Wave = CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_1");
+	pDomainShader_Wave = CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
 
 	//2Dレイアウト
 	pVertexLayout_2D =
@@ -171,16 +171,16 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 4 * 3 + 4 * 4, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 	//テクスチャ2D
-	pVertexShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "VSTextureColor", "vs_5_0");
-	pPixelShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "PSTextureColor", "ps_5_0");
+	pVertexShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "VSTextureColor", "vs_5_1");
+	pPixelShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "PSTextureColor", "ps_5_1");
 	//2D
-	pVertexShader_2D = CompileShader(Shader2D, strlen(Shader2D), "VSBaseColor", "vs_5_0");
-	pPixelShader_2D = CompileShader(Shader2D, strlen(Shader2D), "PSBaseColor", "ps_5_0");
+	pVertexShader_2D = CompileShader(Shader2D, strlen(Shader2D), "VSBaseColor", "vs_5_1");
+	pPixelShader_2D = CompileShader(Shader2D, strlen(Shader2D), "PSBaseColor", "ps_5_1");
 
 	//DXRへのOutput
-	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_0");
-	pGeometryShader_Before_ds_Output_Smooth = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds_Smooth", "gs_5_0");
-	pGeometryShader_Before_ds_Output_Edge = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds_Edge", "gs_5_0");
+	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_1");
+	pGeometryShader_Before_ds_Output_Smooth = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds_Smooth", "gs_5_1");
+	pGeometryShader_Before_ds_Output_Edge = CompileShader(GsOut.str, GsOut.size, "GS_Before_ds_Edge", "gs_5_1");
 	pDeclaration_Output =
 	{
 		{ 0, "POSITION", 0, 0, 3, 0 },
@@ -190,9 +190,9 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ 0, "TEXCOORD", 1, 0, 2, 0 }
 	};
 
-	pGeometryShader_P_Output = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_PointDxr", "gs_5_0");
+	pGeometryShader_P_Output = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_PointDxr", "gs_5_1");
 
-	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom, strlen(ShaderSkinMeshCom), "VSSkinCS", "cs_5_0");
+	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom, strlen(ShaderSkinMeshCom), "VSSkinCS", "cs_5_1");
 
 	return CreateShaderByteCodeBool;
 }

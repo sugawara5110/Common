@@ -14,7 +14,6 @@
 #include <string.h>
 
 #define LIGHT_PCS 256
-#define INSTANCE_PCS_3D 256
 #define INSTANCE_PCS_2D 256
 #define MAX_BONES 256
 #define RELEASE(p)    if(p){p->Release();  p=nullptr;}
@@ -24,10 +23,13 @@
 #define ALIGNMENT_TO(alignment, val) ((val + alignment - 1) & ~(alignment - 1))
 
 //シェーダー受け渡し用バッファ3D用
+struct WVP_CB {
+	CoordTf::MATRIX wvp;
+	CoordTf::MATRIX world;
+};
+
 struct CONSTANT_BUFFER {
 
-	CoordTf::MATRIX World[INSTANCE_PCS_3D];
-	CoordTf::MATRIX WVP[INSTANCE_PCS_3D];
 	CoordTf::VECTOR4 C_Pos;       //視点位置
 	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
 

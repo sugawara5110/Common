@@ -146,7 +146,7 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 	const int numSrv = 1;
 	const int numCbv = 1;
 
-	mRootSignature = CreateRootSignature(numSrv, numCbv, 0, 0, 0);
+	mRootSignature = CreateRootSignature(numSrv, numCbv, 0, 0, 0, 0, nullptr);
 	if (mRootSignature == nullptr)return false;
 
 	TextureNo te;

@@ -12,7 +12,7 @@ char *ShaderCommonTriangleHSDS =
 "   uint instanceID = ip[0].instanceID;\n"
 "   if(g_instanceID.y == 1.0f) instanceID = g_instanceID.x;\n"
 //ワールド変換
-"   float4 wPos = mul(ip[0].Pos, g_World[instanceID]);\n"
+"   float4 wPos = mul(ip[0].Pos, wvpCb[instanceID].world);\n"
 //頂点から現在地までの距離を計算
 "   float distance = length(g_C_Pos.xyz - wPos.xyz);\n"
 
