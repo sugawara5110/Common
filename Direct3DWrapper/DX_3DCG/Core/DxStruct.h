@@ -26,13 +26,12 @@
 struct WVP_CB {
 	CoordTf::MATRIX wvp;
 	CoordTf::MATRIX world;
+	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
 };
 
 struct CONSTANT_BUFFER {
 
-	CoordTf::VECTOR4 C_Pos;       //視点位置
-	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
-
+	CoordTf::VECTOR4 C_Pos;//視点位置
 	//グローバルアンビエント
 	CoordTf::VECTOR4 GlobalAmbientLight;
 

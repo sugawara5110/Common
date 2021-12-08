@@ -934,7 +934,6 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;
-				memcpy(&mcb.AddObjColor, &ud.AddObjColor, sizeof(VECTOR4));
 				if (PD[i]->alphaBlend) {
 					mcb.AlphaBlend = 1.0f;
 				}
@@ -1023,6 +1022,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 			int index = InstancingCnt + k;
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].world, &ud.Transform[k], sizeof(MATRIX));
+			memcpy(&cbObj->wvpCb[index].AddObjColor, &ud.AddObjColor[k], sizeof(VECTOR4));
 			wvp->CopyData(index, cbObj->wvpCb[index]);
 		}
 		InstancingCnt += PD[i]->NumMaxInstance;

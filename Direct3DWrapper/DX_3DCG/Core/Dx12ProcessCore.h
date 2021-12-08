@@ -130,9 +130,9 @@ private:
 	~Dx12Process();
 
 	void Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
-		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
-	void InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
+	void InstancingUpdate(CONSTANT_BUFFER* cb, float disp,
 		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
 
 public:
@@ -405,8 +405,8 @@ struct UpdateDXR {
 	std::unique_ptr<std::unique_ptr<UINT[]>[]> currentIndexCount = nullptr;
 	std::unique_ptr<CoordTf::MATRIX[]> Transform = nullptr;
 	std::unique_ptr<CoordTf::MATRIX[]> WVP = nullptr;
-	CoordTf::VECTOR4 AddObjColor = {};//オブジェクトの色変化用
-	float shininess;
+	std::unique_ptr<CoordTf::VECTOR4[]> AddObjColor = nullptr;//オブジェクトの色変化用
+	float shininess = 0.0f;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
 	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ
 	bool createAS = false;//ASの最初の構築完了フラグ
@@ -426,6 +426,7 @@ struct UpdateDXR {
 	void create(int numMaterial, int numMaxInstance) {
 		Transform = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 		WVP = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
+		AddObjColor = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance);
 		VviewDXR = std::make_unique<std::unique_ptr<VertexView[]>[]>(numMaterial);
 		currentIndexCount = std::make_unique<std::unique_ptr<UINT[]>[]>(numMaterial);
 		for (int i = 0; i < numMaterial; i++) {
@@ -665,9 +666,9 @@ public:
 	BasicPolygon();
 	~BasicPolygon();
 
-	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
-	void InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess = 4.0f,
+	void InstancingUpdate(float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess = 4.0f,

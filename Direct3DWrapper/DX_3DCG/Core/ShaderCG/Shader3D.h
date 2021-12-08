@@ -33,7 +33,7 @@ char *Shader3D =
 "    PS_INPUT_BC output = (PS_INPUT_BC)0;\n"
 "    output.Pos = mul(Pos, wvpCb[instanceID].wvp);\n"
 
-"    output.Col = Col;\n"
+"    output.Col = Col + wvpCb[instanceID].ObjCol;\n"
 
 "    return output;\n"
 "}\n"
@@ -42,6 +42,6 @@ char *Shader3D =
 //****************************************基本色ピクセル**************************************************************//
 "float4 PSBaseColor(PS_INPUT_BC input) : SV_Target\n"
 "{\n"
-"   return input.Col + g_ObjCol;\n"
+"   return input.Col;\n"
 "}\n";
 //****************************************基本色ピクセル**************************************************************//

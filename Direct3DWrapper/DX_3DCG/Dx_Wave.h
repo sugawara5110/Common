@@ -47,9 +47,9 @@ public:
 		float divideBufferMagnification = 1.0f);
 	void SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd);
 
-	void Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+	void Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
-	void InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess = 4.0f,
+	void InstancingUpdate(float disp, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
 	void Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,

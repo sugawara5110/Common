@@ -680,7 +680,7 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 }
 
 void Dx12Process::Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
-	CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
+	CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
 
 	if (insNum >= numMaxIns) {
 		Dx_Util::ErrorMessage("Error: insNum is greater than numMaxIns.");
@@ -714,10 +714,12 @@ void Dx12Process::Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
 	MatrixTranspose(&cbArr[insNum].world);
 	MatrixTranspose(&cbArr[insNum].wvp);
 
+	cbArr[insNum].AddObjColor.as(Color.x, Color.y, Color.z, Color.w);
+
 	insNum++;
 }
 
-void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, float disp,
+void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, float disp,
 	float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
 
 	using namespace CoordTf;
@@ -725,7 +727,6 @@ void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, CoordTf::VECTOR4 Color, 
 	cb->C_Pos.as(upd[cBuffSwap[0]].pos.x,
 		upd[cBuffSwap[0]].pos.y,
 		upd[cBuffSwap[0]].pos.z, 0.0f);
-	cb->AddObjColor.as(Color.x, Color.y, Color.z, Color.w);
 	memcpy(&cb->GlobalAmbientLight, &GlobalAmbientLight, sizeof(VECTOR4));
 	cb->numLight.as((float)upd[cBuffSwap[0]].plight.LightPcs, 0.0f, 0.0f, 0.0f);
 	memcpy(cb->pLightPos, upd[cBuffSwap[0]].plight.LightPos, sizeof(VECTOR4) * LIGHT_PCS);

@@ -220,7 +220,7 @@ ComPtr<ID3D12RootSignature> Dx_Device::CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC*
 		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
 
 	if (FAILED(hr)) {
-		Dx_Util::ErrorMessage("Dx12Process::CreateRsCommon Error!!");
+		Dx_Util::ErrorMessage("Dx_Device::CreateRsCommon Error!!");
 		Dx_Util::ErrorMessage((char*)errorBlob.Get()->GetBufferPointer());
 		return nullptr;
 	}
@@ -233,7 +233,7 @@ ComPtr<ID3D12RootSignature> Dx_Device::CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC*
 		IID_PPV_ARGS(rs.GetAddressOf()));
 
 	if (FAILED(hr)) {
-		Dx_Util::ErrorMessage("Dx12Process::CreateRsCommon Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Dx_Device::CreateRsCommon Error!!"); return nullptr;
 	}
 
 	return rs;
@@ -250,7 +250,7 @@ ComPtr <ID3D12DescriptorHeap> Dx_Device::CreateDescHeap(int numDesc) {
 	HRESULT hr;
 	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
 	if (FAILED(hr)) {
-		Dx_Util::ErrorMessage("Dx12Process::CreateDescHeap Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Dx_Device::CreateDescHeap Error!!"); return nullptr;
 	}
 	return heap;
 }
@@ -266,7 +266,7 @@ ComPtr<ID3D12DescriptorHeap> Dx_Device::CreateSamplerDescHeap(D3D12_SAMPLER_DESC
 	HRESULT hr;
 	hr = md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
 	if (FAILED(hr)) {
-		Dx_Util::ErrorMessage("Dx12Process::CreateSamplerDescHeap Error!!"); return nullptr;
+		Dx_Util::ErrorMessage("Dx_Device::CreateSamplerDescHeap Error!!"); return nullptr;
 	}
 
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = heap.Get()->GetCPUDescriptorHandleForHeapStart();

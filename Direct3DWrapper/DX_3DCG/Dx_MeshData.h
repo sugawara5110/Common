@@ -54,9 +54,9 @@ public:
 	bool CreateMesh(bool smooth = false, float divideBufferMagnification = 1.0f);
 	ID3D12PipelineState* GetPipelineState(int index);
 
-	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
-	void InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess = 4.0f);
+	void InstancingUpdate(float disp, float shininess = 4.0f);
 
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess = 4.0f);

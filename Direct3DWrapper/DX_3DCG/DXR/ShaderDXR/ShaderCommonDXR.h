@@ -140,7 +140,7 @@ char* ShaderCommonDXR =
 "    float2 UV = getUV(attr, 0, v3);\n"
 //ピクセル値
 "    float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, UV, 0.0);\n"
-"    float4 add = material[materialID].AddObjColor;\n"
+"    float4 add = wvp[getInstancingID()].AddObjColor;\n"
 "    difTex.x = saturate(difTex.x + add.x);\n"
 "    difTex.y = saturate(difTex.y + add.y);\n"
 "    difTex.z = saturate(difTex.z + add.z);\n"

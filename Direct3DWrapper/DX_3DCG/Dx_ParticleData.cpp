@@ -49,18 +49,17 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
 	MatrixMultiply(&world, &rot, &mov);
 	MatrixMultiply(&cb->WV, &world, &dx->upd[dx->cBuffSwap[0]].mView);
 	memcpy(&cb->Proj, &dx->upd[dx->cBuffSwap[0]].mProj, sizeof(MATRIX));
+	cb->AddObjColor.as(color.x, color.y, color.z, color.w);
 
 	if (dx->DXR_CreateResource) {
 		MATRIX wvp;
 		MatrixMultiply(&wvp, &cb->WV, &dx->upd[dx->cBuffSwap[0]].mProj);
 		MatrixTranspose(&wvp);
 
-		memcpy(&dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor, &cb->AddObjColor, sizeof(VECTOR4));
 		MatrixTranspose(&world);
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform.get(),
-			&world, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP.get(),
-			&wvp, sizeof(MATRIX) * dxrPara.updateDXR[dx->dxrBuffSwap[0]].NumInstance);
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform.get(), &world, sizeof(MATRIX));
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP.get(), &wvp, sizeof(MATRIX));
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor.get(), &cb->AddObjColor, sizeof(VECTOR4));
 
 		cb->invRot = BillboardAngleCalculation(angle);
 		MatrixTranspose(&cb->invRot);
@@ -70,7 +69,6 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
 	MatrixTranspose(&cb->Proj);
 	cb->size.x = size;
 	cb->size.z = speed;
-	cb->AddObjColor.as(color.x, color.y, color.z, color.w);
 }
 
 void ParticleData::update2(CONSTANT_BUFFER_P* cb, bool init) {

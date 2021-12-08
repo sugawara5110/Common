@@ -11,6 +11,7 @@ char* ShaderCommonTriangleGS =
 "   output.Pos = mul(input.Pos, wvpCb[input.instanceID].wvp);\n"
 "   output.Tex0 = input.Tex0;\n"
 "   output.Tex1 = input.Tex1;\n"
+"   output.instanceID = input.instanceID;\n"
 "   return output;\n"
 "}\n"
 

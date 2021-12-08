@@ -96,10 +96,10 @@ void BasicPolygon::ParameterDXR_Update() {
 	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
 	ud.NumInstance = dpara.insNum;
 	ud.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
-	memcpy(&ud.AddObjColor, &cb[dx->cBuffSwap[1]].AddObjColor, sizeof(CoordTf::VECTOR4));
 	for (UINT i = 0; i < ud.NumInstance; i++) {
 		ud.Transform[i] = cbWVP[dx->cBuffSwap[1]][i].world;
 		ud.WVP[i] = cbWVP[dx->cBuffSwap[1]][i].wvp;
+		ud.AddObjColor[i] = cbWVP[dx->cBuffSwap[1]][i].AddObjColor;
 	}
 }
 
@@ -402,14 +402,12 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 	return true;
 }
 
-void BasicPolygon::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
-	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size);
+void BasicPolygon::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
+	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size, Color);
 }
 
-void BasicPolygon::InstancingUpdate(CoordTf::VECTOR4 Color,
-	float disp, float shininess, float px, float py, float mx, float my) {
-
-	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], Color, disp, px, py, mx, my, divArr, numDiv, shininess);
+void BasicPolygon::InstancingUpdate(float disp, float shininess, float px, float py, float mx, float my) {
+	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess);
 	CbSwap();
 }
 
@@ -417,8 +415,8 @@ void BasicPolygon::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
 	float disp, float shininess, float px, float py, float mx, float my) {
 
-	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size);
-	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], Color, disp, px, py, mx, my, divArr, numDiv, shininess);
+	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size, Color);
+	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess);
 	CbSwap();
 }
 

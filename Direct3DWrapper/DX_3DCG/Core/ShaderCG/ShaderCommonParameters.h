@@ -12,6 +12,8 @@ char* ShaderCommonParameters =
 "struct WVPCB {\n"
 "    matrix wvp;\n"
 "    matrix world;\n"
+//オブジェクト追加カラー
+"    float4 ObjCol;\n"
 "};\n"
 "ConstantBuffer<WVPCB> wvpCb[] : register(b0, space1);\n"
 
@@ -19,8 +21,6 @@ char* ShaderCommonParameters =
 "{\n"
 //視点
 "    float4 g_C_Pos;\n"
-//オブジェクト追加カラー
-"    float4 g_ObjCol;\n"
 //グローバルアンビエント
 "    float4 g_GlobalAmbientLight;\n"
 //xyz:光源位置, w:オンオフ
@@ -93,6 +93,7 @@ char* ShaderCommonParameters =
 "    float2 Tex0     : TEXCOORD0;\n"
 "    float2 Tex1     : TEXCOORD1;\n"
 "    float3 tangent  : TANGENT;\n"
+"    uint   instanceID : SV_InstanceID;\n"
 "};\n"
 
 "struct HS_CONSTANT_OUTPUT\n"

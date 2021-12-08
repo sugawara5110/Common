@@ -443,12 +443,12 @@ bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
 	return true;
 }
 
-void MeshData::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
-	mObj.Instancing(pos, angle, size);
+void MeshData::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
+	mObj.Instancing(pos, angle, size, Color);
 }
 
-void MeshData::InstancingUpdate(CoordTf::VECTOR4 Color, float disp, float shininess) {
-	mObj.InstancingUpdate(Color, disp, shininess);
+void MeshData::InstancingUpdate(float disp, float shininess) {
+	mObj.InstancingUpdate(disp, shininess);
 }
 
 void MeshData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,

@@ -19,7 +19,6 @@ char* ShaderParametersDXR =
 "    float4 Diffuse;\n"
 "    float4 Speculer; \n"
 "    float4 Ambient;\n"
-"    float4 AddObjColor;\n"
 "    float shininess;\n"
 "    float RefractiveIndex;\n"//ã¸ê‹ó¶
 "    float AlphaBlend;\n"
@@ -29,6 +28,7 @@ char* ShaderParametersDXR =
 "struct WVPCB {\n"
 "    matrix wvp;\n"
 "    matrix world;\n"
+"    float4 AddObjColor;\n"
 "};\n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
