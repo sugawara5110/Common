@@ -105,7 +105,7 @@ public:
 	void SetConnectStep(int ind, float step);
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
-	void GetBuffer(float end_frame, bool singleMesh = false, bool deformer = true);
+	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
 	void noUseMeshIndex(int meshIndex);
 	void SetVertex(bool lclOn = false, bool axisOn = false, bool VerCentering = false);
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
@@ -118,6 +118,11 @@ public:
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
 	void CreateFromFBX_SubAnimation(int ind);
 	void setInternalAnimationIndex(int index) { InternalAnimationIndex = index; }
+
+	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+
+	bool InstancingUpdate(int ind, float time, float disp = 1.0f, float shininess = 4.0f);
 
 	bool Update(int ind, float time, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,

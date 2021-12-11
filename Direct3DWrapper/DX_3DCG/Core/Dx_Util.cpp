@@ -11,8 +11,15 @@
 #include <stdio.h>
 #include <string.h>
 
+static bool Dx_UtilErrorF = false;
+
 void Dx_Util::ErrorMessage(char* E_mes) {
 	MessageBoxA(0, E_mes, 0, MB_OK);
+	Dx_UtilErrorF = true;
+}
+
+bool Dx_Util::getErrorState() {
+	return Dx_UtilErrorF;
 }
 
 char* Dx_Util::GetNameFromPass(char* pass) {

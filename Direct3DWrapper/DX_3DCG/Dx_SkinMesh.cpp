@@ -179,7 +179,7 @@ HRESULT SkinMesh::GetFbx(CHAR* szFileName) {
 	return S_OK;
 }
 
-void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
+void SkinMesh::GetBuffer(int numMaxInstance, float end_frame, bool singleMesh, bool deformer) {
 
 	using namespace CoordTf;
 	fbx[0].end_frame = end_frame;
@@ -233,7 +233,7 @@ void SkinMesh::GetBuffer(float end_frame, bool singleMesh, bool deformer) {
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].SetCommandList(com_no);
-		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), 1, divArr, numDiv);
+		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), numMaxInstance, divArr, numDiv);
 		if (numBone[i] > 0) {
 			sk[i].getBuffer(&mObj[i]);
 		}
@@ -1007,10 +1007,16 @@ void SkinMesh::MatrixMap_Bone(SHADER_GLOBAL_BONES* sgb) {
 	GetMeshCenterPos();
 }
 
-bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float shininess) {
+void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 
+	for (int i = 0; i < numMesh; i++) {
+		if (!noUseMesh[i])
+			mObj[i].Instancing(pos, angle, size, Color);
+	}
+}
+
+bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float shininess) {
 	bool frame_end = false;
 	int insnum = 0;
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
@@ -1018,10 +1024,18 @@ bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 
 
 	for (int i = 0; i < numMesh; i++) {
 		if (!noUseMesh[i])
-			mObj[i].Update(pos, Color, angle, size, disp, shininess);
+			mObj[i].InstancingUpdate(disp, shininess);
 	}
 
 	return frame_end;
+}
+
+bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+	float disp, float shininess) {
+
+	Instancing(pos, Color, angle, size);
+	return InstancingUpdate(ind, ti, disp, shininess);
 }
 
 void SkinMesh::DrawOff() {

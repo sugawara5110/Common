@@ -13,6 +13,8 @@ namespace Dx_Util {
 
 	void ErrorMessage(char* E_mes);
 
+	bool getErrorState();
+
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
 
 	CoordTf::VECTOR3 CalcTangent(CoordTf::VECTOR3 v0, CoordTf::VECTOR3 v1, CoordTf::VECTOR3 v2,
