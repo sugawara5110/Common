@@ -285,22 +285,24 @@ void SkinMesh::LclTransformation(FbxMeshNode* mesh, CoordTf::VECTOR3* vec) {
 	MATRIX scale;
 	MATRIX scro;
 	MATRIX world;
-	//Šg‘åk¬
+
 	MatrixScaling(&scale,
 		(float)mesh->getLcl().Scaling[0],
 		(float)mesh->getLcl().Scaling[1],
 		(float)mesh->getLcl().Scaling[2]);
-	//•\Ž¦ˆÊ’u
+
 	MatrixRotationZ(&rotZ, (float)mesh->getLcl().Rotation[2]);
 	MatrixRotationY(&rotY, (float)mesh->getLcl().Rotation[1]);
 	MatrixRotationX(&rotX, (float)mesh->getLcl().Rotation[0]);
 	MatrixMultiply(&rotZY, &rotZ, &rotY);
 	MatrixMultiply(&rotZYX, &rotZY, &rotX);
+
 	MatrixTranslation(&mov,
 		(float)mesh->getLcl().Translation[0],
 		(float)mesh->getLcl().Translation[1],
 		(float)mesh->getLcl().Translation[2]);
-	MatrixMultiply(&scro, &rotZYX, &scale);
+
+	MatrixMultiply(&scro, &scale, &rotZYX);
 	MatrixMultiply(&world, &scro, &mov);
 	VectorMatrixMultiply(vec, &world);
 }

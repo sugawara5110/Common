@@ -14,7 +14,7 @@ class PolygonData :public BasicPolygon {
 protected:
 	void* ver = nullptr;  //頂点配列
 	UINT** index = nullptr;//頂点インデックス
-	int numIndex;    //頂点インデックス数
+	int numIndex = 0;   //頂点インデックス数
 
 	void GetShaderByteCode(bool light, int tNo, bool smooth);
 

@@ -704,7 +704,7 @@ void Dx12Process::Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
 	MatrixMultiply(&rotZY, &rotZ, &rotY);
 	MatrixMultiply(&rotZYX, &rotZY, &rotX);
 	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
-	MatrixMultiply(&scro, &rotZYX, &scale);
+	MatrixMultiply(&scro, &scale, &rotZYX);
 	MatrixMultiply(&world, &scro, &mov);
 
 	//ワールド、カメラ、射影行列、等
