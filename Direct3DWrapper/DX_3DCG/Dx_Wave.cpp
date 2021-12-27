@@ -58,20 +58,8 @@ void Wave::GetVBarray(int numMaxInstance) {
 void Wave::GetShaderByteCode(bool smooth) {
 	Dx12Process* dx = mObj.dx;
 	Dx_ShaderHolder* sh = dx->shaderH.get();
-	mObj.cs = sh->pComputeShader_Wave.Get();
-	mObj.vs = sh->pVertexShader_MESH_D.Get();
-	mObj.ps = sh->pPixelShader_3D.Get();
-	mObj.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
-	mObj.hs = sh->pHullShaderTriangle.Get();
-	mObj.ds = sh->pDomainShader_Wave.Get();
-	if (smooth) {
-		mObj.gs = sh->pGeometryShader_Before_ds_Smooth.Get();
-		mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
-	}
-	else {
-		mObj.gs = sh->pGeometryShader_Before_ds_Edge.Get();
-		mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
-	}
+	mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, sh->pDomainShader_Wave.Get());
+	cs = sh->pComputeShader_Wave.Get();
 }
 
 bool Wave::ComCreate() {
@@ -121,7 +109,7 @@ bool Wave::ComCreate() {
 	if (mRootSignatureCom == nullptr)return false;
 
 	//PSO
-	mPSOCom = mObj.CreatePsoCompute(mObj.cs, mRootSignatureCom.Get());
+	mPSOCom = mObj.CreatePsoCompute(cs, mRootSignatureCom.Get());
 	if (mPSOCom == nullptr)return false;
 
 	return true;
@@ -146,12 +134,10 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth
 	mObj.dpara.material[0].diftex_no = texNo;
 	mObj.dpara.material[0].nortex_no = nortNo;
 	mObj.dpara.material[0].spetex_no = mObj.dx->GetTexNumber("dummyDifSpe.");
-	mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
 	mObj.mObjectCB1->CopyData(0, sg);
 	const int numSrvTex = 3;
 	const int numSrvBuf = 1;
 	const int numCbv = 3;
-	mObj.primType_create = CONTROL_POINT;
 	mObj.setDivideArr(divArr, numDiv);
 
 	UINT* indexCntArr = new UINT[mObj.dpara.NumMaterial];

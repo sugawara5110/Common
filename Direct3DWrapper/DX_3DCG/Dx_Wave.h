@@ -16,6 +16,7 @@ protected:
 	ConstantBuffer<CONSTANT_BUFFER_WAVE>* mObjectCB_WAVE = nullptr;
 	CONSTANT_BUFFER_WAVE cbw;
 	CONSTANT_BUFFER2 sg;
+	ID3DBlob* cs = nullptr;
 
 	int div;//ï™äÑêî
 

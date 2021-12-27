@@ -42,7 +42,6 @@ protected:
 	BasicPolygon mObj;
 
 	bool LoadMaterialFromFile(char* FileName, int numMaxInstance);
-	void GetShaderByteCode(bool disp, bool smooth);
 
 public:
 	MeshData();

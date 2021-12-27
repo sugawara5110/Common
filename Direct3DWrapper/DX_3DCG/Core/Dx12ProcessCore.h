@@ -610,7 +610,6 @@ protected:
 	ID3DBlob* ds = nullptr;
 	ID3DBlob* gs = nullptr;
 	ID3DBlob* gs_NoMap = nullptr;
-	ID3DBlob* cs = nullptr;
 
 	PrimitiveType primType_create;
 
@@ -661,6 +660,9 @@ protected:
 
 	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool smooth);
+
+	void GetShaderByteCode(PrimitiveType type, bool light, bool smooth, bool BC_On,
+		ID3DBlob* changeVs, ID3DBlob* changeDs);
 
 public:
 	BasicPolygon();

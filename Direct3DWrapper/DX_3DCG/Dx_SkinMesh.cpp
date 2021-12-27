@@ -676,34 +676,16 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 		BasicPolygon& o = mObj[i];
 		if (disp) {
 			if (numBone[i] > 0)
-				o.vs = sh->pVertexShader_SKIN_D.Get();
+				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, sh->pVertexShader_SKIN_D.Get(), nullptr);
 			else
-				o.vs = sh->pVertexShader_MESH_D.Get();
-			o.hs = sh->pHullShaderTriangle.Get();
-			o.ds = sh->pDomainShaderTriangle.Get();
-			if (smooth) {
-				o.gs = sh->pGeometryShader_Before_ds_Smooth.Get();
-				o.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
-			}
-			else {
-				o.gs = sh->pGeometryShader_Before_ds_Edge.Get();
-				o.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
-			}
-			o.primType_create = CONTROL_POINT;
-			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, o.vs = sh->pVertexShader_MESH_D.Get(), nullptr);
 		}
 		else {
 			if (numBone[i] > 0)
-				o.vs = sh->pVertexShader_SKIN.Get();
+				o.GetShaderByteCode(SQUARE, true, smooth, false, sh->pVertexShader_SKIN.Get(), nullptr);
 			else
-				o.vs = sh->pVertexShader_MESH.Get();
-			o.gs = sh->pGeometryShader_Before_vs.Get();
-			o.gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
-			o.primType_create = SQUARE;
-			o.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+				o.GetShaderByteCode(SQUARE, true, smooth, false, o.vs = sh->pVertexShader_MESH.Get(), nullptr);
 		}
-		o.ps = sh->pPixelShader_3D.Get();
-		o.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
 	}
 }
 
@@ -950,7 +932,7 @@ void SkinMesh::GetMeshCenterPos() {
 	for (int i = 0; i < numMesh; i++) {
 		if (mObj[i].dx->DXR_CreateResource) {
 			VECTOR3 cp = centerPos[i].pos;
-			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[mObj[i].dx->dxrBuffSwap[0]];
+			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[mObj[i].dx->dxrBuffSwap[0]];//StreamOutput“à‚àdxrBuffSwap[0]‚¾‚ª‘‚«ž‚Ý‰ÓŠ‚ªˆÙ‚È‚é‚Ì‚ÅOK
 			VECTOR3* vv = &ud.v[0];
 			vv->as(cp.x, cp.y, cp.z);
 			if (numBone[i] > 0) {

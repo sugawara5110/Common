@@ -28,31 +28,6 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 	return mObj.dpara.PSO[index].Get();
 }
 
-void MeshData::GetShaderByteCode(bool disp, bool smooth) {
-	Dx12Process* dx = mObj.dx;
-	Dx_ShaderHolder* sh = dx->shaderH.get();
-	if (disp) {
-		mObj.vs = sh->pVertexShader_MESH_D.Get();
-		mObj.hs = sh->pHullShaderTriangle.Get();
-		mObj.ds = sh->pDomainShaderTriangle.Get();
-		if (smooth) {
-			mObj.gs = sh->pGeometryShader_Before_ds_Smooth.Get();
-			mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
-		}
-		else {
-			mObj.gs = sh->pGeometryShader_Before_ds_Edge.Get();
-			mObj.gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
-		}
-	}
-	else {
-		mObj.vs = sh->pVertexShader_MESH.Get();
-		mObj.gs = sh->pGeometryShader_Before_vs.Get();
-		mObj.gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
-	}
-	mObj.ps = sh->pPixelShader_3D.Get();
-	mObj.ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
-}
-
 bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
 	Dx12Process* dx = mObj.dx;
 	//マテリアルファイルを開いて内容を読み込む
@@ -141,15 +116,6 @@ void MeshData::SetState(bool al, bool bl, bool di, float diffuse, float specu, f
 	addDiffuse = diffuse;
 	addSpecular = specu;
 	addAmbient = ambi;
-
-	if (disp) {
-		mObj.primType_create = CONTROL_POINT;
-		mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
-	}
-	else {
-		mObj.primType_create = SQUARE;
-		mObj.dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	}
 }
 
 bool MeshData::GetBuffer(char* FileName, int numMaxInstance) {
@@ -413,7 +379,12 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 
 bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
 	Dx12Process* dx = mObj.dx;
-	GetShaderByteCode(disp, smooth);
+	if (disp) {
+		mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, nullptr);
+	}
+	else {
+		mObj.GetShaderByteCode(SQUARE, true, smooth, false, nullptr, nullptr);
+	}
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	mObj.setDivideArr(divArr, numDiv);

@@ -58,7 +58,7 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
 
 		MatrixTranspose(&world);
 		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform.get(), &world, sizeof(MATRIX));
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP.get(), &wvp, sizeof(MATRIX));
+		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP.get(), &wvp, sizeof(MATRIX));//StreamOutput“à‚àdxrBuffSwap[0]‚¾‚ª‘‚«ž‚Ý‰ÓŠ‚ªˆÙ‚È‚é‚Ì‚ÅOK
 		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor.get(), &cb->AddObjColor, sizeof(VECTOR4));
 
 		cb->invRot = BillboardAngleCalculation(angle);

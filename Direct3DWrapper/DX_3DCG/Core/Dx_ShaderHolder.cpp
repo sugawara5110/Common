@@ -154,8 +154,6 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
-	//テクスチャ3D
-	pVertexShader_TC = CompileShader(D3.str, D3.size, "VSTextureColor", "vs_5_1");
 	//基本色3D
 	pVertexShader_BC = CompileShader(D3.str, D3.size, "VSBaseColor", "vs_5_1");
 	pPixelShader_BC = CompileShader(D3.str, D3.size, "PSBaseColor", "ps_5_1");

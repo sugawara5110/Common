@@ -45,6 +45,68 @@ BasicPolygon::~BasicPolygon() {
 	S_DELETE(wvp);
 }
 
+void BasicPolygon::GetShaderByteCode(PrimitiveType type, bool light, bool smooth, bool BC_On,
+	ID3DBlob* changeVs, ID3DBlob* changeDs) {
+
+	primType_create = type;
+	if (primType_create == SQUARE) {
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	}
+	if (primType_create == POINt) {
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
+	}
+	if (primType_create == LINE_L) {
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+	}
+	if (primType_create == LINE_S) {
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP;
+	}
+	if (primType_create == CONTROL_POINT) {
+		dpara.TOPOLOGY = D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+	}
+
+	bool disp = false;
+	Dx_ShaderHolder* sh = dx->shaderH.get();
+	if (primType_create == CONTROL_POINT)disp = true;
+	if (BC_On) {
+		vs = sh->pVertexShader_BC.Get();
+		ps = sh->pPixelShader_BC.Get();
+		ps_NoMap = sh->pPixelShader_BC.Get();
+		return;
+	}
+
+	if (disp) {
+		vs = sh->pVertexShader_MESH_D.Get();
+		hs = sh->pHullShaderTriangle.Get();
+		ds = sh->pDomainShaderTriangle.Get();
+		if (smooth) {
+			gs = sh->pGeometryShader_Before_ds_Smooth.Get();
+			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+		}
+		else {
+			gs = sh->pGeometryShader_Before_ds_Edge.Get();
+			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+		}
+	}
+	else {
+		vs = sh->pVertexShader_MESH.Get();
+		gs = sh->pGeometryShader_Before_vs.Get();
+		gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
+	}
+
+	if (light) {
+		ps = sh->pPixelShader_3D.Get();
+		ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
+	}
+	else {
+		ps = sh->pPixelShader_Emissive.Get();
+		ps_NoMap = sh->pPixelShader_Emissive.Get();
+	}
+
+	if (changeVs)vs = changeVs;
+	if (changeDs)ds = changeDs;
+}
+
 void BasicPolygon::createBufferDXR(int numMaterial, int numMaxInstance) {
 	dxrPara.create(numMaterial, numMaxInstance);
 }

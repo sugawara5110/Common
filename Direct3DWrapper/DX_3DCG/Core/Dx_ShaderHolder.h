@@ -74,7 +74,6 @@ private:
 	ComPtr<ID3DBlob> pVertexShader_P = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_MESH_D = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_MESH = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_TC = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_BC = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_2D = nullptr;
 	ComPtr<ID3DBlob> pVertexShader_2DTC = nullptr;
