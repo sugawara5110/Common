@@ -12,6 +12,13 @@
 class PostEffect :public Common {
 
 protected:
+	//ポストエフェクト
+	struct CONSTANT_BUFFER_PostMosaic {
+		CoordTf::VECTOR4 mosaicSize;//x
+		CoordTf::VECTOR4 blur;//xy:座標, z:強さ, w:ピントが合う深さ
+		float focusRange;
+	};
+
 	ID3DBlob* cs = nullptr;
 
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
@@ -22,6 +29,7 @@ protected:
 
 	ConstantBuffer<CONSTANT_BUFFER_PostMosaic>* mObjectCB = nullptr;
 
+	void createShader();
 	bool ComCreate(int no);
 	void Compute(int com_no, bool On, int size,
 		float blurX, float blurY, float blurLevel,

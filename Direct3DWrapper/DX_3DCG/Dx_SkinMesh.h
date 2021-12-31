@@ -139,7 +139,7 @@ public:
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0, int meshIndex = 0);
 	void TextureInit(int width, int height, int texIndex = 0, int meshIndex = 0);
-	HRESULT SetTextureMPixel(BYTE* frame, int texIndex = 0, int meshIndex = 0);
+	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int texIndex = 0, int meshIndex = 0);
 	int getNumMesh() { return numMesh; }
 	ParameterDXR* getParameter(int meshIndex) { return mObj[meshIndex].getParameter(); }
 	void setDivideArr(DivideArr* arr, int numdiv) {

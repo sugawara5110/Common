@@ -80,15 +80,6 @@ struct CONSTANT_BUFFER2D {
 	CoordTf::VECTOR4 WidHei;//ウインドウwh
 };
 
-//コンスタントバッファパーティクル用
-struct CONSTANT_BUFFER_P {
-	CoordTf::MATRIX  WV;
-	CoordTf::MATRIX  invRot;
-	CoordTf::MATRIX  Proj;
-	CoordTf::VECTOR4 size;//xパーティクル大きさ, yパーティクル初期化フラグ, zスピード
-	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
-};
-
 //ポイントライト
 struct PointLight {
 	CoordTf::VECTOR4 LightPos[LIGHT_PCS];   //xyz:Pos, w:オンオフ
@@ -123,13 +114,6 @@ struct MY_VERTEX2 {
 	CoordTf::VECTOR3 Pos;
 	CoordTf::VECTOR4 color;
 	CoordTf::VECTOR2 tex;
-};
-
-//パーティクル頂点
-struct PartPos {
-	CoordTf::VECTOR3 CurrentPos; //描画に使う
-	CoordTf::VECTOR3 PosSt;     //開始位置
-	CoordTf::VECTOR3 PosEnd;   //終了位置
 };
 
 //頂点3DTexture有り
@@ -223,18 +207,6 @@ public:
 	}
 };
 
-//Wave
-struct WaveData
-{
-	float sinWave;
-	float theta;
-};
-
-struct CONSTANT_BUFFER_WAVE {
-	CoordTf::VECTOR4 wHei_divide;//x:waveHeight, y:分割数
-	float speed = 0.0f;
-};
-
 class SameVertexList {
 
 private:
@@ -315,13 +287,6 @@ struct MovieTexture {
 	int width = 8;
 	int height = 8;
 	int resIndex = -1;
-};
-
-//ポストエフェクト
-struct CONSTANT_BUFFER_PostMosaic {
-	CoordTf::VECTOR4 mosaicSize;//x
-	CoordTf::VECTOR4 blur;//xy:座標, z:強さ, w:ピントが合う深さ
-	float focusRange;
 };
 
 struct DivideArr {

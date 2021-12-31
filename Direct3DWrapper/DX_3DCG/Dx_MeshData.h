@@ -68,7 +68,7 @@ public:
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
+	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
 	void setDivideArr(DivideArr* arr, int numdiv) {
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);

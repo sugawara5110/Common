@@ -5,6 +5,38 @@
 //*****************************************************************************************//
 
 #include "Dx_Wave.h"
+#include "./Core/ShaderCG/ShaderWaveCom.h"
+#include "./Core/ShaderCG/ShaderWaveDraw.h"
+
+namespace {
+	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
+	ComPtr<ID3DBlob> pDomainShader_Wave = nullptr;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_MESH;
+
+	bool createShaderDone = false;
+}
+
+void Wave::createShader() {
+
+	if (createShaderDone)return;
+	addChar Wave;
+	Wave.addStr(mObj.getShaderCommonParameters(), ShaderWaveDraw);
+
+	//Wave
+	pComputeShader_Wave = mObj.CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_1");
+	pDomainShader_Wave = mObj.CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
+	//メッシュレイアウト
+	pVertexLayout_MESH =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "GEO_NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+	};
+
+	createShaderDone = true;
+}
 
 Wave::Wave() {
 	sg.vDiffuse.x = 1.0f;
@@ -56,10 +88,9 @@ void Wave::GetVBarray(int numMaxInstance) {
 }
 
 void Wave::GetShaderByteCode(bool smooth) {
-	Dx12Process* dx = mObj.dx;
-	Dx_ShaderHolder* sh = dx->shaderH.get();
-	mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, sh->pDomainShader_Wave.Get());
-	cs = sh->pComputeShader_Wave.Get();
+	createShader();
+	mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, pDomainShader_Wave.Get());
+	cs = pComputeShader_Wave.Get();
 }
 
 bool Wave::ComCreate() {
@@ -90,7 +121,7 @@ bool Wave::ComCreate() {
 	mInputUploadBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputUploadBuffer", mObj.objName));
 	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", mObj.objName));
 
-	dx->dx_sub[mObj.com_no].ResourceBarrier(mOutputBuffer.Get(),
+	mObj.comObj->ResourceBarrier(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
@@ -154,8 +185,8 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth
 	int numUav = 0;
 	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
 	mObj.setColorDXR(0, sg);
-	if (!mObj.createPSO(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
-	if (!mObj.createPSO_DXR(mObj.dx->shaderH->pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, smooth))return false;
+	if (!mObj.createPSO(pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
+	if (!mObj.createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, smooth))return false;
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};
@@ -212,7 +243,8 @@ void Wave::DrawOff() {
 
 void Wave::Compute(int com) {
 
-	ID3D12GraphicsCommandList* mCList = mObj.dx->dx_sub[com].mCommandList.Get();
+	mObj.SetCommandList(com);
+	ID3D12GraphicsCommandList* mCList = mObj.mCommandList;
 	mCList->SetPipelineState(mPSOCom.Get());
 
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -229,7 +261,7 @@ void Wave::Compute(int com) {
 }
 
 void Wave::Draw(int com_no) {
-	if (!mObj.firstCbSet[mObj.dx->cBuffSwap[1]] | !mObj.DrawOn)return;
+	if (!mObj.firstCbSet[mObj.cBuffSwapDrawOrStreamoutputIndex()] | !mObj.DrawOn)return;
 	Compute(com_no);
 	mObj.Draw(com_no);
 }
@@ -260,6 +292,6 @@ void Wave::TextureInit(int width, int height, int index) {
 	mObj.TextureInit(width, height, index);
 }
 
-HRESULT Wave::SetTextureMPixel(BYTE* frame, int index) {
-	return mObj.SetTextureMPixel(frame, index);
+HRESULT Wave::SetTextureMPixel(int com_no, BYTE* frame, int index) {
+	return mObj.SetTextureMPixel(com_no, frame, index);
 }

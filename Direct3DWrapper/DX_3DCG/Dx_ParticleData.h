@@ -12,6 +12,22 @@
 class ParticleData :public Common {
 
 protected:
+	//コンスタントバッファパーティクル用
+	struct CONSTANT_BUFFER_P {
+		CoordTf::MATRIX  WV;
+		CoordTf::MATRIX  invRot;
+		CoordTf::MATRIX  Proj;
+		CoordTf::VECTOR4 size;//xパーティクル大きさ, yパーティクル初期化フラグ, zスピード
+		CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
+	};
+
+	//パーティクル頂点
+	struct PartPos {
+		CoordTf::VECTOR3 CurrentPos; //描画に使う
+		CoordTf::VECTOR3 PosSt;     //開始位置
+		CoordTf::VECTOR3 PosEnd;   //終了位置
+	};
+
 	ID3DBlob* gsSO;
 	ID3DBlob* vsSO;
 	ID3DBlob* gs;
@@ -48,6 +64,7 @@ protected:
 	ComPtr<ID3D12PipelineState> mPSO_com = nullptr;
 	ComPtr<ID3D12PipelineState> mPSO_draw = nullptr;
 
+	void createShader();
 	void GetShaderByteCode();
 	void update(CONSTANT_BUFFER_P* cb_p, CoordTf::VECTOR3 pos,
 		CoordTf::VECTOR4 color, float angle, float size, float speed);
@@ -85,7 +102,7 @@ public:
 	void StreamOutputBillboard();
 	ParameterDXR* getParameter();
 	void setRefractiveIndex(float index) {
-		dxrPara.updateDXR[dx->dxrBuffSwap[0]].RefractiveIndex = index;
+		dxrPara.updateDXR[dxrBuffSwapIndex()].RefractiveIndex = index;
 	}
 };
 

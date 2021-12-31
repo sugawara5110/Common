@@ -9,7 +9,8 @@
 
 Common::Common() {
 	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
+	comObj = &dx->dx_sub[0];
+	mCommandList = comObj->mCommandList.Get();
 }
 
 void Common::SetName(char* name) {
@@ -19,7 +20,8 @@ void Common::SetName(char* name) {
 
 void Common::SetCommandList(int no) {
 	com_no = no;
-	mCommandList = dx->dx_sub[com_no].mCommandList.Get();
+	comObj = &dx->dx_sub[com_no];
+	mCommandList = comObj->mCommandList.Get();
 }
 
 void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int index) {
@@ -52,7 +54,7 @@ void Common::TextureInit(int width, int height, int index) {
 	movOn[index].height = height;
 }
 
-HRESULT Common::SetTextureMPixel(BYTE* frame, int ind) {
+HRESULT Common::SetTextureMPixel(int com_no, BYTE* frame, int ind) {
 
 	int index = movOn[ind].resIndex;
 
@@ -544,5 +546,9 @@ D3D12_RESOURCE_STATES Common::GetTextureStates() {
 
 ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
 	return dx->shaderH->CompileShader(szFileName, size, szFuncName, szProfileName);
+}
+
+char* Common::getShaderCommonParameters() {
+	return dx->shaderH->ShaderCommonParametersCopy.get();
 }
 

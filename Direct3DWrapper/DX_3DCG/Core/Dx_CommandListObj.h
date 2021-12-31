@@ -22,11 +22,8 @@ class MeshData;
 class BasicPolygon;
 class PolygonData;
 class PolygonData2D;
-class ParticleData;
 class SkinMesh;
 class DxText;
-class Wave;
-class PostEffect;
 class Common;
 class DXR_Basic;
 class SkinnedCom;
@@ -42,10 +39,7 @@ private:
 	friend BasicPolygon;
 	friend PolygonData;
 	friend PolygonData2D;
-	friend ParticleData;
 	friend SkinMesh;
-	friend Wave;
-	friend PostEffect;
 	friend Common;
 	friend DXR_Basic;
 	friend SkinnedCom;
@@ -57,8 +51,6 @@ private:
 	volatile ComListState mComState = {};
 
 	bool ListCreate(bool Compute, ID3D12Device5* dev);
-	void ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-	void CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src);
 	void Bigin();
 	void End();
 
@@ -80,6 +72,8 @@ private:
 
 	void createResourceBarrierList();
 	void createUavResourceBarrierList();
+
+public:
 	void delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src);
 	void delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
@@ -88,6 +82,8 @@ private:
 	void RunDelayCopyResource();
 	void RunDelayResourceBarrierAfter();
 	void RunDelayUavResourceBarrier();
+	void ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+	void CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src);
 };
 
 #endif

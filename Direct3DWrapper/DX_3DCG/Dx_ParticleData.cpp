@@ -7,10 +7,63 @@
 #include "Dx_ParticleData.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include "./Core/ShaderCG/ShaderParticle.h"
+
+namespace {
+	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_PSO;
+	ComPtr<ID3DBlob> pVertexShader_PSO = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_PSO = nullptr;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_P;
+	ComPtr<ID3DBlob> pVertexShader_P = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_P = nullptr;
+	ComPtr<ID3DBlob> pPixelShader_P = nullptr;
+	ComPtr<ID3DBlob> pGeometryShader_P_Output = nullptr;
+	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_Output;
+
+	bool createShaderDone = false;
+}
+
+void ParticleData::createShader() {
+
+	if (createShaderDone)return;
+	//ストリーム出力データ定義(パーティクル用)
+	pDeclaration_PSO =
+	{
+		{ 0, "POSITION", 0, 0, 3, 0 }, //「x,y,z」をスロット「0」の「POSITION」に出力
+		{ 0, "POSITION", 1, 0, 3, 0 },
+		{ 0, "POSITION", 2, 0, 3, 0 },
+	};
+	//ストリーム出力
+	pVertexShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS_SO", "vs_5_1");
+	pGeometryShader_PSO = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point_SO", "gs_5_1");
+
+	//パーティクル頂点インプットレイアウトを定義
+	pVertexLayout_P =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "POSITION", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "POSITION", 2, DXGI_FORMAT_R32G32B32_FLOAT, 0, 4 * 3 * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	};
+	//パーティクル
+	pVertexShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "VS", "vs_5_1");
+	pGeometryShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_Point", "gs_5_1");
+	pPixelShader_P = CompileShader(ShaderParticle, strlen(ShaderParticle), "PS", "ps_5_1");
+
+	//DXR
+	pDeclaration_Output =
+	{
+		{ 0, "POSITION", 0, 0, 3, 0 },
+		{ 0, "NORMAL",   0, 0, 3, 0 },
+		{ 0, "TANGENT",  0, 0, 3, 0 },
+		{ 0, "TEXCOORD", 0, 0, 2, 0 },
+		{ 0, "TEXCOORD", 1, 0, 2, 0 }
+	};
+	pGeometryShader_P_Output = CompileShader(ShaderParticle, strlen(ShaderParticle), "GS_PointDxr", "gs_5_1");
+
+	createShaderDone = true;
+}
 
 ParticleData::ParticleData() {
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
 	ver = 0;
 	P_pos = nullptr;
 
@@ -27,12 +80,12 @@ ParticleData::~ParticleData() {
 }
 
 void ParticleData::GetShaderByteCode() {
-	Dx_ShaderHolder* sh = dx->shaderH.get();
-	gsSO = sh->pGeometryShader_PSO.Get();
-	gs = sh->pGeometryShader_P.Get();
-	vsSO = sh->pVertexShader_PSO.Get();
-	vs = sh->pVertexShader_P.Get();
-	ps = sh->pPixelShader_P.Get();
+	createShader();
+	gsSO = pGeometryShader_PSO.Get();
+	gs = pGeometryShader_P.Get();
+	vsSO = pVertexShader_PSO.Get();
+	vs = pVertexShader_P.Get();
+	ps = pPixelShader_P.Get();
 }
 
 void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
@@ -47,19 +100,22 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
 	MatrixRotationZ(&rot, angle);
 	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
 	MatrixMultiply(&world, &rot, &mov);
-	MatrixMultiply(&cb->WV, &world, &dx->upd[dx->cBuffSwap[0]].mView);
-	memcpy(&cb->Proj, &dx->upd[dx->cBuffSwap[0]].mProj, sizeof(MATRIX));
+
+	MATRIX vi = dx->getUpdate(cBuffSwapUpdateIndex()).mView;
+	MatrixMultiply(&cb->WV, &world, &vi);
+	MATRIX pj = dx->getUpdate(cBuffSwapUpdateIndex()).mProj;
+	memcpy(&cb->Proj, &pj, sizeof(MATRIX));
 	cb->AddObjColor.as(color.x, color.y, color.z, color.w);
 
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		MATRIX wvp;
-		MatrixMultiply(&wvp, &cb->WV, &dx->upd[dx->cBuffSwap[0]].mProj);
+		MatrixMultiply(&wvp, &cb->WV, &pj);
 		MatrixTranspose(&wvp);
 
 		MatrixTranspose(&world);
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].Transform.get(), &world, sizeof(MATRIX));
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].WVP.get(), &wvp, sizeof(MATRIX));//StreamOutput内もdxrBuffSwap[0]だが書き込み箇所が異なるのでOK
-		memcpy(dxrPara.updateDXR[dx->dxrBuffSwap[0]].AddObjColor.get(), &cb->AddObjColor, sizeof(VECTOR4));
+		memcpy(dxrPara.updateDXR[dxrBuffSwapIndex()].Transform.get(), &world, sizeof(MATRIX));
+		memcpy(dxrPara.updateDXR[dxrBuffSwapIndex()].WVP.get(), &wvp, sizeof(MATRIX));//StreamOutput内もdxrBuffSwap[0]だが書き込み箇所が異なるのでOK
+		memcpy(dxrPara.updateDXR[dxrBuffSwapIndex()].AddObjColor.get(), &cb->AddObjColor, sizeof(VECTOR4));
 
 		cb->invRot = BillboardAngleCalculation(angle);
 		MatrixTranspose(&cb->invRot);
@@ -77,7 +133,7 @@ void ParticleData::update2(CONSTANT_BUFFER_P* cb, bool init) {
 
 void ParticleData::GetVbColarray(int texture_no, float size, float density) {
 
-	InternalTexture* tex = &dx->texture[texture_no];
+	InternalTexture* tex = getInternalTexture(texture_no - 2);
 
 	//テクスチャの横サイズ取得
 	float width = (float)tex->width;
@@ -128,14 +184,14 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 	Vview = std::make_unique<VertexView>();
 	Sview = std::make_unique<StreamView[]>(2);
 	GetVbColarray(texture_no, size, density);
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		dxrPara.create(1, 1);
 	}
 }
 
 void ParticleData::GetBufferBill(int v) {
 	ver = v;
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		UpdateDXR& u0 = dxrPara.updateDXR[0];
 		UpdateDXR& u1 = dxrPara.updateDXR[1];
 		u0.useVertex = true;
@@ -149,7 +205,7 @@ void ParticleData::GetBufferBill(int v) {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_P>(1);
 	Vview = std::make_unique<VertexView>();
 	Sview = std::make_unique<StreamView[]>(2);
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		dxrPara.create(1, 1);
 	}
 }
@@ -176,7 +232,7 @@ void ParticleData::CreateVbObj(bool alpha, bool blend) {
 		Sview[i].StreamBufferByteSize = vbByteSize;
 	}
 
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		createDxr(alpha, blend);
 	}
 }
@@ -193,10 +249,9 @@ bool ParticleData::CreatePartsCom() {
 	if (mRootSignature_com == nullptr)return false;
 
 	//パイプラインステートオブジェクト生成(STREAM_OUTPUT)
-	Dx_ShaderHolder* sh = dx->shaderH.get();
 	mPSO_com = CreatePsoStreamOutput(vsSO, nullptr, nullptr, gsSO, mRootSignature_com.Get(),
-		sh->pVertexLayout_P, &sh->pDeclaration_PSO,
-		(UINT)sh->pDeclaration_PSO.size(),
+		pVertexLayout_P, &pDeclaration_PSO,
+		(UINT)pDeclaration_PSO.size(),
 		&Sview[0].StreamByteStride,
 		1,
 		POINt);
@@ -231,12 +286,11 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	UINT size = mObjectCB->getSizeInBytes();
 	d->CreateCbv(hDescriptor, &ad, &size, numCbv);
 
-	Dx_ShaderHolder* sh = dx->shaderH.get();
 	//パイプラインステートオブジェクト生成(Draw)
-	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), sh->pVertexLayout_P, alpha, blend);
+	mPSO_draw = CreatePsoParticle(vs, ps, gs, mRootSignature_draw.Get(), pVertexLayout_P, alpha, blend);
 	if (mPSO_draw == nullptr)return false;
 
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		UINT bytesize = 0;
 		UINT indCnt = ver * 12;
 		IndexView& dxI = dxrPara.IviewDXR[0];
@@ -257,7 +311,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 			dxV.VertexBufferByteSize = bytesize;
 			device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 				dxV.VertexBufferByteSize);
-			dx->dx_sub[com_no].ResourceBarrier(dxV.VertexBufferGPU.Get(),
+			comObj->ResourceBarrier(dxV.VertexBufferGPU.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 		}
 		StreamView& dxS = dxrPara.SviewDXR[0][0];
@@ -272,11 +326,11 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		dxrPara.norTex[0] = texture[1].Get();
 		dxrPara.speTex[0] = texture[2].Get();
 
-		gs = sh->pGeometryShader_P_Output.Get();
+		gs = pGeometryShader_P_Output.Get();
 		PSO_DXR = CreatePsoStreamOutput(vs, nullptr, nullptr, gs, rootSignatureDXR.Get(),
-			sh->pVertexLayout_P,
-			&sh->pDeclaration_Output,
-			(UINT)sh->pDeclaration_Output.size(),
+			pVertexLayout_P,
+			&pDeclaration_Output,
+			(UINT)pDeclaration_Output.size(),
 			&dxrPara.SviewDXR[0][0].StreamByteStride,
 			1,
 			POINt);
@@ -310,7 +364,8 @@ bool ParticleData::CreateBillboard(bool alpha, bool blend) {
 
 void ParticleData::DrawParts1(int com) {
 
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	SetCommandList(com);
+	ID3D12GraphicsCommandList* mCList = mCommandList;
 
 	mCList->SetPipelineState(mPSO_com.Get());
 
@@ -327,10 +382,10 @@ void ParticleData::DrawParts1(int com) {
 
 	svInd = 1 - svInd;
 	if (firstDraw) {
-		dx->dx_sub[com].ResourceBarrier(Vview->VertexBufferGPU.Get(),
+		comObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 		mCList->CopyResource(Vview->VertexBufferGPU.Get(), Sview[svInd].StreamBufferGPU.Get());
-		dx->dx_sub[com].ResourceBarrier(Vview->VertexBufferGPU.Get(),
+		comObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 	}
 	Sview[svInd].ResetFilledSizeBuffer(com);
@@ -338,7 +393,8 @@ void ParticleData::DrawParts1(int com) {
 
 void ParticleData::DrawParts2(int com) {
 
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	SetCommandList(com);
+	ID3D12GraphicsCommandList* mCList = mCommandList;
 
 	mCList->SetPipelineState(mPSO_draw.Get());
 
@@ -357,8 +413,9 @@ void ParticleData::DrawParts2(int com) {
 
 void ParticleData::DrawParts2StreamOutput(int com) {
 
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-	Dx_CommandListObj& d = dx->dx_sub[com];
+	SetCommandList(com);
+	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandListObj& d = *comObj;
 
 	mCList->SetPipelineState(PSO_DXR.Get());
 
@@ -372,7 +429,7 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
-	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	UpdateDXR& ud = dxrPara.updateDXR[dxrBuffSwapIndex()];
 	mCList->SOSetTargets(0, 1, &dxrPara.SviewDXR[0][0].StreamBufferView());
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
@@ -397,12 +454,12 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 void ParticleData::CbSwap(bool init) {
 	if (!parInit)parInit = init;//parInit==TRUEの場合まだ初期化終了していない為フラグを書き換えない
 
-	firstCbSet[dx->cBuffSwap[0]] = true;
+	firstCbSet[cBuffSwapUpdateIndex()] = true;
 	DrawOn = true;
 }
 
 void ParticleData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed) {
-	update(&cbP[dx->cBuffSwap[0]], pos, color, angle, size, speed);
+	update(&cbP[cBuffSwapUpdateIndex()], pos, color, angle, size, speed);
 	CbSwap(init);
 }
 
@@ -412,7 +469,7 @@ void ParticleData::DrawOff() {
 
 void ParticleData::Draw(int com) {
 
-	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
+	if (!firstCbSet[cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
 	bool init = parInit;
 	//一回のinit == TRUE で二つのstreamOutを初期化
@@ -421,8 +478,8 @@ void ParticleData::Draw(int com) {
 		if (streamInitcount > 2) { streamInitcount = 0; }
 		if (streamInitcount != 0) { init = true; streamInitcount++; }
 	}
-	update2(&cbP[dx->cBuffSwap[1]], init);
-	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
+	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], init);
+	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 
 	DrawParts1(com);
 	if (firstDraw)DrawParts2(com);
@@ -435,16 +492,16 @@ void ParticleData::Draw() {
 }
 
 void ParticleData::Update(float size, CoordTf::VECTOR4 color) {
-	update(&cbP[dx->cBuffSwap[0]], { 0, 0, 0 }, color, 0, size, 1.0f);
+	update(&cbP[cBuffSwapUpdateIndex()], { 0, 0, 0 }, color, 0, size, 1.0f);
 	CbSwap(true);
 }
 
 void ParticleData::DrawBillboard(int com) {
 
-	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
+	if (!firstCbSet[cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
-	update2(&cbP[dx->cBuffSwap[1]], true);
-	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
+	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], true);
+	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 
 	DrawParts2(com);
 }
@@ -455,7 +512,7 @@ void ParticleData::DrawBillboard() {
 
 void ParticleData::SetVertex(int i, CoordTf::VECTOR3 pos) {
 	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		dxrPara.updateDXR[0].v[i].as(pos.x, pos.y, pos.z);
 		dxrPara.updateDXR[1].v[i].as(pos.x, pos.y, pos.z);
 	}
@@ -463,10 +520,10 @@ void ParticleData::SetVertex(int i, CoordTf::VECTOR3 pos) {
 
 void ParticleData::StreamOutput(int com) {
 
-	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	UpdateDXR& ud = dxrPara.updateDXR[dxrBuffSwapIndex()];
 	ud.InstanceMaskChange(DrawOn);
 
-	if (!firstCbSet[dx->cBuffSwap[1]])return;
+	if (!firstCbSet[cBuffSwapDrawOrStreamoutputIndex()])return;
 
 	bool init = parInit;
 	//一回のinit == TRUE で二つのstreamOutを初期化
@@ -475,8 +532,8 @@ void ParticleData::StreamOutput(int com) {
 		if (streamInitcount > 2) { streamInitcount = 0; }
 		if (streamInitcount != 0) { init = true; streamInitcount++; }
 	}
-	update2(&cbP[dx->cBuffSwap[1]], init);
-	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
+	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], init);
+	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 
 	DrawParts1(com);
 
@@ -487,13 +544,13 @@ void ParticleData::StreamOutput(int com) {
 
 void ParticleData::StreamOutputBillboard(int com) {
 
-	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	UpdateDXR& ud = dxrPara.updateDXR[dxrBuffSwapIndex()];
 	ud.InstanceMaskChange(DrawOn);
 
-	if (!firstCbSet[dx->cBuffSwap[1]])return;
+	if (!firstCbSet[cBuffSwapDrawOrStreamoutputIndex()])return;
 
-	update2(&cbP[dx->cBuffSwap[1]], true);
-	mObjectCB->CopyData(0, cbP[dx->cBuffSwap[1]]);
+	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], true);
+	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 	DrawParts2StreamOutput(com);
 }
 
@@ -515,7 +572,7 @@ CoordTf::MATRIX ParticleData::BillboardAngleCalculation(float angle) {
 	MATRIX rotZ;
 	MatrixRotationZ(&rotZ, angle);
 
-	MATRIX vi = dx->upd[dx->cBuffSwap[0]].mView;
+	MATRIX vi = dx->getUpdate(cBuffSwapUpdateIndex()).mView;
 	vi._41 = 0.0f;
 	vi._42 = 0.0f;
 	vi._43 = 0.0f;

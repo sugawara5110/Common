@@ -8,9 +8,6 @@
 #include "Dx12ProcessCore.h"
 
 BasicPolygon::BasicPolygon() {
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
-
 	sg.vDiffuse.x = 0.7f;
 	sg.vDiffuse.y = 0.7f;
 	sg.vDiffuse.z = 0.7f;

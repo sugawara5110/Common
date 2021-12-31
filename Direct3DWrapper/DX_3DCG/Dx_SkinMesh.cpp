@@ -1070,6 +1070,6 @@ void SkinMesh::TextureInit(int width, int height, int texIndex, int meshIndex) {
 	mObj[meshIndex].TextureInit(width, height, texIndex);
 }
 
-HRESULT SkinMesh::SetTextureMPixel(BYTE* frame, int texIndex, int meshIndex) {
-	return mObj[meshIndex].SetTextureMPixel(frame, texIndex);
+HRESULT SkinMesh::SetTextureMPixel(int com_no, BYTE* frame, int texIndex, int meshIndex) {
+	return mObj[meshIndex].SetTextureMPixel(com_no, frame, texIndex);
 }

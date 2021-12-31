@@ -12,6 +12,18 @@
 class Wave {
 
 protected:
+	//Wave
+	struct WaveData
+	{
+		float sinWave;
+		float theta;
+	};
+
+	struct CONSTANT_BUFFER_WAVE {
+		CoordTf::VECTOR4 wHei_divide;//x:waveHeight, y:ï™äÑêî
+		float speed = 0.0f;
+	};
+
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	ConstantBuffer<CONSTANT_BUFFER_WAVE>* mObjectCB_WAVE = nullptr;
 	CONSTANT_BUFFER_WAVE cbw;
@@ -31,6 +43,7 @@ protected:
 	UINT* index = nullptr;
 	BasicPolygon mObj;
 
+	void createShader();
 	void GetShaderByteCode(bool smooth);
 	bool ComCreate();
 	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification);
@@ -66,7 +79,7 @@ public:
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
+	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
 	void setDivideArr(DivideArr* arr, int numdiv) {
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);

@@ -460,6 +460,6 @@ void MeshData::TextureInit(int width, int height, int index) {
 	mObj.TextureInit(width, height, index);
 }
 
-HRESULT MeshData::SetTextureMPixel(BYTE* frame, int index) {
-	return mObj.SetTextureMPixel(frame, index);
+HRESULT MeshData::SetTextureMPixel(int com_no, BYTE* frame, int index) {
+	return mObj.SetTextureMPixel(com_no, frame, index);
 }

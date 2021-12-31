@@ -33,11 +33,8 @@ private:
 	friend BasicPolygon;
 	friend PolygonData;
 	friend PolygonData2D;
-	friend ParticleData;
 	friend SkinMesh;
 	friend Dx_CommandListObj;
-	friend Wave;
-	friend PostEffect;
 	friend Common;
 	friend DXR_Basic;
 	friend SkinnedCom;
@@ -156,6 +153,8 @@ public:
 	void setNumResourceBarrier(int num) { Dx_CommandListObj::NumResourceBarrier = num; }
 
 	void dxrCreateResource() { DXR_CreateResource = true; }
+	bool getDxrCreateResourceState() { return DXR_CreateResource; }
+
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
@@ -212,6 +211,13 @@ public:
 	}
 
 	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
+
+	Update getUpdate(int index) { return upd[index]; }
+
+	DXGI_FORMAT getDepthStencilSrvFormat() { return mDepthStencilSrvFormat; }
+	UINT getCbvSrvUavDescriptorSize() { return mCbvSrvUavDescriptorSize; }
+	int getClientWidth() { return mClientWidth; }
+	int getClientHeight() { return mClientHeight; }
 };
 
 struct VertexView {
@@ -506,6 +512,7 @@ protected:
 
 	Dx12Process* dx = nullptr;
 	ID3D12GraphicsCommandList* mCommandList = nullptr;
+	Dx_CommandListObj* comObj = nullptr;
 	int com_no = 0;
 	char objName[256] = {};
 
@@ -580,6 +587,11 @@ protected:
 	ID3D12Resource* GetDepthStencilBuffer();
 	D3D12_RESOURCE_STATES GetTextureStates();
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+	char* getShaderCommonParameters();
+
+	int cBuffSwapUpdateIndex() { return dx->cBuffSwap[0]; }
+	int cBuffSwapDrawOrStreamoutputIndex() { return dx->cBuffSwap[1]; }
+	int dxrBuffSwapIndex() { return dx->dxrBuffSwap[0]; }
 
 public:
 	~Common() { ARR_DELETE(movOn); }
@@ -587,20 +599,21 @@ public:
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(BYTE* frame, int index = 0);
+	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
 	InternalTexture* getInternalTexture(int index) { return &dx->texture[index + 2]; }
 	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
 };
 
+class Wave;
 //*********************************BasicPolygonクラス*************************************//
 class BasicPolygon :public Common {
 
 protected:
 	friend SkinMesh;
 	friend MeshData;
-	friend Wave;
 	friend DXR_Basic;
 	friend SkinnedCom;
+	friend Wave;
 
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
