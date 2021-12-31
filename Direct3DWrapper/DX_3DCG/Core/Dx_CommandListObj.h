@@ -23,11 +23,9 @@ class BasicPolygon;
 class PolygonData;
 class PolygonData2D;
 class SkinMesh;
-class DxText;
 class Common;
 class DXR_Basic;
 class SkinnedCom;
-class TextObj;
 struct StreamView;
 //‘O•ûéŒ¾
 

@@ -7,12 +7,11 @@
 #ifndef Class_Wave_Header
 #define Class_Wave_Header
 
-#include "Core/Dx12ProcessCore.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
 
-class Wave {
+class Wave :public BasicPolygon {
 
 protected:
-	//Wave
 	struct WaveData
 	{
 		float sinWave;
@@ -41,7 +40,6 @@ protected:
 
 	VertexM* ver = nullptr;
 	UINT* index = nullptr;
-	BasicPolygon mObj;
 
 	void createShader();
 	void GetShaderByteCode(bool smooth);
@@ -84,14 +82,14 @@ public:
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
-	ParameterDXR* getParameter() { return mObj.getParameter(); }
+	ParameterDXR* getParameter() { return BasicPolygon::getParameter(); }
 	void UpdateDxrDivideBuffer() {
-		mObj.UpdateDxrDivideBuffer();
+		BasicPolygon::UpdateDxrDivideBuffer();
 	}
 	void setRefractiveIndex(float index) {
-		mObj.setRefractiveIndex(index);
+		BasicPolygon::setRefractiveIndex(index);
 	}
-	void SetName(char* name) { mObj.SetName(name); }
+	void SetName(char* name) { BasicPolygon::SetName(name); }
 };
 
 #endif

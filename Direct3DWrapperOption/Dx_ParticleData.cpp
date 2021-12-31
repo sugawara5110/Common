@@ -7,7 +7,7 @@
 #include "Dx_ParticleData.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include "./Core/ShaderCG/ShaderParticle.h"
+#include "Shader/ShaderParticle.h"
 
 namespace {
 	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_PSO;

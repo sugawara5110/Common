@@ -5,7 +5,7 @@
 //*****************************************************************************************//
 
 #include "Dx_PostEffect.h"
-#include "./Core/ShaderCG/ShaderPostEffect.h"
+#include "Shader/ShaderPostEffect.h"
 
 namespace {
 	ComPtr<ID3DBlob> pComputeShader_Post[3] = {};

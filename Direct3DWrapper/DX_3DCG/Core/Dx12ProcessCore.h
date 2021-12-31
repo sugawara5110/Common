@@ -604,7 +604,6 @@ public:
 	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
 };
 
-class Wave;
 //*********************************BasicPolygonクラス*************************************//
 class BasicPolygon :public Common {
 
@@ -613,7 +612,6 @@ protected:
 	friend MeshData;
 	friend DXR_Basic;
 	friend SkinnedCom;
-	friend Wave;
 
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
@@ -712,8 +710,6 @@ public:
 class PolygonData2D :public Common {
 
 protected:
-	friend DxText;
-
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
 

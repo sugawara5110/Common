@@ -5,8 +5,8 @@
 //*****************************************************************************************//
 
 #include "Dx_Wave.h"
-#include "./Core/ShaderCG/ShaderWaveCom.h"
-#include "./Core/ShaderCG/ShaderWaveDraw.h"
+#include "Shader/ShaderWaveCom.h"
+#include "Shader/ShaderWaveDraw.h"
 
 namespace {
 	ComPtr<ID3DBlob> pComputeShader_Wave = nullptr;
@@ -20,11 +20,11 @@ void Wave::createShader() {
 
 	if (createShaderDone)return;
 	addChar Wave;
-	Wave.addStr(mObj.getShaderCommonParameters(), ShaderWaveDraw);
+	Wave.addStr(BasicPolygon::getShaderCommonParameters(), ShaderWaveDraw);
 
 	//Wave
-	pComputeShader_Wave = mObj.CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_1");
-	pDomainShader_Wave = mObj.CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
+	pComputeShader_Wave = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_1");
+	pDomainShader_Wave = BasicPolygon::CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
 	//メッシュレイアウト
 	pVertexLayout_MESH =
 	{
@@ -76,20 +76,20 @@ void Wave::SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd) {
 		ver[i].geoNormal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
 		ver[i].tex.as(v[i].tex.x, v[i].tex.y);
 	}
-	mObj.getVertexBuffer(sizeof(VertexM), numVer);
+	BasicPolygon::getVertexBuffer(sizeof(VertexM), numVer);
 	index = new UINT[numInd];
 	memcpy(index, ind, sizeof(UINT) * numInd);
-	mObj.getIndexBuffer(0, sizeof(UINT) * numInd, numInd);
+	BasicPolygon::getIndexBuffer(0, sizeof(UINT) * numInd, numInd);
 }
 
 void Wave::GetVBarray(int numMaxInstance) {
 	mObjectCB_WAVE = new ConstantBuffer<CONSTANT_BUFFER_WAVE>(1);
-	mObj.getBuffer(1, numMaxInstance);
+	BasicPolygon::getBuffer(1, numMaxInstance);
 }
 
 void Wave::GetShaderByteCode(bool smooth) {
 	createShader();
-	mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, pDomainShader_Wave.Get());
+	BasicPolygon::GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, pDomainShader_Wave.Get());
 	cs = pComputeShader_Wave.Get();
 }
 
@@ -104,10 +104,10 @@ bool Wave::ComCreate() {
 		wdata[i].sinWave = 0.0f;
 		wdata[i].theta = (float)(i % 360);
 	}
-	Dx12Process* dx = mObj.dx;
+	Dx12Process* dx = BasicPolygon::dx;
 	UINT64 byteSize = wdata.size() * sizeof(WaveData);
 
-	mInputBuffer = dx->CreateDefaultBuffer(mObj.com_no, wdata.data(), byteSize, mInputUploadBuffer, true);
+	mInputBuffer = dx->CreateDefaultBuffer(BasicPolygon::com_no, wdata.data(), byteSize, mInputUploadBuffer, true);
 	if (!mInputBuffer) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!");
 		return false;
@@ -117,11 +117,11 @@ bool Wave::ComCreate() {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!");
 		return false;
 	}
-	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", mObj.objName));
-	mInputUploadBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputUploadBuffer", mObj.objName));
-	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", mObj.objName));
+	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", BasicPolygon::objName));
+	mInputUploadBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputUploadBuffer", BasicPolygon::objName));
+	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", BasicPolygon::objName));
 
-	mObj.comObj->ResourceBarrier(mOutputBuffer.Get(),
+	BasicPolygon::comObj->ResourceBarrier(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
@@ -136,11 +136,11 @@ bool Wave::ComCreate() {
 	rootParameter[2].Descriptor.ShaderRegister = 0;
 	rootParameter[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	mRootSignatureCom = mObj.CreateRsCompute(3, rootParameter);
+	mRootSignatureCom = BasicPolygon::CreateRsCompute(3, rootParameter);
 	if (mRootSignatureCom == nullptr)return false;
 
 	//PSO
-	mPSOCom = mObj.CreatePsoCompute(cs, mRootSignatureCom.Get());
+	mPSOCom = BasicPolygon::CreatePsoCompute(cs, mRootSignatureCom.Get());
 	if (mPSOCom == nullptr)return false;
 
 	return true;
@@ -162,43 +162,43 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 }
 
 bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification) {
-	mObj.dpara.material[0].diftex_no = texNo;
-	mObj.dpara.material[0].nortex_no = nortNo;
-	mObj.dpara.material[0].spetex_no = mObj.dx->GetTexNumber("dummyDifSpe.");
-	mObj.mObjectCB1->CopyData(0, sg);
+	BasicPolygon::dpara.material[0].diftex_no = texNo;
+	BasicPolygon::dpara.material[0].nortex_no = nortNo;
+	BasicPolygon::dpara.material[0].spetex_no = BasicPolygon::dx->GetTexNumber("dummyDifSpe.");
+	BasicPolygon::mObjectCB1->CopyData(0, sg);
 	const int numSrvTex = 3;
 	const int numSrvBuf = 1;
 	const int numCbv = 3;
-	mObj.setDivideArr(divArr, numDiv);
+	BasicPolygon::setDivideArr(divArr, numDiv);
 
-	UINT* indexCntArr = new UINT[mObj.dpara.NumMaterial];
-	for (int m = 0; m < mObj.dpara.NumMaterial; m++) {
-		indexCntArr[m] = mObj.dpara.Iview[m].IndexCount;
+	UINT* indexCntArr = new UINT[BasicPolygon::dpara.NumMaterial];
+	for (int m = 0; m < BasicPolygon::dpara.NumMaterial; m++) {
+		indexCntArr[m] = BasicPolygon::dpara.Iview[m].IndexCount;
 	}
-	Dx_Util::createTangent(mObj.dpara.NumMaterial, indexCntArr,
+	Dx_Util::createTangent(BasicPolygon::dpara.NumMaterial, indexCntArr,
 		ver, &index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
 	ARR_DELETE(indexCntArr);
 
-	mObj.createDefaultBuffer(ver, &index);
+	BasicPolygon::createDefaultBuffer(ver, &index);
 	ARR_DELETE(ver);
 	ARR_DELETE(index);
 	int numUav = 0;
-	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
-	mObj.setColorDXR(0, sg);
-	if (!mObj.createPSO(pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
-	if (!mObj.createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, smooth))return false;
+	BasicPolygon::createParameterDXR(alpha, blend, divideBufferMagnification);
+	BasicPolygon::setColorDXR(0, sg);
+	if (!BasicPolygon::createPSO(pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, blend, alpha))return false;
+	if (!BasicPolygon::createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvBuf, numCbv, numUav, smooth))return false;
 	UINT cbSize = mObjectCB_WAVE->getSizeInBytes();
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB_WAVE->Resource()->GetGPUVirtualAddress();
 	ID3D12Resource* res[1] = {};
 	res[0] = mOutputBuffer.Get();
 	UINT buSize[1] = {};
 	buSize[0] = sizeof(WaveData);
-	if (!mObj.setDescHeap(numSrvTex, numSrvBuf, res, buSize, numCbv, ad, cbSize))return false;
+	if (!BasicPolygon::setDescHeap(numSrvTex, numSrvBuf, res, buSize, numCbv, ad, cbSize))return false;
 	return true;
 }
 
 void Wave::setMaterialType(MaterialType type) {
-	mObj.dxrPara.mType[0] = type;
+	BasicPolygon::dxrPara.mType[0] = type;
 }
 
 bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, float divide, bool smooth) {
@@ -218,13 +218,13 @@ bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 void Wave::Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
 	cbw.speed = speed;
 	mObjectCB_WAVE->CopyData(0, cbw);
-	mObj.Instancing(pos, angle, size, Color);
+	BasicPolygon::Instancing(pos, angle, size, Color);
 }
 
 void Wave::InstancingUpdate(float disp, float shininess,
 	float px, float py, float mx, float my) {
 
-	mObj.InstancingUpdate(disp, shininess, px, py, mx, my);
+	BasicPolygon::InstancingUpdate(disp, shininess, px, py, mx, my);
 }
 
 void Wave::Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
@@ -234,17 +234,17 @@ void Wave::Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 
 	cbw.speed = speed;
 	mObjectCB_WAVE->CopyData(0, cbw);
-	mObj.Update(pos, Color, angle, size, disp, shininess, px, py, mx, my);
+	BasicPolygon::Update(pos, Color, angle, size, disp, shininess, px, py, mx, my);
 }
 
 void Wave::DrawOff() {
-	mObj.DrawOff();
+	BasicPolygon::DrawOff();
 }
 
 void Wave::Compute(int com) {
 
-	mObj.SetCommandList(com);
-	ID3D12GraphicsCommandList* mCList = mObj.mCommandList;
+	BasicPolygon::SetCommandList(com);
+	ID3D12GraphicsCommandList* mCList = BasicPolygon::mCommandList;
 	mCList->SetPipelineState(mPSOCom.Get());
 
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -261,37 +261,37 @@ void Wave::Compute(int com) {
 }
 
 void Wave::Draw(int com_no) {
-	if (!mObj.firstCbSet[mObj.cBuffSwapDrawOrStreamoutputIndex()] | !mObj.DrawOn)return;
+	if (!BasicPolygon::firstCbSet[BasicPolygon::cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
 	Compute(com_no);
-	mObj.Draw(com_no);
+	BasicPolygon::Draw(com_no);
 }
 
 void Wave::StreamOutput(int com_no) {
-	Dx12Process* dx = mObj.dx;
+	Dx12Process* dx = BasicPolygon::dx;
 	Compute(com_no);
-	mObj.StreamOutput(com_no);
+	BasicPolygon::StreamOutput(com_no);
 }
 
 void Wave::Draw() {
-	Draw(mObj.com_no);
+	Draw(BasicPolygon::com_no);
 }
 
 void Wave::StreamOutput() {
-	StreamOutput(mObj.com_no);
+	StreamOutput(BasicPolygon::com_no);
 }
 
 void Wave::SetCommandList(int no) {
-	mObj.SetCommandList(no);
+	BasicPolygon::SetCommandList(no);
 }
 
 void Wave::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
-	mObj.CopyResource(texture, res, index);
+	BasicPolygon::CopyResource(texture, res, index);
 }
 
 void Wave::TextureInit(int width, int height, int index) {
-	mObj.TextureInit(width, height, index);
+	BasicPolygon::TextureInit(width, height, index);
 }
 
 HRESULT Wave::SetTextureMPixel(int com_no, BYTE* frame, int index) {
-	return mObj.SetTextureMPixel(com_no, frame, index);
+	return BasicPolygon::SetTextureMPixel(com_no, frame, index);
 }
