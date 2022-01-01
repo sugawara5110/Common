@@ -7,7 +7,7 @@
 #ifndef Class_TextureLoader_Header
 #define Class_TextureLoader_Header
 
-#include "../Direct3DWrapper/DX_3DCG/Dx12ProcessCore.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
 
 struct Texture {
 	char* binary_ch = nullptr; //デコード後バイナリ
