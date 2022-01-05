@@ -46,6 +46,17 @@ ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPSTR szFileName, size_t size, L
 	return byteCode;
 }
 
+void Dx_ShaderHolder::setNorTestPS() {
+	addChar ComPS, Lighting, ParaNor;
+	char* com = ShaderCommonParameters;
+	ParaNor.addStr(com, ShaderNormalTangent);
+	Lighting.addStr(ParaNor.str, ShaderCalculateLighting);
+	ComPS.addStr(Lighting.str, ShaderCommonPS);
+
+	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L_NorTest", "ps_5_1");
+	pPixelShader_3D_NoNormalMap = CompileShader(ComPS.str, ComPS.size, "PS_L_NoNormalMap_NorTest", "ps_5_1");
+}
+
 bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	size_t norS_size = strlen(ShaderNormalTangent) + 1;

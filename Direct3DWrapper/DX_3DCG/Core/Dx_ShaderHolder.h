@@ -84,6 +84,8 @@ private:
 
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 	bool CreateShaderByteCode();
+
+	void setNorTestPS();
 };
 
 #endif

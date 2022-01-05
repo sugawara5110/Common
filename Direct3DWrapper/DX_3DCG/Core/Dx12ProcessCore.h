@@ -156,6 +156,8 @@ public:
 	bool getDxrCreateResourceState() { return DXR_CreateResource; }
 
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
+
+	void NorTestOn() { shaderH.get()->setNorTestPS(); }
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
 	void createTextureArr(int numTexArr, int resourceIndex, char* texName,

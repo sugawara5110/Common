@@ -28,7 +28,7 @@ BasicPolygon::BasicPolygon() {
 	divArr[1].distance = 500.0f;
 	divArr[1].divide = 48;//’¸“_” 3 ¨ 3 * 3456 = 10368
 	divArr[2].distance = 300.0f;
-	divArr[2].divide = 96;//’¸“_” 3 ¨ 3 * 13824 = 41472
+	divArr[2].divide = 64;//’¸“_” 3 ¨ 3 * 13824 = 41472
 	numDiv = 3;
 
 	firstCbSet[0] = false;
@@ -75,6 +75,7 @@ void BasicPolygon::GetShaderByteCode(PrimitiveType type, bool light, bool smooth
 	if (disp) {
 		vs = sh->pVertexShader_MESH_D.Get();
 		hs = sh->pHullShaderTriangle.Get();
+		dxrPara.hs = true;
 		ds = sh->pDomainShaderTriangle.Get();
 		if (smooth) {
 			gs = sh->pGeometryShader_Before_ds_Smooth.Get();
@@ -187,7 +188,6 @@ void BasicPolygon::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 		int loop = 1;
 		if (hs) {
 			loop = ud.NumInstance;
-			dxr.hs = true;
 		}
 		for (int t = 0; t < loop; t++) {
 
