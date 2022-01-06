@@ -1000,7 +1000,7 @@ void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	}
 }
 
-bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float shininess) {
+bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float SmoothRange, float shininess) {
 	bool frame_end = false;
 	int insnum = 0;
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
@@ -1008,7 +1008,7 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float shininess) 
 
 	for (int i = 0; i < numMesh; i++) {
 		if (!noUseMesh[i])
-			mObj[i].InstancingUpdate(disp, shininess);
+			mObj[i].InstancingUpdate(disp, SmoothRange, shininess);
 	}
 
 	return frame_end;
@@ -1016,10 +1016,10 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float shininess) 
 
 bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float shininess) {
+	float disp, float SmoothRange, float shininess) {
 
 	Instancing(pos, Color, angle, size);
-	return InstancingUpdate(ind, ti, disp, shininess);
+	return InstancingUpdate(ind, ti, disp, SmoothRange, shininess);
 }
 
 void SkinMesh::DrawOff() {

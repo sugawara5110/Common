@@ -69,6 +69,9 @@ char *ShaderCommonTriangleHSDS =
 "   float4 height = g_texDiffuse.SampleLevel(g_samLinear, output.Tex0, 0);\n"
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
+//Smooth用
+"   output.AddNor = NormalRecalculationSmoothPreparation(patch, UV);\n"
+
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
 
@@ -82,11 +85,11 @@ char *ShaderCommonTriangleHSDS =
 "   if(UV.x == 0.0f || UV.y == 0.0f || UV.z == 0.0f)\n"//どれかの要素が0.0fの場合端に有る状態
 "   {\n"
 "      float3 geoDir = patch[0].GNor * UV.x + patch[1].GNor * UV.y + patch[2].GNor * UV.z;\n"
-"      output.AddPos = hei * geoDir * g_DispAmount.x;\n"//端はジオメトリ法線使用(クラッキング対策)
+"      output.Pos.xyz += hei * geoDir * g_DispAmount.x;\n"//端はジオメトリ法線使用(クラッキング対策)
 "   }\n"
 "   else\n"
 "   {\n"
-"      output.AddPos = hei * output.Nor * g_DispAmount.x;\n"
+"      output.Pos.xyz += hei * output.Nor * g_DispAmount.x;\n"
 "   }\n"
 
 "   output.instanceID = patch[0].instanceID;\n"

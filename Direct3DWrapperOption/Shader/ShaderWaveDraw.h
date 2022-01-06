@@ -18,6 +18,37 @@ char *ShaderWaveDraw =
 "    float g_speed;\n"
 "};\n"
 
+"float3 NormalRecalculationSmoothPreparationWave(HS_OUTPUT patch[3], float3 UV)\n"
+"{\n"
+"   float sm = g_DispAmount.w;\n"
+
+"   float2 tu = patch[0].Tex0 * (UV.x + sm) + patch[1].Tex0 * UV.y + patch[2].Tex0 * UV.z;\n"
+"   float2 tv = patch[0].Tex0 * UV.x + patch[1].Tex0 * (UV.y + sm) + patch[2].Tex0 * UV.z;\n"
+"   float2 tw = patch[0].Tex0 * UV.x + patch[1].Tex0 * UV.y + patch[2].Tex0 * (UV.z + sm);\n"
+
+"   float4 hu = g_texDiffuse.SampleLevel(g_samLinear, tu, 0);\n"
+"   float4 hv = g_texDiffuse.SampleLevel(g_samLinear, tv, 0);\n"
+"   float4 hw = g_texDiffuse.SampleLevel(g_samLinear, tw, 0);\n"
+
+"   float wh = g_wHei_divide.y;\n"
+"   float sinwave0 = gInput[wh * wh * tu.y + wh * tu.x].sinWave;\n"
+"   float sinwave1 = gInput[wh * wh * tv.y + wh * tv.x].sinWave;\n"
+"   float sinwave2 = gInput[wh * wh * tw.y + wh * tw.x].sinWave;\n"
+
+"   float heiU = (hu.x + hu.y + hu.z) / 3 + sinwave0;\n"
+"   float heiV = (hv.x + hv.y + hv.z) / 3 + sinwave1;\n"
+"   float heiW = (hw.x + hw.y + hw.z) / 3 + sinwave2;\n"
+
+"   float3 v0 = float3(tu, heiU);\n"
+"   float3 v1 = float3(tv, heiV);\n"
+"   float3 v2 = float3(tw, heiW);\n"
+
+"   float3 vecX = v0 - v1;\n"
+"   float3 vecY = v0 - v2;\n"
+"   float3 v = cross(vecX, vecY);\n"
+"   return float3(0.0f, 0.0f, 1.0f) - v;\n"
+"}\n"
+
 //**************************************ドメインシェーダー*********************************************************************//
 "[domain(\"tri\")]\n"
 "GS_Mesh_INPUT DSWave(HS_CONSTANT_OUTPUT In, float3 UV : SV_DomaInLocation, const OutputPatch<HS_OUTPUT, 3> patch)\n"
@@ -37,6 +68,9 @@ char *ShaderWaveDraw =
 "   float wh = g_wHei_divide.y;\n"
 "   float sinwave = gInput[wh * wh * output.Tex0.y + wh * output.Tex0.x].sinWave;\n"
 
+//Smooth用
+"   output.AddNor = NormalRecalculationSmoothPreparationWave(patch, UV);\n"
+
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
 
@@ -47,7 +81,7 @@ char *ShaderWaveDraw =
 "   output.Pos = patch[0].Pos * UV.x + patch[1].Pos * UV.y + patch[2].Pos * UV.z;\n"
 
 //ローカル法線の方向に頂点移動
-"   output.AddPos = sinwave * output.Nor + hei * output.Nor;\n"
+"   output.Pos.xyz += sinwave * output.Nor + hei * output.Nor;\n"
 "   output.instanceID = patch[0].instanceID;\n"
 
 "	return output;\n"

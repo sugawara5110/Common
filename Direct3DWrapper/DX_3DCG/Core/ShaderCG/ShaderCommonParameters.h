@@ -41,7 +41,7 @@ char* ShaderCommonParameters =
 "    float4 g_FogAmo_Density;\n"
 //フォグ色
 "    float4 g_FogColor;\n"
-//x:ディスプ起伏量, y:divide配列数, z:shininess
+//x:ディスプ起伏量, y:divide配列数, z:shininess, w:Smooth範囲
 "    float4 g_DispAmount;\n"
 //divide配列 x:distance, y:divide
 "    float4 g_divide[16];\n"
@@ -81,7 +81,7 @@ char* ShaderCommonParameters =
 "    float3 Tan   : TANGENT;\n"
 "    float2 Tex0  : TEXCOORD0;\n"
 "    float2 Tex1  : TEXCOORD1;\n"
-"    float3 AddPos: POSITION1;\n"
+"    float3 AddNor: POSITION1;\n"
 "    uint   instanceID : SV_InstanceID;\n"
 "};\n"
 
@@ -115,55 +115,58 @@ char* ShaderCommonParameters =
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////DS後法線再計算/////////////////////////////////////////////////////////
+"float3 NormalRecalculationSmoothPreparation(HS_OUTPUT patch[3], float3 UV)\n"
+"{\n"
+"   float sm = g_DispAmount.w;\n"
+
+"   float2 tu = patch[0].Tex0 * (UV.x + sm) + patch[1].Tex0 * UV.y + patch[2].Tex0 * UV.z;\n"
+"   float2 tv = patch[0].Tex0 * UV.x + patch[1].Tex0 * (UV.y + sm) + patch[2].Tex0 * UV.z;\n"
+"   float2 tw = patch[0].Tex0 * UV.x + patch[1].Tex0 * UV.y + patch[2].Tex0 * (UV.z + sm);\n"
+
+"   float4 hu = g_texDiffuse.SampleLevel(g_samLinear, tu, 0);\n"
+"   float4 hv = g_texDiffuse.SampleLevel(g_samLinear, tv, 0);\n"
+"   float4 hw = g_texDiffuse.SampleLevel(g_samLinear, tw, 0);\n"
+
+"   float heiU = (hu.x + hu.y + hu.z) / 3;\n"
+"   float heiV = (hv.x + hv.y + hv.z) / 3;\n"
+"   float heiW = (hw.x + hw.y + hw.z) / 3;\n"
+
+"   float3 v0 = float3(tu, heiU);\n"
+"   float3 v1 = float3(tv, heiV);\n"
+"   float3 v2 = float3(tw, heiW);\n"
+
+"   float3 vecX = v0 - v1;\n"
+"   float3 vecY = v0 - v2;\n"
+"   float3 v = cross(vecX, vecY);\n"
+"   return float3(0.0f, 0.0f, 1.0f) - v;\n"
+"}\n"
+
 "GS_Mesh_INPUT NormalRecalculationSmooth(GS_Mesh_INPUT input)\n"
 "{\n"
-"    GS_Mesh_INPUT output;\n"
-
-"    float3 add = input.AddPos;\n"
-
-"    float3 pos = input.Pos.xyz + add;\n"
-"    float3 tangent = input.Tan;\n"
-"    float3 binormal = normalize(cross(input.Nor, tangent));\n"
-
-"    float3 posT = (input.Pos.xyz + tangent * 0.05f) + add;\n"
-"    float3 posB = (input.Pos.xyz + binormal * 0.05f) + add;\n"
-
-"    float3 modifiedTangent = posT - pos;\n"
-"    float3 modifiedBinormal = posB - pos;\n"
-"    output.Nor = normalize(cross(modifiedTangent, modifiedBinormal));\n"
-
-"    float3 differenceN = output.Nor - input.Nor;\n"
-"    output.Tan = input.Tan + differenceN;\n"
-"    output.Pos.xyz = pos;\n"
-"    output.Pos.w = input.Pos.w;\n"
-"    output.Tex0 = input.Tex0;\n"
-"    output.Tex1 = input.Tex1;\n"
-"    output.instanceID = input.instanceID;\n"
-
-"    return output;\n"
+"   GS_Mesh_INPUT output;\n"
+"   output = input;\n"
+"   output.Nor += output.AddNor;\n"
+"   output.Tan += output.AddNor;\n"
+"   return output;\n"
 "}\n"
 
 "void NormalRecalculationEdge(inout GS_Mesh_INPUT Input[3])\n"
 "{\n"
-"   Input[0].Pos.xyz += Input[0].AddPos;\n"
-"   Input[1].Pos.xyz += Input[1].AddPos;\n"
-"   Input[2].Pos.xyz += Input[2].AddPos;\n"
-
 "   float3 vecX = Input[0].Pos.xyz - Input[1].Pos.xyz;\n"
 "   float3 vecY = Input[0].Pos.xyz - Input[2].Pos.xyz;\n"
 "   float3 vecNor = cross(vecX, vecY);\n"
 
-"    float3 differenceN[3];\n"
-"    differenceN[0] = vecNor - Input[0].Nor;\n"
-"    differenceN[1] = vecNor - Input[1].Nor;\n"
-"    differenceN[2] = vecNor - Input[2].Nor;\n"
+"   float3 differenceN[3];\n"
+"   differenceN[0] = vecNor - Input[0].Nor;\n"
+"   differenceN[1] = vecNor - Input[1].Nor;\n"
+"   differenceN[2] = vecNor - Input[2].Nor;\n"
 
-"    Input[0].Nor = vecNor;\n"
-"    Input[1].Nor = vecNor;\n"
-"    Input[2].Nor = vecNor;\n"
-"    Input[0].Tan += differenceN[0];\n"
-"    Input[1].Tan += differenceN[1];\n"
-"    Input[2].Tan += differenceN[2];\n"
+"   Input[0].Nor = vecNor;\n"
+"   Input[1].Nor = vecNor;\n"
+"   Input[2].Nor = vecNor;\n"
+"   Input[0].Tan += differenceN[0];\n"
+"   Input[1].Tan += differenceN[1];\n"
+"   Input[2].Tan += differenceN[2];\n"
 "}\n"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
  

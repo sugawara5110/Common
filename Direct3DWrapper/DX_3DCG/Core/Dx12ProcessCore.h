@@ -130,7 +130,7 @@ private:
 		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
 	void InstancingUpdate(CONSTANT_BUFFER* cb, float disp,
-		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess);
+		float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess, float SmoothRange);
 
 public:
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
@@ -683,10 +683,11 @@ public:
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
-	void InstancingUpdate(float disp, float shininess = 4.0f,
+	void InstancingUpdate(float disp, float SmoothRange, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
-	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess = 4.0f,
+	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+		float disp, float SmoothRange, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
 	void Draw(int com_no);

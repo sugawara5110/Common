@@ -418,14 +418,15 @@ void MeshData::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf:
 	mObj.Instancing(pos, angle, size, Color);
 }
 
-void MeshData::InstancingUpdate(float disp, float shininess) {
-	mObj.InstancingUpdate(disp, shininess);
+void MeshData::InstancingUpdate(float disp, float SmoothRange, float shininess) {
+	mObj.InstancingUpdate(disp, SmoothRange, shininess);
 }
 
 void MeshData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp, float shininess) {
+	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+	float disp, float SmoothRange, float shininess) {
 
-	mObj.Update(pos, Color, angle, size, disp, shininess);
+	mObj.Update(pos, Color, angle, size, disp, SmoothRange, shininess);
 }
 
 void MeshData::DrawOff() {

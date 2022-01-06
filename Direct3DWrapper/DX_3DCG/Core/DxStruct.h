@@ -53,6 +53,7 @@ struct CONSTANT_BUFFER {
 	//x:ディスプレイトメントマッピングの起伏量
 	//y:divide配列数
 	//z:shininess
+	//w:Smooth範囲
 	CoordTf::VECTOR4  DispAmount;
 
 	//divide配列 x:distance, y:divide

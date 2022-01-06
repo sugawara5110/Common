@@ -465,17 +465,18 @@ void BasicPolygon::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, Coor
 	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size, Color);
 }
 
-void BasicPolygon::InstancingUpdate(float disp, float shininess, float px, float py, float mx, float my) {
-	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess);
+void BasicPolygon::InstancingUpdate(float disp, float SmoothRange, float shininess, float px, float py, float mx, float my) {
+	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange);
 	CbSwap();
 }
 
 void BasicPolygon::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float shininess, float px, float py, float mx, float my) {
+	float disp, float SmoothRange, float shininess,
+	float px, float py, float mx, float my) {
 
 	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size, Color);
-	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess);
+	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange);
 	CbSwap();
 }
 

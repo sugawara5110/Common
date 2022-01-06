@@ -59,7 +59,7 @@ Wave::Wave() {
 	divArr[1].distance = 500.0f;
 	divArr[1].divide = 48;//’¸“_” 3 ¨ 3 * 3456 = 10368
 	divArr[2].distance = 300.0f;
-	divArr[2].divide = 96;//’¸“_” 3 ¨ 3 * 13824 = 41472
+	divArr[2].divide = 64;//’¸“_” 3 ¨ 3 * 13824 = 41472
 	numDiv = 3;
 }
 
@@ -221,20 +221,20 @@ void Wave::Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle,
 	BasicPolygon::Instancing(pos, angle, size, Color);
 }
 
-void Wave::InstancingUpdate(float disp, float shininess,
+void Wave::InstancingUpdate(float disp, float SmoothRange, float shininess,
 	float px, float py, float mx, float my) {
 
-	BasicPolygon::InstancingUpdate(disp, shininess, px, py, mx, my);
+	BasicPolygon::InstancingUpdate(disp, SmoothRange, shininess, px, py, mx, my);
 }
 
 void Wave::Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float shininess,
+	float disp, float SmoothRange, float shininess,
 	float px, float py, float mx, float my) {
 
 	cbw.speed = speed;
 	mObjectCB_WAVE->CopyData(0, cbw);
-	BasicPolygon::Update(pos, Color, angle, size, disp, shininess, px, py, mx, my);
+	BasicPolygon::Update(pos, Color, angle, size, disp, SmoothRange, shininess, px, py, mx, my);
 }
 
 void Wave::DrawOff() {

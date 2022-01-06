@@ -720,7 +720,7 @@ void Dx12Process::Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
 }
 
 void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, float disp,
-	float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess) {
+	float px, float py, float mx, float my, DivideArr* divArr, int numDiv, float shininess, float SmoothRange) {
 
 	using namespace CoordTf;
 
@@ -737,7 +737,7 @@ void Dx12Process::InstancingUpdate(CONSTANT_BUFFER* cb, float disp,
 	cb->dLightst.x = upd[cBuffSwap[0]].dlight.onoff;
 	cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
 	cb->FogColor = fog.FogColor;
-	cb->DispAmount.as(disp, float(numDiv), shininess, 0.0f);
+	cb->DispAmount.as(disp, float(numDiv), shininess, SmoothRange);
 	cb->pXpYmXmY.as(px, py, mx, my);
 	for (int i = 0; i < numDiv; i++) {
 		cb->Divide[i].as(divArr[i].distance, divArr[i].divide, 0.0f, 0.0f);

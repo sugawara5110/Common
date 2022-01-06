@@ -49,6 +49,7 @@ char* ShaderGsOutput =
 "   GS_Mesh_INPUT recal[3];\n"
 
 //DSå„ñ@ê¸çƒåvéZ
+"   NormalRecalculationEdge(Input);\n"
 "   recal[0] = NormalRecalculationSmooth(Input[0]);\n"
 "   recal[1] = NormalRecalculationSmooth(Input[1]);\n"
 "   recal[2] = NormalRecalculationSmooth(Input[2]);\n"
