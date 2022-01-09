@@ -45,7 +45,8 @@ char *ShaderWaveDraw =
 
 "   float3 vecX = v0 - v1;\n"
 "   float3 vecY = v0 - v2;\n"
-"   return cross(vecX, vecY);\n"
+"   float3 v = cross(vecX, vecY);\n"
+"   return (v + 1.0f) * 0.5f;\n"
 "}\n"
 
 //**************************************ドメインシェーダー*********************************************************************//

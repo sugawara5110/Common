@@ -137,15 +137,18 @@ char* ShaderCommonParameters =
 
 "   float3 vecX = v0 - v1;\n"
 "   float3 vecY = v0 - v2;\n"
-"   return cross(vecX, vecY);\n"
+"   float3 v = cross(vecX, vecY);\n"
+"   return (v + 1.0f) * 0.5f;\n"
 "}\n"
 
 "GS_Mesh_INPUT NormalRecalculationSmooth(GS_Mesh_INPUT input)\n"
 "{\n"
 "   GS_Mesh_INPUT output;\n"
 "   output = input;\n"
+"   float3 difN = (output.AddNor - output.Nor) * 0.5f;\n"
 "   output.Nor += output.AddNor;\n"
-"   output.Tan += output.AddNor;\n"
+"   output.Nor *= 0.5f;\n"//•½‹Ï
+"   output.Tan += difN;\n"
 "   return output;\n"
 "}\n"
 

@@ -98,7 +98,7 @@ bool Wave::ComCreate() {
 
 	//CSからDSへの受け渡し用
 	int divide = (int)(cbw.wHei_divide.y * cbw.wHei_divide.y);
-	div = (int)(cbw.wHei_divide.y / 32.0f);//32はCS内スレッド数
+	div = (int)(cbw.wHei_divide.y / 4.0f);//4はCS内スレッド数
 	std::vector<WaveData> wdata(divide);
 	for (int i = 0; i < divide; ++i)
 	{

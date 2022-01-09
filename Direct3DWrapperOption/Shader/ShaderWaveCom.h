@@ -29,7 +29,7 @@ char *ShaderWaveCom =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint ‚»‚Ì‘¼uint3
 
-"[numthreads(32, 32, 1)]\n"
+"[numthreads(4, 4, 1)]\n"
 "void CS(int3 dtid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = dtid.x;"
