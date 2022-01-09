@@ -80,7 +80,7 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 	Skin.addStr(com, ShaderSkinMesh);
 	SkinD.addStr(com, ShaderSkinMesh_D);
 	ComPS.addStr(Lighting.str, ShaderCommonPS);
-	ComHSDS.addStr(com, ShaderCommonTriangleHSDS);
+	ComHSDS.addStr(ParaNor.str, ShaderCommonTriangleHSDS);
 	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS);
 	GsOut.addStr(ParaNor.str, ShaderGsOutput);
 

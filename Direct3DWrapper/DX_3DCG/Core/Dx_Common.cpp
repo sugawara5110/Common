@@ -552,3 +552,10 @@ char* Common::getShaderCommonParameters() {
 	return dx->shaderH->ShaderCommonParametersCopy.get();
 }
 
+char* Common::getShaderNormalTangent() {
+	return dx->shaderH->ShaderNormalTangentCopy.get();
+}
+
+char* Common::getShaderCalculateLighting() {
+	return dx->shaderH->ShaderCalculateLightingCopy.get();
+}

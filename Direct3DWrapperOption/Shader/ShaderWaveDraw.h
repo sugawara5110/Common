@@ -45,8 +45,7 @@ char *ShaderWaveDraw =
 
 "   float3 vecX = v0 - v1;\n"
 "   float3 vecY = v0 - v2;\n"
-"   float3 v = cross(vecX, vecY);\n"
-"   return float3(0.0f, 0.0f, 1.0f) - v;\n"
+"   return cross(vecX, vecY);\n"
 "}\n"
 
 //**************************************ドメインシェーダー*********************************************************************//
@@ -68,9 +67,6 @@ char *ShaderWaveDraw =
 "   float wh = g_wHei_divide.y;\n"
 "   float sinwave = gInput[wh * wh * output.Tex0.y + wh * output.Tex0.x].sinWave;\n"
 
-//Smooth用
-"   output.AddNor = NormalRecalculationSmoothPreparationWave(patch, UV);\n"
-
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
 
@@ -82,6 +78,11 @@ char *ShaderWaveDraw =
 
 //ローカル法線の方向に頂点移動
 "   output.Pos.xyz += sinwave * output.Nor + hei * output.Nor;\n"
+
+//Smooth用
+"   output.AddNor = NormalRecalculationSmoothPreparationWave(patch, UV);\n"
+"   output.AddNor = GetNormal(output.AddNor, output.Nor, output.Tan);\n"
+
 "   output.instanceID = patch[0].instanceID;\n"
 
 "	return output;\n"

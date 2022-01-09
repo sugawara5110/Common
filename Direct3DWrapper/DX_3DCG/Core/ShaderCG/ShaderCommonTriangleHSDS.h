@@ -69,9 +69,6 @@ char *ShaderCommonTriangleHSDS =
 "   float4 height = g_texDiffuse.SampleLevel(g_samLinear, output.Tex0, 0);\n"
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
-//Smooth用
-"   output.AddNor = NormalRecalculationSmoothPreparation(patch, UV);\n"
-
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
 
@@ -91,6 +88,10 @@ char *ShaderCommonTriangleHSDS =
 "   {\n"
 "      output.Pos.xyz += hei * output.Nor * g_DispAmount.x;\n"
 "   }\n"
+
+//Smooth用
+"   output.AddNor = NormalRecalculationSmoothPreparation(patch, UV);\n"
+"   output.AddNor = GetNormal(output.AddNor, output.Nor, output.Tan);\n"
 
 "   output.instanceID = patch[0].instanceID;\n"
 

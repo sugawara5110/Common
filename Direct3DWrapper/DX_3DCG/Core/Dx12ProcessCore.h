@@ -590,6 +590,8 @@ protected:
 	D3D12_RESOURCE_STATES GetTextureStates();
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 	char* getShaderCommonParameters();
+	char* getShaderNormalTangent();
+	char* getShaderCalculateLighting();
 
 	int cBuffSwapUpdateIndex() { return dx->cBuffSwap[0]; }
 	int cBuffSwapDrawOrStreamoutputIndex() { return dx->cBuffSwap[1]; }

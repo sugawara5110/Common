@@ -137,8 +137,7 @@ char* ShaderCommonParameters =
 
 "   float3 vecX = v0 - v1;\n"
 "   float3 vecY = v0 - v2;\n"
-"   float3 v = cross(vecX, vecY);\n"
-"   return float3(0.0f, 0.0f, 1.0f) - v;\n"
+"   return cross(vecX, vecY);\n"
 "}\n"
 
 "GS_Mesh_INPUT NormalRecalculationSmooth(GS_Mesh_INPUT input)\n"

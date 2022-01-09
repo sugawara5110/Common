@@ -19,8 +19,9 @@ namespace {
 void Wave::createShader() {
 
 	if (createShaderDone)return;
-	addChar Wave;
-	Wave.addStr(BasicPolygon::getShaderCommonParameters(), ShaderWaveDraw);
+	addChar Com, Wave;
+	Com.addStr(BasicPolygon::getShaderCommonParameters(), BasicPolygon::getShaderNormalTangent());
+	Wave.addStr(Com.str, ShaderWaveDraw);
 
 	//Wave
 	pComputeShader_Wave = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_1");
