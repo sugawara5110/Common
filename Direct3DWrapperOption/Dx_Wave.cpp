@@ -25,6 +25,7 @@ void Wave::createShader() {
 
 	//Wave
 	pComputeShader_Wave = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS", "cs_5_1");
+	//pComputeShader_Wave = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "CS_Ripples", "cs_5_1");
 	pDomainShader_Wave = BasicPolygon::CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
 	//メッシュレイアウト
 	pVertexLayout_MESH =
@@ -222,20 +223,20 @@ void Wave::Instancing(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle,
 	BasicPolygon::Instancing(pos, angle, size, Color);
 }
 
-void Wave::InstancingUpdate(float disp, float SmoothRange, float shininess,
+void Wave::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
-	BasicPolygon::InstancingUpdate(disp, SmoothRange, shininess, px, py, mx, my);
+	BasicPolygon::InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
 }
 
 void Wave::Update(float speed, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float SmoothRange, float shininess,
+	float disp, float SmoothRange, float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
 	cbw.speed = speed;
 	mObjectCB_WAVE->CopyData(0, cbw);
-	BasicPolygon::Update(pos, Color, angle, size, disp, SmoothRange, shininess, px, py, mx, my);
+	BasicPolygon::Update(pos, Color, angle, size, disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
 }
 
 void Wave::DrawOff() {

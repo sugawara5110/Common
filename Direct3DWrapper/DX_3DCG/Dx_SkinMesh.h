@@ -122,11 +122,12 @@ public:
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
-	bool InstancingUpdate(int ind, float time, float disp = 1.0f, float SmoothRange = 0.1f, float shininess = 4.0f);
+	bool InstancingUpdate(int ind, float time, float disp = 1.0f,
+		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	bool Update(int ind, float time, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-		float disp = 1.0f, float SmoothRange = 0.1f, float shininess = 4.0f);
+		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp = 1.0f,
+		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	void DrawOff();
 	void Draw(int com_no);

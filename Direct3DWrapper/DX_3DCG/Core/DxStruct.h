@@ -47,7 +47,7 @@ struct CONSTANT_BUFFER {
 	CoordTf::VECTOR4 dLightst;//x:オンオフ
 
 	//フォグ
-	CoordTf::VECTOR4  FogAmo_Density; //フォグ量x, フォグの密度y, onoffz
+	CoordTf::VECTOR4  FogAmo_Density; //フォグ量:x, フォグの密度:y, onoff:z
 	CoordTf::VECTOR4  FogColor;   //フォグの色
 
 	//x:ディスプレイトメントマッピングの起伏量
@@ -55,6 +55,9 @@ struct CONSTANT_BUFFER {
 	//z:shininess
 	//w:Smooth範囲
 	CoordTf::VECTOR4  DispAmount;
+
+	//x:Smooth比率
+	CoordTf::VECTOR4 SmoothRatio;
 
 	//divide配列 x:distance, y:divide
 	CoordTf::VECTOR4 Divide[16];

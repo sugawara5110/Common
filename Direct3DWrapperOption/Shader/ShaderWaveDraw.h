@@ -18,35 +18,23 @@ char *ShaderWaveDraw =
 "    float g_speed;\n"
 "};\n"
 
-"float3 NormalRecalculationSmoothPreparationWave(HS_OUTPUT patch[3], float3 UV)\n"
+"float3 NormalRecalculationSmoothPreparationWave(float2 tex, float centerHei)\n"
 "{\n"
-"   float sm = g_DispAmount.w;\n"
+"   float2 nTex[4];\n"
+"   float4 nHei[4];\n"
+"   getNearTexAndHeight(tex, nTex, nHei);\n"
 
-"   float2 tu = patch[0].Tex0 * (UV.x + sm) + patch[1].Tex0 * UV.y + patch[2].Tex0 * UV.z;\n"
-"   float2 tv = patch[0].Tex0 * UV.x + patch[1].Tex0 * (UV.y + sm) + patch[2].Tex0 * UV.z;\n"
-"   float2 tw = patch[0].Tex0 * UV.x + patch[1].Tex0 * UV.y + patch[2].Tex0 * (UV.z + sm);\n"
+"   int div = (int)g_wHei_divide.y;\n"
+"   int mInd = div - 1;\n"
+"   float sinwave[4];\n"
+"   sinwave[0] = gInput[div * (int)(mInd * nTex[0].y) + (int)(mInd * nTex[0].x)].sinWave;\n"
+"   sinwave[1] = gInput[div * (int)(mInd * nTex[1].y) + (int)(mInd * nTex[1].x)].sinWave;\n"
+"   sinwave[2] = gInput[div * (int)(mInd * nTex[2].y) + (int)(mInd * nTex[2].x)].sinWave;\n"
+"   sinwave[3] = gInput[div * (int)(mInd * nTex[3].y) + (int)(mInd * nTex[3].x)].sinWave;\n"
 
-"   float4 hu = g_texDiffuse.SampleLevel(g_samLinear, tu, 0);\n"
-"   float4 hv = g_texDiffuse.SampleLevel(g_samLinear, tv, 0);\n"
-"   float4 hw = g_texDiffuse.SampleLevel(g_samLinear, tw, 0);\n"
-
-"   float wh = g_wHei_divide.y;\n"
-"   float sinwave0 = gInput[wh * wh * tu.y + wh * tu.x].sinWave;\n"
-"   float sinwave1 = gInput[wh * wh * tv.y + wh * tv.x].sinWave;\n"
-"   float sinwave2 = gInput[wh * wh * tw.y + wh * tw.x].sinWave;\n"
-
-"   float heiU = (hu.x + hu.y + hu.z) / 3 + sinwave0;\n"
-"   float heiV = (hv.x + hv.y + hv.z) / 3 + sinwave1;\n"
-"   float heiW = (hw.x + hw.y + hw.z) / 3 + sinwave2;\n"
-
-"   float3 v0 = float3(tu, heiU);\n"
-"   float3 v1 = float3(tv, heiV);\n"
-"   float3 v2 = float3(tw, heiW);\n"
-
-"   float3 vecX = v0 - v1;\n"
-"   float3 vecY = v0 - v2;\n"
-"   float3 v = cross(vecX, vecY);\n"
-"   return (v + 1.0f) * 0.5f;\n"
+"   float3 v = getSmoothPreparationVec(nTex, nHei, sinwave);\n"
+"   if(centerHei <= 0.0f){v = float3(0.0f, 0.0f, 0.0f);}\n"
+"   return v;\n"
 "}\n"
 
 //**************************************ドメインシェーダー*********************************************************************//
@@ -65,8 +53,9 @@ char *ShaderWaveDraw =
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
 //コンピュートシェーダーで計算したsin波取り出し
-"   float wh = g_wHei_divide.y;\n"
-"   float sinwave = gInput[wh * wh * output.Tex0.y + wh * output.Tex0.x].sinWave;\n"
+"   int div = (int)g_wHei_divide.y;\n"
+"   int mInd = div - 1;\n"
+"   float sinwave = gInput[div * (int)(mInd * output.Tex0.y) + (int)(mInd * output.Tex0.x)].sinWave;\n"
 
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
@@ -81,8 +70,8 @@ char *ShaderWaveDraw =
 "   output.Pos.xyz += sinwave * output.Nor + hei * output.Nor;\n"
 
 //Smooth用
-"   output.AddNor = NormalRecalculationSmoothPreparationWave(patch, UV);\n"
-"   output.AddNor = GetNormal(output.AddNor, output.Nor, output.Tan);\n"
+"   output.AddNor = NormalRecalculationSmoothPreparationWave(output.Tex0, sinwave + hei);\n"
+"   output.AddNor = normalTexConvert(output.AddNor, output.Nor, output.Tan);\n"
 
 "   output.instanceID = patch[0].instanceID;\n"
 

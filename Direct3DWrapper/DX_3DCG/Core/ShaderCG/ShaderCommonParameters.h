@@ -43,6 +43,8 @@ char* ShaderCommonParameters =
 "    float4 g_FogColor;\n"
 //x:ディスプ起伏量, y:divide配列数, z:shininess, w:Smooth範囲
 "    float4 g_DispAmount;\n"
+//x:Smooth比率(初期値0.999f)
+"    float4 g_SmoothRatio;\n"
 //divide配列 x:distance, y:divide
 "    float4 g_divide[16];\n"
 //UV座標移動用
@@ -115,47 +117,70 @@ char* ShaderCommonParameters =
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////DS後法線再計算/////////////////////////////////////////////////////////
-"float3 NormalRecalculationSmoothPreparation(HS_OUTPUT patch[3], float3 UV)\n"
+"void getNearTexAndHeight(float2 tex, inout float2 NearTex[4], inout float4 NearHeight[4])\n"
 "{\n"
 "   float sm = g_DispAmount.w;\n"
+"   NearTex[0] = float2(saturate(tex.x - sm), saturate(tex.y - sm));\n"
+"   NearTex[1] = float2(saturate(tex.x + sm), saturate(tex.y - sm));\n"
+"   NearTex[2] = float2(saturate(tex.x + sm), saturate(tex.y + sm));\n"
+"   NearTex[3] = float2(saturate(tex.x - sm), saturate(tex.y + sm));\n"
 
-"   float2 tu = patch[0].Tex0 * (UV.x + sm) + patch[1].Tex0 * UV.y + patch[2].Tex0 * UV.z;\n"
-"   float2 tv = patch[0].Tex0 * UV.x + patch[1].Tex0 * (UV.y + sm) + patch[2].Tex0 * UV.z;\n"
-"   float2 tw = patch[0].Tex0 * UV.x + patch[1].Tex0 * UV.y + patch[2].Tex0 * (UV.z + sm);\n"
+"   float di = g_DispAmount.x;\n"
+"   NearHeight[0] = g_texDiffuse.SampleLevel(g_samLinear, NearTex[0], 0) * di;\n"
+"   NearHeight[1] = g_texDiffuse.SampleLevel(g_samLinear, NearTex[1], 0) * di;\n"
+"   NearHeight[2] = g_texDiffuse.SampleLevel(g_samLinear, NearTex[2], 0) * di;\n"
+"   NearHeight[3] = g_texDiffuse.SampleLevel(g_samLinear, NearTex[3], 0) * di;\n"
+"}\n"
 
-"   float4 hu = g_texDiffuse.SampleLevel(g_samLinear, tu, 0);\n"
-"   float4 hv = g_texDiffuse.SampleLevel(g_samLinear, tv, 0);\n"
-"   float4 hw = g_texDiffuse.SampleLevel(g_samLinear, tw, 0);\n"
+"float3 getSmoothPreparationVec(float2 NearTex[4], float4 NearHeight[4], float addHeight[4])\n"
+"{\n"
+"   float hei0 = (NearHeight[0].x + NearHeight[0].y + NearHeight[0].z) / 3.0f + addHeight[0];\n"
+"   float hei1 = (NearHeight[1].x + NearHeight[1].y + NearHeight[1].z) / 3.0f + addHeight[1];\n"
+"   float hei2 = (NearHeight[2].x + NearHeight[2].y + NearHeight[2].z) / 3.0f + addHeight[2];\n"
+"   float hei3 = (NearHeight[3].x + NearHeight[3].y + NearHeight[3].z) / 3.0f + addHeight[3];\n"
 
-"   float heiU = (hu.x + hu.y + hu.z) / 3;\n"
-"   float heiV = (hv.x + hv.y + hv.z) / 3;\n"
-"   float heiW = (hw.x + hw.y + hw.z) / 3;\n"
+"   float3 v0 = float3(NearTex[0], hei0);\n"
+"   float3 v1 = float3(NearTex[1], hei1);\n"
+"   float3 v2 = float3(NearTex[2], hei2);\n"
+"   float3 v3 = float3(NearTex[3], hei3);\n"
 
-"   float3 v0 = float3(tu, heiU);\n"
-"   float3 v1 = float3(tv, heiV);\n"
-"   float3 v2 = float3(tw, heiW);\n"
+"   float3 vecX0 = normalize(v0 - v1);\n"
+"   float3 vecY0 = normalize(v0 - v2);\n"
+"   float3 vecX1 = normalize(v0 - v2);\n"
+"   float3 vecY1 = normalize(v0 - v3);\n"
+"   float3 cv0 = cross(vecX0, vecY0);\n"
+"   float3 cv1 = cross(vecX1, vecY1);\n"
+"   return (cv0 + cv1) * 0.5f;\n"
+"}\n"
 
-"   float3 vecX = v0 - v1;\n"
-"   float3 vecY = v0 - v2;\n"
-"   float3 v = cross(vecX, vecY);\n"
-"   return (v + 1.0f) * 0.5f;\n"
+"float3 NormalRecalculationSmoothPreparation(float2 tex)\n"
+"{\n"
+"   float2 nTex[4];\n"
+"   float4 nHei[4];\n"
+"   getNearTexAndHeight(tex, nTex, nHei);\n"
+
+"   float dummy[4] = {0.0f, 0.0f, 0.0f, 0.0f};\n"
+"   return getSmoothPreparationVec(nTex, nHei, dummy);\n"
 "}\n"
 
 "GS_Mesh_INPUT NormalRecalculationSmooth(GS_Mesh_INPUT input)\n"
 "{\n"
 "   GS_Mesh_INPUT output;\n"
 "   output = input;\n"
-"   float3 difN = (output.AddNor - output.Nor) * 0.5f;\n"
-"   output.Nor += output.AddNor;\n"
-"   output.Nor *= 0.5f;\n"//平均
+
+"   float ratio = g_SmoothRatio.x;\n"
+"   float3 tmpNor = output.Nor;\n"
+"   output.Nor = output.AddNor * ratio + output.Nor * (1.0f - ratio);\n"
+"   float3 difN = output.Nor - tmpNor;\n"
 "   output.Tan += difN;\n"
+
 "   return output;\n"
 "}\n"
 
 "void NormalRecalculationEdge(inout GS_Mesh_INPUT Input[3])\n"
 "{\n"
-"   float3 vecX = Input[0].Pos.xyz - Input[1].Pos.xyz;\n"
-"   float3 vecY = Input[0].Pos.xyz - Input[2].Pos.xyz;\n"
+"   float3 vecX = normalize(Input[0].Pos.xyz - Input[1].Pos.xyz);\n"
+"   float3 vecY = normalize(Input[0].Pos.xyz - Input[2].Pos.xyz);\n"
 "   float3 vecNor = cross(vecX, vecY);\n"
 
 "   float3 differenceN[3];\n"

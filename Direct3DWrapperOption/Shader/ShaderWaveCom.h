@@ -30,11 +30,22 @@ char *ShaderWaveCom =
 //SV_GroupIndex uint その他uint3
 
 "[numthreads(4, 4, 1)]\n"
+"void CS_Ripples(int3 dtid : SV_DispatchThreadID)\n"
+"{\n"
+"   int x = dtid.x;"
+"   int y = dtid.y;"
+"   int div = g_wHei_divide.y;\n"
+"   float distance = length(float3(32.0f, 32.0f, 0) - float3(x, y, 0));\n"
+"	gOutput[div * y + x].theta = distance % 36;\n"
+"	gOutput[div * y + x].sinWave = (sin(gOutput[div * y + x].theta) + 2.0f) * g_wHei_divide.x;\n"
+"}\n"
+
+"[numthreads(4, 4, 1)]\n"
 "void CS(int3 dtid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = dtid.x;"
 "   int y = dtid.y;"
 "   int div = g_wHei_divide.y;\n"
 "	gOutput[div * y + x].theta = (gInput[div * y + x].theta + g_speed) % 360;\n"
-"	gOutput[div * y + x].sinWave = (sin(gOutput[div * y + x].theta)) * g_wHei_divide.x;\n"
+"	gOutput[div * y + x].sinWave = (sin(gOutput[div * y + x].theta) + 1.01f) * g_wHei_divide.x;\n"//1.01はマイナス防ぐ
 "}\n";

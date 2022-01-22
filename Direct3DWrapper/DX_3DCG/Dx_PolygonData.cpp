@@ -88,3 +88,16 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
+
+void PolygonData::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,
+	float px, float py, float mx, float my) {
+
+	BasicPolygon::InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
+}
+
+void PolygonData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+	float disp, float SmoothRange, float SmoothRatio, float shininess,
+	float px, float py, float mx, float my) {
+
+	BasicPolygon::Update(pos, Color, angle, size, disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
+}
