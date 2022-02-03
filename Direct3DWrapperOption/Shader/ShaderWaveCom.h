@@ -2,21 +2,17 @@
 //                                           ShaderWaveCom.hlsl                                          //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char *ShaderWaveCom =
-"struct WaveData\n"
-"{\n"
-"	float sinWave;\n"
-"   float theta;\n"
-"};\n"
-
-"RWStructuredBuffer<WaveData> gInput : register(u0, space0);\n"
-"RWStructuredBuffer<WaveData> gOutput : register(u1, space0);\n"
+char* ShaderWaveCom =
+"RWTexture2D<float> gInput : register(u0, space0);\n"
+"RWTexture2D<float> gOutput : register(u1, space0);\n"
+"RWTexture2D<float> gPrevInput : register(u2, space0);\n"
 
 //wave
 "cbuffer cbWave  : register(b0, space0)\n"
 "{\n"
-//x:waveHeight, y:分割数
-"    float4 g_wHei_divide;\n"
+"    float4 wHei_mk012;\n"//x:waveHeight(sinWave), y:mk0, z:mk1, w:mk2
+"    float2 gDisturbIndex;\n"//波紋中心
+"    float gDisturbMag;\n"
 "    float g_speed;\n"
 "};\n"
 
@@ -29,23 +25,45 @@ char *ShaderWaveCom =
 //SV_GroupIndex      : z*X*Y+y*X+x
 //SV_GroupIndex uint その他uint3
 
-"[numthreads(4, 4, 1)]\n"
-"void CS_Ripples(int3 dtid : SV_DispatchThreadID)\n"
+"[numthreads(16, 16, 1)]\n"
+"void sinWavesCS(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
-"   int x = dtid.x;"
-"   int y = dtid.y;"
-"   int div = g_wHei_divide.y;\n"
-"   float distance = length(float3(32.0f, 32.0f, 0) - float3(x, y, 0));\n"
-"	gOutput[div * y + x].theta = distance % 36;\n"
-"	gOutput[div * y + x].sinWave = (sin(gOutput[div * y + x].theta) + 2.0f) * g_wHei_divide.x;\n"
+"   int x = dtid.x;\n"
+"   int y = dtid.y;\n"
+"	gInput[int2(x, y)].r = (gInput[int2(x, y)].r + g_speed) % 360;\n"
+"	gOutput[int2(x, y)].r = (sin(gInput[int2(x, y)].r) + 1.01f) * wHei_mk012.x;\n"//1.01はマイナス防ぐ
 "}\n"
 
-"[numthreads(4, 4, 1)]\n"
-"void CS(int3 dtid : SV_DispatchThreadID)\n"
+"[numthreads(1, 1, 1)]\n"
+"void DisturbWavesCS(int3 groupThreadID : SV_GroupThreadID, \n"
+"	int3 dispatchThreadID : SV_DispatchThreadID)\n"
 "{\n"
-"   int x = dtid.x;"
-"   int y = dtid.y;"
-"   int div = g_wHei_divide.y;\n"
-"	gOutput[div * y + x].theta = (gInput[div * y + x].theta + g_speed) % 360;\n"
-"	gOutput[div * y + x].sinWave = (sin(gOutput[div * y + x].theta) + 1.01f) * g_wHei_divide.x;\n"//1.01はマイナス防ぐ
+"	int x = gDisturbIndex.x;\n"
+"	int y = gDisturbIndex.y;\n"
+
+"	float halfMag = 0.5f * gDisturbMag;\n"
+
+"	gOutput[int2(x, y)] += gDisturbMag;\n"
+"	gOutput[int2(x + 1, y)] += halfMag;\n"
+"	gOutput[int2(x - 1, y)] += halfMag;\n"
+"	gOutput[int2(x, y + 1)] += halfMag;\n"
+"	gOutput[int2(x, y - 1)] += halfMag;\n"
+"}\n"
+
+"[numthreads(16, 16, 1)]\n"
+"void UpdateWavesCS(int3 dispatchThreadID : SV_DispatchThreadID)\n"
+"{\n"
+"	int x = dispatchThreadID.x;\n"
+"	int y = dispatchThreadID.y;\n"
+
+"	gOutput[int2(x, y)] = \n"
+"		wHei_mk012.y * gPrevInput[int2(x, y)].r + \n"
+"		wHei_mk012.z * gInput[int2(x, y)].r + \n"
+"		wHei_mk012.w * ( \n"
+"			gInput[int2(x, y + 1)].r + \n"
+"			gInput[int2(x, y - 1)].r + \n"
+"			gInput[int2(x + 1, y)].r + \n"
+"			gInput[int2(x - 1, y)].r);\n"
 "}\n";
+
+

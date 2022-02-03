@@ -3,20 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char *ShaderWaveDraw =
-"struct WaveData\n"
-"{\n"
-"	float sinWave;\n"
-"   float theta;\n"
-"};\n"
-"StructuredBuffer<WaveData> gInput : register(t3, space0);\n"
-
-//wave
-"cbuffer cbWave  : register(b2, space0)\n"
-"{\n"
-//x:waveHeight, y:分割数
-"    float4 g_wHei_divide;\n"
-"    float g_speed;\n"
-"};\n"
+"Texture2D<float> gInput : register(t3, space0);\n"
 
 "float3 NormalRecalculationSmoothPreparationWave(float2 tex, float centerHei)\n"
 "{\n"
@@ -24,13 +11,11 @@ char *ShaderWaveDraw =
 "   float4 nHei[4];\n"
 "   getNearTexAndHeight(tex, nTex, nHei);\n"
 
-"   int div = (int)g_wHei_divide.y;\n"
-"   int mInd = div - 1;\n"
 "   float sinwave[4];\n"
-"   sinwave[0] = gInput[div * (int)(mInd * nTex[0].y) + (int)(mInd * nTex[0].x)].sinWave;\n"
-"   sinwave[1] = gInput[div * (int)(mInd * nTex[1].y) + (int)(mInd * nTex[1].x)].sinWave;\n"
-"   sinwave[2] = gInput[div * (int)(mInd * nTex[2].y) + (int)(mInd * nTex[2].x)].sinWave;\n"
-"   sinwave[3] = gInput[div * (int)(mInd * nTex[3].y) + (int)(mInd * nTex[3].x)].sinWave;\n"
+"   sinwave[0] = gInput.SampleLevel(g_samLinear, nTex[0], 0).r;\n"
+"   sinwave[1] = gInput.SampleLevel(g_samLinear, nTex[1], 0).r;\n"
+"   sinwave[2] = gInput.SampleLevel(g_samLinear, nTex[2], 0).r;\n"
+"   sinwave[3] = gInput.SampleLevel(g_samLinear, nTex[3], 0).r;\n"
 
 "   float3 v = getSmoothPreparationVec(nTex, nHei, sinwave);\n"
 "   if(centerHei <= 0.0f){v = float3(0.0f, 0.0f, 0.0f);}\n"
@@ -53,9 +38,7 @@ char *ShaderWaveDraw =
 "   float hei = (height.x + height.y + height.z) / 3;\n"
 
 //コンピュートシェーダーで計算したsin波取り出し
-"   int div = (int)g_wHei_divide.y;\n"
-"   int mInd = div - 1;\n"
-"   float sinwave = gInput[div * (int)(mInd * output.Tex0.y) + (int)(mInd * output.Tex0.x)].sinWave;\n"
+"   float sinwave = gInput.SampleLevel(g_samLinear, output.Tex0, 0).r;\n"
 
 //法線ベクトル
 "   output.Nor = patch[0].Nor * UV.x + patch[1].Nor * UV.y + patch[2].Nor * UV.z;\n"
