@@ -51,6 +51,9 @@ protected:
 	ComPtr<ID3D12Resource> mInputBuffer = nullptr;
 	ComPtr<ID3D12Resource> mPrevInputBuffer = nullptr;
 	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
+	ComPtr<ID3D12Resource> mInputBufferUp = nullptr;
+	ComPtr<ID3D12Resource> mPrevInputBufferUp = nullptr;
+	ComPtr<ID3D12Resource> mOutputBufferUp = nullptr;
 	DivideArr divArr[16] = {};
 	int numDiv;
 

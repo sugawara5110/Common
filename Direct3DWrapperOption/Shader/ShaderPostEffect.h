@@ -4,14 +4,16 @@
 
 char *ShaderPostEffect =
 "Texture2D<float> gDepth : register(t0, space0);\n"
-"RWTexture2D<float4> gInput : register(u0, space0);\n"
-"RWTexture2D<float4> gOutput : register(u1, space0);\n"
+"StructuredBuffer<float> gGaussian : register(t1, space0);\n"
+"Texture2D<float4> gInput : register(t2, space0);\n"
+"RWTexture2D<float4> gOutput : register(u0, space0);\n"
+"RWTexture2D<float4> gGaussInOut : register(u1, space0);\n"
 
 //モザイク大きさx
 //ブラー中心座標xy,ぼけ強度z,ピントが合う深さw
 "cbuffer global  : register(b0, space0)\n"
 "{\n"
-"    float4 g_mosaicSize;\n"
+"    float4 g_mosaicSize_GausSize;\n"
 "    float4 g_blur;\n"
 "    float g_focusRange;\n"
 "};\n"
@@ -29,8 +31,8 @@ char *ShaderPostEffect =
 "[numthreads(32, 8, 1)]\n"
 "void MosaicCS(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
-"   float size1 = 1 / g_mosaicSize.x;\n"
-"   int size2 = g_mosaicSize.x;\n"
+"   float size1 = 1 / g_mosaicSize_GausSize.x;\n"
+"   int size2 = g_mosaicSize_GausSize.x;\n"
 "   int x = dtid.x * size1;\n"
 "   int y = dtid.y * size1;\n"
 "	gOutput[dtid] = gInput[int2(x * size2, y * size2)];\n"
@@ -84,7 +86,7 @@ char *ShaderPostEffect =
 "   int Size = wSize * wSize;\n"
 
 "   float3 tmp = float3(0.0f, 0.0f, 0.0f);\n"
-"   for(int j = 0; j < wSize; j++) {\n"
+"   for(int j = 0; j < wSize; j++){\n"
 "     for(int i = 0; i < wSize; i++){\n"
 "       int mx = max(0, x - i);\n"
 "       int my = max(0, y - j);\n"
@@ -95,4 +97,63 @@ char *ShaderPostEffect =
 "   float4 ret = gInput[dtid];\n"
 "   ret.xyz = tmp / Size;\n"
 "   gOutput[dtid] = ret;\n"
+"}\n"
+
+//輝度抽出
+"[numthreads(32, 8, 1)]\n"
+"void BloomCS0(int2 dtid : SV_DispatchThreadID)\n"
+"{\n"
+"   float4 L = gInput[dtid];\n"
+"   L.w = 0.0f;\n"
+"   if(L.x + L.y + L.z > 1.0f)\n"
+"   {\n"
+"     gOutput[dtid] = L;\n"
+"   }else\n"
+"   {\n"
+"     gOutput[dtid] = float4(0.0f ,0.0f ,0.0f ,0.0f);\n"
+"   }\n"
+"}\n"
+
+//Bloom横
+"[numthreads(32, 8, 1)]\n"
+"void BloomCS1(int2 dtid : SV_DispatchThreadID)\n"
+"{\n"
+"   int x = dtid.x;\n"
+"   int y = dtid.y;\n"
+
+"   int halfwid = g_mosaicSize_GausSize.y;\n"
+"   float3 col = float3(0.0f, 0.0f, 0.0f);\n"
+
+"   for(int i = 0; i < halfwid; i++){\n"
+"     float4 tmp = gGaussInOut[int2(x + i, y)];\n"
+"     col += tmp.xyz * gGaussian[i];\n"
+"     tmp = gGaussInOut[int2(x - i, y)];\n"
+"     col += tmp.xyz * gGaussian[i];\n"
+"   }\n"
+
+"   float4 Out = float4(0.0f, 0.0f, 0.0f, 1.0f);\n"
+"   Out.xyz = col;\n"
+"   gOutput[dtid] = Out;\n"
+"}\n"
+
+//Bloom縦
+"[numthreads(32, 8, 1)]\n"
+"void BloomCS2(int2 dtid : SV_DispatchThreadID)\n"
+"{\n"
+"   int x = dtid.x;\n"
+"   int y = dtid.y;\n"
+
+"   int halfwid = g_mosaicSize_GausSize.y;\n"
+"   float4 col = gGaussInOut[dtid];\n"
+
+"   for(int i = 0; i < halfwid; i++){\n"
+"     float4 tmp = gGaussInOut[int2(x, y + i)];\n"
+"     col.xyz += tmp.xyz * gGaussian[i];\n"
+"     tmp = gGaussInOut[int2(x, y - i)];\n"
+"     col.xyz += tmp.xyz * gGaussian[i];\n"
+"   }\n"
+
+"   float4 src = gInput[dtid];\n"
+"   src.xyz += col.xyz;\n"
+"   gOutput[dtid] = src;\n"
 "}\n";

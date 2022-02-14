@@ -113,7 +113,7 @@ bool Wave::ComCreateSin() {
 	Dx_Device* device = Dx_Device::GetInstance();
 	UINT64 byteSize = tdata.size() * sizeof(float);
 
-	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBufferSin, (UINT64)width, (UINT)width,
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mInputBufferSin.GetAddressOf(), (UINT64)width, (UINT)width,
 		D3D12_RESOURCE_STATE_COMMON, DXGI_FORMAT_R32_FLOAT))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
@@ -149,16 +149,51 @@ bool Wave::ComCreateSin() {
 bool Wave::ComCreateRipples() {
 
 	Dx_Device* device = Dx_Device::GetInstance();
+	int divide = width * width;
+	std::vector<float> zdata(divide);
+	for (int i = 0; i < divide; ++i)
+	{
+		zdata[i] = 0.0f;
+	}
 
-	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mInputBuffer, (UINT64)width, (UINT)width,
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mInputBuffer.GetAddressOf(), (UINT64)width, (UINT)width,
 		D3D12_RESOURCE_STATE_COMMON, DXGI_FORMAT_R32_FLOAT))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 
-	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mPrevInputBuffer, (UINT64)width, (UINT)width,
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mPrevInputBuffer.GetAddressOf(), (UINT64)width, (UINT)width,
 		D3D12_RESOURCE_STATE_COMMON, DXGI_FORMAT_R32_FLOAT))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
+
+	UINT64 uploadBufferSize = device->getRequiredIntermediateSize(mInputBuffer.Get());
+	if (FAILED(device->createUploadResource(mInputBufferUp.GetAddressOf(), uploadBufferSize))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	uploadBufferSize = device->getRequiredIntermediateSize(mPrevInputBuffer.Get());
+	if (FAILED(device->createUploadResource(mPrevInputBufferUp.GetAddressOf(), uploadBufferSize))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	uploadBufferSize = device->getRequiredIntermediateSize(mOutputBuffer.Get());
+	if (FAILED(device->createUploadResource(mOutputBufferUp.GetAddressOf(), uploadBufferSize))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+
+	comObj->ResourceBarrier(mInputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mInputBufferUp.Get(), mInputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	comObj->ResourceBarrier(mInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	comObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mPrevInputBufferUp.Get(), mPrevInputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	comObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mOutputBufferUp.Get(), mOutputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
+		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
+	}
+	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", BasicPolygon::objName));
 	mPrevInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mPrevInputBuffer", BasicPolygon::objName));
