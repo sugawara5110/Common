@@ -159,7 +159,7 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 	mDescHeap = device->CreateDescHeap(numSrv + numCbv);
 	Dx_Device* d = device;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDescHeap->GetCPUDescriptorHandleForHeapStart());
-	d->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
+	d->CreateSrvTexture(hDescriptor, &texture[0], 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
 	d->CreateCbv(hDescriptor, &ad, &size, numCbv);

@@ -184,6 +184,24 @@ void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texNa
 	tex->setData(byteArr);
 }
 
+HRESULT Dx12Process::createTextureResourceArr(int com_no) {
+	for (int i = 0; i < texNum; i++) {
+		InternalTexture* tex = &texture[i];
+		HRESULT hr = createTexture(com_no, tex->byteArr, tex->format,
+			tex->textureUp.GetAddressOf(), tex->texture.GetAddressOf(),
+			tex->width, tex->RowPitch, tex->height);
+		tex->textureUp->SetName(Dx_Util::charToLPCWSTR("Up", tex->texName));
+		tex->texture->SetName(Dx_Util::charToLPCWSTR("def", tex->texName));
+
+		if (FAILED(hr)) {
+			Dx_Util::ErrorMessage("Dx12Process::createTextureResourceArr Error!!");
+			return hr;
+		}
+		tex->createRes = true;
+	}
+	return S_OK;
+}
+
 bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	mClientWidth = width;

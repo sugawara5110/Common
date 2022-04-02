@@ -26,6 +26,40 @@
 
 using Microsoft::WRL::ComPtr;
 
+class InternalTexture {
+public:
+	UCHAR* byteArr = nullptr;
+	char* texName = nullptr; //ファイル名
+	DXGI_FORMAT format = {};
+	int width = 0;
+	LONG_PTR RowPitch = 0;
+	int height = 0;
+
+	ComPtr<ID3D12Resource> textureUp = nullptr;
+	ComPtr<ID3D12Resource> texture = nullptr;
+	bool createRes = false;
+
+	void setParameter(DXGI_FORMAT Format, int Width, LONG_PTR rowPitch, int Height) {
+		format = Format;
+		width = Width;
+		RowPitch = rowPitch;
+		height = Height;
+	}
+	void setName(char* name) {
+		int ln = (int)strlen(name) + 1;
+		texName = new char[ln];
+		memcpy(texName, name, sizeof(char) * ln);
+	}
+	void setData(UCHAR* ByteArr) {
+		byteArr = new UCHAR[RowPitch * height];
+		memcpy(byteArr, ByteArr, sizeof(UCHAR) * RowPitch * height);
+	}
+	~InternalTexture() {
+		ARR_DELETE(byteArr);
+		ARR_DELETE(texName);
+	}
+};
+
 class Dx12Process final {
 
 private:
@@ -134,6 +168,10 @@ private:
 		DivideArr* divArr, int numDiv, float shininess, float SmoothRange, float SmoothRatio);
 
 public:
+	void setInternalTextureArr(InternalTexture* t) {
+		texture = t;
+	}
+
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 		const void* initData, LONG_PTR RowPitch);
 
@@ -164,6 +202,8 @@ public:
 	void createTextureArr(int numTexArr, int resourceIndex, char* texName,
 		UCHAR* byteArr, DXGI_FORMAT format,
 		int width, LONG_PTR RowPitch, int height);
+
+	HRESULT createTextureResourceArr(int com_no);
 
 	void Bigin(int com_no);
 	void BiginDraw(int com_no, bool clearBackBuffer = true);
@@ -520,8 +560,10 @@ protected:
 	char objName[256] = {};
 
 	//テクスチャ
-	std::unique_ptr<ComPtr<ID3D12Resource>[]> textureUp = nullptr;
-	std::unique_ptr<ComPtr<ID3D12Resource>[]> texture = nullptr;
+	std::unique_ptr<bool[]> createRes = nullptr;
+	std::unique_ptr<ID3D12Resource* []> textureUp = nullptr;
+	std::unique_ptr<ID3D12Resource* []> texture = nullptr;
+	int numTexRes = 0;
 	MovieTexture* movOn = nullptr;
 	int movOnSize = 0;
 
@@ -529,6 +571,7 @@ protected:
 	D3D12_TEXTURE_COPY_LOCATION dest = {};
 	D3D12_TEXTURE_COPY_LOCATION src = {};
 
+	HRESULT createTex(int tNo, int& resCnt, char* upName, char* defName, char* ObjName);
 	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName);
 
 	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
@@ -599,14 +642,14 @@ protected:
 	int dxrBuffSwapIndex() { return dx->dxrBuffSwap[0]; }
 
 public:
-	~Common() { ARR_DELETE(movOn); }
+	~Common();
 	void SetName(char* name);
 	void SetCommandList(int no);
 	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
 	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
 	InternalTexture* getInternalTexture(int index) { return &dx->texture[index + 2]; }
-	ID3D12Resource* getTextureResource(int index) { return texture[index].Get(); }
+	ID3D12Resource* getTextureResource(int index) { return texture[index]; }
 };
 
 //*********************************BasicPolygonクラス*************************************//

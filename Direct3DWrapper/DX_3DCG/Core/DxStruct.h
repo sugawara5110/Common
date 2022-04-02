@@ -181,36 +181,6 @@ struct SHADER_GLOBAL_BONES {
 	}
 };
 
-class InternalTexture {
-public:
-	UCHAR* byteArr = nullptr;
-	char* texName = nullptr; //ƒtƒ@ƒCƒ‹–¼
-	DXGI_FORMAT format = {};
-	int width = 0;
-	LONG_PTR RowPitch = 0;
-	int height = 0;
-
-	void setParameter(DXGI_FORMAT Format, int Width, LONG_PTR rowPitch, int Height) {
-		format = Format;
-		width = Width;
-		RowPitch = rowPitch;
-		height = Height;
-	}
-	void setName(char* name) {
-		int ln = (int)strlen(name) + 1;
-		texName = new char[ln];
-		memcpy(texName, name, sizeof(char) * ln);
-	}
-	void setData(UCHAR* ByteArr) {
-		byteArr = new UCHAR[RowPitch * height];
-		memcpy(byteArr, ByteArr, sizeof(UCHAR) * RowPitch * height);
-	}
-	~InternalTexture() {
-		ARR_DELETE(byteArr);
-		ARR_DELETE(texName);
-	}
-};
-
 class SameVertexList {
 
 private:

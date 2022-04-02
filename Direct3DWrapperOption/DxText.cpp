@@ -32,8 +32,8 @@ void TextObj::SetText(int com) {
 
 	if (!CreateTextOn)return;
 
-	texture[0].Reset();
-	textureUp[0].Reset();
+	RELEASE(texture[0]);
+	RELEASE(textureUp[0]);
 
 	UCHAR* pBits = new UCHAR[Twidth * 4 * Theight];
 	memset(pBits, 0, Twidth * 4 * Theight);//0–„‚ß
@@ -68,11 +68,11 @@ void TextObj::SetText(int com) {
 	}
 
 	dx->createTexture(com, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
-		textureUp[0].ReleaseAndGetAddressOf(), texture[0].ReleaseAndGetAddressOf(),
+		&textureUp[0], &texture[0],
 		Twidth, Twidth * 4, Theight);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
-	Dx_Device::GetInstance()->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
+	Dx_Device::GetInstance()->CreateSrvTexture(hDescriptor, &texture[0], 1);
 
 	ARR_DELETE(pBits);
 	ARR_DELETE(Tm);

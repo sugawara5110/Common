@@ -326,7 +326,7 @@ bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numC
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		Dx_Device* d = device;
-		d->CreateSrvTexture(hDescriptor, texture[numSrvTex * i].GetAddressOf(), numSrvTex);
+		d->CreateSrvTexture(hDescriptor, &texture[numSrvTex * i], numSrvTex);
 		d->CreateSrvTexture(hDescriptor, mOutputBuffer.GetAddressOf(), numSrvTex2);
 		D3D12_GPU_VIRTUAL_ADDRESS ad[2] = {};
 		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();

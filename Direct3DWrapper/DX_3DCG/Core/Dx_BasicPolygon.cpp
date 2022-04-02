@@ -113,9 +113,9 @@ void BasicPolygon::setTextureDXR() {
 	if (!dx->DXR_CreateResource)return;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
-		dxrPara.difTex[i] = texture[i * 3 + 0].Get();
-		dxrPara.norTex[i] = texture[i * 3 + 1].Get();
-		dxrPara.speTex[i] = texture[i * 3 + 2].Get();
+		dxrPara.difTex[i] = texture[i * 3 + 0];
+		dxrPara.norTex[i] = texture[i * 3 + 1];
+		dxrPara.speTex[i] = texture[i * 3 + 2];
 	}
 }
 
@@ -351,7 +351,7 @@ bool BasicPolygon::setDescHeap(const int numSrvTex,
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		Dx_Device* d = device;
-		d->CreateSrvTexture(hDescriptor, texture[numSrvTex * i].GetAddressOf(), numSrvTex);
+		d->CreateSrvTexture(hDescriptor, &texture[numSrvTex * i], numSrvTex);
 		d->CreateSrvBuffer(hDescriptor, buffer, numSrvBuf, StructureByteStride);
 		D3D12_GPU_VIRTUAL_ADDRESS ad[numMaxCB] = {};
 		//cbuffer global : register(b0, space0)

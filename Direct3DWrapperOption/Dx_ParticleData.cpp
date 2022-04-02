@@ -281,7 +281,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	if (mDescHeap == nullptr)return false;
 	Dx_Device* d = device;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDescHeap->GetCPUDescriptorHandleForHeapStart());
-	d->CreateSrvTexture(hDescriptor, texture[0].GetAddressOf(), 1);
+	d->CreateSrvTexture(hDescriptor, &texture[0], 1);
 	D3D12_GPU_VIRTUAL_ADDRESS ad = mObjectCB->Resource()->GetGPUVirtualAddress();
 	UINT size = mObjectCB->getSizeInBytes();
 	d->CreateCbv(hDescriptor, &ad, &size, numCbv);
@@ -322,9 +322,9 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0, 0, nullptr);
 		if (rootSignatureDXR == nullptr)return false;
 
-		dxrPara.difTex[0] = texture[0].Get();
-		dxrPara.norTex[0] = texture[1].Get();
-		dxrPara.speTex[0] = texture[2].Get();
+		dxrPara.difTex[0] = texture[0];
+		dxrPara.norTex[0] = texture[1];
+		dxrPara.speTex[0] = texture[2];
 
 		gs = pGeometryShader_P_Output.Get();
 		PSO_DXR = CreatePsoStreamOutput(vs, nullptr, nullptr, gs, rootSignatureDXR.Get(),
