@@ -46,6 +46,18 @@ void PolygonData::setMaterialType(MaterialType type) {
 	dxrPara.mType[0] = type;
 }
 
+void PolygonData::setPointLight(int InstanceIndex, bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, 0, InstanceIndex, on_off, range, atten);
+}
+
+void PolygonData::setPointLightAll(bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
+}
+
 bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
 	bool smooth,
 	float divideBufferMagnification) {

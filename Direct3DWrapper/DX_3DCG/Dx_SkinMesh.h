@@ -111,7 +111,13 @@ public:
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);
+
 	void setMaterialType(MaterialType type, int materialIndex = -1, int meshIndex = -1);
+	void setPointLight(int meshIndex, int materialIndex, int InstanceIndex, bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+	void setPointLightAll(bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+
 	bool CreateFromFBX(bool disp, bool smooth = false, float divideBufferMagnification = 1.0f);
 	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);

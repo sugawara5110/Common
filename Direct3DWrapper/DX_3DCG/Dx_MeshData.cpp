@@ -377,6 +377,20 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 	mObj.dxrPara.mType[materialIndex] = type;
 }
 
+void MeshData::setPointLight(int materialIndex, int InstanceIndex, bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	Dx12Process* dx = mObj.dx;
+	mObj.dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, materialIndex, InstanceIndex, on_off, range, atten);
+}
+
+void MeshData::setPointLightAll(bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	Dx12Process* dx = mObj.dx;
+	mObj.dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
+}
+
 bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
 	Dx12Process* dx = mObj.dx;
 	if (disp) {

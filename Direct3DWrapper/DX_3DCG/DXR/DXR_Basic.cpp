@@ -378,7 +378,6 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 		cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 
-		createInstanceIdBuffer();
 		createAccelerationStructures();
 
 		int numIns = 0;
@@ -430,16 +429,6 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 void DXR_Basic::setTMin_TMax(float tMin, float tMax) {
 	TMin = tMin;
 	TMax = tMax;
-}
-
-void DXR_Basic::createInstanceIdBuffer() {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	for (UINT i = 0; i < numParameter; i++) {
-		for (UINT j = 0; j < 2; j++) {
-			PD[i]->updateDXR[j].InstanceID =
-				std::make_unique<UINT[]>(PD[i]->NumMaxInstance * PD[i]->NumMaterial);
-		}
-	}
 }
 
 void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
@@ -992,11 +981,13 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.emissivePosition[cntEm].x = v3.x;
 						cb.emissivePosition[cntEm].y = v3.y;
 						cb.emissivePosition[cntEm].z = v3.z;
-						cb.emissivePosition[cntEm].w = upd.plight.LightPos[cntEm].w;
-						cb.Lightst[cntEm].x = upd.plight.Lightst[cntEm].x;
-						cb.Lightst[cntEm].y = upd.plight.Lightst[cntEm].y;
-						cb.Lightst[cntEm].z = upd.plight.Lightst[cntEm].z;
-						cb.Lightst[cntEm].w = upd.plight.Lightst[cntEm].w;
+						float plightOn = PD[i]->getplightOn(dx->dxrBuffSwap[1], v, j, k);
+						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dx->dxrBuffSwap[1], v, j, k);
+						cb.emissivePosition[cntEm].w = plightOn;
+						cb.Lightst[cntEm].x = Lightst.x;
+						cb.Lightst[cntEm].y = Lightst.y;
+						cb.Lightst[cntEm].z = Lightst.z;
+						cb.Lightst[cntEm].w = Lightst.w;
 						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[udInstanceIDCnt + k];
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {

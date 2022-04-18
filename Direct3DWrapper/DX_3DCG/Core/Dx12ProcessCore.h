@@ -37,6 +37,7 @@ public:
 
 	ComPtr<ID3D12Resource> textureUp = nullptr;
 	ComPtr<ID3D12Resource> texture = nullptr;
+
 	bool createRes = false;
 
 	void setParameter(DXGI_FORMAT Format, int Width, LONG_PTR rowPitch, int Height) {
@@ -168,10 +169,6 @@ private:
 		DivideArr* divArr, int numDiv, float shininess, float SmoothRange, float SmoothRatio);
 
 public:
-	void setInternalTextureArr(InternalTexture* t) {
-		texture = t;
-	}
-
 	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
 		const void* initData, LONG_PTR RowPitch);
 
@@ -201,7 +198,9 @@ public:
 
 	void createTextureArr(int numTexArr, int resourceIndex, char* texName,
 		UCHAR* byteArr, DXGI_FORMAT format,
-		int width, LONG_PTR RowPitch, int height);
+		int width, LONG_PTR RowPitch, int height,
+		ComPtr<ID3D12Resource> texture = nullptr,
+		ComPtr<ID3D12Resource> textureUp = nullptr);
 
 	HRESULT createTextureResourceArr(int com_no);
 
@@ -467,12 +466,20 @@ struct UpdateDXR {
 	UINT numVertex = 1;
 	std::unique_ptr<CoordTf::VECTOR3[]> v = nullptr;
 
+	//ポイントライト
+	std::unique_ptr<float[]> plightOn = nullptr;
+	std::unique_ptr<CoordTf::VECTOR4[]> Lightst = nullptr;
+
 	void InstanceMaskChange(bool DrawOn) {
 		if (DrawOn)InstanceMask = 0xFF;
 		else InstanceMask = 0x00;
 	}
 
 	void create(int numMaterial, int numMaxInstance) {
+		plightOn = std::make_unique<float[]>(numMaxInstance * numMaterial * numVertex);
+		for (UINT i = 0; i < numMaxInstance * numMaterial * numVertex; i++)plightOn[i] = 0.0f;
+		Lightst = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance * numMaterial * numVertex);
+		InstanceID = std::make_unique<UINT[]>(numMaxInstance * numMaterial);
 		Transform = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 		WVP = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 		AddObjColor = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance);
@@ -543,6 +550,60 @@ struct ParameterDXR {
 
 	bool alphaBlend = false;
 	bool alphaTest = false;
+
+	void setPointLight(
+		int SwapNo,
+		UINT VertexIndex, int MaterialIndex, int InstanceIndex,
+		bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f }) {
+
+		int index = VertexIndex * NumMaterial * NumMaxInstance +
+			MaterialIndex * NumMaxInstance +
+			InstanceIndex;
+
+		UpdateDXR& ud = updateDXR[SwapNo];
+		float& plightOn = ud.plightOn[index];
+		if (on_off)plightOn = 1.0f; else plightOn = 0.0f;
+		ud.Lightst[index].as(range, atten.x, atten.y, atten.z);
+	}
+
+	void setPointLightAll(
+		int SwapNo,
+		bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f }) {
+
+		UpdateDXR& ud = updateDXR[SwapNo];
+
+		int num = ud.numVertex * NumMaterial * NumMaxInstance;
+
+		for (int i = 0; i < num; i++) {
+			float& plightOn = ud.plightOn[i];
+			if (on_off)plightOn = 1.0f; else plightOn = 0.0f;
+			ud.Lightst[i].as(range, atten.x, atten.y, atten.z);
+		}
+	}
+
+	float getplightOn(int SwapNo,
+		UINT VertexIndex, int MaterialIndex, int InstanceIndex) {
+
+		UpdateDXR& ud = updateDXR[SwapNo];
+		int index = VertexIndex * NumMaterial * NumMaxInstance +
+			MaterialIndex * NumMaxInstance +
+			InstanceIndex;
+
+		return ud.plightOn[index];
+	}
+
+	CoordTf::VECTOR4 getLightst(int SwapNo,
+		UINT VertexIndex, int MaterialIndex, int InstanceIndex) {
+
+		UpdateDXR& ud = updateDXR[SwapNo];
+		int index = VertexIndex * NumMaterial * NumMaxInstance +
+			MaterialIndex * NumMaxInstance +
+			InstanceIndex;
+
+		return ud.Lightst[index];
+	}
 };
 
 //**********************************Commonクラス*************************************//

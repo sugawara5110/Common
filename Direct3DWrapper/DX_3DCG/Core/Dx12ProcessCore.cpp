@@ -157,7 +157,9 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 
 void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texName,
 	UCHAR* byteArr, DXGI_FORMAT format,
-	int width, LONG_PTR RowPitch, int height) {
+	int width, LONG_PTR RowPitch, int height,
+	ComPtr<ID3D12Resource> inTexture,
+	ComPtr<ID3D12Resource> inTextureUp) {
 
 	if (!texture) {
 		texNum = numTexArr + 2;//dummyNor,dummyDifSpe•ª
@@ -182,6 +184,12 @@ void Dx12Process::createTextureArr(int numTexArr, int resourceIndex, char* texNa
 	tex->setParameter(format, width, RowPitch, height);
 	tex->setName(texName);
 	tex->setData(byteArr);
+
+	if (inTexture) {
+		tex->texture = inTexture;
+		tex->createRes = true;
+		tex->textureUp = inTextureUp;
+	}
 }
 
 HRESULT Dx12Process::createTextureResourceArr(int com_no) {

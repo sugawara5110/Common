@@ -85,7 +85,6 @@ private:
 	float TMin = 0;
 	float TMax = 0;
 
-	void createInstanceIdBuffer();
 	void createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 		IndexView* iv, UINT currentIndexCount, UINT MaterialNo,
 		bool update, bool tessellation, bool alphaTest);
