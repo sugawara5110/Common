@@ -5,7 +5,7 @@
 char *ShaderWaveDraw =
 "Texture2D<float> gInput : register(t3, space0);\n"
 
-"float3 NormalRecalculationSmoothPreparationWave(float2 tex, float centerHei)\n"
+"float3 NormalRecalculationSmoothPreparationWave(float2 tex)\n"
 "{\n"
 "   float2 nTex[4];\n"
 "   float4 nHei[4];\n"
@@ -17,9 +17,7 @@ char *ShaderWaveDraw =
 "   sinwave[2] = gInput.SampleLevel(g_samLinear, nTex[2], 0).r;\n"
 "   sinwave[3] = gInput.SampleLevel(g_samLinear, nTex[3], 0).r;\n"
 
-"   float3 v = getSmoothPreparationVec(nTex, nHei, sinwave);\n"
-"   if(centerHei <= 0.0f){v = float3(0.0f, 0.0f, 0.0f);}\n"
-"   return v;\n"
+"   return getSmoothPreparationVec(nTex, nHei, sinwave);\n"
 "}\n"
 
 //**************************************ドメインシェーダー*********************************************************************//
@@ -53,7 +51,7 @@ char *ShaderWaveDraw =
 "   output.Pos.xyz += sinwave * output.Nor + hei * output.Nor;\n"
 
 //Smooth用
-"   output.AddNor = NormalRecalculationSmoothPreparationWave(output.Tex0, sinwave + hei);\n"
+"   output.AddNor = NormalRecalculationSmoothPreparationWave(output.Tex0);\n"
 "   output.AddNor = normalTexConvert(output.AddNor, output.Nor, output.Tan);\n"
 
 "   output.instanceID = patch[0].instanceID;\n"

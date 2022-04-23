@@ -371,6 +371,18 @@ void Wave::setMaterialType(MaterialType type) {
 	BasicPolygon::dxrPara.mType[0] = type;
 }
 
+void Wave::setPointLight(int InstanceIndex, bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	dxrPara.setPointLight(dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
+}
+
+void Wave::setPointLightAll(bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	dxrPara.setPointLightAll(dxrBuffSwapIndex(), on_off, range, atten);
+}
+
 bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float TimeStep) {
 	return Create(texNo, -1, blend, alpha, waveHeight, divide, smooth, TimeStep);
 }

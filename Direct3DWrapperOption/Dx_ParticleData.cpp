@@ -347,6 +347,18 @@ void ParticleData::setMaterialType(MaterialType type) {
 	dxrPara.mType[0] = type;
 }
 
+void ParticleData::setPointLight(UINT VertexIndex, bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	dxrPara.setPointLight(dxrBuffSwapIndex(), VertexIndex, 0, 0, on_off, range, atten);
+}
+
+void ParticleData::setPointLightAll(bool on_off,
+	float range, CoordTf::VECTOR3 atten) {
+
+	dxrPara.setPointLightAll(dxrBuffSwapIndex(), on_off, range, atten);
+}
+
 bool ParticleData::CreateParticle(int texNo, bool alpha, bool blend) {
 	GetShaderByteCode();
 	CreateVbObj(alpha, blend);

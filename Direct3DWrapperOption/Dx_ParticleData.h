@@ -87,6 +87,13 @@ public:
 	void GetBufferBill(int v);
 	void SetVertex(int i, CoordTf::VECTOR3 pos);
 	void setMaterialType(MaterialType type);
+
+	void setPointLight(UINT VertexIndex, bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+
+	void setPointLightAll(bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+
 	bool CreateParticle(int texNo, bool alpha, bool blend);//パーティクル1個のテクスチャナンバー
 	bool CreateBillboard(bool alpha, bool blend);//ver個の四角形を生成
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ

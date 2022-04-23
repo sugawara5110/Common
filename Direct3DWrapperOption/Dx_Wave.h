@@ -79,6 +79,12 @@ public:
 
 	void setMaterialType(MaterialType type);
 
+	void setPointLight(int InstanceIndex, bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+
+	void setPointLightAll(bool on_off,
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+
 	bool Create(int texNo, bool blend, bool alpha, float waveHeight, int divide,
 		bool smooth = true, float TimeStep = 0.03f);
 
