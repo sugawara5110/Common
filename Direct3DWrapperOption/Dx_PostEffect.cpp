@@ -36,7 +36,7 @@ namespace {
 		createSamplerDone = true;
 	}
 
-	ComPtr<ID3DBlob> pComputeShader_Post[8] = {};
+	ComPtr<ID3DBlob> pComputeShader_Post[3] = {};
 
 	bool createShaderDone = false;
 
@@ -92,32 +92,343 @@ namespace {
 
 		return gaArr;
 	}
+
+	class Bloom :public Common {
+	public:
+		struct CONSTANT_BUFFER_Bloom {
+			CoordTf::VECTOR4 GausSize;//x:GausSize, y:Bloom強さ, z:Luminance閾値
+		};
+
+		ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
+		ComPtr<ID3DBlob> pComputeShader_Post[5] = {};
+		ComPtr<ID3D12PipelineState> mPSOCom[5] = {};
+		ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE mGaussianHandleGPU;
+		D3D12_GPU_DESCRIPTOR_HANDLE mInputHandleGPU;
+		D3D12_GPU_DESCRIPTOR_HANDLE mOutputHandleGPU;
+		D3D12_GPU_DESCRIPTOR_HANDLE mLuminanceHandleGPU;
+		D3D12_GPU_DESCRIPTOR_HANDLE mGaussInOutHandleGPU[2];
+		D3D12_GPU_DESCRIPTOR_HANDLE mGaussTexHandleGPU;
+
+		ComPtr<ID3D12Resource> mInputBuffer = nullptr;
+		ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
+		ComPtr<ID3D12Resource> mLuminanceBuffer = nullptr;
+		ComPtr<ID3D12Resource> mGaussInOutBuffer[2] = {};
+		ComPtr<ID3D12Resource> GaussianBuffer = nullptr;
+		ComPtr<ID3D12Resource> GaussianBufferUp = nullptr;
+		int GaussianWid = 0;
+		float GaussianType = false;//false:2D
+		float BloomStrength = 0.0f;
+		float ThresholdLuminance = 0.0f;
+
+		ConstantBuffer<CONSTANT_BUFFER_Bloom>* mObjectCB = nullptr;
+
+		~Bloom() {
+			S_DELETE(mObjectCB);
+		}
+
+		void createShader() {
+			LPSTR csName[5] = {
+				"BloomCS0",
+				"BloomCS1",
+				"BloomCS2",
+				"BloomCS12",
+				"BloomCS3"
+			};
+
+			for (int i = 0; i < 5; i++)
+				pComputeShader_Post[i] = CompileShader(ShaderPostEffect2, strlen(ShaderPostEffect2), csName[i], "cs_5_1");
+		}
+
+		bool GaussianCreate() {
+			float* gaArr = nullptr;
+			int GaussianBufferSize = 0;
+
+			if (GaussianType) {
+				gaArr = gaussian(10, GaussianWid);
+				GaussianBufferSize = GaussianWid;
+			}
+			else {
+				gaArr = gaussian2D(4, GaussianWid);
+				GaussianBufferSize = GaussianWid * GaussianWid;
+			}
+
+			GaussianBuffer = dx->CreateDefaultBuffer(com_no, gaArr, GaussianBufferSize * sizeof(float), GaussianBufferUp, false);
+			if (!GaussianBuffer) {
+				Dx_Util::ErrorMessage("PostEffect::GaussianCreate Error!!");
+				return false;
+			}
+
+			Dx_Device* device = Dx_Device::GetInstance();
+			for (int i = 0; i < 2; i++)
+				if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mGaussInOutBuffer[i].GetAddressOf(),
+					256, 256))) {
+
+					Dx_Util::ErrorMessage("PostEffect::GaussianCreate Error!!");
+					return false;
+				}
+
+			if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mLuminanceBuffer.GetAddressOf(),
+				256, 256))) {
+
+				Dx_Util::ErrorMessage("PostEffect::GaussianCreate Error!!");
+				return false;
+			}
+
+			GaussianBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("GaussianBuffer", objName));
+			GaussianBufferUp.Get()->SetName(Dx_Util::charToLPCWSTR("GaussianBufferUp", objName));
+
+			ARR_DELETE(gaArr);
+			return true;
+		}
+
+		bool ComCreate() {
+			Dx_Device* device = Dx_Device::GetInstance();
+			createSampler();
+			createShader();
+			mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom>(1);
+			const int numSrv = 3;
+			const int numUav = 4;
+			const int numDesc = numSrv + numUav;
+			mDescHeap = device->CreateDescHeap(numDesc);
+			if (!mDescHeap) {
+				Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+			}
+			if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputBuffer.GetAddressOf(), dx->getClientWidth(), dx->getClientHeight()))) {
+				Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+			}
+			if (FAILED(device->createDefaultResourceTEXTURE2D(mInputBuffer.GetAddressOf(),
+				dx->getClientWidth(), dx->getClientHeight(), DXGI_FORMAT_R8G8B8A8_UNORM))) {
+
+				Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
+			}
+			mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
+			mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
+
+			if (!GaussianCreate())return false;
+
+			mGaussianHandleGPU = mDescHeap->GetGPUDescriptorHandleForHeapStart();
+			mInputHandleGPU = mGaussianHandleGPU;
+			mGaussTexHandleGPU = mGaussianHandleGPU;
+			mOutputHandleGPU = mGaussianHandleGPU;
+			mGaussInOutHandleGPU[0] = mGaussianHandleGPU;
+			mGaussInOutHandleGPU[1] = mGaussianHandleGPU;
+			mLuminanceHandleGPU = mGaussianHandleGPU;
+			mInputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 1;
+			mGaussTexHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 2;
+			mOutputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 3;
+			mGaussInOutHandleGPU[0].ptr += dx->getCbvSrvUavDescriptorSize() * 4;
+			mGaussInOutHandleGPU[1].ptr += dx->getCbvSrvUavDescriptorSize() * 5;
+			mLuminanceHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 6;
+
+			D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+			UINT StructureByteStride[1] = { sizeof(float) };
+			device->CreateSrvBuffer(hDescriptor, GaussianBuffer.GetAddressOf(), 1, StructureByteStride);
+			device->CreateSrvTexture(hDescriptor, mInputBuffer.GetAddressOf(), 1);
+			device->CreateSrvTexture(hDescriptor, mGaussInOutBuffer[1].GetAddressOf(), 1);
+
+			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+			uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+			uavDesc.Texture2D.MipSlice = 0;
+
+			device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+			hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+
+			for (int i = 0; i < 2; i++) {
+				device->getDevice()->CreateUnorderedAccessView(mGaussInOutBuffer[i].Get(), nullptr, &uavDesc, hDescriptor);
+				hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+			}
+			device->getDevice()->CreateUnorderedAccessView(mLuminanceBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+			hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+
+			comObj->ResourceBarrier(mInputBuffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+			comObj->ResourceBarrier(mOutputBuffer.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+			//ルートシグネチャ
+			const int numCbv = 1;
+			const int numSampler = 1;
+			const int numPara = numDesc + numCbv + numSampler;
+			D3D12_ROOT_PARAMETER rootParameter[numPara] = {};
+			D3D12_ROOT_PARAMETER& r = rootParameter[0];
+			r.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+			r.Descriptor.ShaderRegister = 0;
+			r.Descriptor.RegisterSpace = 0;
+			r.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+			D3D12_DESCRIPTOR_RANGE sRange[numSrv] = {};
+			for (int i = 0; i < numSrv; i++) {
+				D3D12_DESCRIPTOR_RANGE& s = sRange[i];
+				s.BaseShaderRegister = i;
+				s.NumDescriptors = 1;
+				s.RegisterSpace = 0;
+				s.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				s.OffsetInDescriptorsFromTableStart = 0;
+				D3D12_ROOT_PARAMETER& r = rootParameter[i + numCbv];
+				r.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				r.DescriptorTable.NumDescriptorRanges = 1;
+				r.DescriptorTable.pDescriptorRanges = &s;
+				r.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			}
+
+			D3D12_DESCRIPTOR_RANGE uRange[numUav] = {};
+			for (int i = 0; i < numUav; i++) {
+				D3D12_DESCRIPTOR_RANGE& u = uRange[i];
+				u.BaseShaderRegister = i;
+				u.NumDescriptors = 1;
+				u.RegisterSpace = 0;
+				u.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+				u.OffsetInDescriptorsFromTableStart = 0;
+				D3D12_ROOT_PARAMETER& r = rootParameter[i + numCbv + numSrv];
+				r.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				r.DescriptorTable.NumDescriptorRanges = 1;
+				r.DescriptorTable.pDescriptorRanges = &u;
+				r.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			}
+			D3D12_DESCRIPTOR_RANGE Sampler = {};
+			Sampler.BaseShaderRegister = 0;
+			Sampler.NumDescriptors = 1;
+			Sampler.RegisterSpace = 0;
+			Sampler.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+			Sampler.OffsetInDescriptorsFromTableStart = 0;
+			D3D12_ROOT_PARAMETER& sam = rootParameter[numUav + numCbv + numSrv];
+			sam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			sam.DescriptorTable.NumDescriptorRanges = 1;
+			sam.DescriptorTable.pDescriptorRanges = &Sampler;
+			sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+			mRootSignatureCom = CreateRsCompute(numPara, rootParameter);
+			if (mRootSignatureCom == nullptr)return false;
+
+			createShader();
+
+			for (int i = 0; i < _countof(pComputeShader_Post); i++) {
+				ID3DBlob* cs = pComputeShader_Post[i].Get();
+				mPSOCom[i] = CreatePsoCompute(cs, mRootSignatureCom.Get());
+				if (mPSOCom[i] == nullptr)return false;
+			}
+
+			return true;
+		}
+
+		void Compute(int com, bool On) {
+			if (!On)return;
+
+			SetCommandList(com);
+			ID3D12GraphicsCommandList* mCList = mCommandList;
+			Dx_CommandListObj& d = *comObj;
+
+			CONSTANT_BUFFER_Bloom cb = {};
+			cb.GausSize.x = (float)GaussianWid;
+			cb.GausSize.y = BloomStrength;
+			cb.GausSize.z = ThresholdLuminance;
+			mObjectCB->CopyData(0, cb);
+
+			mCList->SetPipelineState(mPSOCom[0].Get());
+
+			ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() ,mpSamplerHeap.Get() };
+			mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+			mCList->SetComputeRootSignature(mRootSignatureCom.Get());
+			mCList->SetComputeRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
+
+			//バックバッファをコピー元にする
+			d.delayResourceBarrierBefore(GetSwapChainBuffer(),
+				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			d.delayResourceBarrierBefore(mInputBuffer.Get(),
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+			d.RunDelayResourceBarrierBefore();
+			//現在のバックバッファをインプット用バッファにコピーする
+			mCList->CopyResource(mInputBuffer.Get(), GetSwapChainBuffer());
+
+			d.ResourceBarrier(mInputBuffer.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+			mCList->SetComputeRootDescriptorTable(1, mGaussianHandleGPU);
+			mCList->SetComputeRootDescriptorTable(2, mInputHandleGPU);
+			mCList->SetComputeRootDescriptorTable(4, mOutputHandleGPU);
+			mCList->SetComputeRootDescriptorTable(7, mLuminanceHandleGPU);
+			mCList->SetComputeRootDescriptorTable(8, samplerHandle);
+
+			D3D12_RESOURCE_BARRIER ba = {};
+			ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+
+			UINT disX = dx->getClientWidth() / 32;
+			UINT disY = dx->getClientHeight() / 8;
+			mCList->Dispatch(disX, disY, 1);//CS内32, 8, 1
+			ba.UAV.pResource = mLuminanceBuffer.Get();
+			mCList->ResourceBarrier(1, &ba);
+
+			mCList->SetComputeRootDescriptorTable(3, mGaussTexHandleGPU);
+			mCList->SetComputeRootDescriptorTable(5, mGaussInOutHandleGPU[0]);
+			mCList->SetComputeRootDescriptorTable(6, mGaussInOutHandleGPU[1]);
+
+			UINT gauX = (UINT)mGaussInOutBuffer[0].Get()->GetDesc().Width / 32;
+			UINT gauY = mGaussInOutBuffer[0].Get()->GetDesc().Height / 8;
+
+			if (GaussianType) {
+				mCList->SetPipelineState(mPSOCom[1].Get());
+				mCList->Dispatch(gauX, gauY, 1);
+				ba.UAV.pResource = mGaussInOutBuffer[0].Get();
+				mCList->ResourceBarrier(1, &ba);
+
+				mCList->SetPipelineState(mPSOCom[2].Get());
+				mCList->Dispatch(gauX, gauY, 1);
+				ba.UAV.pResource = mGaussInOutBuffer[1].Get();
+				mCList->ResourceBarrier(1, &ba);
+			}
+			else {
+				mCList->SetPipelineState(mPSOCom[3].Get());
+				mCList->Dispatch(gauX, gauY, 1);
+				ba.UAV.pResource = mGaussInOutBuffer[1].Get();
+				mCList->ResourceBarrier(1, &ba);
+			}
+			mCList->SetPipelineState(mPSOCom[4].Get());
+			mCList->Dispatch(disX, disY, 1);
+			ba.UAV.pResource = mOutputBuffer.Get();
+			mCList->ResourceBarrier(1, &ba);
+
+			d.delayResourceBarrierBefore(GetSwapChainBuffer(),
+				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+			d.delayResourceBarrierBefore(mOutputBuffer.Get(),
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
+			d.RunDelayResourceBarrierBefore();
+			//計算後バックバッファにコピー
+			mCList->CopyResource(GetSwapChainBuffer(), mOutputBuffer.Get());
+
+			d.delayResourceBarrierBefore(mOutputBuffer.Get(),
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			d.delayResourceBarrierBefore(GetSwapChainBuffer(),
+				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			d.RunDelayResourceBarrierBefore();
+		}
+	};
+	std::unique_ptr<Bloom> bloom = nullptr;
 }
 
 void PostEffect::createShader() {
 
 	if (createShaderDone)return;
 
-	LPSTR csName[8] = {
+	LPSTR csName[3] = {
 		"MosaicCS",
 		"BlurCS",
-		"DepthOfFieldCS",
-		"BloomCS0",
-		"BloomCS1",
-		"BloomCS2",
-		"BloomCS12",
-		"BloomCS3"
+		"DepthOfFieldCS"
 	};
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < _countof(pComputeShader_Post); i++) {
 		pComputeShader_Post[i] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), csName[i], "cs_5_1");
+	}
 
 	createShaderDone = true;
 }
 
 PostEffect::PostEffect() {
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_PostMosaic>(1);
-	createSampler();
 }
 
 PostEffect::~PostEffect() {
@@ -137,58 +448,16 @@ bool PostEffect::ComCreateDepthOfField() {
 }
 
 bool PostEffect::ComCreateBloom(float gaussianType) {
-	GaussianType = gaussianType;
-	return ComCreate(3);
-}
-
-bool PostEffect::GaussianCreate() {
-
-	float* gaArr = nullptr;
-	int GaussianBufferSize = 0;
-
-	if (GaussianType) {
-		gaArr = gaussian(10, GaussianWid);
-		GaussianBufferSize = GaussianWid;
-	}
-	else {
-		gaArr = gaussian2D(4, GaussianWid);
-		GaussianBufferSize = GaussianWid * GaussianWid;
-	}
-
-	GaussianBuffer = dx->CreateDefaultBuffer(com_no, gaArr, GaussianBufferSize * sizeof(float), GaussianBufferUp, false);
-	if (!GaussianBuffer) {
-		Dx_Util::ErrorMessage("PostEffect::GaussianCreate Error!!");
-		return false;
-	}
-
-	Dx_Device* device = Dx_Device::GetInstance();
-	for (int i = 0; i < 2; i++)
-		if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mGaussInOutBuffer[i].GetAddressOf(),
-			256, 256))) {
-
-			Dx_Util::ErrorMessage("PostEffect::GaussianCreate Error!!");
-			return false;
-		}
-
-	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mLuminanceBuffer.GetAddressOf(),
-		256, 256))) {
-
-		Dx_Util::ErrorMessage("PostEffect::GaussianCreate Error!!");
-		return false;
-	}
-
-	GaussianBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("GaussianBuffer", objName));
-	GaussianBufferUp.Get()->SetName(Dx_Util::charToLPCWSTR("GaussianBufferUp", objName));
-
-	ARR_DELETE(gaArr);
-	return true;
+	bloom = std::make_unique<Bloom>();
+	bloom->GaussianType = gaussianType;
+	return bloom->ComCreate();
 }
 
 bool PostEffect::ComCreate(int no) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
-	const int numSrv = 4;
-	const int numUav = 4;
+	const int numSrv = 2;
+	const int numUav = 1;
 	const int numDesc = numSrv + numUav;
 	mDescHeap = device->CreateDescHeap(numDesc);
 	if (!mDescHeap) {
@@ -205,23 +474,13 @@ bool PostEffect::ComCreate(int no) {
 	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
 	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
 
-	if (!GaussianCreate())return false;
+	mDepthHandleGPU = mDescHeap->GetGPUDescriptorHandleForHeapStart();
+	mInputHandleGPU = mDepthHandleGPU;
+	mOutputHandleGPU = mDepthHandleGPU;
+	mInputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 1;
+	mOutputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 2;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
-	mDepthHandleGPU = mDescHeap->GetGPUDescriptorHandleForHeapStart();
-	mGaussianHandleGPU = mDepthHandleGPU;
-	mInputHandleGPU = mDepthHandleGPU;
-	mGaussTexHandleGPU = mDepthHandleGPU;
-	mOutputHandleGPU = mDepthHandleGPU;
-	for (int i = 0; i < 2; i++)mGaussInOutHandleGPU[i] = mDepthHandleGPU;
-	mLuminanceHandleGPU = mDepthHandleGPU;
-	mGaussianHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 1;
-	mInputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 2;
-	mGaussTexHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 3;
-	mOutputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 4;
-	for (int i = 0; i < 2; i++)mGaussInOutHandleGPU[i].ptr += dx->getCbvSrvUavDescriptorSize() * (5 + i);
-	mLuminanceHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 7;
-
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -233,10 +492,7 @@ bool PostEffect::ComCreate(int no) {
 	device->getDevice()->CreateShaderResourceView(GetDepthStencilBuffer(), &srvDesc, hDescriptor);
 	hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
 
-	UINT StructureByteStride[1] = { sizeof(float) };
-	device->CreateSrvBuffer(hDescriptor, GaussianBuffer.GetAddressOf(), 1, StructureByteStride);
 	device->CreateSrvTexture(hDescriptor, mInputBuffer.GetAddressOf(), 1);
-	device->CreateSrvTexture(hDescriptor, mGaussInOutBuffer[1].GetAddressOf(), 1);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -244,13 +500,6 @@ bool PostEffect::ComCreate(int no) {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-	hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
-
-	for (int i = 0; i < 2; i++) {
-		device->getDevice()->CreateUnorderedAccessView(mGaussInOutBuffer[i].Get(), nullptr, &uavDesc, hDescriptor);
-		hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
-	}
-	device->getDevice()->CreateUnorderedAccessView(mLuminanceBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
 
 	comObj->ResourceBarrier(mInputBuffer.Get(),
@@ -261,8 +510,7 @@ bool PostEffect::ComCreate(int no) {
 
 	//ルートシグネチャ
 	const int numCbv = 1;
-	const int numSampler = 1;
-	const int numPara = numDesc + numCbv + numSampler;
+	const int numPara = numDesc + numCbv;
 	D3D12_ROOT_PARAMETER rootParameter[numPara] = {};
 	D3D12_ROOT_PARAMETER& r = rootParameter[0];
 	r.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -299,17 +547,6 @@ bool PostEffect::ComCreate(int no) {
 		r.DescriptorTable.pDescriptorRanges = &u;
 		r.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	}
-	D3D12_DESCRIPTOR_RANGE Sampler = {};
-	Sampler.BaseShaderRegister = 0;
-	Sampler.NumDescriptors = 1;
-	Sampler.RegisterSpace = 0;
-	Sampler.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-	Sampler.OffsetInDescriptorsFromTableStart = 0;
-	D3D12_ROOT_PARAMETER& sam = rootParameter[numUav + numCbv + numSrv];
-	sam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	sam.DescriptorTable.NumDescriptorRanges = 1;
-	sam.DescriptorTable.pDescriptorRanges = &Sampler;
-	sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	mRootSignatureCom = CreateRsCompute(numPara, rootParameter);
 	if (mRootSignatureCom == nullptr)return false;
@@ -319,27 +556,19 @@ bool PostEffect::ComCreate(int no) {
 	mPSOCom[0] = CreatePsoCompute(cs, mRootSignatureCom.Get());
 	if (mPSOCom[0] == nullptr)return false;
 
-	if (no == 3) {
-		for (int i = 0; i < 4; i++) {
-			cs = pComputeShader_Post[4 + i].Get();
-			mPSOCom[1 + i] = CreatePsoCompute(cs, mRootSignatureCom.Get());
-			if (mPSOCom[1 + i] == nullptr)return false;
-		}
-	}
-
 	return true;
 }
 
 void PostEffect::ComputeMosaic(int com, bool On, int size) {
-	Compute(com, On, size, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, false);
+	Compute(com, On, size, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 void PostEffect::ComputeBlur(int com, bool On, float blurX, float blurY, float blurLevel) {
-	Compute(com, On, 0, blurX, blurY, blurLevel, 0.0f, 0.0f, false);
+	Compute(com, On, 0, blurX, blurY, blurLevel, 0.0f, 0.0f);
 }
 
 void PostEffect::ComputeDepthOfField(int com, bool On, float blurLevel, float focusDepth, float focusRange) {
-	Compute(com, On, 0, 0.0f, 0.0f, blurLevel, focusDepth, focusRange, false);
+	Compute(com, On, 0, 0.0f, 0.0f, blurLevel, focusDepth, focusRange);
 }
 
 void PostEffect::ComputeMosaic(bool On, int size) {
@@ -355,14 +584,14 @@ void PostEffect::ComputeDepthOfField(bool On, float blurLevel, float focusDepth,
 }
 
 void PostEffect::ComputeBloom(int com, bool On, float bloomStrength, float thresholdLuminance) {
-	BloomStrength = bloomStrength;
-	ThresholdLuminance = thresholdLuminance;
-	Compute(com, On, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, true);
+	bloom->BloomStrength = bloomStrength;
+	bloom->ThresholdLuminance = thresholdLuminance;
+	bloom->Compute(com, On);
 }
 
 void PostEffect::Compute(int com, bool On, int size,
 	float blurX, float blurY, float blurLevel,
-	float focusDepth, float focusRange, bool Gauss) {
+	float focusDepth, float focusRange) {
 
 	if (!On)return;
 
@@ -371,10 +600,7 @@ void PostEffect::Compute(int com, bool On, int size,
 	Dx_CommandListObj& d = *comObj;
 
 	CONSTANT_BUFFER_PostMosaic cb = {};
-	cb.mosaicSize_GausSize.x = (float)size;
-	cb.mosaicSize_GausSize.y = (float)GaussianWid;
-	cb.mosaicSize_GausSize.z = BloomStrength;
-	cb.mosaicSize_GausSize.w = ThresholdLuminance;
+	cb.mosaicSize.x = (float)size;
 	cb.blur.x = blurX;
 	cb.blur.y = blurY;
 	cb.blur.z = blurLevel;
@@ -384,7 +610,7 @@ void PostEffect::Compute(int com, bool On, int size,
 
 	mCList->SetPipelineState(mPSOCom[0].Get());
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() ,mpSamplerHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 	mCList->SetComputeRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
@@ -405,11 +631,8 @@ void PostEffect::Compute(int com, bool On, int size,
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	mCList->SetComputeRootDescriptorTable(1, mDepthHandleGPU);
-	mCList->SetComputeRootDescriptorTable(2, mGaussianHandleGPU);
-	mCList->SetComputeRootDescriptorTable(3, mInputHandleGPU);
-	mCList->SetComputeRootDescriptorTable(5, mOutputHandleGPU);
-	mCList->SetComputeRootDescriptorTable(8, mLuminanceHandleGPU);
-	mCList->SetComputeRootDescriptorTable(9, samplerHandle);
+	mCList->SetComputeRootDescriptorTable(2, mInputHandleGPU);
+	mCList->SetComputeRootDescriptorTable(3, mOutputHandleGPU);
 
 	D3D12_RESOURCE_BARRIER ba = {};
 	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -417,42 +640,8 @@ void PostEffect::Compute(int com, bool On, int size,
 	UINT disX = dx->getClientWidth() / 32;
 	UINT disY = dx->getClientHeight() / 8;
 	mCList->Dispatch(disX, disY, 1);//CS内32, 8, 1
-	if (Gauss)
-		ba.UAV.pResource = mLuminanceBuffer.Get();
-	else
-		ba.UAV.pResource = mOutputBuffer.Get();
+	ba.UAV.pResource = mOutputBuffer.Get();
 	mCList->ResourceBarrier(1, &ba);
-
-	if (Gauss) {
-		mCList->SetComputeRootDescriptorTable(4, mGaussTexHandleGPU);
-		mCList->SetComputeRootDescriptorTable(6, mGaussInOutHandleGPU[0]);
-		mCList->SetComputeRootDescriptorTable(7, mGaussInOutHandleGPU[1]);
-
-		UINT gauX = (UINT)mGaussInOutBuffer[0].Get()->GetDesc().Width / 32;
-		UINT gauY = mGaussInOutBuffer[0].Get()->GetDesc().Height / 8;
-
-		if (GaussianType) {
-			mCList->SetPipelineState(mPSOCom[1].Get());
-			mCList->Dispatch(gauX, gauY, 1);
-			ba.UAV.pResource = mGaussInOutBuffer[0].Get();
-			mCList->ResourceBarrier(1, &ba);
-
-			mCList->SetPipelineState(mPSOCom[2].Get());
-			mCList->Dispatch(gauX, gauY, 1);
-			ba.UAV.pResource = mGaussInOutBuffer[1].Get();
-			mCList->ResourceBarrier(1, &ba);
-		}
-		else {
-			mCList->SetPipelineState(mPSOCom[3].Get());
-			mCList->Dispatch(gauX, gauY, 1);
-			ba.UAV.pResource = mGaussInOutBuffer[1].Get();
-			mCList->ResourceBarrier(1, &ba);
-		}
-		mCList->SetPipelineState(mPSOCom[4].Get());
-		mCList->Dispatch(disX, disY, 1);
-		ba.UAV.pResource = mOutputBuffer.Get();
-		mCList->ResourceBarrier(1, &ba);
-	}
 
 	//深度バッファ
 	d.delayResourceBarrierBefore(GetDepthStencilBuffer(),

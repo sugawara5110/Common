@@ -2,22 +2,16 @@
 //                                           ShaderPostEffect.hlsl                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char *ShaderPostEffect =
+char* ShaderPostEffect =
 "Texture2D<float> gDepth : register(t0, space0);\n"
-"StructuredBuffer<float> gGaussian : register(t1, space0);\n"
-"Texture2D<float4> gInput : register(t2, space0);\n"
-"Texture2D<float4> gGaussTex : register(t3, space0);\n"
+"Texture2D<float4> gInput : register(t1, space0);\n"
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
-"RWTexture2D<float4> gGaussInOut_0 : register(u1, space0);\n"
-"RWTexture2D<float4> gGaussInOut_1 : register(u2, space0);\n"
-"RWTexture2D<float4> gLuminance : register(u3, space0);\n"
-"SamplerState g_samLinear : register(s0, space0);\n"
 
-//x:mosaicSize, y:GausSize, z:Bloom強さ, w:Luminance閾値
+//x:mosaicSize
 //ブラー中心座標xy,ぼけ強度z,ピントが合う深さw
 "cbuffer global  : register(b0, space0)\n"
 "{\n"
-"    float4 g_mosaicSize_GausSize;\n"
+"    float4 g_mosaicSize;\n"
 "    float4 g_blur;\n"
 "    float g_focusRange;\n"
 "};\n"
@@ -35,8 +29,8 @@ char *ShaderPostEffect =
 "[numthreads(32, 8, 1)]\n"
 "void MosaicCS(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
-"   float size1 = 1 / g_mosaicSize_GausSize.x;\n"
-"   int size2 = g_mosaicSize_GausSize.x;\n"
+"   float size1 = 1 / g_mosaicSize.x;\n"
+"   int size2 = g_mosaicSize.x;\n"
 "   int x = dtid.x * size1;\n"
 "   int y = dtid.y * size1;\n"
 "	gOutput[dtid] = gInput[int2(x * size2, y * size2)];\n"
@@ -101,7 +95,23 @@ char *ShaderPostEffect =
 "   float4 ret = gInput[dtid];\n"
 "   ret.xyz = tmp / Size;\n"
 "   gOutput[dtid] = ret;\n"
-"}\n"
+"}\n";
+
+char* ShaderPostEffect2 =
+"StructuredBuffer<float> gGaussian : register(t0, space0);\n"
+"Texture2D<float4> gInput : register(t1, space0);\n"
+"Texture2D<float4> gGaussTex : register(t2, space0);\n"
+"RWTexture2D<float4> gOutput : register(u0, space0);\n"
+"RWTexture2D<float4> gGaussInOut_0 : register(u1, space0);\n"
+"RWTexture2D<float4> gGaussInOut_1 : register(u2, space0);\n"
+"RWTexture2D<float4> gLuminance : register(u3, space0);\n"
+"SamplerState g_samLinear : register(s0, space0);\n"
+
+//x:GausSize, y:Bloom強さ, z:Luminance閾値
+"cbuffer global  : register(b0, space0)\n"
+"{\n"
+"    float4 g_GausSize;\n"
+"};\n"
 
 "void getInputUV(in int2 dtid, out float2 uv)\n"
 "{\n"
@@ -132,7 +142,7 @@ char *ShaderPostEffect =
 "{\n"
 "   int2 index;\n"
 "   getLuminanceIndex(dtid, index);\n"
-"   float Luminance = g_mosaicSize_GausSize.w;\n"
+"   float Luminance = g_GausSize.z;\n"
 "   float4 L = gInput[dtid];\n"
 "   L.w = 0.0f;\n"
 "   if(L.x + L.y + L.z > Luminance)\n"
@@ -151,7 +161,7 @@ char *ShaderPostEffect =
 "   int x = dtid.x;\n"
 "   int y = dtid.y;\n"
 
-"   int halfwid = g_mosaicSize_GausSize.y;\n"
+"   int halfwid = g_GausSize.x;\n"
 "   float3 col = float3(0.0f, 0.0f, 0.0f);\n"
 
 "   for(int i = 0; i < halfwid; i++){\n"
@@ -173,7 +183,7 @@ char *ShaderPostEffect =
 "   int x = dtid.x;\n"
 "   int y = dtid.y;\n"
 
-"   int halfwid = g_mosaicSize_GausSize.y;\n"
+"   int halfwid = g_GausSize.x;\n"
 "   float3 col = float3(0.0f, 0.0f, 0.0f);\n"
 
 "   for(int i = 0; i < halfwid; i++){\n"
@@ -195,7 +205,7 @@ char *ShaderPostEffect =
 "   int x = dtid.x;\n"
 "   int y = dtid.y;\n"
 
-"   int halfwid = g_mosaicSize_GausSize.y;\n"
+"   int halfwid = g_GausSize.x;\n"
 "   float3 col = float3(0.0f, 0.0f, 0.0f);\n"
 "   for(int j = 0; j < halfwid; j++){\n"
 "      for(int i = 0; i < halfwid; i++){\n"
@@ -221,6 +231,6 @@ char *ShaderPostEffect =
 "   float2 uv;\n"
 "   getInputUV(dtid, uv);\n"
 "   float4 src = gInput[dtid];\n"
-"   float4 gau = gGaussTex.SampleLevel(g_samLinear, uv, 0) * g_mosaicSize_GausSize.z;\n"
+"   float4 gau = gGaussTex.SampleLevel(g_samLinear, uv, 0) * g_GausSize.y;\n"
 "   gOutput[dtid] = src + gau;\n"
 "}\n";
