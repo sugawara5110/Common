@@ -46,7 +46,7 @@ public:
 	bool ComCreateMosaic();
 	bool ComCreateBlur();
 	bool ComCreateDepthOfField();
-	bool ComCreateBloom(float GaussianType = false);
+	bool ComCreateBloom(float GaussianType = false, UINT num_gauss = 0, UINT* GaussSizeArr = nullptr);
 	void ComputeMosaic(int com_no, bool On, int size);
 	void ComputeBlur(int com_no, bool On, float blurX, float blurY, float blurLevel);
 	void ComputeDepthOfField(int com_no, bool On, float blurLevel, float focusDepth, float focusRange);

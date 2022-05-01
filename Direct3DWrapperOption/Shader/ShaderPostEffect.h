@@ -98,16 +98,16 @@ char* ShaderPostEffect =
 "}\n";
 
 char* ShaderPostEffect2 =
-"StructuredBuffer<float> gGaussian : register(t0, space0);\n"
+"StructuredBuffer<float> gGaussianFilter : register(t0, space0);\n"
 "Texture2D<float4> gInput : register(t1, space0);\n"
-"Texture2D<float4> gGaussTex : register(t2, space0);\n"
+"Texture2D<float4> gGaussTex[10] : register(t2, space1);\n"
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
 "RWTexture2D<float4> gGaussInOut_0 : register(u1, space0);\n"
 "RWTexture2D<float4> gGaussInOut_1 : register(u2, space0);\n"
 "RWTexture2D<float4> gLuminance : register(u3, space0);\n"
 "SamplerState g_samLinear : register(s0, space0);\n"
 
-//x:GausSize, y:Bloom‹­‚³, z:Luminanceè‡’l
+//x:GausSize, y:Bloom‹­‚³, z:Luminanceè‡’l, w:numGaus
 "cbuffer global  : register(b0, space0)\n"
 "{\n"
 "    float4 g_GausSize;\n"
@@ -122,40 +122,35 @@ char* ShaderPostEffect2 =
 "   uv.y = (float)dtid.y / height;\n"
 "}\n"
 
-"void getLuminanceIndex(in int2 dtid, inout int2 index)\n"
+"void getLuminanceUV(in int2 dtid, out float2 uv)\n"
 "{\n"
-"   float2 uv;\n"
-"   getInputUV(dtid, uv);\n"
-
-"   float widthL;\n"
-"   float heightL;\n"
-"   gLuminance.GetDimensions(widthL, heightL);\n"
-
-"   int indexX = (int)(widthL * uv.x);\n"
-"   int indexY = (int)(heightL * uv.y);\n"
-"   index = int2(indexX, indexY);\n"
+"   float width;\n"
+"   float height;\n"
+"   gLuminance.GetDimensions(width, height);\n"
+"   uv.x = (float)dtid.x / width;\n"
+"   uv.y = (float)dtid.y / height;\n"
 "}\n"
 
 //‹P“x’Šo
-"[numthreads(32, 8, 1)]\n"
+"[numthreads(8, 8, 1)]\n"
 "void BloomCS0(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
-"   int2 index;\n"
-"   getLuminanceIndex(dtid, index);\n"
+"   float2 uv;\n"
+"   getLuminanceUV(dtid, uv);\n"
 "   float Luminance = g_GausSize.z;\n"
-"   float4 L = gInput[dtid];\n"
+"   float4 L = gInput.SampleLevel(g_samLinear, uv, 0);\n"
 "   L.w = 0.0f;\n"
-"   if(L.x + L.y + L.z > Luminance)\n"
+"   if(L.x + L.y + L.z > Luminance * 3.0f)\n"
 "   {\n"
-"     gLuminance[index] = L;\n"
+"     gLuminance[dtid] = L;\n"
 "   }else\n"
 "   {\n"
-"     gLuminance[index] = float4(0.0f ,0.0f ,0.0f ,0.0f);\n"
+"     gLuminance[dtid] = float4(0.0f ,0.0f ,0.0f ,0.0f);\n"
 "   }\n"
 "}\n"
 
 //Bloom‰¡
-"[numthreads(32, 8, 1)]\n"
+"[numthreads(8, 8, 1)]\n"
 "void BloomCS1(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = dtid.x;\n"
@@ -166,9 +161,9 @@ char* ShaderPostEffect2 =
 
 "   for(int i = 0; i < halfwid; i++){\n"
 "     float4 tmp = gLuminance[int2(x + i, y)];\n"
-"     col += tmp.xyz * gGaussian[i];\n"
+"     col += tmp.xyz * gGaussianFilter[i];\n"
 "     tmp = gLuminance[int2(x - i, y)];\n"
-"     col += tmp.xyz * gGaussian[i];\n"
+"     col += tmp.xyz * gGaussianFilter[i];\n"
 "   }\n"
 
 "   float4 Out = float4(0.0f, 0.0f, 0.0f, 0.0f);\n"
@@ -177,7 +172,7 @@ char* ShaderPostEffect2 =
 "}\n"
 
 //Bloomc
-"[numthreads(32, 8, 1)]\n"
+"[numthreads(8, 8, 1)]\n"
 "void BloomCS2(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = dtid.x;\n"
@@ -188,9 +183,9 @@ char* ShaderPostEffect2 =
 
 "   for(int i = 0; i < halfwid; i++){\n"
 "     float4 tmp = gGaussInOut_0[int2(x, y + i)];\n"
-"     col += tmp.xyz * gGaussian[i];\n"
+"     col += tmp.xyz * gGaussianFilter[i];\n"
 "     tmp = gGaussInOut_0[int2(x, y - i)];\n"
-"     col += tmp.xyz * gGaussian[i];\n"
+"     col += tmp.xyz * gGaussianFilter[i];\n"
 "   }\n"
 
 "   float4 Out = float4(0.0f, 0.0f, 0.0f, 0.0f);\n"
@@ -199,7 +194,7 @@ char* ShaderPostEffect2 =
 "}\n"
 
 //Bloom‰¡c
-"[numthreads(32, 8, 1)]\n"
+"[numthreads(8, 8, 1)]\n"
 "void BloomCS12(int2 dtid : SV_DispatchThreadID)\n"
 "{\n"
 "   int x = dtid.x;\n"
@@ -211,13 +206,13 @@ char* ShaderPostEffect2 =
 "      for(int i = 0; i < halfwid; i++){\n"
 "        int gauInd = halfwid * j + i;\n"
 "        float4 tmp = gLuminance[int2(x + i, y + j)];\n"
-"        col += tmp.xyz * gGaussian[gauInd];\n"
+"        col += tmp.xyz * gGaussianFilter[gauInd];\n"
 "        tmp = gLuminance[int2(x - i, y + j)];\n"
-"        col += tmp.xyz * gGaussian[gauInd];\n"
+"        col += tmp.xyz * gGaussianFilter[gauInd];\n"
 "        tmp = gLuminance[int2(x + i, y - j)];\n"
-"        col += tmp.xyz * gGaussian[gauInd];\n"
+"        col += tmp.xyz * gGaussianFilter[gauInd];\n"
 "        tmp = gLuminance[int2(x - i, y - j)];\n"
-"        col += tmp.xyz * gGaussian[gauInd];\n"
+"        col += tmp.xyz * gGaussianFilter[gauInd];\n"
 "      }\n"
 "   }\n"
 "   float4 Out = float4(0.0f, 0.0f, 0.0f, 0.0f);\n"
@@ -231,6 +226,11 @@ char* ShaderPostEffect2 =
 "   float2 uv;\n"
 "   getInputUV(dtid, uv);\n"
 "   float4 src = gInput[dtid];\n"
-"   float4 gau = gGaussTex.SampleLevel(g_samLinear, uv, 0) * g_GausSize.y;\n"
+"   int numGaus = (int)g_GausSize.w;\n"
+"   float4 gau = float4(0.0f, 0.0f, 0.0f, 0.0f);\n"
+"   for(int i = 0; i < numGaus; i++){\n"
+"      gau += gGaussTex[i].SampleLevel(g_samLinear, uv, 0);\n"
+"   }\n"
+"   gau = gau / g_GausSize.w * g_GausSize.y;\n"
 "   gOutput[dtid] = src + gau;\n"
 "}\n";
