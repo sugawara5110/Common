@@ -469,6 +469,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = dx->mBackBufferFormat;
+
 	psoDesc.SampleDesc.Count = dx->m4xMsaaState ? 4 : 1;
 	psoDesc.SampleDesc.Quality = dx->m4xMsaaState ? (dx->m4xMsaaQuality - 1) : 0;
 	psoDesc.DSVFormat = dx->mDepthStencilFormat;
@@ -547,12 +548,12 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 	return pso;
 }
 
-ID3D12Resource *Common::GetSwapChainBuffer() {
-	return dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get();
+ID3D12Resource* Common::GetSwapChainBuffer() {
+	return dx->mRtvBuffer[dx->mCurrBackBuffer].Get();
 }
 
-ID3D12Resource *Common::GetDepthStencilBuffer() {
-	return dx->mDepthStencilBuffer.Get();
+ID3D12Resource* Common::GetDepthStencilBuffer() {
+	return dx->mDepthStencilBuffer[0].Get();
 }
 
 D3D12_RESOURCE_STATES Common::GetTextureStates() {

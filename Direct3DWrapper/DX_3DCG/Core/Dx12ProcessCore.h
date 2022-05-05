@@ -91,8 +91,12 @@ private:
 
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
-	ComPtr<ID3D12Resource> mSwapChainBuffer[SwapChainBufferCount];
-	ComPtr<ID3D12Resource> mDepthStencilBuffer;
+	int mNumRtv = 1;
+	D3D12_CPU_DESCRIPTOR_HANDLE mRtvHeapHandle[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + (SwapChainBufferCount - 1)] = {};
+	ComPtr<ID3D12Resource> mRtvBuffer[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT + (SwapChainBufferCount - 1)] = {};
+	static const int numDsv = 2;
+	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHandle[numDsv] = {};
+	ComPtr<ID3D12Resource> mDepthStencilBuffer[numDsv] = {};
 
 	ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	ComPtr<ID3D12DescriptorHeap> mDsvHeap;
@@ -190,6 +194,7 @@ public:
 
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool getDxrCreateResourceState() { return DXR_CreateResource; }
+	void setNumRtv(int num);
 
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 
@@ -205,8 +210,8 @@ public:
 	HRESULT createTextureResourceArr(int com_no);
 
 	void Bigin(int com_no);
-	void BiginDraw(int com_no, bool clearBackBuffer = true);
-	void EndDraw(int com_no);
+	void BiginDraw(int com_no, bool clearBackBuffer = true, int index = 0);
+	void EndDraw(int com_no, int index = 0);
 	void End(int com_no);
 	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
 	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
@@ -260,6 +265,8 @@ public:
 	UINT getCbvSrvUavDescriptorSize() { return mCbvSrvUavDescriptorSize; }
 	int getClientWidth() { return mClientWidth; }
 	int getClientHeight() { return mClientHeight; }
+	ID3D12Resource* GetRtvBuffer(int index);
+	ID3D12Resource* GetDsvBuffer();
 };
 
 struct VertexView {

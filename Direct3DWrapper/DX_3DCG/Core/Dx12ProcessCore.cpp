@@ -210,6 +210,30 @@ HRESULT Dx12Process::createTextureResourceArr(int com_no) {
 	return S_OK;
 }
 
+void Dx12Process::setNumRtv(int num) {
+	mNumRtv = num;
+	if (0 >= mNumRtv || mNumRtv > D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT) {
+		mNumRtv = 1;
+		Dx_Util::ErrorMessage("Dx12Process::setNumRtv Error!!");
+	}
+}
+
+ID3D12Resource* Dx12Process::GetRtvBuffer(int index) {
+	if (0 > index || index >= mNumRtv) {
+		Dx_Util::ErrorMessage("Dx12Process::GetRtvBuffer Error!!");
+		return nullptr;
+	}
+
+	if (index > 0)
+		return mRtvBuffer[SwapChainBufferCount - 1 + index].Get();
+
+	return mRtvBuffer[dx->mCurrBackBuffer].Get();
+}
+
+ID3D12Resource* Dx12Process::GetDsvBuffer() {
+	return mDepthStencilBuffer[0].Get();
+}
+
 bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	mClientWidth = width;
@@ -219,7 +243,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//デバッグ中はデバッグレイヤーを有効化する
 	{
 		ComPtr<ID3D12Debug> debugController;
-		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
+		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
 			Dx_Util::ErrorMessage("D3D12GetDebugInterface Error");
 			return false;
 		}
@@ -231,7 +255,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//アダプターの列挙、スワップ チェーンの作成、
 	//および全画面表示モードとの間の切り替えに使用される Alt + 
 	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
-	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory)))) {
+	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(mdxgiFactory.GetAddressOf())))) {
 		Dx_Util::ErrorMessage("CreateDXGIFactory1 Error");
 		return false;
 	}
@@ -245,7 +269,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	if (FAILED(hardwareResult))
 	{
 		ComPtr<IDXGIAdapter> pWarpAdapter;
-		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&pWarpAdapter)))) {
+		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(pWarpAdapter.GetAddressOf())))) {
 			Dx_Util::ErrorMessage("EnumWarpAdapter Error");
 			return false;
 		}
@@ -338,7 +362,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//Descriptor:何のバッファかを記述される
 	//スワップチェインをRenderTargetとして使用するためのDescriptorHeapを作成(Descriptorの記録場所)
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
+	rtvHeapDesc.NumDescriptors = mNumRtv + (SwapChainBufferCount - 1);
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;   //RenderTargetView
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; //シェーダからアクセスしないのでNONEでOK
 	rtvHeapDesc.NodeMask = 0;
@@ -348,9 +372,48 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		return false;
 	}
 
+	for (UINT i = 0; i < SwapChainBufferCount; i++) {
+		//スワップチェインバッファ取得
+		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mRtvBuffer[i].GetAddressOf())))) {
+			Dx_Util::ErrorMessage("GetSwapChainBuffer Error");
+			return false;
+		}
+	}
+
+	D3D12_HEAP_PROPERTIES pro;
+	D3D12_HEAP_FLAGS flag;
+	mRtvBuffer[0].Get()->GetHeapProperties(&pro, &flag);
+	D3D12_RESOURCE_DESC desc = mRtvBuffer[0].Get()->GetDesc();
+	D3D12_CLEAR_VALUE clearValue = {};
+	clearValue.Color[0] = clearValue.Color[1] = clearValue.Color[2] = 0.0f;
+	clearValue.Color[3] = 1.0f;
+	clearValue.Format = desc.Format;
+	for (int i = SwapChainBufferCount; i < mNumRtv + (SwapChainBufferCount - 1); i++) {
+		if (FAILED(device->getDevice()->CreateCommittedResource(
+			&pro,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			&clearValue,
+			IID_PPV_ARGS(mRtvBuffer[i].GetAddressOf())))) {
+			Dx_Util::ErrorMessage("CreateCommittedResource mRtvBuffer Error");
+			return false;
+		}
+	}
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
+	for (int i = 0; i < mNumRtv + (SwapChainBufferCount - 1); i++) {
+		device->getDevice()->CreateRenderTargetView(mRtvBuffer[i].Get(), &rtvDesc, rtvHeapHandle);
+		mRtvHeapHandle[i] = rtvHeapHandle;
+		rtvHeapHandle.ptr += mRtvDescriptorSize;
+	}
+
 	//深度ステンシルビュ-DescriptorHeapを作成
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.NumDescriptors = numDsv;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
@@ -358,20 +421,6 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())))) {
 		Dx_Util::ErrorMessage("CreateDescriptorHeap Error");
 		return false;
-	}
-
-	//レンダーターゲットビューデスクリプターヒープの開始ハンドル取得
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
-	for (UINT i = 0; i < SwapChainBufferCount; i++) {
-		//スワップチェインバッファ取得
-		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])))) {
-			Dx_Util::ErrorMessage("GetSwapChainBuffer Error");
-			return false;
-		}
-		//レンダーターゲットビュー(Descriptor)生成,DescriptorHeapにDescriptorが記録される
-		device->getDevice()->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
-		//ヒープ位置オフセット(2個あるので2個目記録位置にDescriptorSize分オフセット)
-		rtvHeapHandle.ptr += mRtvDescriptorSize;
 	}
 
 	D3D12_RESOURCE_DESC depthStencilDesc = {};
@@ -399,30 +448,36 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 	//深度ステンシルバッファ領域確保
-	if (FAILED(device->getDevice()->CreateCommittedResource(
-		&depthStencilHeapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&depthStencilDesc,
-		D3D12_RESOURCE_STATE_COMMON,
-		&optClear,
-		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())))) {
-		Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
-		return false;
+	for (int i = 0; i < numDsv; i++) {
+		if (FAILED(device->getDevice()->CreateCommittedResource(
+			&depthStencilHeapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&depthStencilDesc,
+			D3D12_RESOURCE_STATE_COMMON,
+			&optClear,
+			IID_PPV_ARGS(mDepthStencilBuffer[i].GetAddressOf())))) {
+			Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
+			return false;
+		}
 	}
 
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
-	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHeapHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
+	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
 	//深度ステンシルビュー生成
 	D3D12_DEPTH_STENCIL_VIEW_DESC depthdesc = {};
 	depthdesc.Format = mDepthStencilFormat;
 	depthdesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	depthdesc.Flags = D3D12_DSV_FLAG_NONE;
-	device->getDevice()->CreateDepthStencilView(mDepthStencilBuffer.Get(), &depthdesc, mDsvHeapHeapHandle);
-
+	for (int i = 0; i < numDsv; i++) {
+		device->getDevice()->CreateDepthStencilView(mDepthStencilBuffer[i].Get(), &depthdesc, mDsvHandle);
+		mDsvHeapHandle[i] = mDsvHandle;
+		mDsvHandle.ptr += mDsvDescriptorSize;
+	}
 	dx_sub[0].Bigin();
 
 	//深度ステンシルバッファ,リソースバリア共有→深度書き込み
-	dx_sub[0].ResourceBarrier(mDepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	dx_sub[0].ResourceBarrier(mDepthStencilBuffer[0].Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	dx_sub[0].ResourceBarrier(mDepthStencilBuffer[1].Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	StreamView::createResetBuffer(0);
 
@@ -487,31 +542,70 @@ void Dx12Process::setPerspectiveFov(float ViewAngle, float nearPlane, float farP
 	MatrixPerspectiveFovLH(&upd[1].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
 }
 
-void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer) {
+void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer, int index) {
 	dx_sub[com_no].mCommandList->RSSetViewports(1, &mScreenViewport);
 	dx_sub[com_no].mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-	dx_sub[com_no].ResourceBarrier(mSwapChainBuffer[mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	if (index == 0) {
+		dx_sub[com_no].ResourceBarrier(mRtvBuffer[mCurrBackBuffer].Get(),
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
-	rtvHandle.ptr += mCurrBackBuffer * mRtvDescriptorSize;
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeapHandle[mCurrBackBuffer];
 
-	if (clearBackBuffer) {
-		dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
-			DirectX::Colors::Black, 0, nullptr);
+		if (clearBackBuffer) {
+			dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
+				DirectX::Colors::Black, 0, nullptr);
+			dx_sub[com_no].mCommandList->ClearDepthStencilView(mDsvHeapHandle[0],
+				D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+		}
 
-		dx_sub[com_no].mCommandList->ClearDepthStencilView(mDsvHeap->GetCPUDescriptorHandleForHeapStart(),
-			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+		dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
+			false, &mDsvHeapHandle[0]);
 	}
+	else {
+		dx_sub[com_no].ResourceBarrier(mRtvBuffer[SwapChainBufferCount + index - 1].Get(),
+			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
-		true, &mDsvHeap->GetCPUDescriptorHandleForHeapStart());
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeapHandle[SwapChainBufferCount + index - 1];
+
+		if (clearBackBuffer) {
+			dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
+				DirectX::Colors::Black, 0, nullptr);
+
+			dx_sub[com_no].ResourceBarrier(mDepthStencilBuffer[0].Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+			dx_sub[com_no].mCommandList->CopyResource(mDepthStencilBuffer[1].Get(), mDepthStencilBuffer[0].Get());
+
+			dx_sub[com_no].ResourceBarrier(mDepthStencilBuffer[0].Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		}
+
+		dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
+			false, &mDsvHeapHandle[0]);
+	}
 }
 
-void Dx12Process::EndDraw(int com_no) {
-	dx_sub[com_no].ResourceBarrier(mSwapChainBuffer[mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+void Dx12Process::EndDraw(int com_no, int index) {
+
+	if (index == 0) {
+		dx_sub[com_no].ResourceBarrier(mRtvBuffer[mCurrBackBuffer].Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	}
+	else {
+		dx_sub[com_no].ResourceBarrier(mRtvBuffer[SwapChainBufferCount + index - 1].Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+		dx_sub[com_no].ResourceBarrier(mDepthStencilBuffer[0].Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
+		dx_sub[com_no].ResourceBarrier(mDepthStencilBuffer[1].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		dx_sub[com_no].mCommandList->CopyResource(mDepthStencilBuffer[0].Get(), mDepthStencilBuffer[1].Get());
+
+		dx_sub[com_no].ResourceBarrier(mDepthStencilBuffer[0].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		dx_sub[com_no].ResourceBarrier(mDepthStencilBuffer[1].Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeapHandle[mCurrBackBuffer];
+		dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
+			false, &mDsvHeapHandle[0]);
+	}
 }
 
 void Dx12Process::Bigin(int com_no) {

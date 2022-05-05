@@ -1100,13 +1100,13 @@ void DXR_Basic::copyBackBuffer(int comNo) {
 	d.delayResourceBarrierBefore(mpOutputResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.delayResourceBarrierBefore(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierBefore(dx->mRtvBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	d.delayCopyResource(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayCopyResource(dx->mRtvBuffer[dx->mCurrBackBuffer].Get(),
 		mpOutputResource.Get());
 
-	d.delayResourceBarrierAfter(dx->mSwapChainBuffer[dx->mCurrBackBuffer].Get(),
+	d.delayResourceBarrierAfter(dx->mRtvBuffer[dx->mCurrBackBuffer].Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
 
 	d.delayResourceBarrierAfter(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
@@ -1120,12 +1120,12 @@ void DXR_Basic::copyDepthBuffer(int comNo) {
 	d.delayResourceBarrierBefore(mpDepthResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer.Get(),
+	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer[0].Get(),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	d.delayCopyResource(dx->mDepthStencilBuffer.Get(), mpDepthResource.Get());
+	d.delayCopyResource(dx->mDepthStencilBuffer[0].Get(), mpDepthResource.Get());
 
-	d.delayResourceBarrierAfter(dx->mDepthStencilBuffer.Get(),
+	d.delayResourceBarrierAfter(dx->mDepthStencilBuffer[0].Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	d.delayResourceBarrierAfter(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
