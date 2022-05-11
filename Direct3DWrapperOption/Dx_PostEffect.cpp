@@ -155,9 +155,7 @@ namespace {
 		GaussInOut GaussInout = {};
 
 		int GaussianWid = 0;
-		float GaussianType = false;//false:2D
-		float BloomStrength = 0.0f;
-		float ThresholdLuminance = 0.0f;
+		bool GaussianType = false;//false:2D
 
 		ConstantBuffer<CONSTANT_BUFFER_Bloom>* mObjectCB = nullptr;
 
@@ -241,7 +239,9 @@ namespace {
 			createShader();
 			mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom>(1);
 
-			if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputBuffer.GetAddressOf(), dx->getClientWidth(), dx->getClientHeight()))) {
+			if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputBuffer.GetAddressOf(),
+				dx->getClientWidth(), dx->getClientHeight()))) {
+
 				Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 			}
 			if (FAILED(device->createDefaultResourceTEXTURE2D(mInputBuffer.GetAddressOf(),
@@ -372,7 +372,9 @@ namespace {
 			return true;
 		}
 
-		void Compute(int com, bool On) {
+		void Compute(int com, bool On, float bloomStrength, float thresholdLuminance,
+			ID3D12Resource* inout, D3D12_RESOURCE_STATES firstState) {
+
 			if (!On)return;
 
 			SetCommandList(com);
@@ -381,8 +383,8 @@ namespace {
 
 			CONSTANT_BUFFER_Bloom cb = {};
 			cb.GausSize.x = (float)GaussianWid;
-			cb.GausSize.y = BloomStrength;
-			cb.GausSize.z = ThresholdLuminance;
+			cb.GausSize.y = bloomStrength;
+			cb.GausSize.z = thresholdLuminance;
 			cb.GausSize.w = (float)GaussInout.numGauss;
 			mObjectCB->CopyData(0, cb);
 
@@ -392,13 +394,13 @@ namespace {
 			mCList->SetComputeRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
 
 			//バックバッファをコピー元にする
-			d.delayResourceBarrierBefore(GetSwapChainBuffer(),
-				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			d.delayResourceBarrierBefore(inout,
+				firstState, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			d.delayResourceBarrierBefore(mInputBuffer.Get(),
 				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 			d.RunDelayResourceBarrierBefore();
 			//現在のバックバッファをインプット用バッファにコピーする
-			mCList->CopyResource(mInputBuffer.Get(), GetSwapChainBuffer());
+			mCList->CopyResource(mInputBuffer.Get(), inout);
 
 			d.ResourceBarrier(mInputBuffer.Get(),
 				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -452,18 +454,18 @@ namespace {
 			ba.UAV.pResource = mOutputBuffer.Get();
 			mCList->ResourceBarrier(1, &ba);
 
-			d.delayResourceBarrierBefore(GetSwapChainBuffer(),
+			d.delayResourceBarrierBefore(inout,
 				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 			d.delayResourceBarrierBefore(mOutputBuffer.Get(),
 				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
 			d.RunDelayResourceBarrierBefore();
 			//計算後バックバッファにコピー
-			mCList->CopyResource(GetSwapChainBuffer(), mOutputBuffer.Get());
+			mCList->CopyResource(inout, mOutputBuffer.Get());
 
 			d.delayResourceBarrierBefore(mOutputBuffer.Get(),
 				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			d.delayResourceBarrierBefore(GetSwapChainBuffer(),
-				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			d.delayResourceBarrierBefore(inout,
+				D3D12_RESOURCE_STATE_COPY_DEST, firstState);
 			d.RunDelayResourceBarrierBefore();
 		}
 	};
@@ -507,7 +509,7 @@ bool PostEffect::ComCreateDepthOfField() {
 	return ComCreate(2);
 }
 
-bool PostEffect::ComCreateBloom(float gaussianType, UINT num_gauss, UINT* GaussSizeArr) {
+bool PostEffect::ComCreateBloom(bool gaussianType, UINT num_gauss, UINT* GaussSizeArr) {
 	bloom = std::make_unique<Bloom>();
 	bloom->GaussianType = gaussianType;
 	return bloom->ComCreate(num_gauss, GaussSizeArr);
@@ -613,8 +615,8 @@ bool PostEffect::ComCreate(int no) {
 
 	createShader();
 	cs = pComputeShader_Post[no].Get();
-	mPSOCom[0] = CreatePsoCompute(cs, mRootSignatureCom.Get());
-	if (mPSOCom[0] == nullptr)return false;
+	mPSOCom = CreatePsoCompute(cs, mRootSignatureCom.Get());
+	if (mPSOCom == nullptr)return false;
 
 	return true;
 }
@@ -644,9 +646,7 @@ void PostEffect::ComputeDepthOfField(bool On, float blurLevel, float focusDepth,
 }
 
 void PostEffect::ComputeBloom(int com, bool On, float bloomStrength, float thresholdLuminance) {
-	bloom->BloomStrength = bloomStrength;
-	bloom->ThresholdLuminance = thresholdLuminance;
-	bloom->Compute(com, On);
+	bloom->Compute(com, On, bloomStrength, thresholdLuminance, dx->GetRtvBuffer(0), D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void PostEffect::Compute(int com, bool On, int size,
@@ -668,7 +668,7 @@ void PostEffect::Compute(int com, bool On, int size,
 	cb.focusRange = focusRange;
 	mObjectCB->CopyData(0, cb);
 
-	mCList->SetPipelineState(mPSOCom[0].Get());
+	mCList->SetPipelineState(mPSOCom.Get());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -720,4 +720,303 @@ void PostEffect::Compute(int com, bool On, int size,
 	d.delayResourceBarrierBefore(GetSwapChainBuffer(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	d.RunDelayResourceBarrierBefore();
+}
+
+void BloomParameter::createBuffer() {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* device = Dx_Device::GetInstance();
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOneMeshDrawBuffer.GetAddressOf(),
+		dx->getClientWidth(), dx->getClientHeight(), D3D12_RESOURCE_STATE_GENERIC_READ))) {
+
+		Dx_Util::ErrorMessage("PolygonDataBloom::PolygonDataBloom Error!!"); return;
+	}
+}
+
+static std::unique_ptr<Bloom[]> bloomArr = nullptr;
+
+void VariableBloom::init(BloomParameter** arr, int numpara,
+	bool gaussianType, UINT num_gauss, UINT* GaussSizeArr) {
+
+	numPara = numpara;
+	bloomArr = std::make_unique<Bloom[]>(numPara);
+	for (int i = 0; i < numPara; i++) {
+		bloomArr[i].GaussianType = gaussianType;
+		bloomArr[i].ComCreate(num_gauss, GaussSizeArr);
+	}
+
+	para = std::make_unique<BloomParameter* []>(numPara);
+	for (int i = 0; i < numPara; i++) {
+		para[i] = arr[i];
+	}
+
+	Dx_Device* device = Dx_Device::GetInstance();
+	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mMainBuffer.GetAddressOf(),
+		dx->getClientWidth(), dx->getClientHeight(), D3D12_RESOURCE_STATE_GENERIC_READ))) {
+
+		Dx_Util::ErrorMessage("VariableBloom::init Error!!"); return;
+	}
+
+	mDescHeap = device->CreateDescHeap(numPara + 1);
+	UINT64 ptr = mDescHeap->GetGPUDescriptorHandleForHeapStart().ptr;
+	mMainHandleGPU.ptr = ptr;
+	for (int i = 0; i < numPara; i++)
+		para[i]->BufferHandleGPU.ptr = (ptr += dx->getCbvSrvUavDescriptorSize());
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Texture2D.MipSlice = 0;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
+	device->getDevice()->CreateUnorderedAccessView(mMainBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+	for (int i = 0; i < numPara; i++) {
+		device->getDevice()->CreateUnorderedAccessView(para[i]->mOneMeshDrawBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+		hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+	}
+
+	D3D12_ROOT_PARAMETER rootParameter[2] = {};
+	D3D12_DESCRIPTOR_RANGE range[2] = {};
+	for (int i = 0; i < 2; i++) {
+		D3D12_DESCRIPTOR_RANGE& u = range[i];
+		u.BaseShaderRegister = i;
+		u.NumDescriptors = 1;
+		u.RegisterSpace = 0;
+		u.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		u.OffsetInDescriptorsFromTableStart = 0;
+		D3D12_ROOT_PARAMETER& r = rootParameter[i];
+		r.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		r.DescriptorTable.NumDescriptorRanges = 1;
+		r.DescriptorTable.pDescriptorRanges = &u;
+		r.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	}
+
+	mRootSignatureCom = CreateRsCompute(2, rootParameter);
+	if (mRootSignatureCom == nullptr)return;
+
+	LPSTR csName[2] = {
+		"BloomCSDXRMeshTake",
+		"BloomCSMesh"
+	};
+
+	for (int i = 0; i < _countof(cs); i++) {
+		cs[i] = CompileShader(ShaderPostEffect3, strlen(ShaderPostEffect3), csName[i], "cs_5_1");
+		mPSOCom[i] = CreatePsoCompute(cs[i].Get(), mRootSignatureCom.Get());
+		if (mPSOCom == nullptr)return;
+	}
+}
+
+void VariableBloom::ComputeBloom(int com_no, bool dxr) {
+
+	SetCommandList(com_no);
+	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandListObj& d = *comObj;
+
+	mCList->SetDescriptorHeaps(1, mDescHeap.GetAddressOf());
+	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
+
+	d.delayResourceBarrierBefore(GetSwapChainBuffer(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	d.delayResourceBarrierBefore(mMainBuffer.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	d.RunDelayResourceBarrierBefore();
+
+	mCList->CopyResource(mMainBuffer.Get(), GetSwapChainBuffer());
+
+	d.delayResourceBarrierAfter(GetSwapChainBuffer(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	d.delayResourceBarrierAfter(mMainBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	d.RunDelayResourceBarrierAfter();
+
+	D3D12_RESOURCE_BARRIER ba = {};
+	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+	UINT disX = dx->getClientWidth() / 32;
+	UINT disY = dx->getClientHeight() / 8;
+
+	if (dxr) {
+		//DXR有りの場合, ブルーム適用範囲をDXR描画に置き換える
+		mCList->SetComputeRootDescriptorTable(0, mMainHandleGPU);
+
+		for (int i = 0; i < numPara; i++) {
+			if (para[i]->bloomStrength <= 0.0f)continue;
+			mCList->SetComputeRootDescriptorTable(1, para[i]->BufferHandleGPU);
+
+			mCList->SetPipelineState(mPSOCom[0].Get());
+			mCList->Dispatch(disX, disY, 1);//CS内32, 8, 1
+		}
+		for (int i = 0; i < numPara; i++) {
+			if (para[i]->bloomStrength <= 0.0f)continue;
+			ba.UAV.pResource = para[i]->mOneMeshDrawBuffer.Get();
+			mCList->ResourceBarrier(1, &ba);
+		}
+	}
+
+	//個別にブルーム
+	for (int i = 0; i < numPara; i++) {
+		if (para[i]->bloomStrength <= 0.0f)continue;
+		bloomArr[i].Compute(com_no, true, para[i]->bloomStrength, para[i]->thresholdLuminance,
+			para[i]->mOneMeshDrawBuffer.Get(), D3D12_RESOURCE_STATE_GENERIC_READ);
+	}
+
+	//合成
+	mCList->SetDescriptorHeaps(1, mDescHeap.GetAddressOf());
+	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
+	mCList->SetComputeRootDescriptorTable(1, mMainHandleGPU);
+	for (int i = 0; i < numPara; i++) {
+		if (para[i]->bloomStrength <= 0.0f)continue;
+		mCList->SetComputeRootDescriptorTable(0, para[i]->BufferHandleGPU);
+
+		mCList->SetPipelineState(mPSOCom[1].Get());
+		mCList->Dispatch(disX, disY, 1);//CS内32, 8, 1
+		ba.UAV.pResource = mMainBuffer.Get();
+		mCList->ResourceBarrier(1, &ba);
+	}
+
+	d.delayResourceBarrierBefore(GetSwapChainBuffer(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+	d.delayResourceBarrierBefore(mMainBuffer.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	d.RunDelayResourceBarrierBefore();
+
+	mCList->CopyResource(GetSwapChainBuffer(), mMainBuffer.Get());
+
+	d.delayResourceBarrierAfter(GetSwapChainBuffer(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	d.delayResourceBarrierAfter(mMainBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+	d.RunDelayResourceBarrierAfter();
+}
+
+PolygonDataBloom::PolygonDataBloom() {
+	bpara.createBuffer();
+}
+
+void PolygonDataBloom::prevDraw(int com_no) {
+	if (bpara.bloomStrength <= 0.0f)return;
+
+	dx->BiginDraw(com_no, true, 1);
+	PolygonData::Draw(com_no);//別のバッファに書き込み, 前後関係を正確にするにはなるべく最後の方に書き込む
+	dx->EndDraw(com_no, 1);
+
+	SetCommandList(com_no);
+	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandListObj& d = *comObj;
+
+	d.delayResourceBarrierBefore(bpara.mOneMeshDrawBuffer.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	d.delayResourceBarrierBefore(dx->GetRtvBuffer(1),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	d.RunDelayResourceBarrierBefore();
+
+	mCList->CopyResource(bpara.mOneMeshDrawBuffer.Get(), dx->GetRtvBuffer(1));
+
+	d.delayResourceBarrierAfter(bpara.mOneMeshDrawBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	d.delayResourceBarrierAfter(dx->GetRtvBuffer(1),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+	d.RunDelayResourceBarrierAfter();
+}
+
+void PolygonDataBloom::setBloomParameter(float bloomStrength, float thresholdLuminance) {
+	bpara.bloomStrength = bloomStrength;
+	bpara.thresholdLuminance = thresholdLuminance;
+}
+
+void PolygonDataBloom::Draw(int com_no) {
+	prevDraw(com_no);
+	PolygonData::Draw(com_no);//通常のメインのバッファ書き込み
+}
+
+void PolygonDataBloom::Draw() {
+	Draw(com_no);
+}
+
+BloomParameter* PolygonDataBloom::getBloomParameter() {
+	return &bpara;
+}
+
+void SkinMeshBloom::prevDraw(int com_no, int index) {
+
+	SetCommandList(com_no);
+	BloomParameter& bp = bpara[index];
+	if (bp.bloomStrength <= 0.0f)return;
+	dx->BiginDraw(com_no, true, 1);
+	mObj[index].Draw(com_no);//別のバッファに書き込み, 前後関係を正確にするにはなるべく最後の方に書き込む
+	dx->EndDraw(com_no, 1);
+
+	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandListObj& d = *comObj;
+
+	d.delayResourceBarrierBefore(bp.mOneMeshDrawBuffer.Get(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	d.delayResourceBarrierBefore(dx->GetRtvBuffer(1),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	d.RunDelayResourceBarrierBefore();
+
+	mCList->CopyResource(bp.mOneMeshDrawBuffer.Get(), dx->GetRtvBuffer(1));
+
+	d.delayResourceBarrierAfter(bp.mOneMeshDrawBuffer.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	d.delayResourceBarrierAfter(dx->GetRtvBuffer(1),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ);
+	d.RunDelayResourceBarrierAfter();
+}
+
+void SkinMeshBloom::GetBuffer(int numMaxInstance, float end_frame, bool singleMesh, bool deformer) {
+	SkinMesh::GetBuffer(numMaxInstance, end_frame, singleMesh, deformer);
+	bpara = std::make_unique<BloomParameter[]>(numMesh);
+	for (int i = 0; i < numMesh; i++)bpara[i].createBuffer();
+}
+
+void SkinMeshBloom::setBloomParameter(int index, float bloomStrength, float thresholdLuminance) {
+	BloomParameter& bp = bpara[index];
+	bp.bloomStrength = bloomStrength;
+	bp.thresholdLuminance = thresholdLuminance;
+}
+
+void SkinMeshBloom::Draw(int com_no) {
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[Common::cBuffSwapDrawOrStreamoutputIndex()]);
+
+	for (int i = 0; i < numMesh; i++) {
+		prevDraw(com_no, i);
+		mObj[i].Draw(com_no);
+	}
+}
+
+int SkinMeshBloom::getNumBloomParameter() {
+	return numMesh;
+}
+
+BloomParameter* SkinMeshBloom::getBloomParameter(int index) {
+	return &bpara[index];
+}
+
+void SkinMeshBloom::SetName(char* name) {
+	SkinMesh::SetName(name);
+}
+
+void SkinMeshBloom::SetCommandList(int no) {
+	SkinMesh::SetCommandList(no);
+	Common::SetCommandList(no);
+}
+
+void SkinMeshBloom::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
+	SkinMesh::CopyResource(texture, res, 0, index);
+}
+
+void SkinMeshBloom::TextureInit(int width, int height, int index) {
+	SkinMesh::TextureInit(width, height, 0, index);
+}
+
+HRESULT SkinMeshBloom::SetTextureMPixel(int com_no, BYTE* frame, int index) {
+	return SkinMesh::SetTextureMPixel(com_no, frame, 0, index);
+}
+
+InternalTexture* SkinMeshBloom::getInternalTexture(int index) {
+	return Common::getInternalTexture(index);
+}
+
+ID3D12Resource* SkinMeshBloom::getTextureResource(int index) {
+	return Common::getTextureResource(index);
 }

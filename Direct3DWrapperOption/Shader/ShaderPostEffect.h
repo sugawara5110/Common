@@ -234,3 +234,29 @@ char* ShaderPostEffect2 =
 "   gau = gau / g_GausSize.w * g_GausSize.y;\n"
 "   gOutput[dtid] = src + gau;\n"
 "}\n";
+
+char* ShaderPostEffect3 =
+"RWTexture2D<float4> gInput : register(u0, space0);\n"
+"RWTexture2D<float4> gOutput : register(u1, space0);\n"
+//DXRでメッシュ毎にブルーム処理を実施する場合
+//同時にラスタライザ描画を実施し
+//ラスタライザのピクセル位置と同じ位置のピクセルデータを
+//DXRバッファから取り出す ※この後はラスタライザと同じ処理(個別にブルーム→加算)
+"[numthreads(32, 8, 1)]\n"
+"void BloomCSDXRMeshTake(int2 dtid : SV_DispatchThreadID)\n"
+"{\n"
+"   float4 dxrMain = gInput[dtid];\n"
+"   float4 raste1 = gOutput[dtid];\n"
+"   if(raste1.x > 0.0f || raste1.y > 0.0f || raste1.z > 0.0f){\n"//0.0fよりも大きいなら描画有りと判断
+"      raste1 = dxrMain;\n"//DXRの値で上書きする
+"   }\n"
+"   gOutput[dtid] = raste1;\n"
+"}\n"
+
+//メッシュ毎にブルーム処理した値をメインバッファに加算
+"[numthreads(32, 8, 1)]\n"
+"void BloomCSMesh(int2 dtid : SV_DispatchThreadID)\n"
+"{\n"
+//                         メイン + ブルーム処理後
+"   gOutput[dtid] = gOutput[dtid] + gInput[dtid];\n"
+"}\n";
