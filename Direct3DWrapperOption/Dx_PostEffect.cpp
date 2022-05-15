@@ -732,6 +732,17 @@ void BloomParameter::createBuffer() {
 	}
 }
 
+void BloomParameter::Draw(int com_no) {
+	if (bType == polygonData) {
+		PolygonDataBloom* o = (PolygonDataBloom*)obj;
+		o->Draw(com_no);
+	}
+	if (bType == skinMesh) {
+		SkinMeshBloom* o = (SkinMeshBloom*)obj;
+		o->Draw(com_no, meshIndex);
+	}
+}
+
 static std::unique_ptr<Bloom[]> bloomArr = nullptr;
 
 void VariableBloom::init(BloomParameter** arr, int numpara,
@@ -739,6 +750,8 @@ void VariableBloom::init(BloomParameter** arr, int numpara,
 
 	numPara = numpara;
 	bloomArr = std::make_unique<Bloom[]>(numPara);
+	drawIndex = std::make_unique<int[]>(numPara);
+	bloomStrengthArr = std::make_unique<float[]>(numPara);
 	for (int i = 0; i < numPara; i++) {
 		bloomArr[i].GaussianType = gaussianType;
 		bloomArr[i].ComCreate(num_gauss, GaussSizeArr);
@@ -803,6 +816,18 @@ void VariableBloom::init(BloomParameter** arr, int numpara,
 		cs[i] = CompileShader(ShaderPostEffect3, strlen(ShaderPostEffect3), csName[i], "cs_5_1");
 		mPSOCom[i] = CreatePsoCompute(cs[i].Get(), mRootSignatureCom.Get());
 		if (mPSOCom == nullptr)return;
+	}
+}
+
+void VariableBloom::Draw(int com_no) {
+	for (int i = 0; i < numPara; i++) {
+		bloomStrengthArr[i] = para[i]->bloomStrength;
+		drawIndex[i] = i;
+	}
+	//ブルームが強いメッシュを最後に描画するよう順番をソートする
+	BloomFunction::mergeSort<float, int>(true, bloomStrengthArr.get(), numPara, drawIndex.get());
+	for (int i = 0; i < numPara; i++) {
+		para[drawIndex[i]]->Draw(com_no);
 	}
 }
 
@@ -890,6 +915,7 @@ void VariableBloom::ComputeBloom(int com_no, bool dxr) {
 
 PolygonDataBloom::PolygonDataBloom() {
 	bpara.createBuffer();
+	bpara.bType = BloomParameter::polygonData;
 }
 
 void PolygonDataBloom::prevDraw(int com_no) {
@@ -928,8 +954,9 @@ void PolygonDataBloom::Draw(int com_no) {
 	PolygonData::Draw(com_no);//通常のメインのバッファ書き込み
 }
 
-void PolygonDataBloom::Draw() {
-	Draw(com_no);
+void PolygonDataBloom::DrawPreparation() {
+	bpara.meshIndex = 0;
+	bpara.obj = this;
 }
 
 BloomParameter* PolygonDataBloom::getBloomParameter() {
@@ -966,7 +993,10 @@ void SkinMeshBloom::prevDraw(int com_no, int index) {
 void SkinMeshBloom::GetBuffer(int numMaxInstance, float end_frame, bool singleMesh, bool deformer) {
 	SkinMesh::GetBuffer(numMaxInstance, end_frame, singleMesh, deformer);
 	bpara = std::make_unique<BloomParameter[]>(numMesh);
-	for (int i = 0; i < numMesh; i++)bpara[i].createBuffer();
+	for (int i = 0; i < numMesh; i++) {
+		bpara[i].createBuffer();
+		bpara[i].bType = BloomParameter::skinMesh;
+	}
 }
 
 void SkinMeshBloom::setBloomParameter(int index, float bloomStrength, float thresholdLuminance) {
@@ -975,12 +1005,16 @@ void SkinMeshBloom::setBloomParameter(int index, float bloomStrength, float thre
 	bp.thresholdLuminance = thresholdLuminance;
 }
 
-void SkinMeshBloom::Draw(int com_no) {
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[Common::cBuffSwapDrawOrStreamoutputIndex()]);
+void SkinMeshBloom::Draw(int com_no, int index) {
+	prevDraw(com_no, index);
+	mObj[index].Draw(com_no);
+}
 
+void SkinMeshBloom::DrawPreparation() {
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[Common::cBuffSwapDrawOrStreamoutputIndex()]);
 	for (int i = 0; i < numMesh; i++) {
-		prevDraw(com_no, i);
-		mObj[i].Draw(com_no);
+		bpara[i].meshIndex = i;
+		bpara[i].obj = this;
 	}
 }
 

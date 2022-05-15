@@ -10,6 +10,88 @@
 #include "../Direct3DWrapper/DX_3DCG/Dx_PolygonData.h"
 #include "../Direct3DWrapper/DX_3DCG/Dx_SkinMesh.h"
 
+namespace BloomFunction {
+
+	template <typename T1, typename T2>
+	void mergeSort(bool ascending, T1* srcArr, int srcSize, T2* srcArr2) {
+		//É\Å[ÉgÇ∑ÇÈîzóÒÇï™äÑ
+		int topSize = (int)(srcSize * 0.5f);
+		int halfSize = srcSize - topSize;
+		T1* topArr = new T1[topSize];
+		T1* halfArr = new T1[halfSize];
+		memcpy(topArr, srcArr, topSize * sizeof(T1));
+		memcpy(halfArr, &srcArr[topSize], halfSize * sizeof(T1));
+
+		T2* topArr2 = nullptr;
+		T2* halfArr2 = nullptr;
+		if (srcArr2) {
+			topArr2 = new T2[topSize];
+			halfArr2 = new T2[halfSize];
+			memcpy(topArr2, srcArr2, topSize * sizeof(T2));
+			memcpy(halfArr2, &srcArr2[topSize], halfSize * sizeof(T2));
+		}
+		//óvëf1Ç…Ç»ÇÈÇ‹Ç≈çƒãA
+		if (topSize > 1)mergeSort(ascending, topArr, topSize, topArr2);
+		if (halfSize > 1)mergeSort(ascending, halfArr, halfSize, halfArr2);
+
+		int topIndex = 0;
+		int halfIndex = 0;
+		int srcIndex = 0;
+		//ï™äÑÇµÇΩîzóÒÇÃî‰är
+		//ÇªÇÍÇºÇÍÇÃîzóÒÇÕêÆóÒçœÇ›ÇÃà◊, êÊì™Ç©ÇÁî‰ärÇ∑ÇÈÇæÇØ
+		for (int i = 0; i < srcSize; i++) {
+			bool sw = false;
+			if (ascending) {
+				sw = topArr[topIndex] < halfArr[halfIndex];//è∏èá
+			}
+			else {
+				sw = topArr[topIndex] > halfArr[halfIndex];//ç~èá
+			}
+			if (sw) {
+				srcArr[i] = topArr[topIndex];
+				if (srcArr2)srcArr2[i] = topArr2[topIndex];
+				topIndex++;
+				if (topSize <= topIndex) {
+					srcIndex = i + 1;
+					break;
+				}
+			}
+			else {
+				srcArr[i] = halfArr[halfIndex];
+				if (srcArr2)srcArr2[i] = halfArr2[halfIndex];
+				halfIndex++;
+				if (halfSize <= halfIndex) {
+					srcIndex = i + 1;
+					break;
+				}
+			}
+		}
+
+		//ó]Ç¡ÇΩóvëfÇäiî[
+		if (topSize > topIndex) {
+			for (int i = srcIndex; i < srcSize; i++) {
+				srcArr[i] = topArr[topIndex];
+				if (srcArr2)srcArr2[i] = topArr2[topIndex];
+				topIndex++;
+			}
+		}
+		if (halfSize > halfIndex) {
+			for (int i = srcIndex; i < srcSize; i++) {
+				srcArr[i] = halfArr[halfIndex];
+				if (srcArr2)srcArr2[i] = halfArr2[halfIndex];
+				halfIndex++;
+			}
+		}
+
+		delete[] topArr;
+		delete[] halfArr;
+		if (srcArr2) {
+			delete[] topArr2;
+			delete[] halfArr2;
+		}
+	}
+}
+
 class PostEffect :public Common {
 
 protected:
@@ -58,18 +140,28 @@ public:
 };
 
 struct BloomParameter {
+	enum BloomType {
+		polygonData,
+		skinMesh
+	};
+	BloomType bType = polygonData;
 	ComPtr<ID3D12Resource> mOneMeshDrawBuffer = nullptr;
 	D3D12_GPU_DESCRIPTOR_HANDLE BufferHandleGPU = {};
 	float bloomStrength = 0.0f;
 	float thresholdLuminance = 0.0f;
+	void* obj = nullptr;
+	int meshIndex = 0;
 
 	void createBuffer();
+	void Draw(int com_no);
 };
 
 class VariableBloom :public Common {
 
 private:
 	std::unique_ptr<BloomParameter* []> para = nullptr;
+	std::unique_ptr<int[]> drawIndex = nullptr;
+	std::unique_ptr<float[]> bloomStrengthArr = nullptr;
 	int numPara = 0;
 	ComPtr<ID3D12Resource> mMainBuffer = nullptr;
 	ComPtr<ID3DBlob> cs[2] = {};
@@ -83,33 +175,37 @@ public:
 	void init(BloomParameter** arr, int numPara,
 		bool GaussianType = false, UINT num_gauss = 0, UINT* GaussSizeArr = nullptr);
 
+	void Draw(int com_no);
 	void ComputeBloom(int com_no, bool dxr);
 };
 
 class PolygonDataBloom :public PolygonData {
 
 private:
+	friend BloomParameter;
 	BloomParameter bpara = {};
 	void prevDraw(int com_no);
+	void Draw(int com_no);
 
 public:
 	PolygonDataBloom();
 	void setBloomParameter(float bloomStrength, float thresholdLuminance);
-	void Draw(int com_no);
-	void Draw();
+	void DrawPreparation();
 	BloomParameter* getBloomParameter();
 };
 
 class SkinMeshBloom :public SkinMesh, public Common {
 
 private:
+	friend BloomParameter;
 	std::unique_ptr<BloomParameter[]> bpara = nullptr;
 	void prevDraw(int com_no, int index);
+	void Draw(int com_no, int index);
 
 public:
 	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
 	void setBloomParameter(int index, float bloomStrength, float thresholdLuminance);
-	void Draw(int com_no);
+	void DrawPreparation();
 	int getNumBloomParameter();
 	BloomParameter* getBloomParameter(int index);
 
