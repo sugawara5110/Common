@@ -10,88 +10,6 @@
 #include "../Direct3DWrapper/DX_3DCG/Dx_PolygonData.h"
 #include "../Direct3DWrapper/DX_3DCG/Dx_SkinMesh.h"
 
-namespace BloomFunction {
-
-	template <typename T1, typename T2>
-	void mergeSort(bool ascending, T1* srcArr, int srcSize, T2* srcArr2) {
-		//ソートする配列を分割
-		int topSize = (int)(srcSize * 0.5f);
-		int halfSize = srcSize - topSize;
-		T1* topArr = new T1[topSize];
-		T1* halfArr = new T1[halfSize];
-		memcpy(topArr, srcArr, topSize * sizeof(T1));
-		memcpy(halfArr, &srcArr[topSize], halfSize * sizeof(T1));
-
-		T2* topArr2 = nullptr;
-		T2* halfArr2 = nullptr;
-		if (srcArr2) {
-			topArr2 = new T2[topSize];
-			halfArr2 = new T2[halfSize];
-			memcpy(topArr2, srcArr2, topSize * sizeof(T2));
-			memcpy(halfArr2, &srcArr2[topSize], halfSize * sizeof(T2));
-		}
-		//要素1になるまで再帰
-		if (topSize > 1)mergeSort(ascending, topArr, topSize, topArr2);
-		if (halfSize > 1)mergeSort(ascending, halfArr, halfSize, halfArr2);
-
-		int topIndex = 0;
-		int halfIndex = 0;
-		int srcIndex = 0;
-		//分割した配列の比較
-		//それぞれの配列は整列済みの為, 先頭から比較するだけ
-		for (int i = 0; i < srcSize; i++) {
-			bool sw = false;
-			if (ascending) {
-				sw = topArr[topIndex] < halfArr[halfIndex];//昇順
-			}
-			else {
-				sw = topArr[topIndex] > halfArr[halfIndex];//降順
-			}
-			if (sw) {
-				srcArr[i] = topArr[topIndex];
-				if (srcArr2)srcArr2[i] = topArr2[topIndex];
-				topIndex++;
-				if (topSize <= topIndex) {
-					srcIndex = i + 1;
-					break;
-				}
-			}
-			else {
-				srcArr[i] = halfArr[halfIndex];
-				if (srcArr2)srcArr2[i] = halfArr2[halfIndex];
-				halfIndex++;
-				if (halfSize <= halfIndex) {
-					srcIndex = i + 1;
-					break;
-				}
-			}
-		}
-
-		//余った要素を格納
-		if (topSize > topIndex) {
-			for (int i = srcIndex; i < srcSize; i++) {
-				srcArr[i] = topArr[topIndex];
-				if (srcArr2)srcArr2[i] = topArr2[topIndex];
-				topIndex++;
-			}
-		}
-		if (halfSize > halfIndex) {
-			for (int i = srcIndex; i < srcSize; i++) {
-				srcArr[i] = halfArr[halfIndex];
-				if (srcArr2)srcArr2[i] = halfArr2[halfIndex];
-				halfIndex++;
-			}
-		}
-
-		delete[] topArr;
-		delete[] halfArr;
-		if (srcArr2) {
-			delete[] topArr2;
-			delete[] halfArr2;
-		}
-	}
-}
-
 class PostEffect :public Common {
 
 protected:
@@ -153,6 +71,7 @@ struct BloomParameter {
 	int meshIndex = 0;
 
 	void createBuffer();
+	void prevDraw(int com_no);
 	void Draw(int com_no);
 };
 
@@ -160,16 +79,18 @@ class VariableBloom :public Common {
 
 private:
 	std::unique_ptr<BloomParameter* []> para = nullptr;
-	std::unique_ptr<int[]> drawIndex = nullptr;
-	std::unique_ptr<float[]> bloomStrengthArr = nullptr;
+	std::unique_ptr<int[]> prevDrawIndex = nullptr;
 	int numPara = 0;
 	ComPtr<ID3D12Resource> mMainBuffer = nullptr;
+	ComPtr<ID3D12Resource> mTempDepth = nullptr;
 	ComPtr<ID3DBlob> cs[2] = {};
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	ComPtr<ID3D12PipelineState> mPSOCom[2] = {};
 	ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
 
 	D3D12_GPU_DESCRIPTOR_HANDLE mMainHandleGPU = {};
+
+	void createTempDepthBuffer();
 
 public:
 	void init(BloomParameter** arr, int numPara,

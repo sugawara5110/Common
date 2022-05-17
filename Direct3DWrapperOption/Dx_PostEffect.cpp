@@ -732,6 +732,17 @@ void BloomParameter::createBuffer() {
 	}
 }
 
+void BloomParameter::prevDraw(int com_no) {
+	if (bType == polygonData) {
+		PolygonDataBloom* o = (PolygonDataBloom*)obj;
+		o->prevDraw(com_no);
+	}
+	if (bType == skinMesh) {
+		SkinMeshBloom* o = (SkinMeshBloom*)obj;
+		o->prevDraw(com_no, meshIndex);
+	}
+}
+
 void BloomParameter::Draw(int com_no) {
 	if (bType == polygonData) {
 		PolygonDataBloom* o = (PolygonDataBloom*)obj;
@@ -745,13 +756,50 @@ void BloomParameter::Draw(int com_no) {
 
 static std::unique_ptr<Bloom[]> bloomArr = nullptr;
 
+void VariableBloom::createTempDepthBuffer() {
+	D3D12_RESOURCE_DESC depthStencilDesc = {};
+	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depthStencilDesc.Alignment = 0;
+	depthStencilDesc.Width = dx->getClientWidth();
+	depthStencilDesc.Height = dx->getClientHeight();
+	depthStencilDesc.DepthOrArraySize = 1;
+	depthStencilDesc.MipLevels = 1;
+	depthStencilDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	depthStencilDesc.SampleDesc.Count = 1;
+	depthStencilDesc.SampleDesc.Quality = 0;
+	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+	D3D12_HEAP_PROPERTIES depthStencilHeapProps = {};
+	depthStencilHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+	depthStencilHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	depthStencilHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	depthStencilHeapProps.CreationNodeMask = 1;
+	depthStencilHeapProps.VisibleNodeMask = 1;
+
+	D3D12_CLEAR_VALUE optClear = {};
+	optClear.Format = DXGI_FORMAT_D32_FLOAT;
+	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Stencil = 0;
+
+	if (FAILED(Dx_Device::GetInstance()->getDevice()->CreateCommittedResource(
+		&depthStencilHeapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&depthStencilDesc,
+		D3D12_RESOURCE_STATE_COMMON,
+		&optClear,
+		IID_PPV_ARGS(mTempDepth.GetAddressOf())))) {
+		Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
+		return;
+	}
+}
+
 void VariableBloom::init(BloomParameter** arr, int numpara,
 	bool gaussianType, UINT num_gauss, UINT* GaussSizeArr) {
 
 	numPara = numpara;
 	bloomArr = std::make_unique<Bloom[]>(numPara);
-	drawIndex = std::make_unique<int[]>(numPara);
-	bloomStrengthArr = std::make_unique<float[]>(numPara);
+	prevDrawIndex = std::make_unique<int[]>(numPara);
 	for (int i = 0; i < numPara; i++) {
 		bloomArr[i].GaussianType = gaussianType;
 		bloomArr[i].ComCreate(num_gauss, GaussSizeArr);
@@ -761,6 +809,8 @@ void VariableBloom::init(BloomParameter** arr, int numpara,
 	for (int i = 0; i < numPara; i++) {
 		para[i] = arr[i];
 	}
+
+	createTempDepthBuffer();
 
 	Dx_Device* device = Dx_Device::GetInstance();
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mMainBuffer.GetAddressOf(),
@@ -820,14 +870,73 @@ void VariableBloom::init(BloomParameter** arr, int numpara,
 }
 
 void VariableBloom::Draw(int com_no) {
+
+	int prevDrawCnt = 0;
 	for (int i = 0; i < numPara; i++) {
-		bloomStrengthArr[i] = para[i]->bloomStrength;
-		drawIndex[i] = i;
+		if (para[i]->bloomStrength <= 0.0f) {
+			//ブルーム効果0のメッシュは先にそのまま描画
+			para[i]->Draw(com_no);
+		}
+		else {
+			//ブルーム効果の有るメッシュのインデックス取得
+			prevDrawIndex[prevDrawCnt++] = i;
+		}
 	}
-	//ブルームが強いメッシュを最後に描画するよう順番をソートする
-	BloomFunction::mergeSort<float, int>(true, bloomStrengthArr.get(), numPara, drawIndex.get());
-	for (int i = 0; i < numPara; i++) {
-		para[drawIndex[i]]->Draw(com_no);
+
+	SetCommandList(com_no);
+	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandListObj& d = *comObj;
+
+	//ブルーム効果0のメッシュ描画完了時の深度バッファを保存しておく
+	d.delayResourceBarrierBefore(dx->GetDsvBuffer(),
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	d.delayResourceBarrierBefore(mTempDepth.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	d.RunDelayResourceBarrierBefore();
+
+	mCList->CopyResource(mTempDepth.Get(), dx->GetDsvBuffer());
+
+	d.delayResourceBarrierAfter(dx->GetDsvBuffer(),
+		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	d.delayResourceBarrierAfter(mTempDepth.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON);
+	d.RunDelayResourceBarrierAfter();
+
+	//ブルーム効果有りのメッシュの処理
+	//各メッシュで個別ブルーム用のレンダリング結果を取得
+	for (int k = 0; k < prevDrawCnt; k++) {
+		//ブルーム用のデータを取得するメッシュ以外のメッシュをDrawして
+		//深度バッファを更新する
+		dx->BiginDraw(com_no, true, 2);//メインのバッファには書かない, 深度バッファ取得のみ
+		for (int i = 0; i < prevDrawCnt; i++) {
+			if (k != i) {
+				para[prevDrawIndex[i]]->Draw(com_no);
+			}
+		}
+		//個別ブルーム用のレンダリング結果を取得
+		para[prevDrawIndex[k]]->prevDraw(com_no);
+		dx->EndDraw(com_no, 2);
+
+		//レンダリング結果を取得後, 深度バッファを元に戻す
+		d.delayResourceBarrierBefore(dx->GetDsvBuffer(),
+			D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
+		d.delayResourceBarrierBefore(mTempDepth.Get(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		d.RunDelayResourceBarrierBefore();
+
+		mCList->CopyResource(dx->GetDsvBuffer(), mTempDepth.Get());
+
+		d.delayResourceBarrierAfter(dx->GetDsvBuffer(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		d.delayResourceBarrierAfter(mTempDepth.Get(),
+			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COMMON);
+		d.RunDelayResourceBarrierAfter();
+	}
+
+	//各メッシュ, レンダリング結果取得完了
+	//通常のDraw実行
+	for (int i = 0; i < prevDrawCnt; i++) {
+		para[prevDrawIndex[i]]->Draw(com_no);
 	}
 }
 
@@ -950,8 +1059,7 @@ void PolygonDataBloom::setBloomParameter(float bloomStrength, float thresholdLum
 }
 
 void PolygonDataBloom::Draw(int com_no) {
-	prevDraw(com_no);
-	PolygonData::Draw(com_no);//通常のメインのバッファ書き込み
+	PolygonData::Draw(com_no);
 }
 
 void PolygonDataBloom::DrawPreparation() {
@@ -1006,7 +1114,6 @@ void SkinMeshBloom::setBloomParameter(int index, float bloomStrength, float thre
 }
 
 void SkinMeshBloom::Draw(int com_no, int index) {
-	prevDraw(com_no, index);
 	mObj[index].Draw(com_no);
 }
 
