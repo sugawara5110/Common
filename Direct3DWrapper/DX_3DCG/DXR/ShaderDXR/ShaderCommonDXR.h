@@ -4,6 +4,12 @@
 
 char* ShaderCommonDXR =
 
+///////////////////////////////////////////Material識別////////////////////////////////////////////
+"bool materialIdent(uint matNo, uint MaterialBit)\n"
+"{\n"
+"    return (matNo & MaterialBit) == MaterialBit;\n"
+"}\n"
+
 ///////////////////////////////////////////MaterialID取得//////////////////////////////////////////
 "uint getMaterialID()\n"
 "{\n"
@@ -180,7 +186,8 @@ char* ShaderCommonDXR =
 "    uint mNo = mcb.materialNo;\n"
 "    float3 ret = difTexColor;\n"
 
-"    if(mNo != 2) {\n"//emissive以外
+"    bool mf = materialIdent(mNo, EMISSIVE);\n"
+"    if(!mf) {\n"//emissive以外
 
 "       RayPayload payload;\n"
 "       LightOut emissiveColor = (LightOut)0;\n"
@@ -206,7 +213,7 @@ char* ShaderCommonDXR =
 "                 bool loop = true;\n"
 "                 payload.hitPosition = hitPosition;\n"
 "                 while(loop){\n"
-"                    payload.mNo = 2;\n"//処理分岐用
+"                    payload.mNo = EMISSIVE;\n"//処理分岐用
 "                    ray.Origin = payload.hitPosition;\n"
 "                    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
 "                             0xFF, 1, 0, 1, ray, payload);\n"
@@ -226,7 +233,7 @@ char* ShaderCommonDXR =
 "             ray.Direction = -dDirection.xyz;\n"
 "             bool loop = true;\n"
 "             while(loop){\n"
-"                payload.mNo = 3;\n"//処理分岐用
+"                payload.mNo = DIRECTIONLIGHT | METALLIC;\n"//処理分岐用
 "                ray.Origin = payload.hitPosition;\n"
 "                TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
 "                         0xFF, 1, 0, 1, ray, payload);\n"
@@ -256,7 +263,7 @@ char* ShaderCommonDXR =
 "    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor;\n"
 
-"    if(mNo == 0 || mNo == 3) {\n"//METALLIC
+"    if(materialIdent(mNo, METALLIC)) {\n"//METALLIC
 
 "       RayPayload payload;\n"
 "       RecursionCnt++;\n"
@@ -296,7 +303,7 @@ char* ShaderCommonDXR =
 "    uint mNo = mcb.materialNo;\n"
 "    float3 ret = difTexColor.xyz;\n"
 
-"    if(mNo == 5) {\n"
+"    if(materialIdent(mNo, TRANSLUCENCE)) {\n"
 
 "       float Alpha = difTexColor.w;\n"
 "       RayPayload payload;\n"
@@ -331,7 +338,8 @@ char* ShaderCommonDXR =
 "    float blend = mcb.AlphaBlend;\n"
 "    float Alpha = difTexColor.w;\n"
 
-"    if(blend == 1.0f && mNo != 5 && Alpha < 1.0f) {\n"
+"    bool mf = materialIdent(mNo, TRANSLUCENCE);\n"
+"    if(blend == 1.0f && !mf && Alpha < 1.0f) {\n"
 
 "       RayPayload payload;\n"
 "       RecursionCnt++;\n"

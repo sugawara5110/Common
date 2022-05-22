@@ -129,23 +129,31 @@ char* ShaderBasicDXR =
 "    payload.reTry = false;\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
 //////点光源
-"    if(payload.mNo == 2 && mNo == 2) {\n"
+"    bool pay_mNoF = materialIdent(payload.mNo, EMISSIVE);\n"
+"    bool mNoF     = materialIdent(mNo, EMISSIVE);\n"
+"    if(pay_mNoF && mNoF) {\n"
 "       payload.color = difTex.xyz + GlobalAmbientColor.xyz;\n"
 "       if(InstanceID() != payload.instanceID || difTex.w <= 0.0f) {\n"
 "          payload.reTry = true;\n"//目標の点光源以外の場合素通り
 "       }\n"
 "    }\n"
 //////平行光源
-"    if(payload.mNo == 3) {\n"
-"       if(mNo == 3 || mNo == 4) {\n"//平行光源発生マテリアルか?
+"    pay_mNoF = materialIdent(payload.mNo, DIRECTIONLIGHT | METALLIC);\n"
+"    if(pay_mNoF) {\n"
+"       if(materialIdent(mNo, DIRECTIONLIGHT)) {\n"//平行光源発生マテリアルか?
 "          payload.color = dLightColor.xyz + GlobalAmbientColor.xyz;\n"
 "       }\n"
-"       if(mNo == 2) {\n"//点光源の場合素通り
+"       if(materialIdent(mNo, EMISSIVE)) {\n"//点光源の場合素通り
 "          payload.reTry = true;\n"
 "       }\n"
 "    }\n"
 //////影
-"    if(mNo != 2 && payload.mNo == 2 || mNo < 2 && payload.mNo == 3) {\n"
+"    if( \n"
+"       !materialIdent(mNo, EMISSIVE) && \n" 
+"       materialIdent(payload.mNo, EMISSIVE) || \n" 
+"       (materialIdent(mNo, METALLIC) || materialIdent(mNo, NONREFLECTION)) && \n"
+"       materialIdent(payload.mNo, DIRECTIONLIGHT | METALLIC) \n"
+"       ) {\n"
 "       if(difTex.w >= 1.0f) {\n"
 "          payload.color = GlobalAmbientColor.xyz;\n"
 "       }\n"

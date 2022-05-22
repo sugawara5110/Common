@@ -4,6 +4,12 @@
 
 char* ShaderParametersDXR =
 
+"#define NONREFLECTION  0b0000 \n"
+"#define METALLIC       0b1000 \n"
+"#define EMISSIVE       0b0100 \n"
+"#define DIRECTIONLIGHT 0b0010 \n"
+"#define TRANSLUCENCE   0b0001 \n"
+
 "struct Vertex {\n"
 "    float3 Pos;\n"
 "    float3 normal;\n"

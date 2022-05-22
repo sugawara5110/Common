@@ -384,37 +384,8 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 		for (UINT i = 0; i < numParameter; i++) {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
-					switch (PD[i]->mType[j]) {
-					case METALLIC:
-						cbObj[0].matCb[numIns].materialNo = 0;
-						cbObj[1].matCb[numIns].materialNo = 0;
-						break;
-
-					case NONREFLECTION:
-						cbObj[0].matCb[numIns].materialNo = 1;
-						cbObj[1].matCb[numIns].materialNo = 1;
-						break;
-
-					case EMISSIVE:
-						cbObj[0].matCb[numIns].materialNo = 2;
-						cbObj[1].matCb[numIns].materialNo = 2;
-						break;
-
-					case DIRECTIONLIGHT_METALLIC:
-						cbObj[0].matCb[numIns].materialNo = 3;
-						cbObj[1].matCb[numIns].materialNo = 3;
-						break;
-
-					case DIRECTIONLIGHT_NONREFLECTION:
-						cbObj[0].matCb[numIns].materialNo = 4;
-						cbObj[1].matCb[numIns].materialNo = 4;
-						break;
-
-					case TRANSLUCENCE:
-						cbObj[0].matCb[numIns].materialNo = 5;
-						cbObj[1].matCb[numIns].materialNo = 5;
-						break;
-					}
+					cbObj[0].matCb[numIns].materialNo = PD[i]->mType[j];
+					cbObj[1].matCb[numIns].materialNo = PD[i]->mType[j];
 					numIns++;
 				}
 			}
@@ -965,7 +936,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
 				UINT matAddInd = 0;
 				if (PD[i]->hs)matAddInd = k;
-				if (cbObj->matCb[MaterialCnt + matAddInd].materialNo == 2) {
+				if ((cbObj->matCb[MaterialCnt + matAddInd].materialNo & EMISSIVE) == EMISSIVE) {
 					for (UINT v = 0; v < ud.numVertex; v++) {
 						MATRIX Transpose;
 						memcpy(&Transpose, &ud.Transform[k], sizeof(MATRIX));
