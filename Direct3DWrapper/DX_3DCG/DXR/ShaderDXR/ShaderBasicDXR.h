@@ -151,7 +151,7 @@ char* ShaderBasicDXR =
 "    if( \n"
 "       !materialIdent(mNo, EMISSIVE) && \n" 
 "       materialIdent(payload.mNo, EMISSIVE) || \n" 
-"       (materialIdent(mNo, METALLIC) || materialIdent(mNo, NONREFLECTION)) && \n"
+"       (mNo == METALLIC || mNo == NONREFLECTION) && \n"
 "       materialIdent(payload.mNo, DIRECTIONLIGHT | METALLIC) \n"
 "       ) {\n"
 "       if(difTex.w >= 1.0f) {\n"

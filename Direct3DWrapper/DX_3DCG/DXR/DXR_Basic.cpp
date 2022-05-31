@@ -980,7 +980,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	memcpy(&cb.GlobalAmbientColor, &dx->GlobalAmbientLight, sizeof(VECTOR4));
 	memcpy(&cb.dDirection, &upd.dlight.Direction, sizeof(VECTOR4));
 	memcpy(&cb.dLightColor, &upd.dlight.LightColor, sizeof(VECTOR4));
-	memcpy(&cb.dLightst, &upd.dlight.onoff, sizeof(VECTOR4));
+	cb.dLightst.as(upd.dlight.onoff, 0.0f, 0.0f, 0.0f);
 
 	UINT InstancingCnt = 0;
 	for (UINT i = 0; i < numParameter; i++) {
