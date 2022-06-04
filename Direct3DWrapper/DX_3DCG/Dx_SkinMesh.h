@@ -17,7 +17,7 @@ protected:
 	class SkinMesh_sub {
 	public:
 		FbxLoader* fbxL = nullptr;
-		float end_frame = 0.0f;
+		std::unique_ptr<float[]> end_frame = nullptr;
 		float current_frame = 0.0f;
 		bool centering = false;
 		bool offset = false;
@@ -26,6 +26,7 @@ protected:
 		float cz = 0.0f;
 		float connect_step;
 		CoordTf::MATRIX rotZYX = {};
+		int InternalLastAnimationIndex = 0;
 
 		SkinMesh_sub();
 		~SkinMesh_sub();
@@ -56,7 +57,6 @@ protected:
 	int maxNumBoneMeshIndex = 0;
 	BONE* m_BoneArray = nullptr;
 	char* boneName = nullptr;
-	int InternalAnimationIndex = 0;
 
 	struct meshCenterPos {
 		CoordTf::VECTOR3 pos = {};
@@ -83,7 +83,7 @@ protected:
 	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB, meshCenterPos* centerPos);
 	CoordTf::MATRIX GetCurrentPoseMatrix(int index);
 	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
-	bool SetNewPoseMatrices(float time, int ind);
+	bool SetNewPoseMatrices(float time, int ind, int InternalAnimationIndex);
 	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
 	void GetShaderByteCode(bool disp, bool smooth);
 	void GetMeshCenterPos();
@@ -105,6 +105,7 @@ public:
 	void SetConnectStep(int ind, float step);
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
+	void GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame, bool singleMesh = false, bool deformer = true);
 	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
 	void noUseMeshIndex(int meshIndex);
 	void SetVertex(bool lclOn = false, bool axisOn = false, bool VerCentering = false);
@@ -121,18 +122,22 @@ public:
 	bool CreateFromFBX(bool disp, bool smooth = false, float divideBufferMagnification = 1.0f);
 	bool CreateFromFBX();
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
+	HRESULT GetBuffer_Sub(int ind, int num_end_frame, float* end_frame);
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
 	void CreateFromFBX_SubAnimation(int ind);
-	void setInternalAnimationIndex(int index) { InternalAnimationIndex = index; }
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
 
-	bool InstancingUpdate(int ind, float time, float disp = 1.0f,
+	bool InstancingUpdate(int ind, float time, int InternalAnimationIndex = 0,
+		float disp = 1.0f,
 		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
-	bool Update(int ind, float time, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, float disp = 1.0f,
+	bool Update(int ind, float time,
+		CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+		int InternalAnimationIndex = 0,
+		float disp = 1.0f,
 		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	void DrawOff();

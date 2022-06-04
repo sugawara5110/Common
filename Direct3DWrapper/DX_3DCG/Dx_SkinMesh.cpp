@@ -5,7 +5,7 @@
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
-#define FBX_PCS 5
+#define FBX_PCS 32
 #include "Dx_SkinMesh.h"
 #include <string.h>
 
@@ -15,6 +15,7 @@ SkinMesh::SkinMesh_sub::SkinMesh_sub() {
 	fbxL = new FbxLoader();
 	MatrixIdentity(&rotZYX);
 	connect_step = 3000.0f;
+	InternalLastAnimationIndex = -1;
 }
 
 SkinMesh::SkinMesh_sub::~SkinMesh_sub() {
@@ -180,9 +181,15 @@ HRESULT SkinMesh::GetFbx(CHAR* szFileName) {
 }
 
 void SkinMesh::GetBuffer(int numMaxInstance, float end_frame, bool singleMesh, bool deformer) {
+	float ef[1] = { end_frame };
+	GetBuffer(numMaxInstance, 1, ef, singleMesh, deformer);
+}
+
+void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame, bool singleMesh, bool deformer) {
 
 	using namespace CoordTf;
-	fbx[0].end_frame = end_frame;
+	fbx[0].end_frame = std::make_unique<float[]>(num_end_frame);
+	memcpy(fbx[0].end_frame.get(), end_frame, num_end_frame * sizeof(float));
 	FbxLoader* fbL = fbx[0].fbxL;
 	if (singleMesh)fbL->createFbxSingleMeshNode();
 	numMesh = fbL->getNumFbxMeshNode();
@@ -792,7 +799,14 @@ HRESULT SkinMesh::GetFbxSub(CHAR* szFileName, int ind) {
 }
 
 HRESULT SkinMesh::GetBuffer_Sub(int ind, float end_frame) {
-	fbx[ind].end_frame = end_frame;
+	float ef[1] = { end_frame };
+	return GetBuffer_Sub(ind, 1, ef);
+}
+
+HRESULT SkinMesh::GetBuffer_Sub(int ind, int num_end_frame, float* end_frame) {
+
+	fbx[ind].end_frame = std::make_unique<float[]>(num_end_frame);
+	memcpy(fbx[ind].end_frame.get(), end_frame, num_end_frame * sizeof(float));
 
 	int BoneNum = fbx[ind].fbxL->getNumNoneMeshDeformer();
 	if (BoneNum == 0) {
@@ -831,17 +845,21 @@ void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
 }
 
 //ボーンを次のポーズ位置にセットする
-bool SkinMesh::SetNewPoseMatrices(float ti, int ind) {
+bool SkinMesh::SetNewPoseMatrices(float ti, int ind, int InternalAnimationIndex) {
 	if (maxNumBone <= 0)return true;
 	if (AnimLastInd == -1)AnimLastInd = ind;//最初に描画するアニメーション番号で初期化
+	if (fbx[ind].InternalLastAnimationIndex == -1)fbx[ind].InternalLastAnimationIndex = InternalAnimationIndex;
+
 	bool ind_change = false;
-	if (AnimLastInd != ind) {//アニメーションが切り替わった
-		ind_change = true; AnimLastInd = ind;
+	if (AnimLastInd != ind || fbx[ind].InternalLastAnimationIndex != InternalAnimationIndex) {//アニメーションが切り替わった
+		ind_change = true;
+		AnimLastInd = ind;
+		fbx[ind].InternalLastAnimationIndex = InternalAnimationIndex;
 		fbx[ind].current_frame = 0.0f;//アニメーションが切り替わってるのでMatrix更新前にフレームを0に初期化
 	}
 	bool frame_end = false;
 	fbx[ind].current_frame += ti;
-	if (fbx[ind].end_frame <= fbx[ind].current_frame) frame_end = true;
+	if (fbx[ind].end_frame[InternalAnimationIndex] <= fbx[ind].current_frame) frame_end = true;
 
 	if (frame_end || ind_change) {
 		for (int i = 0; i < maxNumBone; i++) {
@@ -1016,10 +1034,13 @@ void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	}
 }
 
-bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float SmoothRange, float SmoothRatio, float shininess) {
+bool SkinMesh::InstancingUpdate(int ind, float ti, int InternalAnimationIndex,
+	float disp,
+	float SmoothRange, float SmoothRatio, float shininess) {
+
 	bool frame_end = false;
 	int insnum = 0;
-	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind);
+	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind, InternalAnimationIndex);
 	MatrixMap_Bone(&sgb[mObj[0].dx->cBuffSwap[0]]);
 
 	for (int i = 0; i < numMesh; i++) {
@@ -1030,12 +1051,15 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, float disp, float SmoothRange
 	return frame_end;
 }
 
-bool SkinMesh::Update(int ind, float ti, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
+bool SkinMesh::Update(int ind, float ti,
+	CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float SmoothRange, float SmoothRatio, float shininess) {
+	int InternalAnimationIndex,
+	float disp,
+	float SmoothRange, float SmoothRatio, float shininess) {
 
 	Instancing(pos, Color, angle, size);
-	return InstancingUpdate(ind, ti, disp, SmoothRange, SmoothRatio, shininess);
+	return InstancingUpdate(ind, ti, InternalAnimationIndex, disp, SmoothRange, SmoothRatio, shininess);
 }
 
 void SkinMesh::DrawOff() {
