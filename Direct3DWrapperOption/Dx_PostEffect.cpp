@@ -1098,8 +1098,10 @@ void SkinMeshBloom::prevDraw(int com_no, int index) {
 	d.RunDelayResourceBarrierAfter();
 }
 
-void SkinMeshBloom::GetBuffer(int numMaxInstance, float end_frame, bool singleMesh, bool deformer) {
-	SkinMesh::GetBuffer(numMaxInstance, end_frame, singleMesh, deformer);
+void SkinMeshBloom::createBloomParameter() {
+	if (numMesh <= 0) {
+		Dx_Util::ErrorMessage("SkinMeshBloom::createBloomParameter() Error!! numMesh is zero"); return;
+	}
 	bpara = std::make_unique<BloomParameter[]>(numMesh);
 	for (int i = 0; i < numMesh; i++) {
 		bpara[i].createBuffer();
@@ -1108,6 +1110,9 @@ void SkinMeshBloom::GetBuffer(int numMaxInstance, float end_frame, bool singleMe
 }
 
 void SkinMeshBloom::setBloomParameter(int index, float bloomStrength, float thresholdLuminance) {
+	if (numMesh <= 0) {
+		Dx_Util::ErrorMessage("SkinMeshBloom::setBloomParameter() Error!! numMesh is zero"); return;
+	}
 	BloomParameter& bp = bpara[index];
 	bp.bloomStrength = bloomStrength;
 	bp.thresholdLuminance = thresholdLuminance;

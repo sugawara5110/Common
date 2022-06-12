@@ -124,7 +124,7 @@ private:
 	void Draw(int com_no, int index);
 
 public:
-	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
+	void createBloomParameter();
 	void setBloomParameter(int index, float bloomStrength, float thresholdLuminance);
 	void DrawPreparation();
 	int getNumBloomParameter();
