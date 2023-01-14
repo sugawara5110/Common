@@ -161,8 +161,8 @@ private:
 	int sync = 0;
 
 	Dx12Process() {}//外部からのオブジェクト生成禁止
-	Dx12Process(const Dx12Process& obj) {}   // コピーコンストラクタ禁止
-	void operator=(const Dx12Process& obj) {}// 代入演算子禁止
+	Dx12Process(const Dx12Process& obj) = delete;   // コピーコンストラクタ禁止
+	void operator=(const Dx12Process& obj) = delete;// 代入演算子禁止
 	~Dx12Process();
 
 	void Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
@@ -340,7 +340,8 @@ struct StreamView {
 
 	StreamView() {
 		Dx_Device* device = Dx_Device::GetInstance();
-		BufferFilledSizeBufferGPU = device->CreateStreamBuffer(sizeof(UINT64));
+		device->createDefaultResourceBuffer(BufferFilledSizeBufferGPU.GetAddressOf(),
+			sizeof(UINT64));
 		device->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
 	}
 

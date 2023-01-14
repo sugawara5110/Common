@@ -361,6 +361,7 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 	TMax = 10000.0f;
 
 	if (dx->DXR_CreateResource) {
+		dx->Bigin(0);
 		maxRecursion = MaxRecursion;
 		numParameter = numparameter;
 		numMaterial = 0;
@@ -394,6 +395,9 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 		createRtPipelineState();
 		createShaderResources();
 		createShaderTable();
+		dx->End(0);
+		dx->RunGpu();
+		dx->WaitFence();
 	}
 }
 
@@ -446,10 +450,12 @@ void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 
 	if (!bLB.firstSet) {
 		//リソース要件を元にUAV作成
-		device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pScratch.GetAddressOf(), info.ScratchDataSizeInBytes);
 		device->createDefaultResourceBuffer_UNORDERED_ACCESS(bLB.pResult.GetAddressOf(), info.ResultDataMaxSizeInBytes,
 			D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
+
+		com->ResourceBarrier(bLB.pScratch.Get(), D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	}
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
@@ -540,11 +546,14 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 	if (!tLB.firstSet) {
 		//リソース要件を元にUAV作成
 		device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pScratch.GetAddressOf(),
-			info.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			info.ScratchDataSizeInBytes);
 		device->createDefaultResourceBuffer_UNORDERED_ACCESS(tLB.pResult.GetAddressOf(),
 			info.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE);
 		device->createUploadResource(tLB.pInstanceDesc.GetAddressOf(),
 			sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numRayInstance);
+
+		com->ResourceBarrier(tLB.pScratch.Get(), D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	}
 
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDesc = {};
@@ -710,14 +719,20 @@ void DXR_Basic::createShaderResources() {
 	Dx_Device* device = Dx_Device::GetInstance();
 	device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpOutputResource.GetAddressOf(),
 		dx->mClientWidth,
-		dx->mClientHeight,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		dx->mClientHeight);
 
 	device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpDepthResource.GetAddressOf(),
 		dx->mClientWidth,
 		dx->mClientHeight,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
+
+	Dx_CommandListObj& d = dx->dx_sub[0];
+
+	d.ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	d.ResourceBarrier(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//Local
 	int num_u0 = 1;

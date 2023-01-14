@@ -408,7 +408,7 @@ bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
 		indexCntArr[m] = mObj.dpara.Iview[m].IndexCount;
 	}
 	Dx_Util::createTangent(mObj.dpara.NumMaterial, indexCntArr,
-		pvVertexBuffer, piFaceBuffer, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+		pvVertexBuffer, piFaceBuffer, sizeof(VertexM), 0, 3 * 4, 12 * 4, 6 * 4);
 	ARR_DELETE(indexCntArr);
 
 	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer);

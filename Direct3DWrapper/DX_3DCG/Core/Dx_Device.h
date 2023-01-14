@@ -21,19 +21,21 @@ class Dx_Device {
 private:
 	static Dx_Device* dev;
 
+	Dx_Device() {}//外部からのオブジェクト生成禁止
+	Dx_Device(const Dx_Device& obj) = delete;   // コピーコンストラクタ禁止
+	void operator=(const Dx_Device& obj) = delete;// 代入演算子禁止
+	~Dx_Device();
+
 public:
 	static void InstanceCreate();
 	static Dx_Device* GetInstance();
 	static void DeleteInstance();
 
 	HRESULT createDevice();
-	~Dx_Device();
 
 	ID3D12Device5* getDevice();
 
 	UINT64 getRequiredIntermediateSize(ID3D12Resource* res);
-
-	ComPtr<ID3D12Resource> CreateStreamBuffer(UINT64 byteSize);
 
 	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
 		DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState = D3D12_RESOURCE_STATE_COMMON);

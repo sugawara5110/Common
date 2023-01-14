@@ -47,85 +47,42 @@ char* Dx_Util::GetNameFromPass(char* pass) {
 	return pass;//ポインタ操作してるので返り値を使用させる
 }
 
-CoordTf::VECTOR3 Dx_Util::CalcTangent(CoordTf::VECTOR3 v0, CoordTf::VECTOR3 v1, CoordTf::VECTOR3 v2,
-	CoordTf::VECTOR2 uv0, CoordTf::VECTOR2 uv1, CoordTf::VECTOR2 uv2) {
+void Dx_Util::createTangent(int numMaterial, unsigned int* indexCntArr,
+	void* vertexArr, unsigned int** indexArr, int structByteStride,
+	int posBytePos, int norBytePos, int texBytePos, int tangentBytePos) {
 
-	CoordTf::VECTOR3 cp0[3] = {
-		{v0.x, uv0.x, uv0.y},
-		{v0.y, uv0.x, uv0.y},
-		{v0.z, uv0.x, uv0.y}
-	};
-	CoordTf::VECTOR3 cp1[3] = {
-		{v1.x, uv1.x, uv1.y},
-		{v1.y, uv1.x, uv1.y},
-		{v1.z, uv1.x, uv1.y}
-	};
-	CoordTf::VECTOR3 cp2[3] = {
-		{v2.x, uv2.x, uv2.y},
-		{v2.y, uv2.x, uv2.y},
-		{v2.z, uv2.x, uv2.y}
-	};
+	using namespace CoordTf;
 
-	CoordTf::VECTOR3 tangent = {};
-	float tan[3] = {};
-
-	for (int i = 0; i < 3; i++) {
-		CoordTf::VECTOR3 v1 = {};
-		v1.as(cp1[i].x - cp0[i].x,
-			cp1[i].y - cp0[i].y,
-			cp1[i].z - cp0[i].z);
-		CoordTf::VECTOR3 v2 = {};
-		v2.as(cp2[i].x - cp1[i].x,
-			cp2[i].y - cp1[i].y,
-			cp2[i].z - cp1[i].z);
-		CoordTf::VECTOR3 t = {};
-		CoordTf::VectorCross(&t, &v1, &v2);
-
-		if (t.x == 0.0f) {
-			tan[0] = 0.0f;
-			tan[1] = 0.0f;
-			tan[2] = 0.0f;
-			break;
-		}
-		else {
-			tan[i] = -t.y / t.x;
-		}
-	}
-
-	tangent.x = tan[0];
-	tangent.y = tan[1];
-	tangent.z = tan[2];
-	CoordTf::VECTOR3 ret = {};
-	CoordTf::VectorNormalize(&ret, &tangent);
-	return ret;
-}
-
-void Dx_Util::createTangent(int numMaterial, UINT* indexCntArr,
-	void* vertexArr, UINT** indexArr, int structByteStride,
-	int posBytePos, int texBytePos, int tangentBytePos) {
-
-	BYTE* b_posSt = (BYTE*)vertexArr + posBytePos;
-	BYTE* b_texSt = (BYTE*)vertexArr + texBytePos;
-	BYTE* b_tanSt = (BYTE*)vertexArr + tangentBytePos;
+	unsigned char* b_posSt = (unsigned char*)vertexArr + posBytePos;
+	unsigned char* b_norSt = (unsigned char*)vertexArr + norBytePos;
+	unsigned char* b_texSt = (unsigned char*)vertexArr + texBytePos;
+	unsigned char* b_tanSt = (unsigned char*)vertexArr + tangentBytePos;
 	for (int i = 0; i < numMaterial; i++) {
-		UINT cnt = 0;
+		unsigned int cnt = 0;
 		while (indexCntArr[i] > cnt) {
-			CoordTf::VECTOR3* posVec[3] = {};
-			CoordTf::VECTOR2* texVec[3] = {};
-			CoordTf::VECTOR3* tanVec[3] = {};
+			VECTOR3* posVec[3] = {};
+			VECTOR3* norVec[3] = {};
+			VECTOR2* texVec[3] = {};
+			VECTOR3* tanVec[3] = {};
 
 			for (int ind = 0; ind < 3; ind++) {
-				UINT index = indexArr[i][cnt++] * structByteStride;
-				BYTE* b_pos = b_posSt + index;
-				BYTE* b_tex = b_texSt + index;
-				BYTE* b_tan = b_tanSt + index;
-				posVec[ind] = (CoordTf::VECTOR3*)b_pos;
-				texVec[ind] = (CoordTf::VECTOR2*)b_tex;
-				tanVec[ind] = (CoordTf::VECTOR3*)b_tan;
+				unsigned int index = indexArr[i][cnt++] * structByteStride;
+				unsigned char* b_pos = b_posSt + index;
+				unsigned char* b_nor = b_norSt + index;
+				unsigned char* b_tex = b_texSt + index;
+				unsigned char* b_tan = b_tanSt + index;
+				posVec[ind] = (VECTOR3*)b_pos;
+				norVec[ind] = (VECTOR3*)b_nor;
+				texVec[ind] = (VECTOR2*)b_tex;
+				tanVec[ind] = (VECTOR3*)b_tan;
 			}
-			CoordTf::VECTOR3 tangent = CalcTangent(*(posVec[0]), *(posVec[1]), *(posVec[2]),
-				*(texVec[0]), *(texVec[1]), *(texVec[2]));
-			*(tanVec[0]) = *(tanVec[1]) = *(tanVec[2]) = tangent;
+			VECTOR3 tangent = CalcTangent(*(posVec[0]), *(posVec[1]), *(posVec[2]),
+				*(texVec[0]), *(texVec[1]), *(texVec[2]), *(norVec[0]));
+
+			VECTOR3 outN = {};
+			VectorNormalize(&outN, &tangent);
+
+			*(tanVec[0]) = *(tanVec[1]) = *(tanVec[2]) = outN;
 		}
 	}
 }

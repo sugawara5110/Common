@@ -742,7 +742,7 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 			vertex = pvVB[i];
 		}
 		Dx_Util::createTangent(mObj[i].dpara.NumMaterial, indexCntArr,
-			vertex, newIndex[i], vSize, 0, 12 * 4, 6 * 4);
+			vertex, newIndex[i], vSize, 0, 3 * 4, 12 * 4, 6 * 4);
 		ARR_DELETE(indexCntArr);
 
 		o.createDefaultBuffer(vertex, newIndex[i]);
@@ -758,7 +758,7 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 		Dx12Process* dx = o.dx;
 		o.createParameterDXR(alpha, blend, divideBufferMagnification);
 		if (numBone[i] > 0) {
-			if (!sk[i].createParameterDXR())return false;
+			if (!sk[i].createParameterDXR(com_no))return false;
 			if (!o.createPSO(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
 			if (!sk[i].createPSO())return false;

@@ -114,7 +114,9 @@ bool Wave::ComCreateSin() {
 	UINT64 byteSize = tdata.size() * sizeof(float);
 
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mInputBufferSin.GetAddressOf(), (UINT64)width, (UINT)width,
-		D3D12_RESOURCE_STATE_COMMON, DXGI_FORMAT_R32_FLOAT))) {
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R32_FLOAT))) {
+
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 	UINT64 uploadBufferSize = device->getRequiredIntermediateSize(mInputBufferSin.Get());
@@ -157,14 +159,19 @@ bool Wave::ComCreateRipples() {
 	}
 
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mInputBuffer.GetAddressOf(), (UINT64)width, (UINT)width,
-		D3D12_RESOURCE_STATE_COMMON, DXGI_FORMAT_R32_FLOAT))) {
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R32_FLOAT))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mPrevInputBuffer.GetAddressOf(), (UINT64)width, (UINT)width,
-		D3D12_RESOURCE_STATE_COMMON, DXGI_FORMAT_R32_FLOAT))) {
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R32_FLOAT))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
+
+	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", BasicPolygon::objName));
+	mPrevInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mPrevInputBuffer", BasicPolygon::objName));
 
 	UINT64 uploadBufferSize = device->getRequiredIntermediateSize(mInputBuffer.Get());
 	if (FAILED(device->createUploadResource(mInputBufferUp.GetAddressOf(), uploadBufferSize))) {
@@ -189,14 +196,11 @@ bool Wave::ComCreateRipples() {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 	comObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
+	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mOutputBufferUp.Get(), mOutputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", BasicPolygon::objName));
-	mPrevInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mPrevInputBuffer", BasicPolygon::objName));
 
 	mPSOCom[1] = BasicPolygon::CreatePsoCompute(cs[1], mRootSignatureCom.Get());
 	if (mPSOCom[1] == nullptr)return false;
@@ -228,7 +232,8 @@ bool Wave::ComCreate() {
 	Dx_Device* device = Dx_Device::GetInstance();
 
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(&mOutputBuffer, (UINT64)width, (UINT)width,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32_FLOAT))) {
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R32_FLOAT))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", BasicPolygon::objName));
@@ -351,7 +356,7 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth
 		indexCntArr[m] = BasicPolygon::dpara.Iview[m].IndexCount;
 	}
 	Dx_Util::createTangent(BasicPolygon::dpara.NumMaterial, indexCntArr,
-		ver, &index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+		ver, &index, sizeof(VertexM), 0, 3 * 4, 12 * 4, 6 * 4);
 	ARR_DELETE(indexCntArr);
 
 	BasicPolygon::createDefaultBuffer(ver, &index);

@@ -225,8 +225,11 @@ void ParticleData::CreateVbObj(bool alpha, bool blend) {
 	Vview->VertexByteStride = sizeof(PartPos);
 	Vview->VertexBufferByteSize = vbByteSize;
 
+	Dx_Device* device = Dx_Device::GetInstance();
+
 	for (int i = 0; i < 2; i++) {
-		Sview[i].StreamBufferGPU = Dx_Device::GetInstance()->CreateStreamBuffer(vbByteSize);
+		device->createDefaultResourceBuffer(Sview[i].StreamBufferGPU.GetAddressOf(),
+			vbByteSize);
 
 		Sview[i].StreamByteStride = sizeof(PartPos);
 		Sview[i].StreamBufferByteSize = vbByteSize;
@@ -317,7 +320,8 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		StreamView& dxS = dxrPara.SviewDXR[0][0];
 		dxS.StreamByteStride = sizeof(VERTEX_DXR);
 		dxS.StreamBufferByteSize = bytesize;
-		dxS.StreamBufferGPU = device->CreateStreamBuffer(dxS.StreamBufferByteSize);
+		device->createDefaultResourceBuffer(dxS.StreamBufferGPU.GetAddressOf(),
+			dxS.StreamBufferByteSize);
 
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0, 0, nullptr);
 		if (rootSignatureDXR == nullptr)return false;

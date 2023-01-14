@@ -1,6 +1,6 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　      PolygonDataクラス                                     **//
+//**                               PolygonData                                           **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
@@ -74,7 +74,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 	}
 	if (tNo >= 0 || (movOn && movOn[0].m_on)) {
 		Dx_Util::createTangent(dpara.NumMaterial, indexCntArr,
-			ver, index, sizeof(VertexM), 0, 12 * 4, 6 * 4);
+			ver, index, sizeof(VertexM), 0, 3 * 4, 12 * 4, 6 * 4);
 	}
 	ARR_DELETE(indexCntArr);
 	createDefaultBuffer(ver, index);

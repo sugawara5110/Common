@@ -63,13 +63,15 @@ bool SkinnedCom::createPSO() {
 	return true;
 }
 
-bool SkinnedCom::createParameterDXR() {
+bool SkinnedCom::createParameterDXR(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
 
 		int NumMaterial = pd->dxrPara.NumMaterial;
 		Dx_Device* device = Dx_Device::GetInstance();
+
+		Dx_CommandListObj& d = dx->dx_sub[comNo];
 
 		for (int i = 0; i < NumMaterial; i++) {
 			if (pd->dpara.Iview[i].IndexCount <= 0)continue;
@@ -81,10 +83,13 @@ bool SkinnedCom::createParameterDXR() {
 			dxI.IndexBufferByteSize = bytesize;
 			dxI.IndexCount = indCnt;
 			if (FAILED(device->createDefaultResourceBuffer(dxI.IndexBufferGPU.GetAddressOf(),
-				dxI.IndexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ))) {
+				dxI.IndexBufferByteSize))) {
 				Dx_Util::ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 				return false;
 			}
+
+			d.ResourceBarrier(dxI.IndexBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 			dx->dx_sub[pd->com_no].CopyResourceGENERIC_READ(dxI.IndexBufferGPU.Get(),
 				pd->dpara.Iview[i].IndexBufferGPU.Get());
@@ -97,17 +102,23 @@ bool SkinnedCom::createParameterDXR() {
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
 				if (FAILED(device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-					dxV.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ))) {
+					dxV.VertexBufferByteSize))) {
 					Dx_Util::ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 					return false;
 				}
+
+				d.ResourceBarrier(dxV.VertexBufferGPU.Get(),
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 			}
 			if (!SkinnedVer) {
 				if (FAILED(device->createDefaultResourceBuffer_UNORDERED_ACCESS(SkinnedVer.GetAddressOf(),
-					bytesize, D3D12_RESOURCE_STATE_UNORDERED_ACCESS))) {
+					bytesize))) {
 					Dx_Util::ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 					return false;
 				}
+
+				d.ResourceBarrier(SkinnedVer.Get(),
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			}
 		}
 	}

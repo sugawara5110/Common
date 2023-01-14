@@ -1,6 +1,6 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          BasicPolygonクラス                                 **//
+//**                   　　　          BasicPolygonクラス                                **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
@@ -392,6 +392,8 @@ void BasicPolygon::createParameterDXR(bool alpha, bool blend, float divideBuffer
 
 	Dx_Device* device = Dx_Device::GetInstance();
 
+	Dx_CommandListObj& d = dx->dx_sub[com_no];
+
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		UINT bytesize = 0;
@@ -414,12 +416,20 @@ void BasicPolygon::createParameterDXR(bool alpha, bool blend, float divideBuffer
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
 				device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-					dxV.VertexBufferByteSize, D3D12_RESOURCE_STATE_GENERIC_READ);
+					dxV.VertexBufferByteSize);
+
+				d.ResourceBarrier(dxV.VertexBufferGPU.Get(),
+					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 			}
 			StreamView& dxS = dxrPara.SviewDXR[i][t];
 			dxS.StreamByteStride = sizeof(VERTEX_DXR);
 			dxS.StreamBufferByteSize = bytesize;
-			dxS.StreamBufferGPU = device->CreateStreamBuffer(dxS.StreamBufferByteSize);
+			device->createDefaultResourceBuffer(dxS.StreamBufferGPU.GetAddressOf(),
+				dxS.StreamBufferByteSize);
+
+			d.ResourceBarrier(dxS.StreamBufferGPU.Get(),
+				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_STREAM_OUT);
 		}
 	}
 }

@@ -25,7 +25,7 @@ private:
 	void getBuffer(BasicPolygon* pd);
 	bool createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 	bool createPSO();
-	bool createParameterDXR();
+	bool createParameterDXR(int comNo);
 	void skinning(int comNo);
 	void Skinning(int comNo);
 };

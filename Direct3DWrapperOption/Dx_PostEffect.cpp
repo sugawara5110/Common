@@ -249,7 +249,7 @@ namespace {
 
 				Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 			}
-			mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
+			mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer1", objName));
 			mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
 
 			if (!GaussianCreate(num_gauss, GaussSizeArr))return false;
@@ -533,7 +533,7 @@ bool PostEffect::ComCreate(int no) {
 
 		Dx_Util::ErrorMessage("PostEffect::ComCreate Error!!"); return false;
 	}
-	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
+	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer0", objName));
 	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
 
 	mDepthHandleGPU = mDescHeap->GetGPUDescriptorHandleForHeapStart();
@@ -726,7 +726,7 @@ void BloomParameter::createBuffer() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOneMeshDrawBuffer.GetAddressOf(),
-		dx->getClientWidth(), dx->getClientHeight(), D3D12_RESOURCE_STATE_GENERIC_READ))) {
+		dx->getClientWidth(), dx->getClientHeight()))) {
 
 		Dx_Util::ErrorMessage("PolygonDataBloom::PolygonDataBloom Error!!"); return;
 	}
@@ -797,6 +797,8 @@ void VariableBloom::createTempDepthBuffer() {
 void VariableBloom::init(BloomParameter** arr, int numpara,
 	bool gaussianType, UINT num_gauss, UINT* GaussSizeArr) {
 
+	Dx_CommandListObj& d = *comObj;
+
 	numPara = numpara;
 	bloomArr = std::make_unique<Bloom[]>(numPara);
 	prevDrawIndex = std::make_unique<int[]>(numPara);
@@ -814,10 +816,13 @@ void VariableBloom::init(BloomParameter** arr, int numpara,
 
 	Dx_Device* device = Dx_Device::GetInstance();
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mMainBuffer.GetAddressOf(),
-		dx->getClientWidth(), dx->getClientHeight(), D3D12_RESOURCE_STATE_GENERIC_READ))) {
+		dx->getClientWidth(), dx->getClientHeight()))) {
 
 		Dx_Util::ErrorMessage("VariableBloom::init Error!!"); return;
 	}
+
+	d.ResourceBarrier(mMainBuffer.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	mDescHeap = device->CreateDescHeap(numPara + 1);
 	UINT64 ptr = mDescHeap->GetGPUDescriptorHandleForHeapStart().ptr;

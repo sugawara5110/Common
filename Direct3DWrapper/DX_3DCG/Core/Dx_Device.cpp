@@ -88,18 +88,6 @@ UINT64 Dx_Device::getRequiredIntermediateSize(ID3D12Resource* res) {
 	return total_bytes;
 }
 
-ComPtr<ID3D12Resource> Dx_Device::CreateStreamBuffer(UINT64 byteSize)
-{
-	ComPtr<ID3D12Resource> defaultBuffer;
-
-	createDefaultResourceCommon(defaultBuffer.GetAddressOf(),
-		D3D12_RESOURCE_DIMENSION_BUFFER, byteSize, 1,
-		DXGI_FORMAT_UNKNOWN, D3D12_RESOURCE_FLAG_NONE,
-		D3D12_RESOURCE_STATE_STREAM_OUT);
-
-	return defaultBuffer;
-}
-
 HRESULT Dx_Device::createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,
 	DXGI_FORMAT format, D3D12_RESOURCE_STATES firstState) {
 
