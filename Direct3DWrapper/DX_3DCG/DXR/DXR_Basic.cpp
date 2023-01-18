@@ -4,6 +4,7 @@
 //**                                                                                     **//
 //*****************************************************************************************//
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "DXR_Basic.h"
 #include <fstream>
 #include <sstream>
@@ -14,11 +15,24 @@
 namespace {
 	dxc::DxcDllSupport gDxcDllHelper;
 
-	const WCHAR* kRayGenShader = L"rayGen";
+	const WCHAR* kRayGenShaderArr[] = {
+		L"rayGen",
+		L"rayGen_InstanceIdMapTest",
+		L"rayGen"
+	};
+	WCHAR kRayGenShader[255] = {};
+
+	const WCHAR* kBasicClosestHitShaderArr[] = {
+		L"basicHit",
+		L"basicHit",
+		L"basicHit_normalMapTest"
+	};
+	WCHAR kBasicClosestHitShader[255] = {};
+
 	const WCHAR* kBasicAnyHitShader = L"anyBasicHit";
 	const WCHAR* kBasicMissShader = L"basicMiss";
-	const WCHAR* kBasicClosestHitShader = L"basicHit";
 	const WCHAR* kBasicHitGroup = L"basicHitGroup";
+
 	const WCHAR* kEmissiveMiss = L"emissiveMiss";
 	const WCHAR* kEmissiveHitShader = L"emissiveHit";
 	const WCHAR* kEmissiveHitGroup = L"emissiveHitGroup";
@@ -209,7 +223,7 @@ namespace {
 
 	RootSignatureDesc createLocalRootDesc(UINT numMaterial, UINT numInstancing) {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 6;
+		int numDescriptorRanges = 7;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
 		//gOutput(u0)
@@ -226,35 +240,42 @@ namespace {
 		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		desc.range[1].OffsetInDescriptorsFromTableStart = descCnt++;
 
+		//gInstanceIdMap(u2)
+		desc.range[2].BaseShaderRegister = 2;
+		desc.range[2].NumDescriptors = 1;
+		desc.range[2].RegisterSpace = 0;
+		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[2].OffsetInDescriptorsFromTableStart = descCnt++;
+
 		//Indices(t0)
-		desc.range[2].BaseShaderRegister = 0;
-		desc.range[2].NumDescriptors = numMaterial;
-		desc.range[2].RegisterSpace = 1;
-		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		desc.range[2].OffsetInDescriptorsFromTableStart = descCnt;
+		desc.range[3].BaseShaderRegister = 0;
+		desc.range[3].NumDescriptors = numMaterial;
+		desc.range[3].RegisterSpace = 1;
+		desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[3].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numMaterial;
 
 		//cbuffer global(b0)
-		desc.range[3].BaseShaderRegister = 0;
-		desc.range[3].NumDescriptors = 1;
-		desc.range[3].RegisterSpace = 0;
-		desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		desc.range[3].OffsetInDescriptorsFromTableStart = descCnt++;
+		desc.range[4].BaseShaderRegister = 0;
+		desc.range[4].NumDescriptors = 1;
+		desc.range[4].RegisterSpace = 0;
+		desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		desc.range[4].OffsetInDescriptorsFromTableStart = descCnt++;
 
 		//material(b1)
-		desc.range[4].BaseShaderRegister = 1;
-		desc.range[4].NumDescriptors = numMaterial;
-		desc.range[4].RegisterSpace = 3;
-		desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		desc.range[4].OffsetInDescriptorsFromTableStart = descCnt;
+		desc.range[5].BaseShaderRegister = 1;
+		desc.range[5].NumDescriptors = numMaterial;
+		desc.range[5].RegisterSpace = 3;
+		desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numMaterial;
 
 		//wvp(b2)
-		desc.range[5].BaseShaderRegister = 2;
-		desc.range[5].NumDescriptors = numInstancing;
-		desc.range[5].RegisterSpace = 4;
-		desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
+		desc.range[6].BaseShaderRegister = 2;
+		desc.range[6].NumDescriptors = numInstancing;
+		desc.range[6].RegisterSpace = 4;
+		desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numInstancing;
 
 		desc.rootParams.resize(1);
@@ -353,7 +374,7 @@ namespace {
 	}
 }
 
-void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion) {
+void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion, ShaderTestMode Mode) {
 
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();
@@ -391,8 +412,10 @@ void DXR_Basic::initDXR(UINT numparameter, ParameterDXR** pd, UINT MaxRecursion)
 				}
 			}
 		}
+		cbObj[0].cb.numEmissive.y = (float)maxNumInstancing;
+		cbObj[1].cb.numEmissive.y = (float)maxNumInstancing;
 
-		createRtPipelineState();
+		createRtPipelineState(Mode);
 		createShaderResources();
 		createShaderTable();
 		dx->End(0);
@@ -625,85 +648,71 @@ ComPtr<ID3D12RootSignature> DXR_Basic::createRootSignature(D3D12_ROOT_SIGNATURE_
 	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
-void DXR_Basic::createRtPipelineState() {
+void DXR_Basic::createRtPipelineState(ShaderTestMode Mode) {
+
+	wcscpy(kRayGenShader, kRayGenShaderArr[Mode]);
+	wcscpy(kBasicClosestHitShader, kBasicClosestHitShaderArr[Mode]);
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
-	std::array<D3D12_STATE_SUBOBJECT, 13> subobjects;
-	uint32_t index = 0;
+	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
+	//↓配列内に同じ配列内のアドレスを保持してる要素有りの場合事前にreserveをしておく(arrayの方が良かったかも・・)
+	subobjects.reserve(15);//後々増やした場合の為に多めに
 
 	//DXIL library 初期化, SUBOBJECT作成
 	addChar str;
 	str.addStr(dx->shaderH->ShaderNormalTangentCopy.get(), dx->shaderH->ShaderCalculateLightingCopy.get());
 	DxilLibrary dxilLib = createDxilLibrary(str.str);//Dx12Processに保持してるshaderを入力
-	subobjects[index++] = dxilLib.stateSubobject;
+	subobjects.push_back(dxilLib.stateSubobject);
 
 	//BasicHitShader SUBOBJECT作成
 	HitProgram basicHitProgram(kBasicAnyHitShader, kBasicClosestHitShader, kBasicHitGroup);
-	subobjects[index++] = basicHitProgram.subObject;
+	subobjects.push_back(basicHitProgram.subObject);
 
 	//EmissiveHitShader SUBOBJECT作成
 	HitProgram emissiveHitProgram(nullptr, kEmissiveHitShader, kEmissiveHitGroup);
-	subobjects[index++] = emissiveHitProgram.subObject;
+	subobjects.push_back(emissiveHitProgram.subObject);
 
-	//raygenerationShaderルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature rgsRootSignature(createRootSignature(createLocalRootDesc(numMaterial, maxNumInstancing).desc));
-	subobjects[index] = rgsRootSignature.subobject;
+	//ローカルルートシグネチャ作成, SUBOBJECT作成
+	LocalRootSignature loRootSignature(createRootSignature(createLocalRootDesc(numMaterial, maxNumInstancing).desc));
+	subobjects.push_back(loRootSignature.subobject);
+	D3D12_STATE_SUBOBJECT* p_rsig = &subobjects[subobjects.size() - 1];
 
-	//raygenerationShaderと↑のルートシグネチャ関連付け, SUBOBJECT作成
-	uint32_t rgsRootIndex = index++;
-	ExportAssociation rgsRootAssociation(&kRayGenShader, 1, &(subobjects[rgsRootIndex]));
-	subobjects[index++] = rgsRootAssociation.subobject;
-
-	//basicHitShader, basicMissShader ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature basicHitMissRootSignature(createRootSignature(createLocalRootDesc(numMaterial, maxNumInstancing).desc));
-	subobjects[index] = basicHitMissRootSignature.subobject;
-
-	//↑のbasicHitShader, basicMissShader 共有ルートシグネチャとbasicHitShader, basicMissShader関連付け, SUBOBJECT作成
-	uint32_t basicHitMissRootIndex = index++;
-	const WCHAR* basicMissHitExportName[] = { kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader };
-	ExportAssociation basicMissHitRootAssociation(basicMissHitExportName, ARRAY_SIZE(basicMissHitExportName),
-		&(subobjects[basicHitMissRootIndex]));
-	subobjects[index++] = basicMissHitRootAssociation.subobject;
-
-	//kEmissiveHit, kEmissiveMiss ルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature emissiveRootSignature(createRootSignature(createLocalRootDesc(numMaterial, maxNumInstancing).desc));
-	subobjects[index] = emissiveRootSignature.subobject;
-
-	uint32_t emissiveRootIndex = index++;
-	const WCHAR* emissiveRootExport[] = { kEmissiveHitShader, kEmissiveMiss };
-	ExportAssociation emissiveRootAssociation(emissiveRootExport, ARRAY_SIZE(emissiveRootExport),
-		&(subobjects[emissiveRootIndex]));
-	subobjects[index++] = emissiveRootAssociation.subobject;
+	const WCHAR* loRootExport[] = {
+		kRayGenShader,
+		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
+		kEmissiveHitShader, kEmissiveMiss };
+	ExportAssociation loRootAssociation(loRootExport, ARRAY_SIZE(loRootExport), p_rsig);
+	subobjects.push_back(loRootAssociation.subobject);
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 13;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 14;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
-	subobjects[index] = shaderConfig.subobject;
+	subobjects.push_back(shaderConfig.subobject);
+	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];
 
 	//ShaderConfigと全てのシェーダー関連付け SUBOBJECT作成
-	uint32_t shaderConfigIndex = index++;
 	const WCHAR* shaderExports[] = {
 		kRayGenShader,
 		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
 		kEmissiveHitShader, kEmissiveMiss
 	};
-	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), &(subobjects[shaderConfigIndex]));
-	subobjects[index++] = configAssociation.subobject;
+	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), p_conf);
+	subobjects.push_back(configAssociation.subobject);
 
 	//パイプラインコンフィグ作成 SUBOBJECT作成
 	PipelineConfig config(maxRecursion);
-	subobjects[index++] = config.subobject;
+	subobjects.push_back(config.subobject);
 
 	//グローバルルートシグネチャ作成 SUBOBJECT作成
 	GlobalRootSignature root(createRootSignature(createGlobalRootDesc(numMaterial).desc));
 	mpGlobalRootSig = root.pRootSig;
-	subobjects[index++] = root.subobject;
+	subobjects.push_back(root.subobject);
 
 	D3D12_STATE_OBJECT_DESC desc;
-	desc.NumSubobjects = index;
+	desc.NumSubobjects = (UINT)subobjects.size();
 	desc.pSubobjects = subobjects.data();
 	desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
 
@@ -727,21 +736,30 @@ void DXR_Basic::createShaderResources() {
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
+	device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mpInstanceIdMapResource.GetAddressOf(),
+		dx->mClientWidth,
+		dx->mClientHeight,
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R32_FLOAT);
+
 	Dx_CommandListObj& d = dx->dx_sub[0];
 
 	d.ResourceBarrier(mpOutputResource.Get(), D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	d.ResourceBarrier(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COMMON,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	d.ResourceBarrier(mpInstanceIdMapResource.Get(), D3D12_RESOURCE_STATE_COMMON,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//Local
 	int num_u0 = 1;
 	int num_u1 = 1;
+	int num_u2 = 1;
 	int num_t0 = numMaterial;
 	int num_b0 = 1;
 	int num_b1 = numMaterial;
 	int num_b2 = maxNumInstancing;
-	numSkipLocalHeap = num_u0 + num_u1 + num_t0 + num_b0 + num_b1 + num_b2;
+	numSkipLocalHeap = num_u0 + num_u1 + num_u2 + num_t0 + num_b0 + num_b1 + num_b2;
 	//Global
 	int num_t00 = numMaterial;
 	int num_t01 = numMaterial;
@@ -763,6 +781,10 @@ void DXR_Basic::createShaderResources() {
 
 		//UAVを作成 gDepthOut(u1)
 		device->getDevice()->CreateUnorderedAccessView(mpDepthResource.Get(), nullptr, &uavDesc, srvHandle);
+		srvHandle.ptr += offsetSize;
+
+		//UAVを作成 gInstanceIdMap(u2)
+		device->getDevice()->CreateUnorderedAccessView(mpInstanceIdMapResource.Get(), nullptr, &uavDesc, srvHandle);
 		srvHandle.ptr += offsetSize;
 
 		//SRVを作成 Indices(t0)
@@ -871,6 +893,7 @@ void DXR_Basic::createShaderTable() {
 	//Entry 0 - ray-gen shader + DescriptorHeap
 	memcpy(pData, pRtsoProps.Get()->GetShaderIdentifier(kRayGenShader),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
 	uint64_t heapStart = mpSrvUavCbvHeap[0].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
 	*(uint64_t*)(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart;
 
@@ -1106,12 +1129,12 @@ void DXR_Basic::copyDepthBuffer(int comNo) {
 	d.delayResourceBarrierBefore(mpDepthResource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer[0].Get(),
+	d.delayResourceBarrierBefore(dx->mDepthStencilBuffer.Get(),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	d.delayCopyResource(dx->mDepthStencilBuffer[0].Get(), mpDepthResource.Get());
+	d.delayCopyResource(dx->mDepthStencilBuffer.Get(), mpDepthResource.Get());
 
-	d.delayResourceBarrierAfter(dx->mDepthStencilBuffer[0].Get(),
+	d.delayResourceBarrierAfter(dx->mDepthStencilBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	d.delayResourceBarrierAfter(mpDepthResource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE,
@@ -1142,4 +1165,8 @@ DXR_Basic::~DXR_Basic() {
 	S_DELETE(sCB);
 	S_DELETE(material);
 	S_DELETE(wvp);
+}
+
+ID3D12Resource* DXR_Basic::getInstanceIdMap() {
+	return mpInstanceIdMapResource.Get();
 }

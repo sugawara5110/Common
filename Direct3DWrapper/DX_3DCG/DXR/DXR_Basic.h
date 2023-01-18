@@ -23,7 +23,7 @@ struct DxrConstantBuffer
 	CoordTf::MATRIX projectionToWorld;
 	CoordTf::VECTOR4 cameraPosition;
 	CoordTf::VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
-	CoordTf::VECTOR4 numEmissive;//.xのみ
+	CoordTf::VECTOR4 numEmissive;//x:Em, y:numInstance
 	CoordTf::VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	CoordTf::VECTOR4 GlobalAmbientColor;
 	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//.xのみ
@@ -56,6 +56,12 @@ struct CBobj {
 	std::unique_ptr<WVP_CB[]> wvpCb = nullptr;
 };
 
+enum ShaderTestMode {
+	Standard = 0,
+	ID = 1,
+	Normal = 2
+};
+
 class DXR_Basic {
 
 private:
@@ -74,6 +80,7 @@ private:
 	uint32_t mShaderTableEntrySize = 0;
 	ComPtr<ID3D12Resource> mpOutputResource;
 	ComPtr<ID3D12Resource> mpDepthResource;
+	ComPtr<ID3D12Resource> mpInstanceIdMapResource;
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[2];
 	uint32_t numSkipLocalHeap = 0;
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
@@ -92,7 +99,7 @@ private:
 	void createTopLevelAS(Dx_CommandListObj* com);
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
 	void createAccelerationStructures();
-	void createRtPipelineState();
+	void createRtPipelineState(ShaderTestMode Mode);
 	void createShaderResources();
 	void createShaderTable();
 
@@ -105,7 +112,7 @@ private:
 
 public:
 	~DXR_Basic();
-	void initDXR(UINT numParameter, ParameterDXR** pd, UINT maxRecursion);
+	void initDXR(UINT numParameter, ParameterDXR** pd, UINT maxRecursion, ShaderTestMode Mode = Standard);
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
@@ -115,6 +122,8 @@ public:
 	void copyDepthBuffer(int comNo);
 	void setASswapIndex(int index) { buffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
+
+	ID3D12Resource* getInstanceIdMap();
 
 	void allSwapIndex() {
 		Dx12Process* dx = Dx12Process::GetInstance();

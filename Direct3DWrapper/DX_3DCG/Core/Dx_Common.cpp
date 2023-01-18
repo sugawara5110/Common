@@ -553,7 +553,7 @@ ID3D12Resource* Common::GetSwapChainBuffer() {
 }
 
 ID3D12Resource* Common::GetDepthStencilBuffer() {
-	return dx->mDepthStencilBuffer[0].Get();
+	return dx->mDepthStencilBuffer.Get();
 }
 
 D3D12_RESOURCE_STATES Common::GetTextureStates() {

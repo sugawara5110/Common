@@ -257,11 +257,13 @@ char* ShaderCommonDXR =
 
 ///////////////////////反射方向へ光線を飛ばす, ヒットした場合ピクセル値乗算///////////////////////
 "float3 MetallicPayloadCalculate(in uint RecursionCnt, in float3 hitPosition, \n"
-"                                in float3 difTexColor, in float3 normal)\n"
+"                                in float3 difTexColor, in float3 normal, inout int hitInstanceId)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
 "    float3 ret = difTexColor;\n"
+
+"    hitInstanceId = (int)getInstancingID(); \n"//自身のID書き込み
 
 "    if(materialIdent(mNo, METALLIC)) {\n"//METALLIC
 
@@ -286,6 +288,11 @@ char* ShaderCommonDXR =
 "       float3 outCol = float3(0.0f, 0.0f, 0.0f);\n"
 "       if (payload.hit) {\n"
 "           outCol = difTexColor * payload.color;\n"//ヒットした場合映り込みとして乗算
+"           hitInstanceId = payload.hitInstanceId;\n"//ヒットしたID書き込み
+"           int hitmNo = payload.mNo;\n"
+"           if(materialIdent(hitmNo, EMISSIVE)){\n"
+"              outCol = payload.color;\n"
+"           }\n"
 "       }\n"
 "       else {\n"
 "           outCol = difTexColor;\n"//ヒットしなかった場合映り込み無しで元のピクセル書き込み
