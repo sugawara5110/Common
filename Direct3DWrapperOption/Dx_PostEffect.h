@@ -8,7 +8,6 @@
 #define Class_PostEffect_Header
 
 #include "../Direct3DWrapper/DX_3DCG/Dx_PolygonData.h"
-#include "../Direct3DWrapper/DX_3DCG/Dx_SkinMesh.h"
 
 class PostEffect :public Common {
 
@@ -47,96 +46,12 @@ public:
 	bool ComCreateMosaic();
 	bool ComCreateBlur();
 	bool ComCreateDepthOfField();
-	bool ComCreateBloom(bool GaussianType = false, UINT num_gauss = 0, UINT* GaussSizeArr = nullptr);
 	void ComputeMosaic(int com_no, bool On, int size);
 	void ComputeBlur(int com_no, bool On, float blurX, float blurY, float blurLevel);
 	void ComputeDepthOfField(int com_no, bool On, float blurLevel, float focusDepth, float focusRange);
 	void ComputeMosaic(bool On, int size);
 	void ComputeBlur(bool On, float blurX, float blurY, float blurLevel);
 	void ComputeDepthOfField(bool On, float blurLevel, float focusDepth, float focusRange);
-	void ComputeBloom(int com_no, bool On, float BloomStrength = 1.0f, float ThresholdLuminance = 0.7f);
-};
-
-struct BloomParameter {
-	enum BloomType {
-		polygonData,
-		skinMesh
-	};
-	BloomType bType = polygonData;
-	ComPtr<ID3D12Resource> mOneMeshDrawBuffer = nullptr;
-	D3D12_GPU_DESCRIPTOR_HANDLE BufferHandleGPU = {};
-	float bloomStrength = 0.0f;
-	float thresholdLuminance = 0.0f;
-	void* obj = nullptr;
-	int meshIndex = 0;
-
-	void createBuffer();
-	void prevDraw(int com_no);
-	void Draw(int com_no);
-};
-
-class VariableBloom :public Common {
-
-private:
-	std::unique_ptr<BloomParameter* []> para = nullptr;
-	std::unique_ptr<int[]> prevDrawIndex = nullptr;
-	int numPara = 0;
-	ComPtr<ID3D12Resource> mMainBuffer = nullptr;
-	ComPtr<ID3D12Resource> mTempDepth = nullptr;
-	ComPtr<ID3DBlob> cs[2] = {};
-	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
-	ComPtr<ID3D12PipelineState> mPSOCom[2] = {};
-	ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
-
-	D3D12_GPU_DESCRIPTOR_HANDLE mMainHandleGPU = {};
-
-	void createTempDepthBuffer();
-
-public:
-	void init(BloomParameter** arr, int numPara,
-		bool GaussianType = false, UINT num_gauss = 0, UINT* GaussSizeArr = nullptr);
-
-	void Draw(int com_no);
-	void ComputeBloom(int com_no, bool dxr);
-};
-
-class PolygonDataBloom :public PolygonData {
-
-private:
-	friend BloomParameter;
-	BloomParameter bpara = {};
-	void prevDraw(int com_no);
-	void Draw(int com_no);
-
-public:
-	PolygonDataBloom();
-	void setBloomParameter(float bloomStrength, float thresholdLuminance);
-	void DrawPreparation();
-	BloomParameter* getBloomParameter();
-};
-
-class SkinMeshBloom :public SkinMesh, public Common {
-
-private:
-	friend BloomParameter;
-	std::unique_ptr<BloomParameter[]> bpara = nullptr;
-	void prevDraw(int com_no, int index);
-	void Draw(int com_no, int index);
-
-public:
-	void createBloomParameter();
-	void setBloomParameter(int index, float bloomStrength, float thresholdLuminance);
-	void DrawPreparation();
-	int getNumBloomParameter();
-	BloomParameter* getBloomParameter(int index);
-
-	void SetName(char* name);
-	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
-	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
-	InternalTexture* getInternalTexture(int index);
-	ID3D12Resource* getTextureResource(int index);
 };
 
 #endif
