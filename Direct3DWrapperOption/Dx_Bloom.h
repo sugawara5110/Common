@@ -32,13 +32,21 @@ private:
 public:
 	~Dx_Bloom();
 
+	enum GaussianType {
+		Type1D,
+		Type2D
+	};
+
 	struct InstanceParam {
 		uint32_t EmissiveInstanceId = 0;
 		float thresholdLuminance = 0.0f;
 		float bloomStrength = 1.0f;
 	};
 
-	bool Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer, std::vector<std::vector<uint32_t>>* gausSizes = nullptr);
+	bool Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
+		std::vector<float>* sigma = nullptr,
+		std::vector<std::vector<uint32_t>>* gausSizes = nullptr,
+		std::vector<Dx_Bloom::GaussianType>* GaussianType = nullptr);
 
 	void Compute(
 		uint32_t comIndex,

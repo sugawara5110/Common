@@ -111,44 +111,37 @@ namespace {
 		return gaArr;
 	}
 
-	ComPtr<ID3D12DescriptorHeap> mDescHeapAll = nullptr;
-	const UINT MaxnumGauss = 10;
-	int numDescSrv = 3 + MaxnumGauss;
-	int numDescUav = 1 + MaxnumGauss * 3;
-	int numDesc = numDescSrv + numDescUav;
-
-	UINT64 gpuHandle = 0;
-	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor;
-	bool createDescHeapAllDone = false;
-
-	bool createDescHeapAll(uint32_t numInstance) {
-
-		if (createDescHeapAllDone) {
-			mDescHeapAll.Reset();
-		}
-
-		Dx_Device* device = Dx_Device::GetInstance();
-		mDescHeapAll = device->CreateDescHeap(numDesc * numInstance + 3 + numInstance);
-		mDescHeapAll.Get()->SetName(L"mDescHeapAll");
-		if (!mDescHeapAll) {
-			Dx_Util::ErrorMessage("Dx_Bloom::ComCreate Error!!"); return false;
-		}
-
-		gpuHandle = mDescHeapAll->GetGPUDescriptorHandleForHeapStart().ptr;
-		hDescriptor = mDescHeapAll->GetCPUDescriptorHandleForHeapStart();
-
-		createDescHeapAllDone = true;
-
-		return true;
-	}
-
-	void setDescriptorHeaps(ID3D12GraphicsCommandList* mCList) {
-		ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeapAll.Get() ,mpSamplerHeap.Get() };
-		mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-	}
-
 	class Bloom :public Common {
+
 	private:
+		ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
+		static const UINT MaxnumGauss = 10;
+		int numDescSrv = 3 + MaxnumGauss;
+		int numDescUav = 1 + MaxnumGauss * 3;
+		int numDesc = numDescSrv + numDescUav;
+
+		UINT64 gpuHandle;
+		D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor;
+
+		bool createDescHeap() {
+			Dx_Device* device = Dx_Device::GetInstance();
+			mDescHeap = device->CreateDescHeap(numDesc);
+			mDescHeap.Get()->SetName(L"mDescHeap");
+			if (!mDescHeap) {
+				Dx_Util::ErrorMessage("Dx_Bloom::ComCreate Error!!"); return false;
+			}
+
+			gpuHandle = mDescHeap->GetGPUDescriptorHandleForHeapStart().ptr;
+			hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+			return true;
+		}
+
+		void setDescriptorHeaps(ID3D12GraphicsCommandList* mCList) {
+			ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeap.Get() ,mpSamplerHeap.Get() };
+			mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+		}
+
 		struct CONSTANT_BUFFER_Bloom {
 			float GaussianWid;//ガウス幅
 			float bloomStrength;//ブルーム強さ
@@ -200,7 +193,8 @@ namespace {
 		GaussInOut GaussInout = {};
 
 		int GaussianWid = 0;
-		bool GaussianType = true;//false:2D
+		Dx_Bloom::GaussianType gaussianType = Dx_Bloom::GaussianType::Type1D;
+		float Sigma = 1.0f;
 
 		ConstantBuffer<CONSTANT_BUFFER_Bloom>* mObjectCB = nullptr;
 
@@ -221,12 +215,12 @@ namespace {
 			float* gaArr = nullptr;
 			int GaussianBufferSize = 0;
 
-			if (GaussianType) {
-				gaArr = gaussian(15, GaussianWid);
+			if (gaussianType == Dx_Bloom::GaussianType::Type1D) {
+				gaArr = gaussian(Sigma, GaussianWid);
 				GaussianBufferSize = GaussianWid;
 			}
 			else {
-				gaArr = gaussian2D(4, GaussianWid);
+				gaArr = gaussian2D(Sigma, GaussianWid);
 				GaussianBufferSize = GaussianWid * GaussianWid;
 			}
 
@@ -279,14 +273,23 @@ namespace {
 			S_DELETE(mObjectCB);
 		}
 
+		void setGaussianType(Dx_Bloom::GaussianType GaussianType = Dx_Bloom::GaussianType::Type1D) {
+			gaussianType = GaussianType;
+		}
+
+		void setSigma(float sigma = 10.0f) {
+			Sigma = sigma;
+		}
+
 		bool ComCreate(
 			ID3D12Resource* InputBuffer,
 			ID3D12Resource* InstanceIdMapBuffer,
-			std::vector<UINT>gaBaseSize = { 512,256,128,64,32,16 }) {
+			std::vector<UINT>gaBaseSize = { 256,128,64,32,16 }) {
 
 			Dx_Device* device = Dx_Device::GetInstance();
 			createSampler();
 			createShader();
+			if (!createDescHeap())return false;
 			mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom>(1);
 
 			if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputBuffer.GetAddressOf(),
@@ -426,6 +429,7 @@ namespace {
 			cb.InstanceID = EmissiveInstanceId;
 			mObjectCB->CopyData(0, cb);
 
+			setDescriptorHeaps(mCList);
 			mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 			mCList->SetComputeRootConstantBufferView(0, mObjectCB->Resource()->GetGPUVirtualAddress());
 			mCList->SetComputeRootDescriptorTable(1, mGaussianFilterHandleGPU);
@@ -453,7 +457,7 @@ namespace {
 				ba.UAV.pResource = GaussInout.gInout[i].mLuminanceBuffer.Get();
 				mCList->ResourceBarrier(1, &ba);
 
-				if (GaussianType) {
+				if (gaussianType == Dx_Bloom::GaussianType::Type1D) {
 					mCList->SetPipelineState(mPSOCom[1].Get());
 					mCList->Dispatch(gauX, gauY, 1);
 					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer0.Get();
@@ -616,11 +620,12 @@ bool Dx_Bloom::createPipeline() {
 	return true;
 }
 
-bool Dx_Bloom::Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer, std::vector<std::vector<uint32_t>>* gausSizes) {
+bool Dx_Bloom::Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
+	std::vector<float>* sigma,
+	std::vector<std::vector<uint32_t>>* gausSizes,
+	std::vector<Dx_Bloom::GaussianType>* GaussianType) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-
-	if (!createDescHeapAll(numInstance))return false;
 
 	dx->Bigin(0);
 
@@ -630,6 +635,21 @@ bool Dx_Bloom::Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
 	mObjectCB->CopyData(0, cbb);
 	bloom = std::make_unique<Bloom[]>(numInstance);
 	for (int i = 0; i < cbb.numInstance; i++) {
+
+		if (sigma) {
+			bloom[i].setSigma((*sigma)[i]);
+		}
+		else {
+			bloom[i].setSigma();
+		}
+
+		if (GaussianType) {
+			bloom[i].setGaussianType((*GaussianType)[i]);
+		}
+		else {
+			bloom[i].setGaussianType();
+		}
+
 		if (gausSizes) {
 			bloom[i].ComCreate(mInputBuffer.Get(), InstanceIdMapBuffer, (*gausSizes)[i]);
 		}
@@ -656,6 +676,8 @@ void Dx_Bloom::Compute(
 	ID3D12GraphicsCommandList* mCList = mCommandList;
 	Dx_CommandListObj& d = *comObj;
 
+	dx->Bigin(comIndex);
+
 	//バックバッファをコピー元にする
 	d.ResourceBarrier(inout,
 		firstState, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -670,17 +692,24 @@ void Dx_Bloom::Compute(
 	d.ResourceBarrier(inout,
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	setDescriptorHeaps(mCList);
+	dx->End(comIndex);
+	dx->RunGpu();
+	dx->WaitFence();
 
 	for (int i = 0; i < cbb.numInstance; i++) {
-
+		dx->Bigin(comIndex);
 		bloom[i].Compute(
 			comIndex,
 			instanceParams[i].EmissiveInstanceId,
 			instanceParams[i].thresholdLuminance,
 			instanceParams[i].bloomStrength
 		);
+		dx->End(comIndex);
+		dx->RunGpu();
+		dx->WaitFence();
 	}
+
+	dx->Bigin(comIndex);
 
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 
@@ -713,4 +742,8 @@ void Dx_Bloom::Compute(
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	d.ResourceBarrier(inout,
 		D3D12_RESOURCE_STATE_COPY_DEST, firstState);
+
+	dx->End(comIndex);
+	dx->RunGpu();
+	dx->WaitFence();
 }
