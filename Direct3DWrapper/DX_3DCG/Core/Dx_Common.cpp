@@ -9,8 +9,8 @@
 
 Common::Common() {
 	dx = Dx12Process::GetInstance();
-	comObj = &dx->dx_sub[0];
-	mCommandList = comObj->mCommandList.Get();
+	comObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(0);
+	mCommandList = comObj->getCommandList();
 }
 
 Common::~Common() {
@@ -31,18 +31,22 @@ void Common::SetName(char* name) {
 
 void Common::SetCommandList(int no) {
 	com_no = no;
-	comObj = &dx->dx_sub[com_no];
-	mCommandList = comObj->mCommandList.Get();
+
+	comObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+	mCommandList = comObj->getCommandList();
 }
 
 void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int index) {
-	dx->dx_sub[com_no].ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	dx->dx_sub[com_no].ResourceBarrier(Intexture, res, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+
+	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	cObj->ResourceBarrier(Intexture, res, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 	mCommandList->CopyResource(texture[index], Intexture);
 
-	dx->dx_sub[com_no].ResourceBarrier(Intexture, D3D12_RESOURCE_STATE_COPY_SOURCE, res);
-	dx->dx_sub[com_no].ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	cObj->ResourceBarrier(Intexture, D3D12_RESOURCE_STATE_COPY_SOURCE, res);
+	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
 void Common::TextureInit(int width, int height, int index) {
@@ -74,13 +78,15 @@ HRESULT Common::SetTextureMPixel(int com_no, BYTE* frame, int ind) {
 	//テクスチャの横サイズ取得
 	int width = (int)texdesc.Width;
 
-	dx->dx_sub[com_no].ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+
+	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 	HRESULT hr = dx->CopyResourcesToGPU(com_no, textureUp[index], texture[index], frame, width * 4);
 	if (FAILED(hr)) {
 		Dx_Util::ErrorMessage("Common::SetTextureMPixel Error!!");
 		return hr;
 	}
-	dx->dx_sub[com_no].ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return S_OK;
 }
@@ -548,30 +554,6 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 	return pso;
 }
 
-ID3D12Resource* Common::GetSwapChainBuffer() {
-	return dx->mRtvBuffer[dx->mCurrBackBuffer].Get();
-}
-
-ID3D12Resource* Common::GetDepthStencilBuffer() {
-	return dx->mDepthStencilBuffer.Get();
-}
-
-D3D12_RESOURCE_STATES Common::GetTextureStates() {
-	return D3D12_RESOURCE_STATE_GENERIC_READ;
-}
-
 ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
 	return dx->shaderH->CompileShader(szFileName, size, szFuncName, szProfileName);
-}
-
-char* Common::getShaderCommonParameters() {
-	return dx->shaderH->ShaderCommonParametersCopy.get();
-}
-
-char* Common::getShaderNormalTangent() {
-	return dx->shaderH->ShaderNormalTangentCopy.get();
-}
-
-char* Common::getShaderCalculateLighting() {
-	return dx->shaderH->ShaderCalculateLightingCopy.get();
 }

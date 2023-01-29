@@ -11,37 +11,16 @@
 #include "DxEnum.h"
 #include <iostream>
 
-#define COM_NO 32
 using Microsoft::WRL::ComPtr;
 
 //ëOï˚êÈåæ
-template<class T>
-class ConstantBuffer;
-class Dx12Process;
-class MeshData;
-class BasicPolygon;
-class PolygonData;
-class PolygonData2D;
-class SkinMesh;
-class Common;
-class DXR_Basic;
-class SkinnedCom;
-struct StreamView;
+class Dx_CommandManager;
 //ëOï˚êÈåæ
 
 class Dx_CommandListObj final {
 
 private:
-	friend Dx12Process;
-	friend MeshData;
-	friend BasicPolygon;
-	friend PolygonData;
-	friend PolygonData2D;
-	friend SkinMesh;
-	friend Common;
-	friend DXR_Basic;
-	friend SkinnedCom;
-	friend StreamView;
+	friend Dx_CommandManager;
 
 	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
@@ -49,8 +28,6 @@ private:
 	volatile ComListState mComState = {};
 
 	bool ListCreate(bool Compute, ID3D12Device5* dev);
-	void Bigin();
-	void End();
 
 	static int NumResourceBarrier;
 
@@ -72,6 +49,9 @@ private:
 	void createUavResourceBarrierList();
 
 public:
+	ID3D12GraphicsCommandList4* getCommandList();
+	void Bigin();
+	void End();
 	void delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src);
 	void delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);

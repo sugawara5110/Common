@@ -108,9 +108,10 @@ void DxText::operator=(const DxText& obj) {} // 代入演算子禁止
 
 DxText::DxText() {
 
-	dx = Dx12Process::GetInstance();
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj& d = *cMa->getGraphicsComListObj(0);
 
-	dx->Bigin(0);
+	d.Bigin();
 	//文字列用バッファ初期化
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		Using[i] = false;
@@ -134,9 +135,9 @@ DxText::DxText() {
 		CreateText(value, va, i, 15.0f);
 		value[i].SetText(0);
 	}
-	dx->End(0);
-	dx->RunGpu();
-	dx->WaitFence();
+	d.End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 DxText::~DxText(){

@@ -19,8 +19,10 @@ namespace {
 void Wave::createShader() {
 
 	if (createShaderDone)return;
+
+	Dx12Process* dx = Dx12Process::GetInstance();
 	addChar Com, Wave;
-	Com.addStr(BasicPolygon::getShaderCommonParameters(), BasicPolygon::getShaderNormalTangent());
+	Com.addStr(dx->getShaderCommonParameters(), dx->getShaderNormalTangent());
 	Wave.addStr(Com.str, ShaderWaveDraw);
 
 	//Wave

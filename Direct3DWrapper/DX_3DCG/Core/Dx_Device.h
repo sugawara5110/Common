@@ -72,6 +72,8 @@ public:
 
 	void CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
 		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
+
+	void CreateUavTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** tex, int texNum);
 };
 
 #endif

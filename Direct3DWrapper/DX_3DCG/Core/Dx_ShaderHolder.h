@@ -7,7 +7,7 @@
 #ifndef Class_Dx_ShaderHolder_Header
 #define Class_Dx_ShaderHolder_Header
 
-#include "DxCommandQueue.h"
+#include "Dx_Resource.h"
 #include <D3Dcompiler.h>
 #include <vector>
 
@@ -25,19 +25,17 @@ public:
 	}
 };
 
+class Dx12Process;
+
 class Dx_ShaderHolder {
 
 private:
 	friend Dx12Process;
-	friend MeshData;
-	friend BasicPolygon;
-	friend PolygonData;
-	friend PolygonData2D;
-	friend SkinMesh;
-	friend Common;
-	friend DXR_Basic;
-	friend SkinnedCom;
+	bool CreateShaderByteCodeBool = true;
+	void setNorTestPS();
+	bool CreateShaderByteCode();
 
+public:
 	//シェーダーバイトコード
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Smooth = nullptr;
 	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Edge = nullptr;
@@ -80,12 +78,7 @@ private:
 	std::unique_ptr<char[]> ShaderCalculateLightingCopy = nullptr;
 	std::unique_ptr<char[]> ShaderCommonParametersCopy = nullptr;
 
-	bool CreateShaderByteCodeBool = true;
-
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-	bool CreateShaderByteCode();
-
-	void setNorTestPS();
 };
 
 #endif

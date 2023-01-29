@@ -14,7 +14,7 @@ using Microsoft::WRL::ComPtr;
 class DxCommandQueue final {
 
 private:
-	friend Dx12Process;
+	friend Dx_CommandManager;
 
 	ComPtr<ID3D12CommandQueue> mCommandQueue;
 	ComPtr<ID3D12Fence> mFence;

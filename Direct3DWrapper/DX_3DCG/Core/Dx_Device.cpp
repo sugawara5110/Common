@@ -262,8 +262,8 @@ ComPtr<ID3D12DescriptorHeap> Dx_Device::CreateSamplerDescHeap(D3D12_SAMPLER_DESC
 	return heap;
 }
 
-void Dx_Device::CreateSrvTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** tex, int texNum)
-{
+void Dx_Device::CreateSrvTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** tex, int texNum) {
+
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -278,8 +278,8 @@ void Dx_Device::CreateSrvTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D1
 }
 
 void Dx_Device::CreateSrvBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** buffer, int bufNum,
-	UINT* StructureByteStride)
-{
+	UINT* StructureByteStride) {
+
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -294,8 +294,8 @@ void Dx_Device::CreateSrvBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12
 }
 
 void Dx_Device::CreateCbv(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
-	D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum)
-{
+	D3D12_GPU_VIRTUAL_ADDRESS* virtualAddress, UINT* sizeInBytes, int bufNum) {
+
 	D3D12_CONSTANT_BUFFER_VIEW_DESC bufferDesc = {};
 	for (int i = 0; i < bufNum; i++) {
 		bufferDesc.SizeInBytes = sizeInBytes[i];
@@ -306,8 +306,8 @@ void Dx_Device::CreateCbv(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
 }
 
 void Dx_Device::CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
-	ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum)
-{
+	ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum) {
+
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = DXGI_FORMAT_UNKNOWN;
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -322,5 +322,20 @@ void Dx_Device::CreateUavBuffer(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor,
 		hDescriptor.ptr += mCbvSrvUavDescriptorSize;
 	}
 }
+
+void Dx_Device::CreateUavTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** tex, int texNum)
+{
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Texture2D.MipSlice = 0;
+
+	for (int i = 0; i < texNum; i++) {
+		uavDesc.Format = tex[i]->GetDesc().Format;
+		md3dDevice->CreateUnorderedAccessView(tex[i], nullptr, &uavDesc, hDescriptor);
+		hDescriptor.ptr += mCbvSrvUavDescriptorSize;
+	}
+}
+
+
 
 

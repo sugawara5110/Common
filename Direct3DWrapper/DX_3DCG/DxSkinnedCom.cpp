@@ -71,7 +71,7 @@ bool SkinnedCom::createParameterDXR(int comNo) {
 		int NumMaterial = pd->dxrPara.NumMaterial;
 		Dx_Device* device = Dx_Device::GetInstance();
 
-		Dx_CommandListObj& d = dx->dx_sub[comNo];
+		Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comNo);
 
 		for (int i = 0; i < NumMaterial; i++) {
 			if (pd->dpara.Iview[i].IndexCount <= 0)continue;
@@ -91,7 +91,7 @@ bool SkinnedCom::createParameterDXR(int comNo) {
 			d.ResourceBarrier(dxI.IndexBufferGPU.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-			dx->dx_sub[pd->com_no].CopyResourceGENERIC_READ(dxI.IndexBufferGPU.Get(),
+			d.CopyResourceGENERIC_READ(dxI.IndexBufferGPU.Get(),
 				pd->dpara.Iview[i].IndexBufferGPU.Get());
 
 			for (int j = 0; j < 2; j++) {
@@ -128,8 +128,9 @@ bool SkinnedCom::createParameterDXR(int comNo) {
 void SkinnedCom::skinning(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	ID3D12GraphicsCommandList* mCList = pd->dx->dx_sub[comNo].mCommandList.Get();
-	Dx_CommandListObj& d = dx->dx_sub[comNo];
+	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comNo);
+	ID3D12GraphicsCommandList* mCList = d.getCommandList();
+
 	mCList->SetPipelineState(PSO.Get());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { descHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);

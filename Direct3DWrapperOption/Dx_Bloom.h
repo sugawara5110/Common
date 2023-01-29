@@ -1,6 +1,6 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   Å@Å@Å@       Dx_Bloom                                             **//
+//**                                Dx_Bloom                                             **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
@@ -18,8 +18,8 @@ private:
 	CONSTANT_BUFFER_Bloom2 cbb = {};
 	ConstantBuffer<CONSTANT_BUFFER_Bloom2>* mObjectCB = nullptr;
 
-	ComPtr<ID3D12Resource> mInputBuffer = nullptr;
-	ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
+	Dx_Resource mInputBuffer = {};
+	Dx_Resource mOutputBuffer = {};
 
 	ComPtr<ID3D12RootSignature> mRootSignatureCom = nullptr;
 	ComPtr<ID3DBlob> pShader = {};
@@ -43,7 +43,7 @@ public:
 		float bloomStrength = 1.0f;
 	};
 
-	bool Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
+	bool Create(uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
 		std::vector<float>* sigma = nullptr,
 		std::vector<std::vector<uint32_t>>* gausSizes = nullptr,
 		std::vector<Dx_Bloom::GaussianType>* GaussianType = nullptr);
@@ -51,7 +51,7 @@ public:
 	void Compute(
 		uint32_t comIndex,
 		std::vector<InstanceParam> instanceParams,
-		ID3D12Resource* inout, D3D12_RESOURCE_STATES firstState);
+		Dx_Resource* inout);
 };
 
 #endif

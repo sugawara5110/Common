@@ -20,7 +20,6 @@
 #include <array>
 #include <assert.h>
 #include <Process.h>
-#include <mutex>
 #include <new>
 #include <typeinfo>
 
@@ -61,21 +60,33 @@ public:
 	}
 };
 
+template<class T>
+class ConstantBuffer;
+class Dx12Process;
+class MeshData;
+class BasicPolygon;
+class PolygonData;
+class PolygonData2D;
+class SkinMesh;
+class Common;
+class DXR_Basic;
+class SkinnedCom;
+struct StreamView;
+
 class Dx12Process final {
 
 private:
-	
+
 	friend MeshData;
 	friend BasicPolygon;
 	friend PolygonData;
 	friend PolygonData2D;
 	friend SkinMesh;
-	friend Dx_CommandListObj;
 	friend Common;
 	friend DXR_Basic;
 	friend SkinnedCom;
 	friend StreamView;
-	
+
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<IDXGISwapChain3> mSwapChain;
 	bool DXR_CreateResource = false;
@@ -85,18 +96,13 @@ private:
 	bool m4xMsaaState = false;
 	UINT m4xMsaaQuality = 0;
 
-	DxCommandQueue graphicsQueue;
-	DxCommandQueue computeQueue;
-	Dx_CommandListObj dx_sub[COM_NO];
-	Dx_CommandListObj dx_subCom[COM_NO];
-
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE mRtvHeapHandle[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
-	ComPtr<ID3D12Resource> mRtvBuffer[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+	Dx_Resource mRtBuffer[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
 	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHandle = {};
-	ComPtr<ID3D12Resource> mDepthStencilBuffer = {};
+	Dx_Resource mDepthStencilBuffer = {};
 
 	ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	ComPtr<ID3D12DescriptorHeap> mDsvHeap;
@@ -123,8 +129,6 @@ private:
 
 	static Dx12Process* dx;//クラス内でオブジェクト生成し使いまわす
 	static std::mutex mtx;
-	static std::mutex mtxGraphicsQueue;
-	static std::mutex mtxComputeQueue;
 
 	struct Update {
 		CoordTf::MATRIX mProj = {};
@@ -190,8 +194,6 @@ public:
 	static void Lock() { mtx.lock(); }
 	static void Unlock() { mtx.unlock(); }
 
-	void setNumResourceBarrier(int num) { Dx_CommandListObj::NumResourceBarrier = num; }
-
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	bool getDxrCreateResourceState() { return DXR_CreateResource; }
 
@@ -208,25 +210,15 @@ public:
 
 	HRESULT createTextureResourceArr(int com_no);
 
-	void Bigin(int com_no);
 	void BiginDraw(int com_no, bool clearBackBuffer = true);
 	void EndDraw(int com_no);
-	void End(int com_no);
+	void DrawScreen();
+
 	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
 	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
 	void setStreamOutputSwapIndex(int index) { dxrBuffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { dxrBuffSwap[1] = index; }
-	void RunGpuNotLock();
-	void RunGpu();
-	void WaitFenceNotLock();
-	void WaitFence();
-	void DrawScreen();
-	void BiginCom(int com_no);
-	void EndCom(int com_no);
-	void RunGpuNotLockCom();
-	void RunGpuCom();
-	void WaitFenceNotLockCom();
-	void WaitFenceCom();
+
 	void Cameraset(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 dir, CoordTf::VECTOR3 up = { 0.0f,0.0f,1.0f });
 
 	void ResetPointLight();
@@ -264,8 +256,16 @@ public:
 	UINT getCbvSrvUavDescriptorSize() { return mCbvSrvUavDescriptorSize; }
 	int getClientWidth() { return mClientWidth; }
 	int getClientHeight() { return mClientHeight; }
-	ID3D12Resource* GetRtvBuffer();
-	ID3D12Resource* GetDsvBuffer();
+	Dx_Resource* GetRtBuffer();
+	Dx_Resource* GetDepthBuffer();
+
+	char* getShaderCommonParameters() {
+		return shaderH->ShaderCommonParametersCopy.get();
+	}
+
+	char* getShaderNormalTangent() {
+		return shaderH->ShaderNormalTangentCopy.get();
+	}
 };
 
 struct VertexView {
@@ -346,25 +346,29 @@ struct StreamView {
 
 	void ResetFilledSizeBuffer(int com) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		dx->dx_sub[com].delayResourceBarrierBefore(BufferFilledSizeBufferGPU.Get(),
+		Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com);
+
+		cObj->delayResourceBarrierBefore(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST);
 
-		dx->dx_sub[com].delayCopyResource(BufferFilledSizeBufferGPU.Get(),
+		cObj->delayCopyResource(BufferFilledSizeBufferGPU.Get(),
 			resetBuffer.Get());
 
-		dx->dx_sub[com].delayResourceBarrierAfter(BufferFilledSizeBufferGPU.Get(),
+		cObj->delayResourceBarrierAfter(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT);
 	}
 
 	void outputReadBack(int com) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+		Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com);
+
+		ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
+		cObj->ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		mCList->CopyResource(ReadBuffer.Get(), BufferFilledSizeBufferGPU.Get());
 
-		dx->dx_sub[com].ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
+		cObj->ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 	}
 
@@ -696,13 +700,7 @@ protected:
 	ComPtr<ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
 		ID3D12RootSignature* mRootSignature);
 
-	ID3D12Resource* GetSwapChainBuffer();
-	ID3D12Resource* GetDepthStencilBuffer();
-	D3D12_RESOURCE_STATES GetTextureStates();
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-	char* getShaderCommonParameters();
-	char* getShaderNormalTangent();
-	char* getShaderCalculateLighting();
 
 	int cBuffSwapUpdateIndex() { return dx->cBuffSwap[0]; }
 	int cBuffSwapDrawOrStreamoutputIndex() { return dx->cBuffSwap[1]; }

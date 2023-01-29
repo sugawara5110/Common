@@ -28,8 +28,7 @@ void PolygonData2D::SetMagnification(float x, float y) {
 }
 
 PolygonData2D::PolygonData2D() {
-	dx = Dx12Process::GetInstance();
-	mCommandList = dx->dx_sub[0].mCommandList.Get();
+	mCommandList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(0)->getCommandList();
 	com_no = 0;
 	d2varray = nullptr;
 	d2varrayI = nullptr;
@@ -212,7 +211,7 @@ void PolygonData2D::Draw(int com) {
 
 	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com)->getCommandList();
 
 	mObjectCB->CopyData(0, cb2[dx->cBuffSwap[1]]);
 

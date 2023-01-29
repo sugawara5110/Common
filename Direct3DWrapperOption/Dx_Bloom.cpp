@@ -161,18 +161,18 @@ namespace {
 
 		ComPtr<ID3D12Resource> GaussianFilterBufferUp = nullptr;
 		ComPtr<ID3D12Resource> GaussianFilterBuffer = nullptr;
-		ComPtr<ID3D12Resource> mOutputBuffer = nullptr;
-		ID3D12Resource* mpInputBuffer = nullptr;
-		ID3D12Resource* mpInstanceIdMapBuffer = nullptr;
+		Dx_Resource mOutputBuffer = {};
+		Dx_Resource* mpInputBuffer = nullptr;
+		Dx_Resource* mpInstanceIdMapBuffer = nullptr;
 
 		struct gInOut {
 			D3D12_GPU_DESCRIPTOR_HANDLE mLuminanceHandleGPU = {};
 			D3D12_GPU_DESCRIPTOR_HANDLE mGaussInOutHandleGPU0 = {};
 			D3D12_GPU_DESCRIPTOR_HANDLE mGaussInOutHandleGPU1 = {};
 
-			ComPtr<ID3D12Resource> mLuminanceBuffer = nullptr;
-			ComPtr<ID3D12Resource> mGaussInOutBuffer0 = nullptr;
-			ComPtr<ID3D12Resource> mGaussInOutBuffer1 = nullptr;
+			Dx_Resource mLuminanceBuffer = {};
+			Dx_Resource mGaussInOutBuffer0 = {};
+			Dx_Resource mGaussInOutBuffer1 = {};
 		};
 
 		struct GaussInOut {
@@ -237,25 +237,16 @@ namespace {
 
 			for (UINT i = 0; i < GaussInout.numGauss; i++) {
 				UINT s = GaussInout.gaSizeArr[i];
-				if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(
-					GaussInout.gInout[i].mGaussInOutBuffer0.GetAddressOf(),
-					s, s))) {
-
+				if (FAILED(GaussInout.gInout[i].mGaussInOutBuffer0.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(s, s))) {
 					Dx_Util::ErrorMessage("Bloom::GaussianCreate Error!!");
 					return false;
 				}
-				if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(
-					GaussInout.gInout[i].mGaussInOutBuffer1.GetAddressOf(),
-					s, s))) {
-
+				if (FAILED(GaussInout.gInout[i].mGaussInOutBuffer1.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(s, s))) {
 					Dx_Util::ErrorMessage("Bloom::GaussianCreate Error!!");
 					return false;
 				}
 
-				if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(
-					GaussInout.gInout[i].mLuminanceBuffer.GetAddressOf(),
-					s, s))) {
-
+				if (FAILED(GaussInout.gInout[i].mLuminanceBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(s, s))) {
 					Dx_Util::ErrorMessage("Bloom::GaussianCreate Error!!");
 					return false;
 				}
@@ -282,8 +273,8 @@ namespace {
 		}
 
 		bool ComCreate(
-			ID3D12Resource* InputBuffer,
-			ID3D12Resource* InstanceIdMapBuffer,
+			Dx_Resource* InputBuffer,
+			Dx_Resource* InstanceIdMapBuffer,
 			std::vector<UINT>gaBaseSize = { 256,128,64,32,16 }) {
 
 			Dx_Device* device = Dx_Device::GetInstance();
@@ -292,14 +283,12 @@ namespace {
 			if (!createDescHeap())return false;
 			mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom>(1);
 
-			if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputBuffer.GetAddressOf(),
-				dx->getClientWidth(), dx->getClientHeight()))) {
-
+			if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
 				Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 			}
 			mpInputBuffer = InputBuffer;
 			mpInstanceIdMapBuffer = InstanceIdMapBuffer;
-			mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer1", objName));
+			mOutputBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer1", objName));
 
 			if (!GaussianCreate(gaBaseSize))return false;
 
@@ -319,30 +308,20 @@ namespace {
 
 			UINT StructureByteStride[1] = { sizeof(float) };
 			device->CreateSrvBuffer(hDescriptor, GaussianFilterBuffer.GetAddressOf(), 1, StructureByteStride);
-			device->CreateSrvTexture(hDescriptor, &mpInputBuffer, 1);
-			device->CreateSrvTexture(hDescriptor, &mpInstanceIdMapBuffer, 1);
+			mpInputBuffer->CreateSrvTexture(hDescriptor);
+			mpInstanceIdMapBuffer->CreateSrvTexture(hDescriptor);
 
-			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-			uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-			uavDesc.Texture2D.MipSlice = 0;
-
-			device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-			hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+			mOutputBuffer.CreateUavTexture(hDescriptor);
 			for (UINT i = 0; i < GaussInout.numGauss; i++) {
-				device->getDevice()->CreateUnorderedAccessView(GaussInout.gInout[i].mGaussInOutBuffer0.Get(), nullptr, &uavDesc, hDescriptor);
-				hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
-				device->getDevice()->CreateUnorderedAccessView(GaussInout.gInout[i].mGaussInOutBuffer1.Get(), nullptr, &uavDesc, hDescriptor);
-				hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
-				device->getDevice()->CreateUnorderedAccessView(GaussInout.gInout[i].mLuminanceBuffer.Get(), nullptr, &uavDesc, hDescriptor);
-				hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
+				GaussInout.gInout[i].mGaussInOutBuffer0.CreateUavTexture(hDescriptor);
+				GaussInout.gInout[i].mGaussInOutBuffer1.CreateUavTexture(hDescriptor);
+				GaussInout.gInout[i].mLuminanceBuffer.CreateUavTexture(hDescriptor);
 			}
 			for (UINT i = 0; i < GaussInout.numGauss; i++)
-				device->CreateSrvTexture(hDescriptor, GaussInout.gInout[i].mGaussInOutBuffer1.GetAddressOf(), 1);
+				GaussInout.gInout[i].mGaussInOutBuffer1.CreateSrvTexture(hDescriptor);
 			//↑シェーダーで配列として使うので連続で並べる必要がある
 
-			comObj->ResourceBarrier(mOutputBuffer.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			mOutputBuffer.ResourceBarrier(com_no, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 			//ルートシグネチャ
 			const int numSrv = 4;
@@ -445,8 +424,8 @@ namespace {
 			UINT disY = dx->getClientHeight() / 8;
 
 			for (UINT i = 0; i < GaussInout.numGauss; i++) {
-				UINT gauX = (UINT)GaussInout.gInout[i].mGaussInOutBuffer0.Get()->GetDesc().Width / 8;
-				UINT gauY = GaussInout.gInout[i].mGaussInOutBuffer0.Get()->GetDesc().Height / 8;
+				UINT gauX = (UINT)GaussInout.gInout[i].mGaussInOutBuffer0.Width / 8;
+				UINT gauY = GaussInout.gInout[i].mGaussInOutBuffer0.Height / 8;
 
 				mCList->SetComputeRootDescriptorTable(6, GaussInout.gInout[i].mGaussInOutHandleGPU0);
 				mCList->SetComputeRootDescriptorTable(7, GaussInout.gInout[i].mGaussInOutHandleGPU1);
@@ -454,24 +433,24 @@ namespace {
 
 				mCList->SetPipelineState(mPSOCom[0].Get());
 				mCList->Dispatch(gauX, gauY, 1);//CS内8, 8, 1
-				ba.UAV.pResource = GaussInout.gInout[i].mLuminanceBuffer.Get();
+				ba.UAV.pResource = GaussInout.gInout[i].mLuminanceBuffer.getResource();
 				mCList->ResourceBarrier(1, &ba);
 
 				if (gaussianType == Dx_Bloom::GaussianType::Type1D) {
 					mCList->SetPipelineState(mPSOCom[1].Get());
 					mCList->Dispatch(gauX, gauY, 1);
-					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer0.Get();
+					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer0.getResource();
 					mCList->ResourceBarrier(1, &ba);
 
 					mCList->SetPipelineState(mPSOCom[2].Get());
 					mCList->Dispatch(gauX, gauY, 1);
-					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer1.Get();
+					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer1.getResource();
 					mCList->ResourceBarrier(1, &ba);
 				}
 				else {
 					mCList->SetPipelineState(mPSOCom[3].Get());
 					mCList->Dispatch(gauX, gauY, 1);
-					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer1.Get();
+					ba.UAV.pResource = GaussInout.gInout[i].mGaussInOutBuffer1.getResource();
 					mCList->ResourceBarrier(1, &ba);
 				}
 			}
@@ -479,12 +458,12 @@ namespace {
 			mCList->SetComputeRootDescriptorTable(3, GaussInout.mGaussTexHandleGPU);
 			mCList->SetPipelineState(mPSOCom[4].Get());
 			mCList->Dispatch(disX, disY, 1);
-			ba.UAV.pResource = mOutputBuffer.Get();
+			ba.UAV.pResource = mOutputBuffer.getResource();
 			mCList->ResourceBarrier(1, &ba);
 		}
 
-		ID3D12Resource* getOutputBuffer() {
-			return mOutputBuffer.Get();
+		Dx_Resource* getOutputBuffer() {
+			return &mOutputBuffer;
 		}
 	};
 }
@@ -503,27 +482,21 @@ bool Dx_Bloom::createBuffer() {
 
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom2>(1);
 
-	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputBuffer.GetAddressOf(),
-		dx->getClientWidth(), dx->getClientHeight()))) {
-
+	if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
 		Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 	}
 
-	mOutputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
+	mOutputBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
 
-	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mInputBuffer.GetAddressOf(),
-		dx->getClientWidth(), dx->getClientHeight()))) {
-
+	if (FAILED(mInputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
 		Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 	}
 
-	mInputBuffer.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
+	mInputBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
 
-	comObj->ResourceBarrier(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+	mInputBuffer.ResourceBarrier(com_no, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-	comObj->ResourceBarrier(mOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	mOutputBuffer.ResourceBarrier(com_no, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	return true;
 }
@@ -538,19 +511,14 @@ bool Dx_Bloom::createPipeline() {
 	D3D12_GPU_VIRTUAL_ADDRESS Address[1] = { mObjectCB->getGPUVirtualAddress(0) };
 	UINT size[1] = { mObjectCB->getSizeInBytes() };
 	device->CreateCbv(hDescriptor, Address, size, 1);
-	device->CreateSrvTexture(hDescriptor, mInputBuffer.GetAddressOf(), 1);
+	mInputBuffer.CreateSrvTexture(hDescriptor);
 
 	for (int i = 0; i < cbb.numInstance; i++) {
-		ID3D12Resource* res = bloom[i].getOutputBuffer();
-		device->CreateSrvTexture(hDescriptor, &res, 1);
+		Dx_Resource* res = bloom[i].getOutputBuffer();
+		res->CreateSrvTexture(hDescriptor);
 	}
 
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	uavDesc.Texture2D.MipSlice = 0;
-
-	device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
+	mOutputBuffer.CreateUavTexture(hDescriptor);
 
 	char replace[255] = {};
 	snprintf(replace, sizeof(replace), "%d", cbb.numInstance);
@@ -620,14 +588,15 @@ bool Dx_Bloom::createPipeline() {
 	return true;
 }
 
-bool Dx_Bloom::Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
+bool Dx_Bloom::Create(uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
 	std::vector<float>* sigma,
 	std::vector<std::vector<uint32_t>>* gausSizes,
 	std::vector<Dx_Bloom::GaussianType>* GaussianType) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj& d = *cMa->getGraphicsComListObj(0);
 
-	dx->Bigin(0);
+	d.Bigin();
 
 	if (!createBuffer())return false;
 
@@ -651,18 +620,18 @@ bool Dx_Bloom::Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
 		}
 
 		if (gausSizes) {
-			bloom[i].ComCreate(mInputBuffer.Get(), InstanceIdMapBuffer, (*gausSizes)[i]);
+			bloom[i].ComCreate(&mInputBuffer, InstanceIdMapBuffer, (*gausSizes)[i]);
 		}
 		else {
-			bloom[i].ComCreate(mInputBuffer.Get(), InstanceIdMapBuffer);
+			bloom[i].ComCreate(&mInputBuffer, InstanceIdMapBuffer);
 		}
 	}
 
 	if (!createPipeline())return false;
 
-	dx->End(0);
-	dx->RunGpu();
-	dx->WaitFence();
+	d.End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	return true;
 }
@@ -670,46 +639,35 @@ bool Dx_Bloom::Create(uint32_t numInstance, ID3D12Resource* InstanceIdMapBuffer,
 void Dx_Bloom::Compute(
 	uint32_t comIndex,
 	std::vector<InstanceParam> instanceParams,
-	ID3D12Resource* inout, D3D12_RESOURCE_STATES firstState) {
+	Dx_Resource* inout) {
 
 	SetCommandList(comIndex);
 	ID3D12GraphicsCommandList* mCList = mCommandList;
 	Dx_CommandListObj& d = *comObj;
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 
-	dx->Bigin(comIndex);
+	d.Bigin();
 
-	//バックバッファをコピー元にする
-	d.ResourceBarrier(inout,
-		firstState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	d.ResourceBarrier(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	//現在のバックバッファをインプット用バッファにコピーする
-	mCList->CopyResource(mInputBuffer.Get(), inout);
+	mInputBuffer.CopyResource(comIndex, inout);
 
-	d.ResourceBarrier(mInputBuffer.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-
-	d.ResourceBarrier(inout,
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST);
-
-	dx->End(comIndex);
-	dx->RunGpu();
-	dx->WaitFence();
+	d.End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	for (int i = 0; i < cbb.numInstance; i++) {
-		dx->Bigin(comIndex);
+		d.Bigin();
 		bloom[i].Compute(
 			comIndex,
 			instanceParams[i].EmissiveInstanceId,
 			instanceParams[i].thresholdLuminance,
 			instanceParams[i].bloomStrength
 		);
-		dx->End(comIndex);
-		dx->RunGpu();
-		dx->WaitFence();
+		d.End();
+		cMa->RunGpu();
+		cMa->WaitFence();
 	}
 
-	dx->Bigin(comIndex);
+	d.Bigin();
 
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
 
@@ -729,21 +687,12 @@ void Dx_Bloom::Compute(
 
 	mCList->SetPipelineState(mPSO.Get());
 	mCList->Dispatch(disX, disY, 1);
-	ba.UAV.pResource = mOutputBuffer.Get();
+	ba.UAV.pResource = mOutputBuffer.getResource();
 	mCList->ResourceBarrier(1, &ba);
 
-	d.ResourceBarrier(mOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
+	inout->CopyResource(comIndex, &mOutputBuffer);
 
-	//計算後バックバッファにコピー
-	mCList->CopyResource(inout, mOutputBuffer.Get());
-
-	d.ResourceBarrier(mOutputBuffer.Get(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	d.ResourceBarrier(inout,
-		D3D12_RESOURCE_STATE_COPY_DEST, firstState);
-
-	dx->End(comIndex);
-	dx->RunGpu();
-	dx->WaitFence();
+	d.End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }

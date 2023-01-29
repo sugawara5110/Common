@@ -14,8 +14,6 @@ ComPtr<ID3D12Resource> StreamView::resetBuffer = nullptr;
 
 Dx12Process *Dx12Process::dx = nullptr;
 std::mutex Dx12Process::mtx;
-std::mutex Dx12Process::mtxGraphicsQueue;
-std::mutex Dx12Process::mtxComputeQueue;
 
 void Dx12Process::InstanceCreate() {
 
@@ -52,72 +50,8 @@ Dx12Process::~Dx12Process() {
 	}
 #endif
 
+	Dx_CommandManager::DeleteInstance();
 	Dx_Device::DeleteInstance();
-}
-
-void Dx12Process::RunGpuNotLock() {
-	//クローズ後リストに加える
-	static ID3D12CommandList* cmdsLists[COM_NO] = {};
-	UINT cnt = 0;
-	for (int i = 0; i < COM_NO; i++) {
-		if (dx_sub[i].mComState != CLOSE)continue;
-		cmdsLists[cnt++] = dx_sub[i].mCommandList.Get();
-		dx_sub[i].mComState = USED;
-	}
-
-	graphicsQueue.setCommandList(cnt, cmdsLists);
-}
-
-void Dx12Process::WaitFenceNotLock() {
-	graphicsQueue.waitFence();
-}
-
-void Dx12Process::RunGpu() {
-	mtxGraphicsQueue.lock();
-	RunGpuNotLock();
-	mtxGraphicsQueue.unlock();
-}
-
-void Dx12Process::WaitFence() {
-	mtxGraphicsQueue.lock();
-	WaitFenceNotLock();
-	mtxGraphicsQueue.unlock();
-}
-
-void Dx12Process::BiginCom(int com_no) {
-	dx_subCom[com_no].Bigin();
-}
-
-void Dx12Process::EndCom(int com_no) {
-	dx_subCom[com_no].End();
-}
-
-void Dx12Process::RunGpuNotLockCom() {
-	static ID3D12CommandList* cmdsLists[COM_NO] = {};
-	UINT cnt = 0;
-	for (int i = 0; i < COM_NO; i++) {
-		if (dx_subCom[i].mComState != CLOSE)continue;
-		cmdsLists[cnt++] = dx_subCom[i].mCommandList.Get();
-		dx_subCom[i].mComState = USED;
-	}
-
-	computeQueue.setCommandList(cnt, cmdsLists);
-}
-
-void Dx12Process::WaitFenceNotLockCom() {
-	computeQueue.waitFence();
-}
-
-void Dx12Process::RunGpuCom() {
-	mtxComputeQueue.lock();
-	RunGpuNotLockCom();
-	mtxComputeQueue.unlock();
-}
-
-void Dx12Process::WaitFenceCom() {
-	mtxComputeQueue.lock();
-	WaitFenceNotLockCom();
-	mtxComputeQueue.unlock();
 }
 
 int Dx12Process::GetTexNumber(CHAR* fileName) {
@@ -148,9 +82,11 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 		return hr;
 	}
 
-	dx_sub[com_no].ResourceBarrier(*def, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+
+	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	hr = CopyResourcesToGPU(com_no, *up, *def, byteArr, RowPitch);
-	dx_sub[com_no].ResourceBarrier(*def, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return hr;
 }
@@ -210,12 +146,12 @@ HRESULT Dx12Process::createTextureResourceArr(int com_no) {
 	return S_OK;
 }
 
-ID3D12Resource* Dx12Process::GetRtvBuffer() {
-	return mRtvBuffer[mCurrBackBuffer].Get();
+Dx_Resource* Dx12Process::GetRtBuffer() {
+	return &mRtBuffer[mCurrBackBuffer];
 }
 
-ID3D12Resource* Dx12Process::GetDsvBuffer() {
-	return mDepthStencilBuffer.Get();
+Dx_Resource* Dx12Process::GetDepthBuffer() {
+	return &mDepthStencilBuffer;
 }
 
 bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
@@ -248,6 +184,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	Dx_Device::InstanceCreate();
 	Dx_Device* device = Dx_Device::GetInstance();
 	HRESULT hardwareResult = device->createDevice();
+	Dx_CommandManager::InstanceCreate();
 
 	//↑ハードウエア処理不可の場合ソフトウエア処理にする,ソフトウエア処理デバイス生成
 	if (FAILED(hardwareResult))
@@ -300,19 +237,6 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
 	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
 
-	//コマンドキュー生成
-	if (!graphicsQueue.Create(device->getDevice(), false))return false;
-	if (!computeQueue.Create(device->getDevice(), true))return false;
-
-	for (int i = 0; i < COM_NO; i++) {
-		//コマンドアロケータ,コマンドリスト生成
-		if (!dx_sub[i].ListCreate(false, device->getDevice()))return false;
-		dx_sub[i].createResourceBarrierList();
-		dx_sub[i].createUavResourceBarrierList();
-		if (!dx_subCom[i].ListCreate(true, device->getDevice()))return false;
-		dx_subCom[i].createUavResourceBarrierList();
-	}
-
 	//初期化
 	mSwapChain.Reset();
 
@@ -330,9 +254,11 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	sd.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
+	Dx_CommandManager* comMa = Dx_CommandManager::GetInstance();
+
 	ComPtr<IDXGISwapChain1> swapChain;
 	if (FAILED(mdxgiFactory->CreateSwapChainForHwnd(
-		graphicsQueue.mCommandQueue.Get(),
+		comMa->getGraphicsQueue(),
 		hWnd,
 		&sd,
 		nullptr,
@@ -358,7 +284,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		//スワップチェインバッファ取得
-		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mRtvBuffer[i].GetAddressOf())))) {
+		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mRtBuffer[i].getResourceAddress())))) {
 			Dx_Util::ErrorMessage("GetSwapChainBuffer Error");
 			return false;
 		}
@@ -366,8 +292,8 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 
 	D3D12_HEAP_PROPERTIES pro;
 	D3D12_HEAP_FLAGS flag;
-	mRtvBuffer[0].Get()->GetHeapProperties(&pro, &flag);
-	D3D12_RESOURCE_DESC desc = mRtvBuffer[0].Get()->GetDesc();
+	mRtBuffer[0].getResource()->GetHeapProperties(&pro, &flag);
+	D3D12_RESOURCE_DESC desc = mRtBuffer[0].getResource()->GetDesc();
 	D3D12_CLEAR_VALUE clearValue = {};
 	clearValue.Color[0] = clearValue.Color[1] = clearValue.Color[2] = 0.0f;
 	clearValue.Color[3] = 1.0f;
@@ -377,9 +303,9 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			&pro,
 			D3D12_HEAP_FLAG_NONE,
 			&desc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_STATE_COMMON,
 			&clearValue,
-			IID_PPV_ARGS(mRtvBuffer[i].GetAddressOf())))) {
+			IID_PPV_ARGS(mRtBuffer[i].getResourceAddress())))) {
 			Dx_Util::ErrorMessage("CreateCommittedResource mRtvBuffer Error");
 			return false;
 		}
@@ -390,7 +316,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
-		device->getDevice()->CreateRenderTargetView(mRtvBuffer[i].Get(), &rtvDesc, rtvHeapHandle);
+		device->getDevice()->CreateRenderTargetView(mRtBuffer[i].getResource(), &rtvDesc, rtvHeapHandle);
 		mRtvHeapHandle[i] = rtvHeapHandle;
 		rtvHeapHandle.ptr += mRtvDescriptorSize;
 	}
@@ -438,7 +364,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		&depthStencilDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		&optClear,
-		IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())))) {
+		IID_PPV_ARGS(mDepthStencilBuffer.getResourceAddress())))) {
 		Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
 		return false;
 	}
@@ -450,19 +376,22 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	depthdesc.Format = mDepthStencilFormat;
 	depthdesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	depthdesc.Flags = D3D12_DSV_FLAG_NONE;
-	device->getDevice()->CreateDepthStencilView(mDepthStencilBuffer.Get(), &depthdesc, mDsvHandle);
+	device->getDevice()->CreateDepthStencilView(GetDepthBuffer()->getResource(), &depthdesc, mDsvHandle);
 	mDsvHeapHandle = mDsvHandle;
 	mDsvHandle.ptr += mDsvDescriptorSize;
-	dx_sub[0].Bigin();
+
+	Dx_CommandListObj* cObj = comMa->getGraphicsComListObj(0);
+
+	cObj->Bigin();
 
 	//深度ステンシルバッファ,リソースバリア共有→深度書き込み
-	dx_sub[0].ResourceBarrier(mDepthStencilBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	GetDepthBuffer()->ResourceBarrier(0, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	StreamView::createResetBuffer(0);
 
-	dx_sub[0].End();
-	RunGpu();
-	WaitFence();
+	cObj->End();
+	comMa->RunGpu();
+	comMa->WaitFence();
 
 	//ビューポート
 	mScreenViewport.TopLeftX = 0;
@@ -522,37 +451,32 @@ void Dx12Process::setPerspectiveFov(float ViewAngle, float nearPlane, float farP
 }
 
 void Dx12Process::BiginDraw(int com_no, bool clearBackBuffer) {
-	dx_sub[com_no].mCommandList->RSSetViewports(1, &mScreenViewport);
-	dx_sub[com_no].mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-	dx_sub[com_no].ResourceBarrier(mRtvBuffer[mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+
+	cObj->getCommandList()->RSSetViewports(1, &mScreenViewport);
+	cObj->getCommandList()->RSSetScissorRects(1, &mScissorRect);
+
+	GetRtBuffer()->ResourceBarrier(com_no, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mRtvHeapHandle[mCurrBackBuffer];
 
 	if (clearBackBuffer) {
-		dx_sub[com_no].mCommandList->ClearRenderTargetView(rtvHandle,
+		cObj->getCommandList()->ClearRenderTargetView(rtvHandle,
 			DirectX::Colors::Black, 0, nullptr);
-		dx_sub[com_no].mCommandList->ClearDepthStencilView(mDsvHeapHandle,
+		cObj->getCommandList()->ClearDepthStencilView(mDsvHeapHandle,
 			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	}
 
-	dx_sub[com_no].mCommandList->OMSetRenderTargets(1, &rtvHandle,
+	cObj->getCommandList()->OMSetRenderTargets(1, &rtvHandle,
 		false, &mDsvHeapHandle);
 }
 
 void Dx12Process::EndDraw(int com_no) {
 
-	dx_sub[com_no].ResourceBarrier(mRtvBuffer[mCurrBackBuffer].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-}
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
 
-void Dx12Process::Bigin(int com_no) {
-	dx_sub[com_no].Bigin();
-}
-
-void Dx12Process::End(int com_no) {
-	dx_sub[com_no].End();
+	GetRtBuffer()->ResourceBarrier(com_no, D3D12_RESOURCE_STATE_PRESENT);
 }
 
 void Dx12Process::DrawScreen() {
@@ -691,11 +615,13 @@ HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Re
 
 	up->Unmap(0, nullptr);
 
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+
 	if (copyTexture) {
-		dx_sub[com_no].mCommandList.Get()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+		cObj->getCommandList()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
 	}
 	else {
-		dx_sub[com_no].mCommandList.Get()->CopyBufferRegion(def, 0, up, 0, copySrcWsize);
+		cObj->getCommandList()->CopyBufferRegion(def, 0, up, 0, copySrcWsize);
 	}
 
 	return S_OK;
@@ -728,12 +654,14 @@ ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
 		return nullptr;
 	}
 
-	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+
+	cObj->ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	hr = CopyResourcesToGPU(com_no, uploadBuffer.Get(), defaultBuffer.Get(), initData, byteSize);
 	if (FAILED(hr)) {
 		return nullptr;
 	}
-	dx_sub[com_no].ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, after);
+	cObj->ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, after);
 
 	return defaultBuffer;
 }

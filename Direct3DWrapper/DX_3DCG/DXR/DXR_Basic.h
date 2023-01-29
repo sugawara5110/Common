@@ -65,7 +65,7 @@ enum ShaderTestMode {
 class DXR_Basic {
 
 private:
-	ParameterDXR** PD;
+	std::vector<ParameterDXR*> PD = {};
 	ASobj asObj[2] = {};
 	CBobj cbObj[2] = {};
 	int buffSwap[2] = { 0,0 };
@@ -78,14 +78,13 @@ private:
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;
 	ComPtr<ID3D12Resource> mpShaderTable;
 	uint32_t mShaderTableEntrySize = 0;
-	ComPtr<ID3D12Resource> mpOutputResource;
-	ComPtr<ID3D12Resource> mpDepthResource;
-	ComPtr<ID3D12Resource> mpInstanceIdMapResource;
+	Dx_Resource mpOutputResource = {};
+	Dx_Resource mpDepthResource = {};
+	Dx_Resource mpInstanceIdMapResource = {};
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[2];
 	uint32_t numSkipLocalHeap = 0;
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
 
-	UINT numParameter = 0;//PD数
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
 	UINT maxNumInstancing = 0;
@@ -112,18 +111,18 @@ private:
 
 public:
 	~DXR_Basic();
-	void initDXR(UINT numParameter, ParameterDXR** pd, UINT maxRecursion, ShaderTestMode Mode = Standard);
+	void initDXR(std::vector<ParameterDXR*>& pd, UINT maxRecursion, ShaderTestMode Mode = Standard);
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
 	void raytrace_g(int comNo);
 	void raytrace_c(int comNo);
-	void copyBackBuffer(int comNo);
-	void copyDepthBuffer(int comNo);
+	void copyBackBuffer(uint32_t comNo);
+	void copyDepthBuffer(uint32_t comNo);
 	void setASswapIndex(int index) { buffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
 
-	ID3D12Resource* getInstanceIdMap();
+	Dx_Resource* getInstanceIdMap();
 
 	void allSwapIndex() {
 		Dx12Process* dx = Dx12Process::GetInstance();

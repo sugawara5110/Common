@@ -128,7 +128,9 @@ void BasicPolygon::CbSwap() {
 
 void BasicPolygon::draw(int com, drawPara& para) {
 
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com);
+
+	ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetGraphicsRootSignature(para.rootSignature.Get());
@@ -165,8 +167,10 @@ void BasicPolygon::ParameterDXR_Update() {
 
 void BasicPolygon::streamOutput(int com, drawPara& para, ParameterDXR& dxr) {
 
-	ID3D12GraphicsCommandList* mCList = dx->dx_sub[com].mCommandList.Get();
-	Dx_CommandListObj& d = dx->dx_sub[com];
+	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(com);
+
+	ID3D12GraphicsCommandList* mCList = d.getCommandList();
+
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
 	UpdateDXR& ud = dxr.updateDXR[dx->dxrBuffSwap[0]];
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -392,7 +396,7 @@ void BasicPolygon::createParameterDXR(bool alpha, bool blend, float divideBuffer
 
 	Dx_Device* device = Dx_Device::GetInstance();
 
-	Dx_CommandListObj& d = dx->dx_sub[com_no];
+	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
 
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;

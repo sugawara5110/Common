@@ -41,15 +41,23 @@ bool Dx_CommandListObj::ListCreate(bool Compute, ID3D12Device5* dev) {
 	return true;
 }
 
+static void getBarrierDesc(
+	D3D12_RESOURCE_BARRIER& desc,
+	ID3D12Resource* res,
+	D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+
+	desc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	desc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	desc.Transition.pResource = res;
+	desc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	desc.Transition.StateBefore = before;
+	desc.Transition.StateAfter = after;
+}
+
 void Dx_CommandListObj::ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
-	D3D12_RESOURCE_BARRIER BarrierDesc;
-	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	BarrierDesc.Transition.pResource = res;
-	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	BarrierDesc.Transition.StateBefore = before;
-	BarrierDesc.Transition.StateAfter = after;
-	mCommandList->ResourceBarrier(1, &BarrierDesc);
+	D3D12_RESOURCE_BARRIER desc = {};
+	getBarrierDesc(desc, res, before, after);
+	mCommandList->ResourceBarrier(1, &desc);
 }
 
 void Dx_CommandListObj::CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src) {
@@ -82,7 +90,7 @@ void Dx_CommandListObj::End() {
 	mComState = CLOSE;
 }
 
-int Dx_CommandListObj::NumResourceBarrier = 512;
+int Dx_CommandListObj::NumResourceBarrier = 1024;
 
 void Dx_CommandListObj::createResourceBarrierList() {
 	beforeBa = std::make_unique<D3D12_RESOURCE_BARRIER[]>(NumResourceBarrier);
@@ -100,13 +108,7 @@ void Dx_CommandListObj::delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RE
 	if (beforeCnt >= NumResourceBarrier) {
 		Dx_Util::ErrorMessage("ResourceBarrierå¬êîè„å¿í¥Ç¶ÇƒÇ‹Ç∑!");
 	}
-	D3D12_RESOURCE_BARRIER& ba = beforeBa[beforeCnt];
-	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	ba.Transition.pResource = res;
-	ba.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	ba.Transition.StateBefore = before;
-	ba.Transition.StateAfter = after;
+	getBarrierDesc(beforeBa[beforeCnt], res, before, after);
 	beforeCnt++;
 }
 
@@ -126,13 +128,7 @@ void Dx_CommandListObj::delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RES
 	if (afterCnt >= NumResourceBarrier) {
 		Dx_Util::ErrorMessage("ResourceBarrierå¬êîè„å¿í¥Ç¶ÇƒÇ‹Ç∑!");
 	}
-	D3D12_RESOURCE_BARRIER& ba = afterBa[afterCnt];
-	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	ba.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	ba.Transition.pResource = res;
-	ba.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	ba.Transition.StateBefore = before;
-	ba.Transition.StateAfter = after;
+	getBarrierDesc(afterBa[afterCnt], res, before, after);
 	afterCnt++;
 }
 
@@ -171,4 +167,8 @@ void Dx_CommandListObj::RunDelayUavResourceBarrier() {
 	if (uavCnt <= 0)return;
 	mCommandList->ResourceBarrier(uavCnt, uavBa.get());
 	uavCnt = 0;
+}
+
+ID3D12GraphicsCommandList4* Dx_CommandListObj::getCommandList() {
+	return mCommandList.Get();
 }
