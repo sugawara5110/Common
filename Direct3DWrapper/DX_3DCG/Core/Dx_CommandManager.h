@@ -45,6 +45,8 @@ public:
 	void WaitFence();
 	ID3D12CommandQueue* getGraphicsQueue();
 
+	ComPtr<ID3D12Resource> CreateDefaultBuffer(int comIndex, const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
+
 	Dx_CommandListObj* getComputeComListObj(int comIndex);
 	void RunGpuNotLockCom();
 	void RunGpuCom();

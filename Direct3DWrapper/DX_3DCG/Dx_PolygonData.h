@@ -31,9 +31,9 @@ public:
 	void setPointLightAll(bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
-	bool Create(bool light, int tNo, bool blend, bool alpha);
+	bool Create(int comIndex, bool light, int tNo, bool blend, bool alpha);
 
-	bool Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
+	bool Create(int comIndex, bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
 		bool smooth = false,
 		float divideBufferMagnification = 1.0f);
 

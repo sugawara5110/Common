@@ -172,3 +172,74 @@ void Dx_CommandListObj::RunDelayUavResourceBarrier() {
 ID3D12GraphicsCommandList4* Dx_CommandListObj::getCommandList() {
 	return mCommandList.Get();
 }
+
+HRESULT Dx_CommandListObj::CopyResourcesToGPU(ID3D12Resource* up, ID3D12Resource* def, const void* initData, LONG_PTR RowPitch) {
+
+	bool copyTexture = false;
+	D3D12_RESOURCE_DESC desc = def->GetDesc();
+	if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+		desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+		desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+		copyTexture = true;
+	}
+
+	D3D12_SUBRESOURCE_DATA subResourceData = {};
+	subResourceData.pData = initData;
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+	D3D12_TEXTURE_COPY_LOCATION dest, src;
+
+	if (copyTexture) {
+		UINT64  total_bytes = 0;
+		Dx_Device::GetInstance()->getDevice()->GetCopyableFootprints(
+			&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
+
+		memset(&dest, 0, sizeof(dest));
+		dest.pResource = def;
+		dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dest.SubresourceIndex = 0;
+
+		memset(&src, 0, sizeof(src));
+		src.pResource = up;
+		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		src.PlacedFootprint = footprint;
+
+		subResourceData.RowPitch = footprint.Footprint.RowPitch;
+	}
+	else {
+		subResourceData.RowPitch = RowPitch;
+	}
+
+	D3D12_SUBRESOURCE_DATA mapResource;
+	HRESULT hr = up->Map(0, nullptr, reinterpret_cast<void**>(&mapResource));
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	UCHAR* destResource = (UCHAR*)mapResource.pData;
+	mapResource.RowPitch = subResourceData.RowPitch;
+	UCHAR* srcResource = (UCHAR*)subResourceData.pData;
+
+	UINT copyDestWsize = (UINT)mapResource.RowPitch;
+	UINT copySrcWsize = (UINT)RowPitch;
+
+	if (copyDestWsize == copySrcWsize) {
+		memcpy(destResource, srcResource, sizeof(UCHAR) * copySrcWsize * desc.Height);
+	}
+	else {
+		for (UINT s = 0; s < desc.Height; s++) {
+			memcpy(&destResource[copyDestWsize * s], &srcResource[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
+		}
+	}
+
+	up->Unmap(0, nullptr);
+
+	if (copyTexture) {
+		mCommandList->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
+	}
+	else {
+		mCommandList->CopyBufferRegion(def, 0, up, 0, copySrcWsize);
+	}
+
+	return S_OK;
+}

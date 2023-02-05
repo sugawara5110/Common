@@ -177,12 +177,6 @@ private:
 		DivideArr* divArr, int numDiv, float shininess, float SmoothRange, float SmoothRatio);
 
 public:
-	HRESULT CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
-		const void* initData, LONG_PTR RowPitch);
-
-	ComPtr<ID3D12Resource> CreateDefaultBuffer(int com_no,
-		const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
-
 	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
@@ -328,11 +322,11 @@ struct StreamView {
 	UINT StreamBufferByteSize = 0;
 	UINT FilledSize = 0;
 
-	static void createResetBuffer(int comNo) {
-		Dx12Process* dx = Dx12Process::GetInstance();
+	static void createResetBuffer(int comIndex) {
+		Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
 		UINT64 zero[1] = {};
 		zero[0] = 0;
-		resetBuffer = dx->CreateDefaultBuffer(comNo, zero,
+		resetBuffer = ma->CreateDefaultBuffer(comIndex, zero,
 			sizeof(UINT64),
 			UpresetBuffer, false);
 	}
@@ -344,9 +338,9 @@ struct StreamView {
 		device->createReadBackResource(ReadBuffer.GetAddressOf(), sizeof(UINT64));
 	}
 
-	void ResetFilledSizeBuffer(int com) {
+	void ResetFilledSizeBuffer(int comIndex) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com);
+		Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
 		cObj->delayResourceBarrierBefore(BufferFilledSizeBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -358,9 +352,9 @@ struct StreamView {
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT);
 	}
 
-	void outputReadBack(int com) {
+	void outputReadBack(int comIndex) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com);
+		Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
 		ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 		cObj->ResourceBarrier(BufferFilledSizeBufferGPU.Get(),
@@ -624,10 +618,6 @@ protected:
 	Common(const Common& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const Common& obj) {}// 代入演算子禁止
 
-	Dx12Process* dx = nullptr;
-	ID3D12GraphicsCommandList* mCommandList = nullptr;
-	Dx_CommandListObj* comObj = nullptr;
-	int com_no = 0;
 	char objName[256] = {};
 
 	//テクスチャ
@@ -642,8 +632,8 @@ protected:
 	D3D12_TEXTURE_COPY_LOCATION dest = {};
 	D3D12_TEXTURE_COPY_LOCATION src = {};
 
-	HRESULT createTex(int tNo, int& resCnt, char* upName, char* defName, char* ObjName);
-	HRESULT createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName);
+	HRESULT createTex(int comIndex, int tNo, int& resCnt, char* upName, char* defName, char* ObjName);
+	HRESULT createTextureResource(int comIndex, int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName);
 
 	ComPtr<ID3D12RootSignature> CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
 		UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors);
@@ -702,18 +692,17 @@ protected:
 
 	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 
-	int cBuffSwapUpdateIndex() { return dx->cBuffSwap[0]; }
-	int cBuffSwapDrawOrStreamoutputIndex() { return dx->cBuffSwap[1]; }
-	int dxrBuffSwapIndex() { return dx->dxrBuffSwap[0]; }
+	int cBuffSwapUpdateIndex() { return Dx12Process::GetInstance()->cBuffSwap[0]; }
+	int cBuffSwapDrawOrStreamoutputIndex() { return Dx12Process::GetInstance()->cBuffSwap[1]; }
+	int dxrBuffSwapIndex() { return Dx12Process::GetInstance()->dxrBuffSwap[0]; }
 
 public:
 	~Common();
 	void SetName(char* name);
-	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
-	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
-	InternalTexture* getInternalTexture(int index) { return &dx->texture[index + 2]; }
+	void CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0);
+	void TextureInit(int width, int height, int texIndex = 0);
+	HRESULT SetTextureMPixel(int comIndex, BYTE* frame, int index = 0);
+	InternalTexture* getInternalTexture(int index) { return &Dx12Process::GetInstance()->texture[index + 2]; }
 	ID3D12Resource* getTextureResource(int index) { return texture[index]; }
 };
 
@@ -763,24 +752,24 @@ protected:
 	void createBufferDXR(int numMaterial, int numMaxInstance);
 	void setTextureDXR();
 	void CbSwap();
-	void draw(int com_no, drawPara& para);
+	void draw(int comIndex, drawPara& para);
 	void ParameterDXR_Update();
-	void streamOutput(int com_no, drawPara& para, ParameterDXR& dxr);
+	void streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr);
 
 	void getBuffer(int numMaterial, int numMaxInstance, DivideArr* divArr = nullptr, int numDiv = 0);
 	void getVertexBuffer(UINT VertexByteStride, UINT numVertex);
 	void getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, UINT numIndex);
 	void setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg);
-	void createDefaultBuffer(void* vertexArr, UINT** indexArr);
+	void createDefaultBuffer(int comIndex, void* vertexArr, UINT** indexArr);
 
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool blend, bool alpha);
 
-	bool setDescHeap(const int numSrvTex,
+	bool setDescHeap(int comIndex, const int numSrvTex,
 		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void createParameterDXR(bool alpha, bool blend, float divideBufferMagnification);
+	void createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification);
 
 	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool smooth);
@@ -801,10 +790,8 @@ public:
 		float disp, float SmoothRange, float SmoothRatio, float shininess = 4.0f,
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
-	void Draw(int com_no);
-	void StreamOutput(int com_no);
-	void Draw();
-	void StreamOutput();
+	void Draw(int comIndex);
+	void StreamOutput(int comIndex);
 	void DrawOff();
 	ParameterDXR* getParameter();
 
@@ -816,7 +803,7 @@ public:
 	void UpdateDxrDivideBuffer();
 
 	void setRefractiveIndex(float index) {
-		dxrPara.updateDXR[dx->dxrBuffSwap[0]].RefractiveIndex = index;
+		dxrPara.updateDXR[Dx12Process::GetInstance()->dxrBuffSwap[0]].RefractiveIndex = index;
 	}
 };
 
@@ -873,19 +860,18 @@ public:
 	ID3D12PipelineState* GetPipelineState();
 	void GetVBarray2D(int pcs);
 	void TexOn();
-	bool CreateBox(float x, float y, float z,
+	bool CreateBox(int comIndex, float x, float y, float z,
 		float sizex, float sizey,
 		float r, float g, float b, float a,
 		bool blend, bool alpha, int noTex = -1);
-	bool Create(bool blend, bool alpha, int noTex = -1);
+	bool Create(int comIndex, bool blend, bool alpha, int noTex = -1);
 	void InstancedSetConstBf(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
 	void InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void InstanceUpdate();
 	void Update(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
 	void Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
 	void DrawOff();
-	void Draw(int com_no);
-	void Draw();
+	void Draw(int comIndex);
 };
 
 class T_float {

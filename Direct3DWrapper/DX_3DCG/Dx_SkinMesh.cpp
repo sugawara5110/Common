@@ -238,13 +238,14 @@ void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame
 	pvVBM = new VertexM * [numMesh];
 	mObj = new BasicPolygon[numMesh];
 
+	Dx12Process* dx = Dx12Process::GetInstance();
+
 	for (int i = 0; i < numMesh; i++) {
-		mObj[i].SetCommandList(com_no);
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), numMaxInstance, divArr, numDiv);
 		if (numBone[i] > 0) {
 			sk[i].getBuffer(&mObj[i]);
 		}
-		if (mObj[i].dx->DXR_CreateResource) {
+		if (dx->DXR_CreateResource) {
 			UpdateDXR& u0 = mObj[i].dxrPara.updateDXR[0];
 			UpdateDXR& u1 = mObj[i].dxrPara.updateDXR[1];
 			u0.useVertex = true;
@@ -536,7 +537,7 @@ void SkinMesh::splitIndex(UINT numMaterial, FbxMeshNode* mesh, int m) {
 void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 	char* uv0Name, char* uv1Name, int* uvSw) {
 
-	Dx12Process* dx = mObj[0].dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	int m = meshInd;
 	for (UINT i = 0; i < numMaterial; i++) {
 		//ディフェーズテクスチャId取得
@@ -665,19 +666,22 @@ void SkinMesh::swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw) {
 }
 
 void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
-	mObj[meshIndex].dpara.material[materialIndex].diftex_no = mObj[0].dx->GetTexNumber(textureName);
+	Dx12Process* dx = Dx12Process::GetInstance();
+	mObj[meshIndex].dpara.material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
-	mObj[meshIndex].dpara.material[materialIndex].nortex_no = mObj[0].dx->GetTexNumber(textureName);
+	Dx12Process* dx = Dx12Process::GetInstance();
+	mObj[meshIndex].dpara.material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
-	mObj[meshIndex].dpara.material[materialIndex].spetex_no = mObj[0].dx->GetTexNumber(textureName);
+	Dx12Process* dx = Dx12Process::GetInstance();
+	mObj[meshIndex].dpara.material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
-	Dx12Process* dx = mObj[0].dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	for (int i = 0; i < numMesh; i++) {
 		BasicPolygon& o = mObj[i];
@@ -708,20 +712,20 @@ void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshInd
 void SkinMesh::setPointLight(int meshIndex, int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = mObj[0].dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	mObj[meshIndex].dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void SkinMesh::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = mObj[0].dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
 	}
 }
 
-bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnification) {
+bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideBufferMagnification) {
 	GetShaderByteCode(disp, smooth);
 	const int numSrvTex = 3;
 	const int numCbv = 3;
@@ -729,7 +733,6 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 	for (int i = 0; i < numMesh; i++) {
 		BasicPolygon& o = mObj[i];
 		o.setDivideArr(divArr, numDiv);
-		o.com_no = com_no;
 
 		UINT* indexCntArr = new UINT[mObj[i].dpara.NumMaterial];
 		for (int m = 0; m < mObj[i].dpara.NumMaterial; m++) {
@@ -745,7 +748,7 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 			vertex, newIndex[i], vSize, 0, 3 * 4, 12 * 4, 6 * 4);
 		ARR_DELETE(indexCntArr);
 
-		o.createDefaultBuffer(vertex, newIndex[i]);
+		o.createDefaultBuffer(comIndex, vertex, newIndex[i]);
 		if (pvVB_delete_f) {
 			ARR_DELETE(pvVBM[i]);
 			ARR_DELETE(pvVB[i]);
@@ -755,22 +758,22 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 		}
 		ARR_DELETE(newIndex[i]);
 		int numUav = 0;
-		Dx12Process* dx = o.dx;
-		o.createParameterDXR(alpha, blend, divideBufferMagnification);
+		Dx12Process* dx = Dx12Process::GetInstance();
+		o.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 		if (numBone[i] > 0) {
-			if (!sk[i].createParameterDXR(com_no))return false;
+			if (!sk[i].createParameterDXR(comIndex))return false;
 			if (!o.createPSO(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
 			if (!sk[i].createPSO())return false;
 			UINT cbSize = mObject_BONES->getSizeInBytes();
 			D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
-			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
+			if (!o.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
 			if (!sk[i].createDescHeap(ad, cbSize))return false;
 		}
 		else {
 			if (!o.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
-			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
+			if (!o.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 		}
 	}
 	if (pvVB_delete_f) {
@@ -779,10 +782,6 @@ bool SkinMesh::CreateFromFBX(bool disp, bool smooth, float divideBufferMagnifica
 	}
 	ARR_DELETE(newIndex);
 	return true;
-}
-
-bool SkinMesh::CreateFromFBX() {
-	return CreateFromFBX(false);
 }
 
 HRESULT SkinMesh::GetFbxSub(CHAR* szFileName, int ind) {
@@ -964,9 +963,10 @@ CoordTf::MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 void SkinMesh::GetMeshCenterPos() {
 	using namespace CoordTf;
 	for (int i = 0; i < numMesh; i++) {
-		if (mObj[i].dx->DXR_CreateResource) {
+		Dx12Process* dx = Dx12Process::GetInstance();
+		if (dx->DXR_CreateResource) {
 			VECTOR3 cp = centerPos[i].pos;
-			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[mObj[i].dx->dxrBuffSwap[0]];//StreamOutput内もdxrBuffSwap[0]だが書き込み箇所が異なるのでOK
+			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[dx->dxrBuffSwap[0]];//StreamOutput内もdxrBuffSwap[0]だが書き込み箇所が異なるのでOK
 			VECTOR3* vv = &ud.v[0];
 			vv->as(cp.x, cp.y, cp.z);
 			if (numBone[i] > 0) {
@@ -1041,7 +1041,8 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, int InternalAnimationIndex,
 	bool frame_end = false;
 	int insnum = 0;
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind, InternalAnimationIndex);
-	MatrixMap_Bone(&sgb[mObj[0].dx->cBuffSwap[0]]);
+	Dx12Process* dx = Dx12Process::GetInstance();
+	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
 
 	for (int i = 0; i < numMesh; i++) {
 		if (!noUseMesh[i])
@@ -1067,43 +1068,28 @@ void SkinMesh::DrawOff() {
 		mObj[i].DrawOff();
 }
 
-void SkinMesh::Draw(int com) {
+void SkinMesh::Draw(int comIndex) {
 
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
+	Dx12Process* dx = Dx12Process::GetInstance();
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
 
 	for (int i = 0; i < numMesh; i++)
-		mObj[i].Draw(com);
+		mObj[i].Draw(comIndex);
 }
 
-void SkinMesh::StreamOutput(int com) {
+void SkinMesh::StreamOutput(int comIndex) {
 
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[mObj[0].dx->cBuffSwap[1]]);
+	Dx12Process* dx = Dx12Process::GetInstance();
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
 
 	for (int i = 0; i < numMesh; i++) {
-		mObj[i].StreamOutput(com);
-		if (numBone[i] > 0)sk[i].Skinning(com);
+		mObj[i].StreamOutput(comIndex);
+		if (numBone[i] > 0)sk[i].Skinning(comIndex);
 	}
 }
 
-void SkinMesh::Draw() {
-	Draw(com_no);
-}
-
-void SkinMesh::StreamOutput() {
-	StreamOutput(com_no);
-}
-
-void SkinMesh::SetCommandList(int no) {
-	com_no = no;
-	if (mObj) {
-		for (int i = 0; i < numMesh; i++) {
-			mObj[i].SetCommandList(com_no);
-		}
-	}
-}
-
-void SkinMesh::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex, int meshIndex) {
-	mObj[meshIndex].CopyResource(texture, res, texIndex);
+void SkinMesh::CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex, int meshIndex) {
+	mObj[meshIndex].CopyResource(comIndex, texture, res, texIndex);
 }
 
 void SkinMesh::TextureInit(int width, int height, int texIndex, int meshIndex) {

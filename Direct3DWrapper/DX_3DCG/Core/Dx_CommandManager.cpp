@@ -117,3 +117,41 @@ void Dx_CommandManager::WaitFenceCom() {
 	mtxComputeQueue.unlock();
 }
 
+ComPtr<ID3D12Resource> Dx_CommandManager::CreateDefaultBuffer(
+	int comIndex,
+	const void* initData,
+	UINT64 byteSize,
+	ComPtr<ID3D12Resource>& uploadBuffer, bool uav)
+{
+	ComPtr<ID3D12Resource> defaultBuffer;
+	HRESULT hr;
+	D3D12_RESOURCE_STATES after = D3D12_RESOURCE_STATE_GENERIC_READ;
+	Dx_Device* device = Dx_Device::GetInstance();
+	if (uav) {
+		hr = device->createDefaultResourceBuffer_UNORDERED_ACCESS(defaultBuffer.GetAddressOf(), byteSize);
+		after = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	}
+	else {
+		hr = device->createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
+	}
+	if (FAILED(hr)) {
+		return nullptr;
+	}
+
+	UINT64 uploadBufferSize = device->getRequiredIntermediateSize(defaultBuffer.Get());
+	hr = device->createUploadResource(uploadBuffer.GetAddressOf(), uploadBufferSize);
+	if (FAILED(hr)) {
+		return nullptr;
+	}
+
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
+
+	cObj->ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	hr = cObj->CopyResourcesToGPU(uploadBuffer.Get(), defaultBuffer.Get(), initData, byteSize);
+	if (FAILED(hr)) {
+		return nullptr;
+	}
+	cObj->ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, after);
+
+	return defaultBuffer;
+}

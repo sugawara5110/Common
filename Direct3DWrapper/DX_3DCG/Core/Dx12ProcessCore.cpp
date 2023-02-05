@@ -85,7 +85,7 @@ HRESULT Dx12Process::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT forma
 	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
 
 	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	hr = CopyResourcesToGPU(com_no, *up, *def, byteArr, RowPitch);
+	hr = cObj->CopyResourcesToGPU(*up, *def, byteArr, RowPitch);
 	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	return hr;
@@ -552,118 +552,6 @@ void Dx12Process::Fog(float r, float g, float b, float amount, float density, bo
 	fog.FogColor.as(r, g, b, 1.0f);
 	fog.Amount = amount;
 	fog.Density = density;
-}
-
-HRESULT Dx12Process::CopyResourcesToGPU(int com_no, ID3D12Resource* up, ID3D12Resource* def,
-	const void* initData, LONG_PTR RowPitch) {
-
-	bool copyTexture = false;
-	D3D12_RESOURCE_DESC desc = def->GetDesc();
-	if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
-		desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-		desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
-		copyTexture = true;
-	}
-
-	D3D12_SUBRESOURCE_DATA subResourceData = {};
-	subResourceData.pData = initData;
-
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-	D3D12_TEXTURE_COPY_LOCATION dest, src;
-
-	if (copyTexture) {
-		UINT64  total_bytes = 0;
-		Dx_Device::GetInstance()->getDevice()->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, nullptr, nullptr, &total_bytes);
-
-		memset(&dest, 0, sizeof(dest));
-		dest.pResource = def;
-		dest.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		dest.SubresourceIndex = 0;
-
-		memset(&src, 0, sizeof(src));
-		src.pResource = up;
-		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-		src.PlacedFootprint = footprint;
-
-		subResourceData.RowPitch = footprint.Footprint.RowPitch;
-	}
-	else {
-		subResourceData.RowPitch = RowPitch;
-	}
-
-	D3D12_SUBRESOURCE_DATA mapResource;
-	HRESULT hr = up->Map(0, nullptr, reinterpret_cast<void**>(&mapResource));
-	if (FAILED(hr)) {
-		return hr;
-	}
-
-	UCHAR* destResource = (UCHAR*)mapResource.pData;
-	mapResource.RowPitch = subResourceData.RowPitch;
-	UCHAR* srcResource = (UCHAR*)subResourceData.pData;
-
-	UINT copyDestWsize = (UINT)mapResource.RowPitch;
-	UINT copySrcWsize = (UINT)RowPitch;
-
-	if (copyDestWsize == copySrcWsize) {
-		memcpy(destResource, srcResource, sizeof(UCHAR) * copySrcWsize * desc.Height);
-	}
-	else {
-		for (UINT s = 0; s < desc.Height; s++) {
-			memcpy(&destResource[copyDestWsize * s], &srcResource[copySrcWsize * s], sizeof(UCHAR) * copySrcWsize);
-		}
-	}
-
-	up->Unmap(0, nullptr);
-
-	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
-
-	if (copyTexture) {
-		cObj->getCommandList()->CopyTextureRegion(&dest, 0, 0, 0, &src, nullptr);
-	}
-	else {
-		cObj->getCommandList()->CopyBufferRegion(def, 0, up, 0, copySrcWsize);
-	}
-
-	return S_OK;
-}
-
-ComPtr<ID3D12Resource> Dx12Process::CreateDefaultBuffer(
-	int com_no,
-	const void* initData,
-	UINT64 byteSize,
-	ComPtr<ID3D12Resource>& uploadBuffer, bool uav)
-{
-	ComPtr<ID3D12Resource> defaultBuffer;
-	HRESULT hr;
-	D3D12_RESOURCE_STATES after = D3D12_RESOURCE_STATE_GENERIC_READ;
-	Dx_Device* device = Dx_Device::GetInstance();
-	if (uav) {
-		hr = device->createDefaultResourceBuffer_UNORDERED_ACCESS(defaultBuffer.GetAddressOf(), byteSize);
-		after = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-	}
-	else {
-		hr = device->createDefaultResourceBuffer(defaultBuffer.GetAddressOf(), byteSize);
-	}
-	if (FAILED(hr)) {
-		return nullptr;
-	}
-
-	UINT64 uploadBufferSize = device->getRequiredIntermediateSize(defaultBuffer.Get());
-	hr = device->createUploadResource(uploadBuffer.GetAddressOf(), uploadBufferSize);
-	if (FAILED(hr)) {
-		return nullptr;
-	}
-
-	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
-
-	cObj->ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	hr = CopyResourcesToGPU(com_no, uploadBuffer.Get(), defaultBuffer.Get(), initData, byteSize);
-	if (FAILED(hr)) {
-		return nullptr;
-	}
-	cObj->ResourceBarrier(defaultBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, after);
-
-	return defaultBuffer;
 }
 
 void Dx12Process::Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,

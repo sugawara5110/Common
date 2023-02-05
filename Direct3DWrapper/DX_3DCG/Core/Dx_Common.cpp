@@ -8,9 +8,7 @@
 #include "Dx12ProcessCore.h"
 
 Common::Common() {
-	dx = Dx12Process::GetInstance();
-	comObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(0);
-	mCommandList = comObj->getCommandList();
+
 }
 
 Common::~Common() {
@@ -29,24 +27,17 @@ void Common::SetName(char* name) {
 	strcpy(objName, name);
 }
 
-void Common::SetCommandList(int no) {
-	com_no = no;
+void Common::CopyResource(int comIndex, ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int texIndex) {
 
-	comObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
-	mCommandList = comObj->getCommandList();
-}
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
-void Common::CopyResource(ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int index) {
-
-	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
-
-	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
+	cObj->ResourceBarrier(texture[texIndex], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 	cObj->ResourceBarrier(Intexture, res, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	mCommandList->CopyResource(texture[index], Intexture);
+	cObj->getCommandList()->CopyResource(texture[texIndex], Intexture);
 
 	cObj->ResourceBarrier(Intexture, D3D12_RESOURCE_STATE_COPY_SOURCE, res);
-	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+	cObj->ResourceBarrier(texture[texIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
 void Common::TextureInit(int width, int height, int index) {
@@ -69,19 +60,19 @@ void Common::TextureInit(int width, int height, int index) {
 	movOn[index].height = height;
 }
 
-HRESULT Common::SetTextureMPixel(int com_no, BYTE* frame, int ind) {
+HRESULT Common::SetTextureMPixel(int comIndex, BYTE* frame, int tInd) {
 
-	int index = movOn[ind].resIndex;
+	int index = movOn[tInd].resIndex;
 
 	D3D12_RESOURCE_DESC texdesc;
 	texdesc = texture[index]->GetDesc();
 	//テクスチャの横サイズ取得
 	int width = (int)texdesc.Width;
 
-	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
 	cObj->ResourceBarrier(texture[index], D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	HRESULT hr = dx->CopyResourcesToGPU(com_no, textureUp[index], texture[index], frame, width * 4);
+	HRESULT hr = cObj->CopyResourcesToGPU(textureUp[index], texture[index], frame, width * 4);
 	if (FAILED(hr)) {
 		Dx_Util::ErrorMessage("Common::SetTextureMPixel Error!!");
 		return hr;
@@ -91,7 +82,8 @@ HRESULT Common::SetTextureMPixel(int com_no, BYTE* frame, int ind) {
 	return S_OK;
 }
 
-HRESULT Common::createTex(int tNo, int& resCnt, char* upName, char* defName, char* ObjName) {
+HRESULT Common::createTex(int comIndex, int tNo, int& resCnt, char* upName, char* defName, char* ObjName) {
+	Dx12Process* dx = Dx12Process::GetInstance();
 	InternalTexture* tex = &dx->texture[tNo];
 	HRESULT hr = S_OK;
 	if (tex->createRes) {
@@ -99,7 +91,7 @@ HRESULT Common::createTex(int tNo, int& resCnt, char* upName, char* defName, cha
 		texture[resCnt] = tex->texture.Get();
 	}
 	else {
-		hr = dx->createTexture(com_no, tex->byteArr, tex->format,
+		hr = dx->createTexture(comIndex, tex->byteArr, tex->format,
 			&textureUp[resCnt], &texture[resCnt],
 			tex->width, tex->RowPitch, tex->height);
 		textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR(upName, ObjName));
@@ -109,7 +101,7 @@ HRESULT Common::createTex(int tNo, int& resCnt, char* upName, char* defName, cha
 	resCnt++;
 	return hr;
 }
-HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName) {
+HRESULT Common::createTextureResource(int comIndex, int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName) {
 
 	numTexRes = MaterialNum * 3;
 	createRes = std::make_unique<bool[]>(numTexRes);
@@ -148,7 +140,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 		}
 		else
 		{
-			hr = createTex(to[i].diffuse, resCnt, "diffuseTexUp", "diffuseTex", ObjName);
+			hr = createTex(comIndex, to[i].diffuse, resCnt, "diffuseTexUp", "diffuseTex", ObjName);
 		}
 		if (FAILED(hr)) {
 			Dx_Util::ErrorMessage("Common::createTextureResource Error!!");
@@ -156,7 +148,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 		}
 		//normalMapが存在する場合
 		if (to[i].normal >= 0) {
-			hr = createTex(to[i].normal, resCnt, "normalTexUp", "normalTex", ObjName);
+			hr = createTex(comIndex, to[i].normal, resCnt, "normalTexUp", "normalTex", ObjName);
 		}
 		if (FAILED(hr)) {
 			Dx_Util::ErrorMessage("Common::createTextureResource Error!!");
@@ -164,7 +156,7 @@ HRESULT Common::createTextureResource(int resourceStartIndex, int MaterialNum, T
 		}
 		//specularMapが存在する場合
 		if (to[i].specular >= 0) {
-			hr = createTex(to[i].specular, resCnt, "specularTexUp", "specularTex", ObjName);
+			hr = createTex(comIndex, to[i].specular, resCnt, "specularTexUp", "specularTex", ObjName);
 		}
 		if (FAILED(hr)) {
 			Dx_Util::ErrorMessage("Common::createTextureResource Error!!");
@@ -401,6 +393,8 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		psoDesc.StreamOutput.RasterizedStream = D3D12_SO_NO_RASTERIZED_STREAM;
 	}
 
+	Dx12Process* dx = Dx12Process::GetInstance();
+
 	D3D12_RASTERIZER_DESC rasterizerDesc = {};
 	if (dx->wireframe)
 		rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
@@ -555,5 +549,6 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 }
 
 ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
+	Dx12Process* dx = Dx12Process::GetInstance();
 	return dx->shaderH->CompileShader(szFileName, size, szFuncName, szProfileName);
 }

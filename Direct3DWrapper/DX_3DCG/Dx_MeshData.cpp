@@ -29,7 +29,7 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
-	Dx12Process* dx = mObj.dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	//マテリアルファイルを開いて内容を読み込む
 	errno_t error;
 	FILE* fp = nullptr;
@@ -380,19 +380,20 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 void MeshData::setPointLight(int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = mObj.dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	mObj.dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void MeshData::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = mObj.dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	mObj.dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
 }
 
-bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
-	Dx12Process* dx = mObj.dx;
+bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnification) {
+
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (disp) {
 		mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, nullptr);
 	}
@@ -411,20 +412,20 @@ bool MeshData::CreateMesh(bool smooth, float divideBufferMagnification) {
 		pvVertexBuffer, piFaceBuffer, sizeof(VertexM), 0, 3 * 4, 12 * 4, 6 * 4);
 	ARR_DELETE(indexCntArr);
 
-	mObj.createDefaultBuffer(pvVertexBuffer, piFaceBuffer);
+	mObj.createDefaultBuffer(comIndex, pvVertexBuffer, piFaceBuffer);
 	ARR_DELETE(pvVertexBuffer);
 	for (int i = 0; i < mObj.dpara.NumMaterial; i++) {
 		ARR_DELETE(piFaceBuffer[i]);
 	}
 	ARR_DELETE(piFaceBuffer);
 	int numUav = 0;
-	mObj.createParameterDXR(alpha, blend, divideBufferMagnification);
+	mObj.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 
 	if (!mObj.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 	if (!mObj.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 
-	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
+	if (!mObj.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
 }
 
@@ -455,20 +456,8 @@ void MeshData::StreamOutput(int com_no) {
 	mObj.StreamOutput(com_no);
 }
 
-void MeshData::Draw() {
-	mObj.Draw();
-}
-
-void MeshData::StreamOutput() {
-	mObj.StreamOutput();
-}
-
-void MeshData::SetCommandList(int no) {
-	mObj.SetCommandList(no);
-}
-
-void MeshData::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
-	mObj.CopyResource(texture, res, index);
+void MeshData::CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
+	mObj.CopyResource(comIndex, texture, res, index);
 }
 
 void MeshData::TextureInit(int width, int height, int index) {

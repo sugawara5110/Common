@@ -74,7 +74,6 @@ protected:
 	float BoneConnect;
 	BasicPolygon* mObj = nullptr;
 	SkinnedCom* sk = nullptr;
-	int com_no = 0;
 	CoordTf::MATRIX Axis = {};
 	std::unique_ptr<bool[]> noUseMesh = nullptr;
 
@@ -119,8 +118,7 @@ public:
 	void setPointLightAll(bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
-	bool CreateFromFBX(bool disp, bool smooth = false, float divideBufferMagnification = 1.0f);
-	bool CreateFromFBX();
+	bool CreateFromFBX(int comIndex, bool disp = false, bool smooth = false, float divideBufferMagnification = 1.0f);
 	HRESULT GetFbxSub(CHAR* szFileName, int ind);
 	HRESULT GetBuffer_Sub(int ind, int num_end_frame, float* end_frame);
 	HRESULT GetBuffer_Sub(int ind, float end_frame);
@@ -141,15 +139,12 @@ public:
 		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	void DrawOff();
-	void Draw(int com_no);
-	void StreamOutput(int com_no);
-	void Draw();
-	void StreamOutput();
+	void Draw(int comIndex);
+	void StreamOutput(int comIndex);
 	CoordTf::VECTOR3 GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
 		float thetaZ, float thetaY, float thetaX, float scale);
 
-	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0, int meshIndex = 0);
+	void CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0, int meshIndex = 0);
 	void TextureInit(int width, int height, int texIndex = 0, int meshIndex = 0);
 	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int texIndex = 0, int meshIndex = 0);
 	int getNumMesh() { return numMesh; }

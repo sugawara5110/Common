@@ -50,16 +50,22 @@ private:
 
 public:
 	ID3D12GraphicsCommandList4* getCommandList();
+
+	HRESULT CopyResourcesToGPU(ID3D12Resource* up, ID3D12Resource* def, const void* initData, LONG_PTR RowPitch);
+
 	void Bigin();
 	void End();
+
 	void delayResourceBarrierBefore(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void delayCopyResource(ID3D12Resource* dest, ID3D12Resource* src);
 	void delayResourceBarrierAfter(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void delayUavResourceBarrier(ID3D12Resource* res);
+
 	void RunDelayResourceBarrierBefore();
 	void RunDelayCopyResource();
 	void RunDelayResourceBarrierAfter();
 	void RunDelayUavResourceBarrier();
+
 	void ResourceBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void CopyResourceGENERIC_READ(ID3D12Resource* dest, ID3D12Resource* src);
 };

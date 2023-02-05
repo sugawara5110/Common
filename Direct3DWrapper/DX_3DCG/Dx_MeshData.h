@@ -55,7 +55,7 @@ public:
 	void setPointLightAll(bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
-	bool CreateMesh(bool smooth = false, float divideBufferMagnification = 1.0f);
+	bool CreateMesh(int comIndex, bool smooth = false, float divideBufferMagnification = 1.0f);
 	ID3D12PipelineState* GetPipelineState(int index);
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
@@ -67,14 +67,11 @@ public:
 		float disp, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	void DrawOff();
-	void Draw(int com_no);
-	void StreamOutput(int com_no);
-	void Draw();
-	void StreamOutput();
-	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
+	void Draw(int comIndex);
+	void StreamOutput(int comIndex);
+	void CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
+	HRESULT SetTextureMPixel(int comIndex, BYTE* frame, int index = 0);
 	void setDivideArr(DivideArr* arr, int numdiv) {
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);

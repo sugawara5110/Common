@@ -28,8 +28,6 @@ void PolygonData2D::SetMagnification(float x, float y) {
 }
 
 PolygonData2D::PolygonData2D() {
-	mCommandList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(0)->getCommandList();
-	com_no = 0;
 	d2varray = nullptr;
 	d2varrayI = nullptr;
 	magX = magnificationX;
@@ -58,6 +56,7 @@ void PolygonData2D::InstancedSetConstBf(float x, float y, float r, float g, floa
 
 void PolygonData2D::InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	int sw = dx->cBuffSwap[0];
 	cb2[sw].Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
 	cb2[sw].Color[ins_no].as(r, g, b, a);
@@ -66,8 +65,9 @@ void PolygonData2D::InstancedSetConstBf(float x, float y, float z, float r, floa
 	ins_no++;
 }
 
-void PolygonData2D::SetConstBf(CONSTANT_BUFFER2D *cb, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
+void PolygonData2D::SetConstBf(CONSTANT_BUFFER2D* cb, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	cb->Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
 	cb->Color[ins_no].as(r, g, b, a);
 	cb->sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
@@ -94,6 +94,7 @@ void PolygonData2D::TexOn() {
 
 void PolygonData2D::GetShaderByteCode() {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (!tex_on) {
 		vs = sh->pVertexShader_2D.Get();
@@ -105,7 +106,7 @@ void PolygonData2D::GetShaderByteCode() {
 	}
 }
 
-bool PolygonData2D::CreateBox(float x, float y, float z,
+bool PolygonData2D::CreateBox(int comIndex, float x, float y, float z,
 	float sizex, float sizey,
 	float r, float g, float b, float a,
 	bool blend, bool alpha, int noTex) {
@@ -135,10 +136,10 @@ bool PolygonData2D::CreateBox(float x, float y, float z,
 	d2varrayI[4] = 3;
 	d2varrayI[5] = 2;
 
-	return Create(blend, alpha, noTex);
+	return Create(comIndex, blend, alpha, noTex);
 }
 
-bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
+bool PolygonData2D::Create(int comIndex, bool blend, bool alpha, int noTex) {
 
 	GetShaderByteCode();
 
@@ -154,7 +155,7 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 	te.specular = -1;
 
 	Dx_Device* device = Dx_Device::GetInstance();
-	createTextureResource(0, 1, &te, objName);
+	createTextureResource(comIndex, 0, 1, &te, objName);
 	mDescHeap = device->CreateDescHeap(numSrv + numCbv);
 	Dx_Device* d = device;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(mDescHeap->GetCPUDescriptorHandleForHeapStart());
@@ -165,10 +166,11 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 
 	const UINT vbByteSize = ver * sizeof(MY_VERTEX2);
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
+	Dx_CommandManager& ma = *Dx_CommandManager::GetInstance();
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, d2varray, vbByteSize, Vview->VertexBufferUploader, false);
+	Vview->VertexBufferGPU = ma.CreateDefaultBuffer(comIndex, d2varray, vbByteSize, Vview->VertexBufferUploader, false);
 
-	Iview->IndexBufferGPU = dx->CreateDefaultBuffer(com_no, d2varrayI, ibByteSize, Iview->IndexBufferUploader, false);
+	Iview->IndexBufferGPU = ma.CreateDefaultBuffer(comIndex, d2varrayI, ibByteSize, Iview->IndexBufferUploader, false);
 
 	Vview->VertexByteStride = sizeof(MY_VERTEX2);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -176,6 +178,7 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 	Iview->IndexBufferByteSize = ibByteSize;
 	Iview->IndexCount = (int)(ver * 1.5);
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	//パイプラインステートオブジェクト生成
 	mPSO = CreatePsoVsPs(vs, ps, mRootSignature.Get(), dx->shaderH->pVertexLayout_2D, alpha, blend, SQUARE);
 	if (mPSO == nullptr)return false;
@@ -184,6 +187,7 @@ bool PolygonData2D::Create(bool blend, bool alpha, int noTex) {
 }
 
 void PolygonData2D::CbSwap() {
+	Dx12Process* dx = Dx12Process::GetInstance();
 	firstCbSet[dx->cBuffSwap[0]] = true;
 	insNum[dx->cBuffSwap[0]] = ins_no;
 	ins_no = 0;
@@ -199,6 +203,7 @@ void PolygonData2D::Update(float x, float y, float r, float g, float b, float a,
 }
 
 void PolygonData2D::Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
+	Dx12Process* dx = Dx12Process::GetInstance();
 	SetConstBf(&cb2[dx->cBuffSwap[0]], x, y, z, r, g, b, a, sizeX, sizeY);
 	CbSwap();
 }
@@ -207,11 +212,12 @@ void PolygonData2D::DrawOff() {
 	DrawOn = false;
 }
 
-void PolygonData2D::Draw(int com) {
+void PolygonData2D::Draw(int comIndex) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
 
-	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com)->getCommandList();
+	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex)->getCommandList();
 
 	mObjectCB->CopyData(0, cb2[dx->cBuffSwap[1]]);
 
@@ -229,10 +235,6 @@ void PolygonData2D::Draw(int com) {
 	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
 	mCList->DrawIndexedInstanced(Iview->IndexCount, insNum[dx->cBuffSwap[1]], 0, 0, 0);
-}
-
-void PolygonData2D::Draw() {
-	Draw(com_no);
 }
 
 

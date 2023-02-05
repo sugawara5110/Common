@@ -38,8 +38,8 @@ void PolygonData::SetCol(float difR, float difG, float difB, float speR, float s
 	sg.vAmbient.z = amB;
 }
 
-bool PolygonData::Create(bool light, int tNo, bool blend, bool alpha) {
-	return Create(light, tNo, -1, -1, blend, alpha);
+bool PolygonData::Create(int comIndex, bool light, int tNo, bool blend, bool alpha) {
+	return Create(comIndex, light, tNo, -1, -1, blend, alpha);
 }
 
 void PolygonData::setMaterialType(MaterialType type) {
@@ -49,16 +49,18 @@ void PolygonData::setMaterialType(MaterialType type) {
 void PolygonData::setPointLight(int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, 0, InstanceIndex, on_off, range, atten);
 }
 
 void PolygonData::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
 }
 
-bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
+bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
 	bool smooth,
 	float divideBufferMagnification) {
 
@@ -77,14 +79,15 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 			ver, index, sizeof(VertexM), 0, 3 * 4, 12 * 4, 6 * 4);
 	}
 	ARR_DELETE(indexCntArr);
-	createDefaultBuffer(ver, index);
+	createDefaultBuffer(comIndex, ver, index);
 	ARR_DELETE(index);
-	createParameterDXR(alpha, blend, divideBufferMagnification);
+	createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 	setColorDXR(0, sg);
 
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	int numUav = 0;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (tNo == -1 && (!movOn || !movOn[0].m_on)) {
 		VertexBC* v = (VertexBC*)ver;
@@ -98,7 +101,7 @@ bool PolygonData::Create(bool light, int tNo, int nortNo, int spetNo, bool blend
 		if (!createPSO_DXR(sh->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 	}
 
-	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
+	return setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
 
 void PolygonData::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,
