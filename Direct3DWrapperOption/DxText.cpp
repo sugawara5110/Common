@@ -28,7 +28,7 @@ void TextObj::SetTextParameter(int width, int height, int textCount,
 	CreateTextOn = true;
 }
 
-void TextObj::SetText(int com) {
+void TextObj::SetText(int comIndex) {
 
 	if (!CreateTextOn)return;
 
@@ -67,7 +67,8 @@ void TextObj::SetText(int com) {
 		}
 	}
 
-	dx->createTexture(com, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
+	Dx12Process* dx = Dx12Process::GetInstance();
+	dx->createTexture(comIndex, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
 		&textureUp[0], &texture[0],
 		Twidth, Twidth * 4, Theight);
 
@@ -116,10 +117,9 @@ DxText::DxText() {
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		Using[i] = false;
 		text[i].SetName("DxText_text");
-		text[i].SetCommandList(0);
 		text[i].GetVBarray2D(1);
 		text[i].TexOn();
-		text[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
+		text[i].CreateBox(0, 0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
 		_tcscpy_s(str[i], sizeof(TCHAR), _T(""));
 		f_size[i] = 0;
 	}
@@ -127,10 +127,9 @@ DxText::DxText() {
 	//�ϗp
 	for (int i = 0; i < VAL_PCS; i++) {
 		value[i].SetName("DxText_value");
-		value[i].SetCommandList(0);
 		value[i].GetVBarray2D(1);
 		value[i].TexOn();
-		value[i].CreateBox(0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
+		value[i].CreateBox(0, 0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
 		TCHAR* va = CreateTextValue(i);
 		CreateText(value, va, i, 15.0f);
 		value[i].SetText(0);

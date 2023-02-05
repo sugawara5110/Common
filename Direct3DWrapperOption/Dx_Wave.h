@@ -62,12 +62,12 @@ protected:
 
 	void createShader();
 	void GetShaderByteCode(bool smooth);
-	bool ComCreateSin();
-	bool ComCreateRipples();
-	bool ComCreate();
-	bool setDescHeap(const int numSrvTex, const int numSrvTex2, const int numCbv);
-	bool DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification);
-	void Compute(int com_no);
+	bool ComCreateSin(int comIndex);
+	bool ComCreateRipples(int comIndex);
+	bool ComCreate(int comIndex);
+	bool setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, const int numCbv);
+	bool DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification);
+	void Compute(int comIndex);
 
 public:
 	Wave();
@@ -85,10 +85,10 @@ public:
 	void setPointLightAll(bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
-	bool Create(int texNo, bool blend, bool alpha, float waveHeight, int divide,
+	bool Create(int comIndex, int texNo, bool blend, bool alpha, float waveHeight, int divide,
 		bool smooth = true, float TimeStep = 0.03f);
 
-	bool Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, int divide,
+	bool Create(int comIndex, int texNo, int nortNo, bool blend, bool alpha, float waveHeight, int divide,
 		bool smooth = true, float TimeStep = 0.03f, float divideBufferMagnification = 1.0f);
 
 	void SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd);
@@ -110,14 +110,11 @@ public:
 		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
 	void DrawOff();
-	void Draw(int com_no);
-	void StreamOutput(int com_no);
-	void Draw();
-	void StreamOutput();
-	void SetCommandList(int no);
-	void CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
+	void Draw(int comIndex);
+	void StreamOutput(int comIndex);
+	void CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
 	void TextureInit(int width, int height, int index = 0);
-	HRESULT SetTextureMPixel(int com_no, BYTE* frame, int index = 0);
+	HRESULT SetTextureMPixel(int comIndex, BYTE* frame, int index = 0);
 	void setDivideArr(DivideArr* arr, int numdiv) {
 		numDiv = numdiv;
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);

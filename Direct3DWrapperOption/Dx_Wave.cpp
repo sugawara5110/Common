@@ -101,7 +101,7 @@ void Wave::GetShaderByteCode(bool smooth) {
 	cs[2] = pComputeShader_Wave[2].Get();
 }
 
-bool Wave::ComCreateSin() {
+bool Wave::ComCreateSin(int comIndex) {
 	//CSからDSへの受け渡し用
 	int divide = width * width;
 
@@ -111,8 +111,10 @@ bool Wave::ComCreateSin() {
 	{
 		tdata[i] = (float)(i % 360);
 	}
-	Dx12Process* dx = BasicPolygon::dx;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(comIndex);
 	UINT64 byteSize = tdata.size() * sizeof(float);
 
 	if (FAILED(device->createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mInputBufferSin.GetAddressOf(), (UINT64)width, (UINT)width,
@@ -126,11 +128,11 @@ bool Wave::ComCreateSin() {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 
-	comObj->ResourceBarrier(mInputBufferSin.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mInputUploadBufferSin.Get(), mInputBufferSin.Get(), tdata.data(), (LONG_PTR)width * sizeof(float)))) {
+	cObj->ResourceBarrier(mInputBufferSin.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(cObj->CopyResourcesToGPU(mInputUploadBufferSin.Get(), mInputBufferSin.Get(), tdata.data(), (LONG_PTR)width * sizeof(float)))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
-	comObj->ResourceBarrier(mInputBufferSin.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	cObj->ResourceBarrier(mInputBufferSin.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	mInputBufferSin.Get()->SetName(Dx_Util::charToLPCWSTR("mInputBufferSin", BasicPolygon::objName));
 	mInputUploadBufferSin.Get()->SetName(Dx_Util::charToLPCWSTR("mInputUploadBufferSin", BasicPolygon::objName));
@@ -150,7 +152,7 @@ bool Wave::ComCreateSin() {
 	return true;
 }
 
-bool Wave::ComCreateRipples() {
+bool Wave::ComCreateRipples(int comIndex) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
 	int divide = width * width;
@@ -188,21 +190,25 @@ bool Wave::ComCreateRipples() {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 
-	comObj->ResourceBarrier(mInputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mInputBufferUp.Get(), mInputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
+	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(comIndex);
+
+	cObj->ResourceBarrier(mInputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(cObj->CopyResourcesToGPU(mInputBufferUp.Get(), mInputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
-	comObj->ResourceBarrier(mInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	comObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mPrevInputBufferUp.Get(), mPrevInputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
+	cObj->ResourceBarrier(mInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	cObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(cObj->CopyResourcesToGPU(mPrevInputBufferUp.Get(), mPrevInputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
-	comObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	if (FAILED(dx->CopyResourcesToGPU(BasicPolygon::com_no, mOutputBufferUp.Get(), mOutputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
+	cObj->ResourceBarrier(mPrevInputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	cObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (FAILED(cObj->CopyResourcesToGPU(mOutputBufferUp.Get(), mOutputBuffer.Get(), zdata.data(), (LONG_PTR)width * sizeof(float)))) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
-	comObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	cObj->ResourceBarrier(mOutputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	mPSOCom[1] = BasicPolygon::CreatePsoCompute(cs[1], mRootSignatureCom.Get());
 	if (mPSOCom[1] == nullptr)return false;
@@ -227,7 +233,7 @@ bool Wave::ComCreateRipples() {
 	return true;
 }
 
-bool Wave::ComCreate() {
+bool Wave::ComCreate(int comIndex) {
 
 	div = width / 16;//16はCS内スレッド数
 
@@ -268,8 +274,8 @@ bool Wave::ComCreate() {
 	mInputHandleGPU = mSinInputHandleGPU;
 	mOutputHandleGPU = mSinInputHandleGPU;
 	mPrevInputHandleGPU = mSinInputHandleGPU;
-	if (!ComCreateSin())return false;
-	if (!ComCreateRipples())return false;
+	if (!ComCreateSin(comIndex))return false;
+	if (!ComCreateRipples(comIndex))return false;
 
 	return true;
 }
@@ -289,8 +295,9 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 	sg.vAmbient.z = amB;
 }
 
-bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numCbv) {
+bool Wave::setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, const int numCbv) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	TextureNo* te = new TextureNo[dpara.NumMaterial];
 	int tCnt = 0;
 	for (int i = 0; i < dpara.NumMaterial; i++) {
@@ -307,7 +314,7 @@ bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numC
 			te[tCnt].specular = dpara.material[i].spetex_no;
 		tCnt++;
 	}
-	createTextureResource(0, tCnt, te, objName);
+	createTextureResource(comIndex, 0, tCnt, te, objName);
 	setTextureDXR();
 
 	Dx_Device* device = Dx_Device::GetInstance();
@@ -343,10 +350,12 @@ bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numC
 	return true;
 }
 
-bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification) {
+bool Wave::DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification) {
+
+	Dx12Process* dx = Dx12Process::GetInstance();
 	BasicPolygon::dpara.material[0].diftex_no = texNo;
 	BasicPolygon::dpara.material[0].nortex_no = nortNo;
-	BasicPolygon::dpara.material[0].spetex_no = BasicPolygon::dx->GetTexNumber("dummyDifSpe.");
+	BasicPolygon::dpara.material[0].spetex_no = dx->GetTexNumber("dummyDifSpe.");
 	BasicPolygon::mObjectCB1->CopyData(0, sg);
 	const int numSrvTex = 3;
 	const int numSrvTex2 = 1;
@@ -361,16 +370,16 @@ bool Wave::DrawCreate(int texNo, int nortNo, bool blend, bool alpha, bool smooth
 		ver, &index, sizeof(VertexM), 0, 3 * 4, 12 * 4, 6 * 4);
 	ARR_DELETE(indexCntArr);
 
-	BasicPolygon::createDefaultBuffer(ver, &index);
+	BasicPolygon::createDefaultBuffer(comIndex, ver, &index);
 	ARR_DELETE(ver);
 	ARR_DELETE(index);
 	int numUav = 0;
-	BasicPolygon::createParameterDXR(alpha, blend, divideBufferMagnification);
+	BasicPolygon::createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 	BasicPolygon::setColorDXR(0, sg);
 	if (!BasicPolygon::createPSO(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, blend, alpha))return false;
 	if (!BasicPolygon::createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, smooth))return false;
 
-	if (!setDescHeap(numSrvTex, numSrvTex2, numCbv))return false;
+	if (!setDescHeap(comIndex, numSrvTex, numSrvTex2, numCbv))return false;
 	return true;
 }
 
@@ -390,11 +399,11 @@ void Wave::setPointLightAll(bool on_off,
 	dxrPara.setPointLightAll(dxrBuffSwapIndex(), on_off, range, atten);
 }
 
-bool Wave::Create(int texNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float TimeStep) {
-	return Create(texNo, -1, blend, alpha, waveHeight, divide, smooth, TimeStep);
+bool Wave::Create(int comIndex, int texNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float TimeStep) {
+	return Create(comIndex, texNo, -1, blend, alpha, waveHeight, divide, smooth, TimeStep);
 }
 
-bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float timeStep,
+bool Wave::Create(int comIndex, int texNo, int nortNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float timeStep,
 	float divideBufferMagnification) {
 
 	TimeStep = timeStep;
@@ -402,8 +411,8 @@ bool Wave::Create(int texNo, int nortNo, bool blend, bool alpha, float waveHeigh
 	cbw[0].wHei_mk012.as(waveHeight, 0.0f, 0.0f, 0.0f);
 	cbw[1].wHei_mk012.as(waveHeight, 0.0f, 0.0f, 0.0f);
 	GetShaderByteCode(smooth);
-	if (!ComCreate())return false;
-	return DrawCreate(texNo, nortNo, blend, alpha, smooth, divideBufferMagnification);
+	if (!ComCreate(comIndex))return false;
+	return DrawCreate(comIndex, texNo, nortNo, blend, alpha, smooth, divideBufferMagnification);
 }
 
 void Wave::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
@@ -457,13 +466,13 @@ void Wave::DrawOff() {
 	BasicPolygon::DrawOff();
 }
 
-void Wave::Compute(int com) {
+void Wave::Compute(int comIndex) {
 
 	mObjectCB_WAVE->CopyData(0, cbw[cBuffSwapDrawOrStreamoutputIndex()]);
 	int waveNo = step[cBuffSwapDrawOrStreamoutputIndex()].waveNo;
 
-	BasicPolygon::SetCommandList(com);
-	ID3D12GraphicsCommandList* mCList = BasicPolygon::mCommandList;
+	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex)->getCommandList();
+
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mDescHeapCom.Get() };
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetComputeRootSignature(mRootSignatureCom.Get());
@@ -517,37 +526,25 @@ void Wave::Compute(int com) {
 	}
 }
 
-void Wave::Draw(int com_no) {
+void Wave::Draw(int comIndex) {
 	if (!BasicPolygon::firstCbSet[BasicPolygon::cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
-	Compute(com_no);
-	BasicPolygon::Draw(com_no);
+	Compute(comIndex);
+	BasicPolygon::Draw(comIndex);
 }
 
-void Wave::StreamOutput(int com_no) {
-	Compute(com_no);
-	BasicPolygon::StreamOutput(com_no);
+void Wave::StreamOutput(int comIndex) {
+	Compute(comIndex);
+	BasicPolygon::StreamOutput(comIndex);
 }
 
-void Wave::Draw() {
-	Draw(BasicPolygon::com_no);
-}
-
-void Wave::StreamOutput() {
-	StreamOutput(BasicPolygon::com_no);
-}
-
-void Wave::SetCommandList(int no) {
-	BasicPolygon::SetCommandList(no);
-}
-
-void Wave::CopyResource(ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
-	BasicPolygon::CopyResource(texture, res, index);
+void Wave::CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index) {
+	BasicPolygon::CopyResource(comIndex, texture, res, index);
 }
 
 void Wave::TextureInit(int width, int height, int index) {
 	BasicPolygon::TextureInit(width, height, index);
 }
 
-HRESULT Wave::SetTextureMPixel(int com_no, BYTE* frame, int index) {
-	return BasicPolygon::SetTextureMPixel(com_no, frame, index);
+HRESULT Wave::SetTextureMPixel(int comIndex, BYTE* frame, int index) {
+	return BasicPolygon::SetTextureMPixel(comIndex, frame, index);
 }

@@ -101,6 +101,7 @@ void ParticleData::update(CONSTANT_BUFFER_P* cb, CoordTf::VECTOR3 pos,
 	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
 	MatrixMultiply(&world, &rot, &mov);
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX vi = dx->getUpdate(cBuffSwapUpdateIndex()).mView;
 	MatrixMultiply(&cb->WV, &world, &vi);
 	MATRIX pj = dx->getUpdate(cBuffSwapUpdateIndex()).mProj;
@@ -184,6 +185,7 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 	Vview = std::make_unique<VertexView>();
 	Sview = std::make_unique<StreamView[]>(2);
 	GetVbColarray(texture_no, size, density);
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (dx->getDxrCreateResourceState()) {
 		dxrPara.create(1, 1);
 	}
@@ -191,6 +193,7 @@ void ParticleData::GetBufferParticle(int texture_no, float size, float density) 
 
 void ParticleData::GetBufferBill(int v) {
 	ver = v;
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (dx->getDxrCreateResourceState()) {
 		UpdateDXR& u0 = dxrPara.updateDXR[0];
 		UpdateDXR& u1 = dxrPara.updateDXR[1];
@@ -217,10 +220,11 @@ void ParticleData::createDxr(bool alpha, bool blend) {
 	dxrPara.alphaBlend = blend;
 }
 
-void ParticleData::CreateVbObj(bool alpha, bool blend) {
+void ParticleData::CreateVbObj(int comIndex, bool alpha, bool blend) {
 	const UINT vbByteSize = ver * sizeof(PartPos);
 
-	Vview->VertexBufferGPU = dx->CreateDefaultBuffer(com_no, P_pos, vbByteSize, Vview->VertexBufferUploader, false);
+	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	Vview->VertexBufferGPU = ma->CreateDefaultBuffer(comIndex, P_pos, vbByteSize, Vview->VertexBufferUploader, false);
 
 	Vview->VertexByteStride = sizeof(PartPos);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -235,6 +239,7 @@ void ParticleData::CreateVbObj(bool alpha, bool blend) {
 		Sview[i].StreamBufferByteSize = vbByteSize;
 	}
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (dx->getDxrCreateResourceState()) {
 		createDxr(alpha, blend);
 	}
@@ -263,7 +268,7 @@ bool ParticleData::CreatePartsCom() {
 	return true;
 }
 
-bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
+bool ParticleData::CreatePartsDraw(int comIndex, int texNo, bool alpha, bool blend) {
 
 	if (texNo != -1)texpar_on = true;
 
@@ -273,13 +278,17 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 	mRootSignature_draw = CreateRootSignature(numSrv, numCbv, 0, 0, 0, 0, nullptr);
 	if (mRootSignature_draw == nullptr)return false;
 
+	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = ma->getGraphicsComListObj(comIndex);
+
 	TextureNo te;
 	te.diffuse = texNo;
 	te.normal = dx->GetTexNumber("dummyNor.");;
 	te.specular = dx->GetTexNumber("dummyDifSpe.");
 
 	Dx_Device* device = Dx_Device::GetInstance();
-	createTextureResource(0, 1, &te, objName);
+	createTextureResource(comIndex, 0, 1, &te, objName);
 	mDescHeap = device->CreateDescHeap(numSrv + numCbv);
 	if (mDescHeap == nullptr)return false;
 	Dx_Device* d = device;
@@ -302,7 +311,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 		dxI.IndexCount = indCnt;
 		UINT* ind = new UINT[indCnt];
 		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-		dxI.IndexBufferGPU = dx->CreateDefaultBuffer(com_no, ind,
+		dxI.IndexBufferGPU = ma->CreateDefaultBuffer(comIndex, ind,
 			dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
 		ARR_DELETE(ind);
 		for (int j = 0; j < 2; j++) {
@@ -314,7 +323,7 @@ bool ParticleData::CreatePartsDraw(int texNo, bool alpha, bool blend) {
 			dxV.VertexBufferByteSize = bytesize;
 			device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
 				dxV.VertexBufferByteSize);
-			comObj->ResourceBarrier(dxV.VertexBufferGPU.Get(),
+			cObj->ResourceBarrier(dxV.VertexBufferGPU.Get(),
 				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 		}
 		StreamView& dxS = dxrPara.SviewDXR[0][0];
@@ -363,25 +372,26 @@ void ParticleData::setPointLightAll(bool on_off,
 	dxrPara.setPointLightAll(dxrBuffSwapIndex(), on_off, range, atten);
 }
 
-bool ParticleData::CreateParticle(int texNo, bool alpha, bool blend) {
+bool ParticleData::CreateParticle(int comIndex, int texNo, bool alpha, bool blend) {
 	GetShaderByteCode();
-	CreateVbObj(alpha, blend);
+	CreateVbObj(comIndex, alpha, blend);
 	dxrPara.updateF = true;
 	if (!CreatePartsCom())return false;
-	return CreatePartsDraw(texNo, alpha, blend);
+	return CreatePartsDraw(comIndex, texNo, alpha, blend);
 }
 
-bool ParticleData::CreateBillboard(bool alpha, bool blend) {
+bool ParticleData::CreateBillboard(int comIndex, bool alpha, bool blend) {
 	GetShaderByteCode();
-	CreateVbObj(alpha, blend);
+	CreateVbObj(comIndex, alpha, blend);
 	dxrPara.updateF = true;
-	return CreatePartsDraw(-1, alpha, blend);
+	return CreatePartsDraw(comIndex, -1, alpha, blend);
 }
 
-void ParticleData::DrawParts1(int com) {
+void ParticleData::DrawParts1(int comIndex) {
 
-	SetCommandList(com);
-	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = ma->getGraphicsComListObj(comIndex);
+	ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 
 	mCList->SetPipelineState(mPSO_com.Get());
 
@@ -398,19 +408,20 @@ void ParticleData::DrawParts1(int com) {
 
 	svInd = 1 - svInd;
 	if (firstDraw) {
-		comObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
+		cObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 		mCList->CopyResource(Vview->VertexBufferGPU.Get(), Sview[svInd].StreamBufferGPU.Get());
-		comObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
+		cObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 	}
-	Sview[svInd].ResetFilledSizeBuffer(com);
+	Sview[svInd].ResetFilledSizeBuffer(comIndex);
 }
 
-void ParticleData::DrawParts2(int com) {
+void ParticleData::DrawParts2(int comIndex) {
 
-	SetCommandList(com);
-	ID3D12GraphicsCommandList* mCList = mCommandList;
+	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = ma->getGraphicsComListObj(comIndex);
+	ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 
 	mCList->SetPipelineState(mPSO_draw.Get());
 
@@ -427,11 +438,11 @@ void ParticleData::DrawParts2(int com) {
 	mCList->DrawInstanced(ver, 1, 0, 0);
 }
 
-void ParticleData::DrawParts2StreamOutput(int com) {
+void ParticleData::DrawParts2StreamOutput(int comIndex) {
 
-	SetCommandList(com);
-	ID3D12GraphicsCommandList* mCList = mCommandList;
-	Dx_CommandListObj& d = *comObj;
+	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = ma->getGraphicsComListObj(comIndex);
+	ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 
 	mCList->SetPipelineState(PSO_DXR.Get());
 
@@ -450,19 +461,19 @@ void ParticleData::DrawParts2StreamOutput(int com) {
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
 
-	d.delayResourceBarrierBefore(ud.VviewDXR[0][0].VertexBufferGPU.Get(),
+	cObj->delayResourceBarrierBefore(ud.VviewDXR[0][0].VertexBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	d.delayResourceBarrierBefore(dxrPara.SviewDXR[0][0].StreamBufferGPU.Get(),
+	cObj->delayResourceBarrierBefore(dxrPara.SviewDXR[0][0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.delayCopyResource(ud.VviewDXR[0][0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0][0].StreamBufferGPU.Get());
+	cObj->delayCopyResource(ud.VviewDXR[0][0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0][0].StreamBufferGPU.Get());
 
-	d.delayResourceBarrierAfter(ud.VviewDXR[0][0].VertexBufferGPU.Get(),
+	cObj->delayResourceBarrierAfter(ud.VviewDXR[0][0].VertexBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-	d.delayResourceBarrierAfter(dxrPara.SviewDXR[0][0].StreamBufferGPU.Get(),
+	cObj->delayResourceBarrierAfter(dxrPara.SviewDXR[0][0].StreamBufferGPU.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
 
-	dxrPara.SviewDXR[0][0].ResetFilledSizeBuffer(com);
+	dxrPara.SviewDXR[0][0].ResetFilledSizeBuffer(comIndex);
 
 	ud.firstSet = true;
 }
@@ -483,7 +494,7 @@ void ParticleData::DrawOff() {
 	DrawOn = false;
 }
 
-void ParticleData::Draw(int com) {
+void ParticleData::Draw(int comIndex) {
 
 	if (!firstCbSet[cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
@@ -497,14 +508,10 @@ void ParticleData::Draw(int com) {
 	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], init);
 	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 
-	DrawParts1(com);
-	if (firstDraw)DrawParts2(com);
+	DrawParts1(comIndex);
+	if (firstDraw)DrawParts2(comIndex);
 	firstDraw = true;
 	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
-}
-
-void ParticleData::Draw() {
-	Draw(com_no);
 }
 
 void ParticleData::Update(float size, CoordTf::VECTOR4 color) {
@@ -512,29 +519,26 @@ void ParticleData::Update(float size, CoordTf::VECTOR4 color) {
 	CbSwap(true);
 }
 
-void ParticleData::DrawBillboard(int com) {
+void ParticleData::DrawBillboard(int comIndex) {
 
 	if (!firstCbSet[cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
 	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], true);
 	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 
-	DrawParts2(com);
-}
-
-void ParticleData::DrawBillboard() {
-	DrawBillboard(com_no);
+	DrawParts2(comIndex);
 }
 
 void ParticleData::SetVertex(int i, CoordTf::VECTOR3 pos) {
 	P_pos[i].CurrentPos.as(pos.x, pos.y, pos.z);
+	Dx12Process* dx = Dx12Process::GetInstance();
 	if (dx->getDxrCreateResourceState()) {
 		dxrPara.updateDXR[0].v[i].as(pos.x, pos.y, pos.z);
 		dxrPara.updateDXR[1].v[i].as(pos.x, pos.y, pos.z);
 	}
 }
 
-void ParticleData::StreamOutput(int com) {
+void ParticleData::StreamOutput(int comIndex) {
 
 	UpdateDXR& ud = dxrPara.updateDXR[dxrBuffSwapIndex()];
 	ud.InstanceMaskChange(DrawOn);
@@ -551,14 +555,14 @@ void ParticleData::StreamOutput(int com) {
 	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], init);
 	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
 
-	DrawParts1(com);
+	DrawParts1(comIndex);
 
-	if (firstDraw)DrawParts2StreamOutput(com);
+	if (firstDraw)DrawParts2StreamOutput(comIndex);
 	firstDraw = true;
 	parInit = false;//parInit==TRUEの場合ここに来た時点で初期化終了
 }
 
-void ParticleData::StreamOutputBillboard(int com) {
+void ParticleData::StreamOutputBillboard(int comIndex) {
 
 	UpdateDXR& ud = dxrPara.updateDXR[dxrBuffSwapIndex()];
 	ud.InstanceMaskChange(DrawOn);
@@ -567,15 +571,7 @@ void ParticleData::StreamOutputBillboard(int com) {
 
 	update2(&cbP[cBuffSwapDrawOrStreamoutputIndex()], true);
 	mObjectCB->CopyData(0, cbP[cBuffSwapDrawOrStreamoutputIndex()]);
-	DrawParts2StreamOutput(com);
-}
-
-void ParticleData::StreamOutput() {
-	StreamOutput(com_no);
-}
-
-void ParticleData::StreamOutputBillboard() {
-	StreamOutputBillboard(com_no);
+	DrawParts2StreamOutput(comIndex);
 }
 
 ParameterDXR* ParticleData::getParameter() {
@@ -588,6 +584,7 @@ CoordTf::MATRIX ParticleData::BillboardAngleCalculation(float angle) {
 	MATRIX rotZ;
 	MatrixRotationZ(&rotZ, angle);
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX vi = dx->getUpdate(cBuffSwapUpdateIndex()).mView;
 	vi._41 = 0.0f;
 	vi._42 = 0.0f;

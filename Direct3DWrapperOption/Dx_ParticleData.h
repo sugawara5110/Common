@@ -70,12 +70,12 @@ protected:
 		CoordTf::VECTOR4 color, float angle, float size, float speed);
 	void update2(CONSTANT_BUFFER_P* cb_p, bool init);
 	void GetVbColarray(int texture_no, float size, float density);
-	void CreateVbObj(bool alpha, bool blend);
+	void CreateVbObj(int comIndex, bool alpha, bool blend);
 	bool CreatePartsCom();
-	bool CreatePartsDraw(int texNo, bool alpha, bool blend);
-	void DrawParts1(int com);
-	void DrawParts2(int com);
-	void DrawParts2StreamOutput(int com);
+	bool CreatePartsDraw(int comIndex, int texNo, bool alpha, bool blend);
+	void DrawParts1(int comIndex);
+	void DrawParts2(int comIndex);
+	void DrawParts2StreamOutput(int comIndex);
 	void CbSwap(bool init);
 	void createDxr(bool alpha, bool blend);
 	CoordTf::MATRIX BillboardAngleCalculation(float angle);
@@ -94,19 +94,15 @@ public:
 	void setPointLightAll(bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
-	bool CreateParticle(int texNo, bool alpha, bool blend);//パーティクル1個のテクスチャナンバー
-	bool CreateBillboard(bool alpha, bool blend);//ver個の四角形を生成
+	bool CreateParticle(int comIndex, int texNo, bool alpha, bool blend);//パーティクル1個のテクスチャナンバー
+	bool CreateBillboard(int comIndex, bool alpha, bool blend);//ver個の四角形を生成
 	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 color, float angle, float size, bool init, float speed);//sizeパーティクル1個のサイズ
 	void DrawOff();
-	void Draw(int com);
-	void Draw();
+	void Draw(int comIndex);
 	void Update(float size, CoordTf::VECTOR4 color);
-	void DrawBillboard(int com);
-	void DrawBillboard();
-	void StreamOutput(int com);
-	void StreamOutputBillboard(int com);
-	void StreamOutput();
-	void StreamOutputBillboard();
+	void DrawBillboard(int comIndex);
+	void StreamOutput(int comIndex);
+	void StreamOutputBillboard(int comIndex);
 	ParameterDXR* getParameter();
 	void setRefractiveIndex(float index) {
 		dxrPara.updateDXR[dxrBuffSwapIndex()].RefractiveIndex = index;

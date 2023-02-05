@@ -30,7 +30,7 @@ private:
 	void SetTextParameter(int width, int height, int textCount,
 		TEXTMETRIC** TM, GLYPHMETRICS** GM, BYTE** ptr, DWORD** allsize);
 
-	void SetText(int com_no);
+	void SetText(int comIndex);
 };
 
 class DxText {

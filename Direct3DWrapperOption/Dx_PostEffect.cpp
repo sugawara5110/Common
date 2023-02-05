@@ -40,20 +40,21 @@ PostEffect::~PostEffect() {
 	S_DELETE(mObjectCB);
 }
 
-bool PostEffect::ComCreateMosaic() {
-	return ComCreate(0);
+bool PostEffect::ComCreateMosaic(int comIndex) {
+	return ComCreate(comIndex, 0);
 }
 
-bool PostEffect::ComCreateBlur() {
-	return ComCreate(1);
+bool PostEffect::ComCreateBlur(int comIndex) {
+	return ComCreate(comIndex, 1);
 }
 
-bool PostEffect::ComCreateDepthOfField() {
-	return ComCreate(2);
+bool PostEffect::ComCreateDepthOfField(int comIndex) {
+	return ComCreate(comIndex, 2);
 }
 
-bool PostEffect::ComCreate(int no) {
+bool PostEffect::ComCreate(int comIndex, int no) {
 
+	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
 	const int numSrv = 2;
 	const int numUav = 1;
@@ -102,10 +103,13 @@ bool PostEffect::ComCreate(int no) {
 	device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 	hDescriptor.ptr += dx->getCbvSrvUavDescriptorSize();
 
-	comObj->ResourceBarrier(mInputBuffer.Get(),
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(comIndex);
+
+	cObj->ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-	comObj->ResourceBarrier(mOutputBuffer.Get(),
+	cObj->ResourceBarrier(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//ルートシグネチャ
@@ -159,39 +163,28 @@ bool PostEffect::ComCreate(int no) {
 	return true;
 }
 
-void PostEffect::ComputeMosaic(int com, bool On, int size) {
-	Compute(com, On, size, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+void PostEffect::ComputeMosaic(int comIndex, bool On, int size) {
+	Compute(comIndex, On, size, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 }
 
-void PostEffect::ComputeBlur(int com, bool On, float blurX, float blurY, float blurLevel) {
-	Compute(com, On, 0, blurX, blurY, blurLevel, 0.0f, 0.0f);
+void PostEffect::ComputeBlur(int comIndex, bool On, float blurX, float blurY, float blurLevel) {
+	Compute(comIndex, On, 0, blurX, blurY, blurLevel, 0.0f, 0.0f);
 }
 
-void PostEffect::ComputeDepthOfField(int com, bool On, float blurLevel, float focusDepth, float focusRange) {
-	Compute(com, On, 0, 0.0f, 0.0f, blurLevel, focusDepth, focusRange);
+void PostEffect::ComputeDepthOfField(int comIndex, bool On, float blurLevel, float focusDepth, float focusRange) {
+	Compute(comIndex, On, 0, 0.0f, 0.0f, blurLevel, focusDepth, focusRange);
 }
 
-void PostEffect::ComputeMosaic(bool On, int size) {
-	ComputeMosaic(com_no, On, size);
-}
-
-void PostEffect::ComputeBlur(bool On, float blurX, float blurY, float blurLevel) {
-	ComputeBlur(com_no, On, blurX, blurY, blurLevel);
-}
-
-void PostEffect::ComputeDepthOfField(bool On, float blurLevel, float focusDepth, float focusRange) {
-	ComputeDepthOfField(com_no, On, blurLevel, focusDepth, focusRange);
-}
-
-void PostEffect::Compute(int com, bool On, int size,
+void PostEffect::Compute(int comIndex, bool On, int size,
 	float blurX, float blurY, float blurLevel,
 	float focusDepth, float focusRange) {
 
 	if (!On)return;
 
-	SetCommandList(com);
-	ID3D12GraphicsCommandList* mCList = mCommandList;
-	Dx_CommandListObj& d = *comObj;
+	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(comIndex);
+
+	ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 
 	CONSTANT_BUFFER_PostMosaic cb = {};
 	cb.mosaicSize.x = (float)size;
@@ -211,17 +204,17 @@ void PostEffect::Compute(int com, bool On, int size,
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	//深度バッファ
-	dx->GetDepthBuffer()->delayResourceBarrierBefore(com, D3D12_RESOURCE_STATE_DEPTH_READ);
+	dx->GetDepthBuffer()->delayResourceBarrierBefore(comIndex, D3D12_RESOURCE_STATE_DEPTH_READ);
 	//バックバッファをコピー元にする
-	dx->GetRtBuffer()->delayResourceBarrierBefore(com, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	dx->GetRtBuffer()->delayResourceBarrierBefore(comIndex, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.delayResourceBarrierBefore(mInputBuffer.Get(),
+	cObj->delayResourceBarrierBefore(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	d.RunDelayResourceBarrierBefore();
+	cObj->RunDelayResourceBarrierBefore();
 	//現在のバックバッファをインプット用バッファにコピーする
 	mCList->CopyResource(mInputBuffer.Get(), dx->GetRtBuffer()->getResource());
 
-	d.ResourceBarrier(mInputBuffer.Get(),
+	cObj->ResourceBarrier(mInputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 
 	mCList->SetComputeRootDescriptorTable(1, mDepthHandleGPU);
@@ -238,20 +231,20 @@ void PostEffect::Compute(int com, bool On, int size,
 	mCList->ResourceBarrier(1, &ba);
 
 	//深度バッファ
-	dx->GetDepthBuffer()->delayResourceBarrierBefore(com, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	dx->GetDepthBuffer()->delayResourceBarrierBefore(comIndex, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	dx->GetRtBuffer()->delayResourceBarrierBefore(com, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx->GetRtBuffer()->delayResourceBarrierBefore(comIndex, D3D12_RESOURCE_STATE_COPY_DEST);
 
-	d.delayResourceBarrierBefore(mOutputBuffer.Get(),
+	cObj->delayResourceBarrierBefore(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_GENERIC_READ);
-	d.RunDelayResourceBarrierBefore();
+	cObj->RunDelayResourceBarrierBefore();
 	//計算後バックバッファにコピー
 	mCList->CopyResource(dx->GetRtBuffer()->getResource(), mOutputBuffer.Get());
 
-	d.delayResourceBarrierBefore(mOutputBuffer.Get(),
+	cObj->delayResourceBarrierBefore(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-	dx->GetRtBuffer()->delayResourceBarrierBefore(com, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	dx->GetRtBuffer()->delayResourceBarrierBefore(comIndex, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	d.RunDelayResourceBarrierBefore();
+	cObj->RunDelayResourceBarrierBefore();
 }

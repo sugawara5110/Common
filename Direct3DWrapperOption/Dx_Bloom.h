@@ -26,7 +26,7 @@ private:
 	ComPtr<ID3D12PipelineState> mPSO = {};
 	ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
 
-	bool createBuffer();
+	bool createBuffer(int comIndex);
 	bool createPipeline();
 
 public:
@@ -43,7 +43,8 @@ public:
 		float bloomStrength = 1.0f;
 	};
 
-	bool Create(uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
+	bool Create(int comIndex,
+		uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
 		std::vector<float>* sigma = nullptr,
 		std::vector<std::vector<uint32_t>>* gausSizes = nullptr,
 		std::vector<Dx_Bloom::GaussianType>* GaussianType = nullptr);

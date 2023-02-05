@@ -211,7 +211,7 @@ namespace {
 				pComputeShader_Post[i] = CompileShader(ShaderBloom, strlen(ShaderBloom), csName[i], "cs_5_1");
 		}
 
-		bool GaussianCreate(std::vector<uint32_t>gausSize) {
+		bool GaussianCreate(int comIndex, std::vector<uint32_t>gausSize) {
 			float* gaArr = nullptr;
 			int GaussianBufferSize = 0;
 
@@ -224,7 +224,8 @@ namespace {
 				GaussianBufferSize = GaussianWid * GaussianWid;
 			}
 
-			GaussianFilterBuffer = dx->CreateDefaultBuffer(com_no, gaArr,
+			Dx_CommandManager& ma = *Dx_CommandManager::GetInstance();
+			GaussianFilterBuffer = ma.CreateDefaultBuffer(comIndex, gaArr,
 				GaussianBufferSize * sizeof(float), GaussianFilterBufferUp, false);
 			if (!GaussianFilterBuffer) {
 				Dx_Util::ErrorMessage("Bloom::GaussianCreate Error!!");
@@ -273,6 +274,7 @@ namespace {
 		}
 
 		bool ComCreate(
+			int comIndex,
 			Dx_Resource* InputBuffer,
 			Dx_Resource* InstanceIdMapBuffer,
 			std::vector<UINT>gaBaseSize = { 256,128,64,32,16 }) {
@@ -283,6 +285,8 @@ namespace {
 			if (!createDescHeap())return false;
 			mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom>(1);
 
+			Dx12Process* dx = Dx12Process::GetInstance();
+
 			if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
 				Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 			}
@@ -290,7 +294,7 @@ namespace {
 			mpInstanceIdMapBuffer = InstanceIdMapBuffer;
 			mOutputBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer1", objName));
 
-			if (!GaussianCreate(gaBaseSize))return false;
+			if (!GaussianCreate(comIndex, gaBaseSize))return false;
 
 			mGaussianFilterHandleGPU.ptr = gpuHandle;
 			mInputHandleGPU.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
@@ -321,7 +325,7 @@ namespace {
 				GaussInout.gInout[i].mGaussInOutBuffer1.CreateSrvTexture(hDescriptor);
 			//↑シェーダーで配列として使うので連続で並べる必要がある
 
-			mOutputBuffer.ResourceBarrier(com_no, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			mOutputBuffer.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 			//ルートシグネチャ
 			const int numSrv = 4;
@@ -396,9 +400,11 @@ namespace {
 			float thresholdLuminance,
 			float bloomStrength) {
 
-			SetCommandList(comIndex);
-			ID3D12GraphicsCommandList* mCList = mCommandList;
-			Dx_CommandListObj& d = *comObj;
+			Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
+
+			ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
+
+			Dx12Process* dx = Dx12Process::GetInstance();
 
 			CONSTANT_BUFFER_Bloom cb = {};
 			cb.GaussianWid = (float)GaussianWid;
@@ -476,9 +482,10 @@ Dx_Bloom::~Dx_Bloom() {
 	S_DELETE(mObjectCB);
 }
 
-bool Dx_Bloom::createBuffer() {
+bool Dx_Bloom::createBuffer(int comIndex) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
+	Dx12Process* dx = Dx12Process::GetInstance();
 
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom2>(1);
 
@@ -494,9 +501,9 @@ bool Dx_Bloom::createBuffer() {
 
 	mInputBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("mInputBuffer", objName));
 
-	mInputBuffer.ResourceBarrier(com_no, D3D12_RESOURCE_STATE_GENERIC_READ);
+	mInputBuffer.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_GENERIC_READ);
 
-	mOutputBuffer.ResourceBarrier(com_no, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	mOutputBuffer.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	return true;
 }
@@ -588,17 +595,18 @@ bool Dx_Bloom::createPipeline() {
 	return true;
 }
 
-bool Dx_Bloom::Create(uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
+bool Dx_Bloom::Create(int comIndex,
+	uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
 	std::vector<float>* sigma,
 	std::vector<std::vector<uint32_t>>* gausSizes,
 	std::vector<Dx_Bloom::GaussianType>* GaussianType) {
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
-	Dx_CommandListObj& d = *cMa->getGraphicsComListObj(0);
+	Dx_CommandListObj& d = *cMa->getGraphicsComListObj(comIndex);
 
 	d.Bigin();
 
-	if (!createBuffer())return false;
+	if (!createBuffer(comIndex))return false;
 
 	cbb.numInstance = numInstance;
 	mObjectCB->CopyData(0, cbb);
@@ -620,10 +628,10 @@ bool Dx_Bloom::Create(uint32_t numInstance, Dx_Resource* InstanceIdMapBuffer,
 		}
 
 		if (gausSizes) {
-			bloom[i].ComCreate(&mInputBuffer, InstanceIdMapBuffer, (*gausSizes)[i]);
+			bloom[i].ComCreate(comIndex, &mInputBuffer, InstanceIdMapBuffer, (*gausSizes)[i]);
 		}
 		else {
-			bloom[i].ComCreate(&mInputBuffer, InstanceIdMapBuffer);
+			bloom[i].ComCreate(comIndex, &mInputBuffer, InstanceIdMapBuffer);
 		}
 	}
 
@@ -641,10 +649,10 @@ void Dx_Bloom::Compute(
 	std::vector<InstanceParam> instanceParams,
 	Dx_Resource* inout) {
 
-	SetCommandList(comIndex);
-	ID3D12GraphicsCommandList* mCList = mCommandList;
-	Dx_CommandListObj& d = *comObj;
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
+	Dx_CommandListObj& d = *cMa->getGraphicsComListObj(comIndex);
+	ID3D12GraphicsCommandList* mCList = d.getCommandList();
+	Dx12Process* dx = Dx12Process::GetInstance();
 
 	d.Bigin();
 
