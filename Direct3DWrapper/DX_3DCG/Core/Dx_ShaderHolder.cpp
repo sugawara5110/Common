@@ -170,3 +170,45 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	return CreateShaderByteCodeBool;
 }
+
+bool Dx_ShaderHolder::CreateShaderByteCodeBool = true;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_Smooth = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_Edge = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_vs = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_NoNormalMap_Smooth = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_NoNormalMap_Edge = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_vs_NoNormalMap = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_vs_Output = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_Output_Smooth = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_Output_Edge = nullptr;
+
+ComPtr<ID3DBlob> Dx_ShaderHolder::pHullShaderTriangle = nullptr;
+
+ComPtr<ID3DBlob> Dx_ShaderHolder::pDomainShaderTriangle = nullptr;
+
+std::vector<D3D12_INPUT_ELEMENT_DESC> Dx_ShaderHolder::pVertexLayout_SKIN;
+std::vector<D3D12_SO_DECLARATION_ENTRY> Dx_ShaderHolder::pDeclaration_Output;
+std::vector<D3D12_INPUT_ELEMENT_DESC> Dx_ShaderHolder::pVertexLayout_MESH;
+std::vector<D3D12_INPUT_ELEMENT_DESC> Dx_ShaderHolder::pVertexLayout_3DBC;
+std::vector<D3D12_INPUT_ELEMENT_DESC> Dx_ShaderHolder::pVertexLayout_2D;
+
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN_D = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH_D = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_BC = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_2D = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_2DTC = nullptr;
+
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_3D = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_3D_NoNormalMap = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_Emissive = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_BC = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_2D = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_2DTC = nullptr;
+
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN_Com = nullptr;
+
+std::unique_ptr<char[]> Dx_ShaderHolder::ShaderNormalTangentCopy = nullptr;
+std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCalculateLightingCopy = nullptr;
+std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCommonParametersCopy = nullptr;

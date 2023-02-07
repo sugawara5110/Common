@@ -9,7 +9,7 @@
 
 #include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
 
-class ParticleData :public Common {
+class ParticleData :public DxCommon {
 
 protected:
 	//コンスタントバッファパーティクル用
@@ -105,7 +105,7 @@ public:
 	void StreamOutputBillboard(int comIndex);
 	ParameterDXR* getParameter();
 	void setRefractiveIndex(float index) {
-		dxrPara.updateDXR[dxrBuffSwapIndex()].RefractiveIndex = index;
+		dxrPara.updateDXR[Dx12Process::GetInstance()->dxrBuffSwapIndex()].RefractiveIndex = index;
 	}
 };
 

@@ -26,11 +26,11 @@ void Wave::createShader() {
 	Wave.addStr(Com.str, ShaderWaveDraw);
 
 	//Wave
-	pComputeShader_Wave[0] = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "sinWavesCS", "cs_5_1");
-	pComputeShader_Wave[1] = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "DisturbWavesCS", "cs_5_1");
-	pComputeShader_Wave[2] = BasicPolygon::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "UpdateWavesCS", "cs_5_1");
+	pComputeShader_Wave[0] = Dx_ShaderHolder::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "sinWavesCS", "cs_5_1");
+	pComputeShader_Wave[1] = Dx_ShaderHolder::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "DisturbWavesCS", "cs_5_1");
+	pComputeShader_Wave[2] = Dx_ShaderHolder::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "UpdateWavesCS", "cs_5_1");
 
-	pDomainShader_Wave = BasicPolygon::CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
+	pDomainShader_Wave = Dx_ShaderHolder::CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
 	//メッシュレイアウト
 	pVertexLayout_MESH =
 	{
@@ -390,13 +390,13 @@ void Wave::setMaterialType(MaterialType type) {
 void Wave::setPointLight(int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	dxrPara.setPointLight(dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
+	dxrPara.setPointLight(Dx12Process::GetInstance()->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
 }
 
 void Wave::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	dxrPara.setPointLightAll(dxrBuffSwapIndex(), on_off, range, atten);
+	dxrPara.setPointLightAll(Dx12Process::GetInstance()->dxrBuffSwapIndex(), on_off, range, atten);
 }
 
 bool Wave::Create(int comIndex, int texNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float TimeStep) {
@@ -432,11 +432,11 @@ void Wave::InstancingUpdate(int waveNo, float speed, float disp, float SmoothRan
 	mk[1] = (4.0f - 8.0f * e) / d;
 	mk[2] = (2.0f * e) / d;
 
-	Step& st = step[cBuffSwapUpdateIndex()];
+	Step& st = step[Dx12Process::GetInstance()->cBuffSwapUpdateIndex()];
 	st.disturbStep = disturbStep;
 	st.updateStep = updateStep;
 	st.waveNo = waveNo;
-	CONSTANT_BUFFER_WAVE& cb = cbw[cBuffSwapUpdateIndex()];
+	CONSTANT_BUFFER_WAVE& cb = cbw[Dx12Process::GetInstance()->cBuffSwapUpdateIndex()];
 	cb.speed = speed;
 	cb.wHei_mk012.y = mk[0];
 	cb.wHei_mk012.z = mk[1];
@@ -468,8 +468,8 @@ void Wave::DrawOff() {
 
 void Wave::Compute(int comIndex) {
 
-	mObjectCB_WAVE->CopyData(0, cbw[cBuffSwapDrawOrStreamoutputIndex()]);
-	int waveNo = step[cBuffSwapDrawOrStreamoutputIndex()].waveNo;
+	mObjectCB_WAVE->CopyData(0, cbw[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()]);
+	int waveNo = step[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()].waveNo;
 
 	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex)->getCommandList();
 
@@ -492,7 +492,7 @@ void Wave::Compute(int comIndex) {
 		break;
 
 	case 1:
-		time0 += step[cBuffSwapDrawOrStreamoutputIndex()].disturbStep;
+		time0 += step[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()].disturbStep;
 		if (time0 > TimeStep) {
 			mCList->SetPipelineState(mPSOCom[1].Get());
 			mCList->SetComputeRootDescriptorTable(2, mInputHandleGPU);
@@ -504,7 +504,7 @@ void Wave::Compute(int comIndex) {
 			time0 = 0.0f;
 		}
 
-		time1 += step[cBuffSwapDrawOrStreamoutputIndex()].updateStep;
+		time1 += step[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()].updateStep;
 		if (time1 > TimeStep) {
 			mCList->SetPipelineState(mPSOCom[2].Get());
 			mCList->SetComputeRootDescriptorTable(1, mInputHandleGPU);
@@ -527,7 +527,7 @@ void Wave::Compute(int comIndex) {
 }
 
 void Wave::Draw(int comIndex) {
-	if (!BasicPolygon::firstCbSet[BasicPolygon::cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
+	if (!BasicPolygon::firstCbSet[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
 	Compute(comIndex);
 	BasicPolygon::Draw(comIndex);
 }

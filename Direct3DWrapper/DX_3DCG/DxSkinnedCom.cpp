@@ -8,7 +8,7 @@
 
 void SkinnedCom::getBuffer(BasicPolygon* p) {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		pd = p;
 	}
 }
@@ -16,7 +16,7 @@ void SkinnedCom::getBuffer(BasicPolygon* p) {
 bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
+	if (dx->getDxrCreateResourceState() && pd->vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 
 		Dx_Device* device = Dx_Device::GetInstance();
 		const int numDesc = numSrv + numCbv + numUav;
@@ -51,11 +51,11 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 bool SkinnedCom::createPSO() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
+	if (dx->getDxrCreateResourceState() && pd->vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 		rootSignature = pd->CreateRootSignatureCompute(numSrv, numCbv, numUav, 0, 0, 0, nullptr);
 		if (rootSignature == nullptr)return false;
 
-		ID3DBlob* cs = dx->shaderH->pVertexShader_SKIN_Com.Get();
+		ID3DBlob* cs = Dx_ShaderHolder::pVertexShader_SKIN_Com.Get();
 
 		PSO = pd->CreatePsoCompute(cs, rootSignature.Get());
 		if (PSO == nullptr)return false;
@@ -66,7 +66,7 @@ bool SkinnedCom::createPSO() {
 bool SkinnedCom::createParameterDXR(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (dx->DXR_CreateResource && pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
+	if (dx->getDxrCreateResourceState() && pd->vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 
 		int NumMaterial = pd->dxrPara.NumMaterial;
 		Dx_Device* device = Dx_Device::GetInstance();
@@ -138,7 +138,7 @@ void SkinnedCom::skinning(int comNo) {
 
 	UINT numVer = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
 	D3D12_GPU_DESCRIPTOR_HANDLE des = descHeap->GetGPUDescriptorHandleForHeapStart();
-	UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
 
 	mCList->SetComputeRootDescriptorTable(0, des);
 	mCList->Dispatch(numVer, 1, 1);
@@ -164,17 +164,17 @@ void SkinnedCom::skinning(int comNo) {
 void SkinnedCom::Skinning(int comNo) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	if (pd->vs == dx->shaderH->pVertexShader_SKIN.Get()) {
+	if (pd->vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 
-		UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+		UpdateDXR& ud = pd->dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
 		ud.InstanceMaskChange(pd->DrawOn);
 
-		if (!pd->firstCbSet[dx->cBuffSwap[1]])return;
+		if (!pd->firstCbSet[dx->cBuffSwapDrawOrStreamoutputIndex()])return;
 
-		pd->mObjectCB->CopyData(0, pd->cb[dx->cBuffSwap[1]]);
-		pd->dpara.insNum = pd->insNum[dx->cBuffSwap[1]];
+		pd->mObjectCB->CopyData(0, pd->cb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
+		pd->dpara.insNum = pd->insNum[dx->cBuffSwapDrawOrStreamoutputIndex()];
 		pd->ParameterDXR_Update();
-		if (pd->dxrPara.updateF || !pd->dxrPara.updateDXR[dx->dxrBuffSwap[0]].createAS) {
+		if (pd->dxrPara.updateF || !pd->dxrPara.updateDXR[dx->dxrBuffSwapIndex()].createAS) {
 			skinning(comNo);
 		}
 	}

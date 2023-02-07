@@ -111,7 +111,7 @@ namespace {
 		return gaArr;
 	}
 
-	class Bloom :public Common {
+	class Bloom :public DxCommon {
 
 	private:
 		ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
@@ -208,7 +208,7 @@ namespace {
 			};
 
 			for (int i = 0; i < _countof(csName); i++)
-				pComputeShader_Post[i] = CompileShader(ShaderBloom, strlen(ShaderBloom), csName[i], "cs_5_1");
+				pComputeShader_Post[i] = Dx_ShaderHolder::CompileShader(ShaderBloom, strlen(ShaderBloom), csName[i], "cs_5_1");
 		}
 
 		bool GaussianCreate(int comIndex, std::vector<uint32_t>gausSize) {
@@ -532,7 +532,7 @@ bool Dx_Bloom::createPipeline() {
 
 	char* ShaderBloom2A = changeStr(ShaderBloom2, "replace_NUM_Bloom", replace);
 
-	pShader = CompileShader(ShaderBloom2A, strlen(ShaderBloom2A), "BloomCS4", "cs_5_1");
+	pShader = Dx_ShaderHolder::CompileShader(ShaderBloom2A, strlen(ShaderBloom2A), "BloomCS4", "cs_5_1");
 
 	ARR_DELETE(ShaderBloom2A);
 

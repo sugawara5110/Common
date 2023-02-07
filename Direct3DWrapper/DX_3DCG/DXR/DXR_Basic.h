@@ -126,9 +126,9 @@ public:
 
 	void allSwapIndex() {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		dx->allSwapIndex();
-		setASswapIndex(dx->sync);
-		setRaytraceSwapIndex(1 - dx->sync);
+		int sync = dx->allSwapIndex();
+		setASswapIndex(sync);
+		setRaytraceSwapIndex(1 - sync);
 	}
 };
 

@@ -13,9 +13,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-//‘O•ûéŒ¾
 class Dx_CommandManager;
-//‘O•ûéŒ¾
 
 class Dx_CommandListObj final {
 

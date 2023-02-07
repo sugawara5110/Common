@@ -418,9 +418,6 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	MatrixPerspectiveFovLH(&upd[0].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
 	MatrixPerspectiveFovLH(&upd[1].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
 
-	//ビューポート行列作成(3D座標→2D座標変換に使用)
-	MatrixViewPort(&Vp, mClientWidth, mClientHeight);
-
 	//ポイントライト構造体初期化
 	ResetPointLight();
 
@@ -438,8 +435,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	fog.Density = 0.0f;
 	fog.on_off = 0.0f;
 
-	shaderH = std::make_unique<Dx_ShaderHolder>();
-	return shaderH.get()->CreateShaderByteCode();
+	return Dx_ShaderHolder::CreateShaderByteCode();
 }
 
 void Dx12Process::setPerspectiveFov(float ViewAngle, float nearPlane, float farPlane) {

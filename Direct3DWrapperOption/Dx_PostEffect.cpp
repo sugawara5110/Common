@@ -26,7 +26,7 @@ void PostEffect::createShader() {
 	};
 
 	for (int i = 0; i < _countof(pComputeShader_Post); i++) {
-		pComputeShader_Post[i] = CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), csName[i], "cs_5_1");
+		pComputeShader_Post[i] = Dx_ShaderHolder::CompileShader(ShaderPostEffect, strlen(ShaderPostEffect), csName[i], "cs_5_1");
 	}
 
 	createShaderDone = true;

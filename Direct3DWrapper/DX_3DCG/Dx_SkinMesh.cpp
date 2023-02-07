@@ -245,7 +245,7 @@ void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame
 		if (numBone[i] > 0) {
 			sk[i].getBuffer(&mObj[i]);
 		}
-		if (dx->DXR_CreateResource) {
+		if (dx->getDxrCreateResourceState()) {
 			UpdateDXR& u0 = mObj[i].dxrPara.updateDXR[0];
 			UpdateDXR& u1 = mObj[i].dxrPara.updateDXR[1];
 			u0.useVertex = true;
@@ -619,7 +619,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 		mObj[m].mObjectCB1->CopyData(i, sg);
-		if (dx->DXR_CreateResource) {
+		if (dx->getDxrCreateResourceState()) {
 			mObj[m].setColorDXR(i, sg);
 		}
 	}
@@ -682,20 +682,19 @@ void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int 
 
 void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx_ShaderHolder* sh = dx->shaderH.get();
 	for (int i = 0; i < numMesh; i++) {
 		BasicPolygon& o = mObj[i];
 		if (disp) {
 			if (numBone[i] > 0)
-				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, sh->pVertexShader_SKIN_D.Get(), nullptr);
+				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, Dx_ShaderHolder::pVertexShader_SKIN_D.Get(), nullptr);
 			else
-				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, o.vs = sh->pVertexShader_MESH_D.Get(), nullptr);
+				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH_D.Get(), nullptr);
 		}
 		else {
 			if (numBone[i] > 0)
-				o.GetShaderByteCode(SQUARE, true, smooth, false, sh->pVertexShader_SKIN.Get(), nullptr);
+				o.GetShaderByteCode(SQUARE, true, smooth, false, Dx_ShaderHolder::pVertexShader_SKIN.Get(), nullptr);
 			else
-				o.GetShaderByteCode(SQUARE, true, smooth, false, o.vs = sh->pVertexShader_MESH.Get(), nullptr);
+				o.GetShaderByteCode(SQUARE, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH.Get(), nullptr);
 		}
 	}
 }
@@ -713,7 +712,7 @@ void SkinMesh::setPointLight(int meshIndex, int materialIndex, int InstanceIndex
 	float range, CoordTf::VECTOR3 atten) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	mObj[meshIndex].dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, materialIndex, InstanceIndex, on_off, range, atten);
+	mObj[meshIndex].dxrPara.setPointLight(dx->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void SkinMesh::setPointLightAll(bool on_off,
@@ -721,7 +720,7 @@ void SkinMesh::setPointLightAll(bool on_off,
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	for (int i = 0; i < numMesh; i++) {
-		mObj[i].dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
+		mObj[i].dxrPara.setPointLightAll(dx->dxrBuffSwapIndex(), on_off, range, atten);
 	}
 }
 
@@ -758,12 +757,11 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		}
 		ARR_DELETE(newIndex[i]);
 		int numUav = 0;
-		Dx12Process* dx = Dx12Process::GetInstance();
 		o.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 		if (numBone[i] > 0) {
 			if (!sk[i].createParameterDXR(comIndex))return false;
-			if (!o.createPSO(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
-			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
+			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
+			if (!o.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
 			if (!sk[i].createPSO())return false;
 			UINT cbSize = mObject_BONES->getSizeInBytes();
 			D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
@@ -771,8 +769,8 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 			if (!sk[i].createDescHeap(ad, cbSize))return false;
 		}
 		else {
-			if (!o.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-			if (!o.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
+			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
+			if (!o.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 			if (!o.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 		}
 	}
@@ -964,9 +962,9 @@ void SkinMesh::GetMeshCenterPos() {
 	using namespace CoordTf;
 	for (int i = 0; i < numMesh; i++) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		if (dx->DXR_CreateResource) {
+		if (dx->getDxrCreateResourceState()) {
 			VECTOR3 cp = centerPos[i].pos;
-			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[dx->dxrBuffSwap[0]];//StreamOutput内もdxrBuffSwap[0]だが書き込み箇所が異なるのでOK
+			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[dx->dxrBuffSwapIndex()];//StreamOutput内もdxrBuffSwapIndex()だが書き込み箇所が異なるのでOK
 			VECTOR3* vv = &ud.v[0];
 			vv->as(cp.x, cp.y, cp.z);
 			if (numBone[i] > 0) {
@@ -1042,7 +1040,7 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, int InternalAnimationIndex,
 	int insnum = 0;
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind, InternalAnimationIndex);
 	Dx12Process* dx = Dx12Process::GetInstance();
-	MatrixMap_Bone(&sgb[dx->cBuffSwap[0]]);
+	MatrixMap_Bone(&sgb[dx->cBuffSwapUpdateIndex()]);
 
 	for (int i = 0; i < numMesh; i++) {
 		if (!noUseMesh[i])
@@ -1071,7 +1069,7 @@ void SkinMesh::DrawOff() {
 void SkinMesh::Draw(int comIndex) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
 
 	for (int i = 0; i < numMesh; i++)
 		mObj[i].Draw(comIndex);
@@ -1080,7 +1078,7 @@ void SkinMesh::Draw(int comIndex) {
 void SkinMesh::StreamOutput(int comIndex) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwap[1]]);
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].StreamOutput(comIndex);

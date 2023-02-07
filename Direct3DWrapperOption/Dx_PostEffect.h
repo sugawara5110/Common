@@ -9,7 +9,7 @@
 
 #include "../Direct3DWrapper/DX_3DCG/Dx_PolygonData.h"
 
-class PostEffect :public Common {
+class PostEffect :public DxCommon {
 
 protected:
 	//ポストエフェクト

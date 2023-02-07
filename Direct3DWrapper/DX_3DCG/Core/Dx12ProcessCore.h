@@ -60,32 +60,26 @@ public:
 	}
 };
 
-template<class T>
-class ConstantBuffer;
-class Dx12Process;
-class MeshData;
-class BasicPolygon;
-class PolygonData;
-class PolygonData2D;
-class SkinMesh;
-class Common;
-class DXR_Basic;
-class SkinnedCom;
-struct StreamView;
+class DxCommon;
 
 class Dx12Process final {
 
-private:
+public:
+	struct Update {
+		CoordTf::MATRIX mProj = {};
+		CoordTf::MATRIX mView = {};
 
-	friend MeshData;
-	friend BasicPolygon;
-	friend PolygonData;
-	friend PolygonData2D;
-	friend SkinMesh;
-	friend Common;
-	friend DXR_Basic;
-	friend SkinnedCom;
-	friend StreamView;
+		CoordTf::VECTOR3 pos = {};
+		CoordTf::VECTOR3 dir = {};
+		CoordTf::VECTOR3 up = {};
+
+		PointLight plight = {};
+		int lightNum = 0;
+		DirectionLight dlight = {};
+	};
+
+private:
+	friend DxCommon;
 
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<IDXGISwapChain3> mSwapChain;
@@ -106,8 +100,6 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	ComPtr<ID3D12DescriptorHeap> mDsvHeap;
-
-	std::unique_ptr<Dx_ShaderHolder> shaderH = nullptr;
 
 	D3D12_VIEWPORT mScreenViewport;
 	D3D12_RECT mScissorRect;
@@ -130,21 +122,8 @@ private:
 	static Dx12Process* dx;//クラス内でオブジェクト生成し使いまわす
 	static std::mutex mtx;
 
-	struct Update {
-		CoordTf::MATRIX mProj = {};
-		CoordTf::MATRIX mView = {};
-
-		CoordTf::VECTOR3 pos = {};
-		CoordTf::VECTOR3 dir = {};
-		CoordTf::VECTOR3 up = {};
-
-		PointLight plight = {};
-		int lightNum = 0;
-		DirectionLight dlight = {};
-	};
 	Update upd[2] = {};//cBuffSwap
 
-	CoordTf::MATRIX Vp = {};    //ビューポート行列(3D座標→2D座標変換時使用)
 	Fog fog = {};
 
 	//カメラ画角
@@ -169,6 +148,7 @@ private:
 	void operator=(const Dx12Process& obj) = delete;// 代入演算子禁止
 	~Dx12Process();
 
+public:
 	void Instancing(int& insNum, int numMaxIns, WVP_CB* cbArr,
 		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
@@ -176,7 +156,6 @@ private:
 		float px, float py, float mx, float my,
 		DivideArr* divArr, int numDiv, float shininess, float SmoothRange, float SmoothRatio);
 
-public:
 	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
 		ID3D12Resource** up, ID3D12Resource** def,
 		int width, LONG_PTR RowPitch, int height);
@@ -193,7 +172,7 @@ public:
 
 	bool Initialize(HWND hWnd, int width = 800, int height = 600);
 
-	void NorTestOn() { shaderH.get()->setNorTestPS(); }
+	void NorTestOn() { Dx_ShaderHolder::setNorTestPS(); }
 	int GetTexNumber(CHAR* fileName);//リソースとして登録済みのテクスチャ配列番号をファイル名から取得
 
 	void createTextureArr(int numTexArr, int resourceIndex, char* texName,
@@ -220,6 +199,10 @@ public:
 		GlobalAmbientLight.as(r, g, b, 0.0f);
 	}
 
+	CoordTf::VECTOR4 getGlobalAmbientLight() {
+		return GlobalAmbientLight;
+	}
+
 	bool PointLightPosSet(int Idx, CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
@@ -234,12 +217,13 @@ public:
 	void wireFrameTest(bool f) { wireframe = f; }
 	void setPerspectiveFov(float ViewAngle, float NearPlane, float FarPlane);
 
-	void allSwapIndex() {
+	int allSwapIndex() {
 		sync = 1 - sync;
 		setUpSwapIndex(sync);
 		setDrawSwapIndex(1 - sync);
 		setStreamOutputSwapIndex(sync);
 		setRaytraceSwapIndex(1 - sync);
+		return sync;
 	}
 
 	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
@@ -254,12 +238,17 @@ public:
 	Dx_Resource* GetDepthBuffer();
 
 	char* getShaderCommonParameters() {
-		return shaderH->ShaderCommonParametersCopy.get();
+		return Dx_ShaderHolder::ShaderCommonParametersCopy.get();
 	}
 
 	char* getShaderNormalTangent() {
-		return shaderH->ShaderNormalTangentCopy.get();
+		return Dx_ShaderHolder::ShaderNormalTangentCopy.get();
 	}
+
+	int cBuffSwapUpdateIndex() { return cBuffSwap[0]; }
+	int cBuffSwapDrawOrStreamoutputIndex() { return cBuffSwap[1]; }
+	int dxrBuffSwapIndex() { return dxrBuffSwap[0]; }
+	int dxrBuffSwapRaytraceIndex() { return dxrBuffSwap[1]; }
 };
 
 struct VertexView {
@@ -610,13 +599,13 @@ struct ParameterDXR {
 	}
 };
 
-//**********************************Commonクラス*************************************//
-class Common {
+//**********************************DxCommonクラス*************************************//
+class DxCommon {
 
 protected:
-	Common();//外部からのオブジェクト生成禁止
-	Common(const Common& obj) {}     // コピーコンストラクタ禁止
-	void operator=(const Common& obj) {}// 代入演算子禁止
+	DxCommon();//外部からのオブジェクト生成禁止
+	DxCommon(const DxCommon& obj) {}     // コピーコンストラクタ禁止
+	void operator=(const DxCommon& obj) {}// 代入演算子禁止
 
 	char objName[256] = {};
 
@@ -690,31 +679,26 @@ protected:
 	ComPtr<ID3D12PipelineState> CreatePsoCompute(ID3DBlob* cs,
 		ID3D12RootSignature* mRootSignature);
 
-	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
-
-	int cBuffSwapUpdateIndex() { return Dx12Process::GetInstance()->cBuffSwap[0]; }
-	int cBuffSwapDrawOrStreamoutputIndex() { return Dx12Process::GetInstance()->cBuffSwap[1]; }
-	int dxrBuffSwapIndex() { return Dx12Process::GetInstance()->dxrBuffSwap[0]; }
-
 public:
-	~Common();
+	~DxCommon();
 	void SetName(char* name);
 	void CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int texIndex = 0);
 	void TextureInit(int width, int height, int texIndex = 0);
 	HRESULT SetTextureMPixel(int comIndex, BYTE* frame, int index = 0);
-	InternalTexture* getInternalTexture(int index) { return &Dx12Process::GetInstance()->texture[index + 2]; }
 	ID3D12Resource* getTextureResource(int index) { return texture[index]; }
 };
 
+class MeshData;
+class SkinMesh;
+class SkinnedCom;
+
 //*********************************BasicPolygonクラス*************************************//
-class BasicPolygon :public Common {
+class BasicPolygon :public DxCommon {
 
 protected:
-	friend SkinMesh;
 	friend MeshData;
-	friend DXR_Basic;
+	friend SkinMesh;
 	friend SkinnedCom;
-
 	//ポインタで受け取る
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
@@ -803,12 +787,12 @@ public:
 	void UpdateDxrDivideBuffer();
 
 	void setRefractiveIndex(float index) {
-		dxrPara.updateDXR[Dx12Process::GetInstance()->dxrBuffSwap[0]].RefractiveIndex = index;
+		dxrPara.updateDXR[Dx12Process::GetInstance()->dxrBuffSwapIndex()].RefractiveIndex = index;
 	}
 };
 
 //*********************************PolygonData2Dクラス*************************************//
-class PolygonData2D :public Common {
+class PolygonData2D :public DxCommon {
 
 protected:
 	ID3DBlob* vs = nullptr;

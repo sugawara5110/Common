@@ -9,7 +9,7 @@
 
 #include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
 
-class Dx_Bloom :public Common {
+class Dx_Bloom :public DxCommon {
 
 private:
 	struct CONSTANT_BUFFER_Bloom2 {

@@ -384,46 +384,44 @@ void DXR_Basic::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Shade
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
 
-	if (dx->DXR_CreateResource) {
-		cObj->Bigin();
-		maxRecursion = MaxRecursion;
-		numMaterial = 0;
-		maxNumInstancing = 0;
-		for (auto i = 0; i < PD.size(); i++) {
-			numMaterial += numCreateMaterial(PD[i]);
-			maxNumInstancing += PD[i]->NumMaxInstance;
-		}
+	cObj->Bigin();
+	maxRecursion = MaxRecursion;
+	numMaterial = 0;
+	maxNumInstancing = 0;
+	for (auto i = 0; i < PD.size(); i++) {
+		numMaterial += numCreateMaterial(PD[i]);
+		maxNumInstancing += PD[i]->NumMaxInstance;
+	}
 
-		wvp = new ConstantBuffer<WVP_CB>(maxNumInstancing);
-		cbObj[0].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
-		cbObj[1].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
-		material = new ConstantBuffer<DxrMaterialCB>(numMaterial);
-		cbObj[0].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
-		cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
-		sCB = new ConstantBuffer<DxrConstantBuffer>(1);
+	wvp = new ConstantBuffer<WVP_CB>(maxNumInstancing);
+	cbObj[0].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
+	cbObj[1].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
+	material = new ConstantBuffer<DxrMaterialCB>(numMaterial);
+	cbObj[0].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
+	cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
+	sCB = new ConstantBuffer<DxrConstantBuffer>(1);
 
-		createAccelerationStructures();
+	createAccelerationStructures();
 
-		int numIns = 0;
-		for (auto i = 0; i < PD.size(); i++) {
-			for (int j = 0; j < PD[i]->NumMaterial; j++) {
-				for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
-					cbObj[0].matCb[numIns].materialNo = PD[i]->mType[j];
-					cbObj[1].matCb[numIns].materialNo = PD[i]->mType[j];
-					numIns++;
-				}
+	int numIns = 0;
+	for (auto i = 0; i < PD.size(); i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
+				cbObj[0].matCb[numIns].materialNo = PD[i]->mType[j];
+				cbObj[1].matCb[numIns].materialNo = PD[i]->mType[j];
+				numIns++;
 			}
 		}
-		cbObj[0].cb.numEmissive.y = (float)maxNumInstancing;
-		cbObj[1].cb.numEmissive.y = (float)maxNumInstancing;
-
-		createRtPipelineState(Mode);
-		createShaderResources();
-		createShaderTable();
-		cObj->End();
-		cMa->RunGpu();
-		cMa->WaitFence();
 	}
+	cbObj[0].cb.numEmissive.y = (float)maxNumInstancing;
+	cbObj[1].cb.numEmissive.y = (float)maxNumInstancing;
+
+	createRtPipelineState(Mode);
+	createShaderResources();
+	createShaderTable();
+	cObj->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DXR_Basic::setTMin_TMax(float tMin, float tMax) {
@@ -515,7 +513,7 @@ void DXR_Basic::createBottomLevelAS(Dx_CommandListObj* com) {
 
 	UINT MaterialCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
 		bool createAS = ud.createAS;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
@@ -549,7 +547,7 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 
 	UINT numRayInstance = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
 		if (tLB.firstSet)
 			numRayInstance += ud.NumInstance * PD[i]->NumMaterial;
 		else
@@ -589,7 +587,7 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 	UINT materialCnt = 0;
 	UINT InstancingCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
 		UINT udInstanceIDCnt = 0;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
@@ -664,7 +662,7 @@ void DXR_Basic::createRtPipelineState(ShaderTestMode Mode) {
 
 	//DXIL library ‰Šú‰», SUBOBJECTì¬
 	addChar str;
-	str.addStr(dx->shaderH->ShaderNormalTangentCopy.get(), dx->shaderH->ShaderCalculateLightingCopy.get());
+	str.addStr(Dx_ShaderHolder::ShaderNormalTangentCopy.get(), Dx_ShaderHolder::ShaderCalculateLightingCopy.get());
 	DxilLibrary dxilLib = createDxilLibrary(str.str);//Dx12Process‚É•ÛŽ‚µ‚Ä‚éshader‚ð“ü—Í
 	subobjects.push_back(dxilLib.stateSubobject);
 
@@ -728,13 +726,13 @@ void DXR_Basic::createShaderResources() {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
-	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->mClientWidth, dx->mClientHeight);
+	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight());
 
-	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->mClientWidth, dx->mClientHeight,
+	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight(),
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
-	mpInstanceIdMapResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->mClientWidth, dx->mClientHeight,
+	mpInstanceIdMapResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight(),
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
@@ -909,7 +907,7 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	UINT MaterialCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
 
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
@@ -938,7 +936,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	using namespace CoordTf;
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX VP;
-	Dx12Process::Update& upd = dx->upd[dx->cBuffSwap[1]];
+	Dx12Process::Update& upd = dx->getUpdate(dx->cBuffSwapDrawOrStreamoutputIndex());
 	MatrixMultiply(&VP, &upd.mView, &upd.mProj);
 	MatrixTranspose(&VP);
 	DxrConstantBuffer& cb = cbObj->cb;
@@ -953,7 +951,7 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	bool breakF = false;
 	UINT MaterialCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
 		UINT udInstanceIDCnt = 0;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
@@ -975,8 +973,8 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.emissivePosition[cntEm].x = v3.x;
 						cb.emissivePosition[cntEm].y = v3.y;
 						cb.emissivePosition[cntEm].z = v3.z;
-						float plightOn = PD[i]->getplightOn(dx->dxrBuffSwap[1], v, j, k);
-						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dx->dxrBuffSwap[1], v, j, k);
+						float plightOn = PD[i]->getplightOn(dx->dxrBuffSwapRaytraceIndex(), v, j, k);
+						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dx->dxrBuffSwapRaytraceIndex(), v, j, k);
 						cb.emissivePosition[cntEm].w = plightOn;
 						cb.Lightst[cntEm].x = Lightst.x;
 						cb.Lightst[cntEm].y = Lightst.y;
@@ -1000,14 +998,14 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	}
 
 	cb.numEmissive.x = (float)cntEm;
-	memcpy(&cb.GlobalAmbientColor, &dx->GlobalAmbientLight, sizeof(VECTOR4));
+	memcpy(&cb.GlobalAmbientColor, &dx->getGlobalAmbientLight(), sizeof(VECTOR4));
 	memcpy(&cb.dDirection, &upd.dlight.Direction, sizeof(VECTOR4));
 	memcpy(&cb.dLightColor, &upd.dlight.LightColor, sizeof(VECTOR4));
 	cb.dLightst.as(upd.dlight.onoff, 0.0f, 0.0f, 0.0f);
 
 	UINT InstancingCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwap[1]];
+		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
 		for (UINT k = 0; k < ud.NumInstance; k++) {
 			int index = InstancingCnt + k;
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
@@ -1034,7 +1032,7 @@ void DXR_Basic::swapSrvUavCbvHeap() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	uint8_t* pData = nullptr;
 	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);
-	uint64_t heapStart = mpSrvUavCbvHeap[dx->dxrBuffSwap[1]].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
+	uint64_t heapStart = mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
 	*(uint64_t*)(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart;
 	mpShaderTable.Get()->Unmap(0, nullptr);
 }
@@ -1049,11 +1047,11 @@ void DXR_Basic::raytrace(Dx_CommandListObj* com) {
 
 	com->getCommandList()->SetComputeRootSignature(mpGlobalRootSig.Get());
 
-	ID3D12DescriptorHeap* heaps[] = { mpSrvUavCbvHeap[dx->dxrBuffSwap[1]].Get(), mpSamplerHeap.Get() };
+	ID3D12DescriptorHeap* heaps[] = { mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get(), mpSamplerHeap.Get() };
 	com->getCommandList()->SetDescriptorHeaps(ARRAY_SIZE(heaps), heaps);
 
-	UINT offsetSize = dx->mCbvSrvUavDescriptorSize;
-	D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[dx->dxrBuffSwap[1]].Get()->GetGPUDescriptorHandleForHeapStart();
+	UINT offsetSize = dx->getCbvSrvUavDescriptorSize();
+	D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get()->GetGPUDescriptorHandleForHeapStart();
 	srvHandle.ptr += offsetSize * numSkipLocalHeap;
 	D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle = mpSamplerHeap.Get()->GetGPUDescriptorHandleForHeapStart();
 
@@ -1062,8 +1060,8 @@ void DXR_Basic::raytrace(Dx_CommandListObj* com) {
 	com->getCommandList()->SetComputeRootShaderResourceView(2, asObj[buffSwap[1]].mpTopLevelAS.Get()->GetGPUVirtualAddress());
 
 	D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
-	raytraceDesc.Width = dx->mClientWidth;
-	raytraceDesc.Height = dx->mClientHeight;
+	raytraceDesc.Width = dx->getClientWidth();
+	raytraceDesc.Height = dx->getClientHeight();
 	raytraceDesc.Depth = 1;
 
 	//RayGen

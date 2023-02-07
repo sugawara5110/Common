@@ -63,43 +63,41 @@ void BasicPolygon::GetShaderByteCode(PrimitiveType type, bool light, bool smooth
 	}
 
 	bool disp = false;
-	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx_ShaderHolder* sh = dx->shaderH.get();
 	if (primType_create == CONTROL_POINT)disp = true;
 	if (BC_On) {
-		vs = sh->pVertexShader_BC.Get();
-		ps = sh->pPixelShader_BC.Get();
-		ps_NoMap = sh->pPixelShader_BC.Get();
+		vs = Dx_ShaderHolder::pVertexShader_BC.Get();
+		ps = Dx_ShaderHolder::pPixelShader_BC.Get();
+		ps_NoMap = Dx_ShaderHolder::pPixelShader_BC.Get();
 		return;
 	}
 
 	if (disp) {
-		vs = sh->pVertexShader_MESH_D.Get();
-		hs = sh->pHullShaderTriangle.Get();
+		vs = Dx_ShaderHolder::pVertexShader_MESH_D.Get();
+		hs = Dx_ShaderHolder::pHullShaderTriangle.Get();
 		dxrPara.hs = true;
-		ds = sh->pDomainShaderTriangle.Get();
+		ds = Dx_ShaderHolder::pDomainShaderTriangle.Get();
 		if (smooth) {
-			gs = sh->pGeometryShader_Before_ds_Smooth.Get();
-			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
+			gs = Dx_ShaderHolder::pGeometryShader_Before_ds_Smooth.Get();
+			gs_NoMap = Dx_ShaderHolder::pGeometryShader_Before_ds_NoNormalMap_Smooth.Get();
 		}
 		else {
-			gs = sh->pGeometryShader_Before_ds_Edge.Get();
-			gs_NoMap = sh->pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
+			gs = Dx_ShaderHolder::pGeometryShader_Before_ds_Edge.Get();
+			gs_NoMap = Dx_ShaderHolder::pGeometryShader_Before_ds_NoNormalMap_Edge.Get();
 		}
 	}
 	else {
-		vs = sh->pVertexShader_MESH.Get();
-		gs = sh->pGeometryShader_Before_vs.Get();
-		gs_NoMap = sh->pGeometryShader_Before_vs_NoNormalMap.Get();
+		vs = Dx_ShaderHolder::pVertexShader_MESH.Get();
+		gs = Dx_ShaderHolder::pGeometryShader_Before_vs.Get();
+		gs_NoMap = Dx_ShaderHolder::pGeometryShader_Before_vs_NoNormalMap.Get();
 	}
 
 	if (light) {
-		ps = sh->pPixelShader_3D.Get();
-		ps_NoMap = sh->pPixelShader_3D_NoNormalMap.Get();
+		ps = Dx_ShaderHolder::pPixelShader_3D.Get();
+		ps_NoMap = Dx_ShaderHolder::pPixelShader_3D_NoNormalMap.Get();
 	}
 	else {
-		ps = sh->pPixelShader_Emissive.Get();
-		ps_NoMap = sh->pPixelShader_Emissive.Get();
+		ps = Dx_ShaderHolder::pPixelShader_Emissive.Get();
+		ps_NoMap = Dx_ShaderHolder::pPixelShader_Emissive.Get();
 	}
 
 	if (changeVs)vs = changeVs;
@@ -112,7 +110,7 @@ void BasicPolygon::createBufferDXR(int numMaterial, int numMaxInstance) {
 
 void BasicPolygon::setTextureDXR() {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!dx->DXR_CreateResource)return;
+	if (!dx->getDxrCreateResourceState())return;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		dxrPara.difTex[i] = texture[i * 3 + 0];
@@ -123,8 +121,8 @@ void BasicPolygon::setTextureDXR() {
 
 void BasicPolygon::CbSwap() {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	firstCbSet[dx->cBuffSwap[0]] = true;
-	insNum[dx->cBuffSwap[0]] = ins_no;
+	firstCbSet[dx->cBuffSwapUpdateIndex()] = true;
+	insNum[dx->cBuffSwapUpdateIndex()] = ins_no;
 	ins_no = 0;
 	DrawOn = true;
 }
@@ -153,20 +151,20 @@ void BasicPolygon::draw(int comIndex, drawPara& para) {
 		mCList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCList->SetPipelineState(para.PSO[i].Get());
 		mCList->SetGraphicsRootDescriptorTable(0, heap);
-		heap.ptr += dx->mCbvSrvUavDescriptorSize * para.numDesc;
+		heap.ptr += dx->getCbvSrvUavDescriptorSize() * para.numDesc;
 		mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}
 }
 
 void BasicPolygon::ParameterDXR_Update() {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
 	ud.NumInstance = dpara.insNum;
-	ud.shininess = cb[dx->cBuffSwap[1]].DispAmount.z;
+	ud.shininess = cb[dx->cBuffSwapDrawOrStreamoutputIndex()].DispAmount.z;
 	for (UINT i = 0; i < ud.NumInstance; i++) {
-		ud.Transform[i] = cbWVP[dx->cBuffSwap[1]][i].world;
-		ud.WVP[i] = cbWVP[dx->cBuffSwap[1]][i].wvp;
-		ud.AddObjColor[i] = cbWVP[dx->cBuffSwap[1]][i].AddObjColor;
+		ud.Transform[i] = cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i].world;
+		ud.WVP[i] = cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i].wvp;
+		ud.AddObjColor[i] = cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i].AddObjColor;
 	}
 }
 
@@ -179,7 +177,7 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
-	UpdateDXR& ud = dxr.updateDXR[dx->dxrBuffSwap[0]];
+	UpdateDXR& ud = dxr.updateDXR[dx->dxrBuffSwapIndex()];
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetGraphicsRootSignature(para.rootSignatureDXR.Get());
 	mCList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
@@ -229,7 +227,7 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 			dxr.SviewDXR[i][t].outputReadBack(comIndex);
 			dxr.SviewDXR[i][t].ResetFilledSizeBuffer(comIndex);
 		}
-		heap.ptr += dx->mCbvSrvUavDescriptorSize * para.numDesc;
+		heap.ptr += dx->getCbvSrvUavDescriptorSize() * para.numDesc;
 		ud.firstSet = true;
 	}
 }
@@ -254,7 +252,7 @@ void BasicPolygon::getBuffer(int numMaterial, int numMaxInstance, DivideArr* div
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
 	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
-	if (dx->DXR_CreateResource) {
+	if (dx->getDxrCreateResourceState()) {
 		dpara.PSO_DXR = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 		createBufferDXR(dpara.NumMaterial, numMaxInstance);
 	}
@@ -275,7 +273,7 @@ void BasicPolygon::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, U
 
 void BasicPolygon::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!dx->DXR_CreateResource)return;
+	if (!dx->getDxrCreateResourceState())return;
 
 	dxrPara.diffuse[materialIndex].as(sg.vDiffuse.x, sg.vDiffuse.y, sg.vDiffuse.z, sg.vDiffuse.w);
 	dxrPara.specular[materialIndex].as(sg.vSpeculer.x, sg.vSpeculer.y, sg.vSpeculer.z, sg.vSpeculer.w);
@@ -388,11 +386,11 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 	int NumMaterial = dxrPara.NumMaterial;
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx_ShaderHolder* sh = dx->shaderH.get();
-	if (hs || vs == sh->pVertexShader_SKIN.Get())dxrPara.updateF = true;
+
+	if (hs || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())dxrPara.updateF = true;
 	if (hs)dxrPara.tessellationF = true;
 
-	if (!dx->DXR_CreateResource || vs == sh->pVertexShader_SKIN.Get())return;
+	if (!dx->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return;
 
 	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
 	if (hs) {
@@ -456,22 +454,21 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 	const int numSrv, const int numCbv, const int numUav, bool smooth) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	Dx_ShaderHolder* sh = dx->shaderH.get();
-	if (!dx->DXR_CreateResource || vs == sh->pVertexShader_SKIN.Get())return true;
+	if (!dx->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return true;
 
 	UINT numDescriptors[1] = {};
 	numDescriptors[0] = dpara.NumMaxInstance;
 
 	if (hs) {
 		if (smooth)
-			gs = sh->pGeometryShader_Before_ds_Output_Smooth.Get();
+			gs = Dx_ShaderHolder::pGeometryShader_Before_ds_Output_Smooth.Get();
 		else
-			gs = sh->pGeometryShader_Before_ds_Output_Edge.Get();
+			gs = Dx_ShaderHolder::pGeometryShader_Before_ds_Output_Edge.Get();
 
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true, 1, 3, 1, numDescriptors);
 	}
 	else {
-		gs = sh->pGeometryShader_Before_vs_Output.Get();
+		gs = Dx_ShaderHolder::pGeometryShader_Before_vs_Output.Get();
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, false, 1, 3, 1, numDescriptors);
 	}
 	if (dpara.rootSignature == nullptr)return false;
@@ -480,8 +477,8 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 		if (dpara.Iview[i].IndexCount <= 0)continue;
 		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs, hs, ds, gs, dpara.rootSignatureDXR.Get(),
 			vertexLayout,
-			&sh->pDeclaration_Output,
-			(UINT)sh->pDeclaration_Output.size(),
+			&Dx_ShaderHolder::pDeclaration_Output,
+			(UINT)Dx_ShaderHolder::pDeclaration_Output.size(),
 			&dxrPara.SviewDXR[i][0].StreamByteStride,
 			1,
 			primType_create);
@@ -492,14 +489,14 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 
 void BasicPolygon::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size, Color);
+	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
 }
 
 void BasicPolygon::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my,
+	dx->InstancingUpdate(&cb[dx->cBuffSwapUpdateIndex()], disp, px, py, mx, my,
 		divArr, numDiv, shininess, SmoothRange, SmoothRatio);
 	CbSwap();
 }
@@ -510,19 +507,19 @@ void BasicPolygon::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	float px, float py, float mx, float my) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwap[0]].get(), pos, angle, size, Color);
-	dx->InstancingUpdate(&cb[dx->cBuffSwap[0]], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
+	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
+	dx->InstancingUpdate(&cb[dx->cBuffSwapUpdateIndex()], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
 	CbSwap();
 }
 
 void BasicPolygon::Draw(int comIndex) {
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!firstCbSet[dx->cBuffSwap[1]] | !DrawOn)return;
+	if (!firstCbSet[dx->cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
-	mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
-	dpara.insNum = insNum[dx->cBuffSwap[1]];
+	mObjectCB->CopyData(0, cb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
+	dpara.insNum = insNum[dx->cBuffSwapDrawOrStreamoutputIndex()];
 	for (UINT i = 0; i < dpara.insNum; i++) {
-		wvp->CopyData(i, cbWVP[dx->cBuffSwap[1]][i]);
+		wvp->CopyData(i, cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i]);
 	}
 	draw(comIndex, dpara);
 }
@@ -530,20 +527,20 @@ void BasicPolygon::Draw(int comIndex) {
 void BasicPolygon::StreamOutput(int comIndex) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	if (vs != dx->shaderH->pVertexShader_SKIN.Get()) {
+	if (vs != Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 
-		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
 		ud.InstanceMaskChange(DrawOn);
 
-		if (!firstCbSet[dx->cBuffSwap[1]])return;
+		if (!firstCbSet[dx->cBuffSwapDrawOrStreamoutputIndex()])return;
 
-		mObjectCB->CopyData(0, cb[dx->cBuffSwap[1]]);
-		dpara.insNum = insNum[dx->cBuffSwap[1]];
+		mObjectCB->CopyData(0, cb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
+		dpara.insNum = insNum[dx->cBuffSwapDrawOrStreamoutputIndex()];
 		for (UINT i = 0; i < dpara.insNum; i++) {
-			wvp->CopyData(i, cbWVP[dx->cBuffSwap[1]][i]);
+			wvp->CopyData(i, cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i]);
 		}
 		ParameterDXR_Update();
-		if (dxrPara.updateF || !dxrPara.updateDXR[dx->dxrBuffSwap[0]].createAS) {
+		if (dxrPara.updateF || !dxrPara.updateDXR[dx->dxrBuffSwapIndex()].createAS) {
 			streamOutput(comIndex, dpara, dxrPara);
 		}
 	}
@@ -566,7 +563,7 @@ ParameterDXR* BasicPolygon::getParameter() {
 void BasicPolygon::UpdateDxrDivideBuffer() {
 	if (hs) {
 		Dx12Process* dx = Dx12Process::GetInstance();
-		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwap[0]];
+		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
 		for (int i = 0; i < dpara.NumMaterial; i++) {
 			//使用されていないマテリアル対策
 			if (dpara.Iview[i].IndexCount <= 0)continue;

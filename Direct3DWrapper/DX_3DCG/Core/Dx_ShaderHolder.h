@@ -31,54 +31,57 @@ class Dx_ShaderHolder {
 
 private:
 	friend Dx12Process;
-	bool CreateShaderByteCodeBool = true;
-	void setNorTestPS();
-	bool CreateShaderByteCode();
+	static bool CreateShaderByteCodeBool;
+	static void setNorTestPS();
+	static bool CreateShaderByteCode();
+
+	Dx_ShaderHolder() {};
+	~Dx_ShaderHolder() {};
 
 public:
 	//シェーダーバイトコード
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Smooth = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Edge = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_vs = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap_Smooth = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap_Edge = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output_Smooth = nullptr;
-	ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output_Edge = nullptr;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_Smooth;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_Edge;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_vs;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap_Smooth;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_NoNormalMap_Edge;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_vs_NoNormalMap;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_vs_Output;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output_Smooth;
+	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_Output_Edge;
 
-	ComPtr<ID3DBlob> pHullShaderTriangle = nullptr;
+	static ComPtr<ID3DBlob> pHullShaderTriangle;
 
-	ComPtr<ID3DBlob> pDomainShaderTriangle = nullptr;
+	static ComPtr<ID3DBlob> pDomainShaderTriangle;
 
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_SKIN;
-	std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_Output;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_MESH;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3DBC;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_2D;
+	static std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_SKIN;
+	static std::vector<D3D12_SO_DECLARATION_ENTRY> pDeclaration_Output;
+	static std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_MESH;
+	static std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_3DBC;
+	static std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout_2D;
 
-	ComPtr<ID3DBlob> pVertexShader_SKIN = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_SKIN_D = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_MESH_D = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_MESH = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_BC = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_2D = nullptr;
-	ComPtr<ID3DBlob> pVertexShader_2DTC = nullptr;
+	static ComPtr<ID3DBlob> pVertexShader_SKIN;
+	static ComPtr<ID3DBlob> pVertexShader_SKIN_D;
+	static ComPtr<ID3DBlob> pVertexShader_MESH_D;
+	static ComPtr<ID3DBlob> pVertexShader_MESH;
+	static ComPtr<ID3DBlob> pVertexShader_BC;
+	static ComPtr<ID3DBlob> pVertexShader_2D;
+	static ComPtr<ID3DBlob> pVertexShader_2DTC;
 
-	ComPtr<ID3DBlob> pPixelShader_3D = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_3D_NoNormalMap = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_Emissive = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_BC = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_2D = nullptr;
-	ComPtr<ID3DBlob> pPixelShader_2DTC = nullptr;
+	static ComPtr<ID3DBlob> pPixelShader_3D;
+	static ComPtr<ID3DBlob> pPixelShader_3D_NoNormalMap;
+	static ComPtr<ID3DBlob> pPixelShader_Emissive;
+	static ComPtr<ID3DBlob> pPixelShader_BC;
+	static ComPtr<ID3DBlob> pPixelShader_2D;
+	static ComPtr<ID3DBlob> pPixelShader_2DTC;
 
-	ComPtr<ID3DBlob> pVertexShader_SKIN_Com = nullptr;
+	static ComPtr<ID3DBlob> pVertexShader_SKIN_Com;
 
-	std::unique_ptr<char[]> ShaderNormalTangentCopy = nullptr;
-	std::unique_ptr<char[]> ShaderCalculateLightingCopy = nullptr;
-	std::unique_ptr<char[]> ShaderCommonParametersCopy = nullptr;
+	static std::unique_ptr<char[]> ShaderNormalTangentCopy;
+	static std::unique_ptr<char[]> ShaderCalculateLightingCopy;
+	static std::unique_ptr<char[]> ShaderCommonParametersCopy;
 
-	ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+	static ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 };
 
 #endif

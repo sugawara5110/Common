@@ -1,17 +1,17 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          Commonクラス                                      **//
+//**                   　　　          DxCommonクラス                                    **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx12ProcessCore.h"
 
-Common::Common() {
+DxCommon::DxCommon() {
 
 }
 
-Common::~Common() {
+DxCommon::~DxCommon() {
 	ARR_DELETE(movOn);
 
 	for (int i = 0; i < numTexRes; i++) {
@@ -22,12 +22,12 @@ Common::~Common() {
 	}
 }
 
-void Common::SetName(char* name) {
+void DxCommon::SetName(char* name) {
 	if (strlen(name) > 255)return;
 	strcpy(objName, name);
 }
 
-void Common::CopyResource(int comIndex, ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int texIndex) {
+void DxCommon::CopyResource(int comIndex, ID3D12Resource* Intexture, D3D12_RESOURCE_STATES res, int texIndex) {
 
 	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
@@ -40,7 +40,7 @@ void Common::CopyResource(int comIndex, ID3D12Resource* Intexture, D3D12_RESOURC
 	cObj->ResourceBarrier(texture[texIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
 
-void Common::TextureInit(int width, int height, int index) {
+void DxCommon::TextureInit(int width, int height, int index) {
 	if (movOnSize < index + 1) {
 		if (!movOn) {
 			movOn = new MovieTexture[index + 1];
@@ -60,7 +60,7 @@ void Common::TextureInit(int width, int height, int index) {
 	movOn[index].height = height;
 }
 
-HRESULT Common::SetTextureMPixel(int comIndex, BYTE* frame, int tInd) {
+HRESULT DxCommon::SetTextureMPixel(int comIndex, BYTE* frame, int tInd) {
 
 	int index = movOn[tInd].resIndex;
 
@@ -82,7 +82,7 @@ HRESULT Common::SetTextureMPixel(int comIndex, BYTE* frame, int tInd) {
 	return S_OK;
 }
 
-HRESULT Common::createTex(int comIndex, int tNo, int& resCnt, char* upName, char* defName, char* ObjName) {
+HRESULT DxCommon::createTex(int comIndex, int tNo, int& resCnt, char* upName, char* defName, char* ObjName) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	InternalTexture* tex = &dx->texture[tNo];
 	HRESULT hr = S_OK;
@@ -101,7 +101,7 @@ HRESULT Common::createTex(int comIndex, int tNo, int& resCnt, char* upName, char
 	resCnt++;
 	return hr;
 }
-HRESULT Common::createTextureResource(int comIndex, int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName) {
+HRESULT DxCommon::createTextureResource(int comIndex, int resourceStartIndex, int MaterialNum, TextureNo* to, char* ObjName) {
 
 	numTexRes = MaterialNum * 3;
 	createRes = std::make_unique<bool[]>(numTexRes);
@@ -235,7 +235,7 @@ static void createROOT_PARAMETER(UINT numSrv, UINT numCbv, UINT numUav,
 	}
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
+ComPtr <ID3D12RootSignature> DxCommon::CreateRootSignature(UINT numSrv, UINT numCbv, UINT numUav,
 	UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors) {
 
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
@@ -263,7 +263,7 @@ static D3D12_STATIC_SAMPLER_DESC getSampler() {
 	return linearWrap;
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
+ComPtr <ID3D12RootSignature> DxCommon::CreateRs(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
 {
 	D3D12_STATIC_SAMPLER_DESC linearWrap = getSampler();
 	D3D12_ROOT_SIGNATURE_DESC desc = {};
@@ -276,7 +276,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRs(int paramNum, D3D12_ROOT_PARAMETER
 	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
+ComPtr <ID3D12RootSignature> DxCommon::CreateRsStreamOutput(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
 {
 	D3D12_ROOT_SIGNATURE_DESC desc = {};
 	desc.NumParameters = paramNum;
@@ -287,7 +287,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsStreamOutput(int paramNum, D3D12_RO
 	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
-ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
+ComPtr<ID3D12RootSignature> DxCommon::CreateRsStreamOutputSampler(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
 {
 	D3D12_STATIC_SAMPLER_DESC linearWrap = getSampler();
 	D3D12_ROOT_SIGNATURE_DESC desc = {};
@@ -301,7 +301,7 @@ ComPtr<ID3D12RootSignature> Common::CreateRsStreamOutputSampler(int paramNum, D3
 	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
-ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
+ComPtr <ID3D12RootSignature> DxCommon::CreateRsCompute(int paramNum, D3D12_ROOT_PARAMETER* slotRootParameter)
 {
 	D3D12_ROOT_SIGNATURE_DESC desc = {};
 	desc.NumParameters = paramNum;
@@ -311,7 +311,7 @@ ComPtr <ID3D12RootSignature> Common::CreateRsCompute(int paramNum, D3D12_ROOT_PA
 	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
-ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
+ComPtr<ID3D12RootSignature> DxCommon::CreateRootSignatureCompute(UINT numSrv, UINT numCbv, UINT numUav,
 	UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors) {
 
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
@@ -321,7 +321,7 @@ ComPtr<ID3D12RootSignature> Common::CreateRootSignatureCompute(UINT numSrv, UINT
 	return CreateRsCompute(numCbvPara + 1, rootParams.data());
 }
 
-ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav,
+ComPtr<ID3D12RootSignature> DxCommon::CreateRootSignatureStreamOutput(UINT numSrv, UINT numCbv, UINT numUav,
 	bool sampler, UINT numCbvPara, UINT RegisterStNoCbv, UINT numArrCbv, UINT* numDescriptors) {
 
 	std::vector<D3D12_DESCRIPTOR_RANGE> range;
@@ -334,7 +334,7 @@ ComPtr<ID3D12RootSignature> Common::CreateRootSignatureStreamOutput(UINT numSrv,
 		return CreateRsStreamOutput(numCbvPara + 1, rootParams.data());
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
+ComPtr <ID3D12PipelineState> DxCommon::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>* pVertexLayout,
@@ -483,7 +483,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	return pso;
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
+ComPtr <ID3D12PipelineState> DxCommon::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend,
@@ -493,7 +493,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsPs(ID3DBlob* vs, ID3DBlob* ps,
 		false, nullptr, 0, nullptr, 0, alpha, blend, type);
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
+ComPtr <ID3D12PipelineState> DxCommon::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend,
@@ -503,7 +503,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoVsHsDsPs(ID3DBlob* vs, ID3DBlob* h
 		false, nullptr, 0, nullptr, 0, alpha, blend, type);
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* gs,
+ComPtr <ID3D12PipelineState> DxCommon::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlob* hs, ID3DBlob* ds, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	std::vector<D3D12_SO_DECLARATION_ENTRY>* pDeclaration,
@@ -516,7 +516,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoStreamOutput(ID3DBlob* vs, ID3DBlo
 		true, pDeclaration, numDECLARATION, StreamSizeArr, NumStrides, true, true, type);
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
+ComPtr <ID3D12PipelineState> DxCommon::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* ps, ID3DBlob* gs,
 	ID3D12RootSignature* mRootSignature,
 	std::vector<D3D12_INPUT_ELEMENT_DESC>& pVertexLayout,
 	bool alpha, bool blend)
@@ -525,7 +525,7 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoParticle(ID3DBlob* vs, ID3DBlob* p
 		false, nullptr, 0, nullptr, 0, alpha, blend, POINt);
 }
 
-ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
+ComPtr <ID3D12PipelineState> DxCommon::CreatePsoCompute(ID3DBlob* cs,
 	ID3D12RootSignature* mRootSignature)
 {
 	ComPtr <ID3D12PipelineState>pso;
@@ -548,7 +548,3 @@ ComPtr <ID3D12PipelineState> Common::CreatePsoCompute(ID3DBlob* cs,
 	return pso;
 }
 
-ComPtr<ID3DBlob> Common::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	return dx->shaderH->CompileShader(szFileName, size, szFuncName, szProfileName);
-}

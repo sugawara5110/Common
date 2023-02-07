@@ -381,14 +381,14 @@ void MeshData::setPointLight(int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	mObj.dxrPara.setPointLight(dx->dxrBuffSwap[0], 0, materialIndex, InstanceIndex, on_off, range, atten);
+	mObj.dxrPara.setPointLight(dx->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void MeshData::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
-	mObj.dxrPara.setPointLightAll(dx->dxrBuffSwap[0], on_off, range, atten);
+	mObj.dxrPara.setPointLightAll(dx->dxrBuffSwapIndex(), on_off, range, atten);
 }
 
 bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnification) {
@@ -421,9 +421,9 @@ bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnifica
 	int numUav = 0;
 	mObj.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 
-	if (!mObj.createPSO(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
+	if (!mObj.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
-	if (!mObj.createPSO_DXR(dx->shaderH->pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
+	if (!mObj.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 
 	if (!mObj.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
