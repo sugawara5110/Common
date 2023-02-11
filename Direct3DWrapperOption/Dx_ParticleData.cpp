@@ -224,7 +224,7 @@ void ParticleData::CreateVbObj(int comIndex, bool alpha, bool blend) {
 	const UINT vbByteSize = ver * sizeof(PartPos);
 
 	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
-	Vview->VertexBufferGPU = ma->CreateDefaultBuffer(comIndex, P_pos, vbByteSize, Vview->VertexBufferUploader, false);
+	Vview->VertexBufferGPU.CreateDefaultBuffer(comIndex, P_pos, vbByteSize, false);
 
 	Vview->VertexByteStride = sizeof(PartPos);
 	Vview->VertexBufferByteSize = vbByteSize;
@@ -232,8 +232,7 @@ void ParticleData::CreateVbObj(int comIndex, bool alpha, bool blend) {
 	Dx_Device* device = Dx_Device::GetInstance();
 
 	for (int i = 0; i < 2; i++) {
-		device->createDefaultResourceBuffer(Sview[i].StreamBufferGPU.GetAddressOf(),
-			vbByteSize);
+		Sview[i].StreamBufferGPU.createDefaultResourceBuffer(vbByteSize);
 
 		Sview[i].StreamByteStride = sizeof(PartPos);
 		Sview[i].StreamBufferByteSize = vbByteSize;
@@ -311,8 +310,7 @@ bool ParticleData::CreatePartsDraw(int comIndex, int texNo, bool alpha, bool ble
 		dxI.IndexCount = indCnt;
 		UINT* ind = new UINT[indCnt];
 		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-		dxI.IndexBufferGPU = ma->CreateDefaultBuffer(comIndex, ind,
-			dxI.IndexBufferByteSize, dxI.IndexBufferUploader, false);
+		dxI.IndexBufferGPU.CreateDefaultBuffer(comIndex, ind, dxI.IndexBufferByteSize, false);
 		ARR_DELETE(ind);
 		for (int j = 0; j < 2; j++) {
 			dxrPara.updateDXR[j].currentIndexCount[0][0] = indCnt;
@@ -321,16 +319,14 @@ bool ParticleData::CreatePartsDraw(int comIndex, int texNo, bool alpha, bool ble
 			bytesize = verCnt * sizeof(VERTEX_DXR);
 			dxV.VertexByteStride = sizeof(VERTEX_DXR);
 			dxV.VertexBufferByteSize = bytesize;
-			device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-				dxV.VertexBufferByteSize);
-			cObj->ResourceBarrier(dxV.VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+			dxV.VertexBufferGPU.createDefaultResourceBuffer(dxV.VertexBufferByteSize);
+			dxV.VertexBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_GENERIC_READ);
 		}
 		StreamView& dxS = dxrPara.SviewDXR[0][0];
 		dxS.StreamByteStride = sizeof(VERTEX_DXR);
 		dxS.StreamBufferByteSize = bytesize;
-		device->createDefaultResourceBuffer(dxS.StreamBufferGPU.GetAddressOf(),
-			dxS.StreamBufferByteSize);
+		dxS.StreamBufferGPU.createDefaultResourceBuffer(dxS.StreamBufferByteSize);
+		dxS.StreamBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_STREAM_OUT);
 
 		rootSignatureDXR = CreateRootSignatureStreamOutput(1, 1, 0, false, 0, 0, 0, nullptr);
 		if (rootSignatureDXR == nullptr)return false;
@@ -408,11 +404,7 @@ void ParticleData::DrawParts1(int comIndex) {
 
 	svInd = 1 - svInd;
 	if (firstDraw) {
-		cObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		mCList->CopyResource(Vview->VertexBufferGPU.Get(), Sview[svInd].StreamBufferGPU.Get());
-		cObj->ResourceBarrier(Vview->VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		Vview->VertexBufferGPU.CopyResource(comIndex, &Sview[svInd].StreamBufferGPU);
 	}
 	Sview[svInd].ResetFilledSizeBuffer(comIndex);
 }
@@ -461,17 +453,7 @@ void ParticleData::DrawParts2StreamOutput(int comIndex) {
 
 	mCList->DrawInstanced(ver, 1, 0, 0);
 
-	cObj->delayResourceBarrierBefore(ud.VviewDXR[0][0].VertexBufferGPU.Get(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-	cObj->delayResourceBarrierBefore(dxrPara.SviewDXR[0][0].StreamBufferGPU.Get(),
-		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
-
-	cObj->delayCopyResource(ud.VviewDXR[0][0].VertexBufferGPU.Get(), dxrPara.SviewDXR[0][0].StreamBufferGPU.Get());
-
-	cObj->delayResourceBarrierAfter(ud.VviewDXR[0][0].VertexBufferGPU.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-	cObj->delayResourceBarrierAfter(dxrPara.SviewDXR[0][0].StreamBufferGPU.Get(),
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+	ud.VviewDXR[0][0].VertexBufferGPU.delayCopyResource(comIndex, &dxrPara.SviewDXR[0][0].StreamBufferGPU);
 
 	dxrPara.SviewDXR[0][0].ResetFilledSizeBuffer(comIndex);
 

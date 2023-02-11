@@ -169,9 +169,9 @@ bool PolygonData2D::Create(int comIndex, bool blend, bool alpha, int noTex) {
 	const UINT ibByteSize = (int)(ver * 1.5) * sizeof(std::uint16_t);
 	Dx_CommandManager& ma = *Dx_CommandManager::GetInstance();
 
-	Vview->VertexBufferGPU = ma.CreateDefaultBuffer(comIndex, d2varray, vbByteSize, Vview->VertexBufferUploader, false);
+	Vview->VertexBufferGPU.CreateDefaultBuffer(comIndex, d2varray, vbByteSize, false);
 
-	Iview->IndexBufferGPU = ma.CreateDefaultBuffer(comIndex, d2varrayI, ibByteSize, Iview->IndexBufferUploader, false);
+	Iview->IndexBufferGPU.CreateDefaultBuffer(comIndex, d2varrayI, ibByteSize, false);
 
 	Vview->VertexByteStride = sizeof(MY_VERTEX2);
 	Vview->VertexBufferByteSize = vbByteSize;

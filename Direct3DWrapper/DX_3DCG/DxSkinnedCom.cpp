@@ -25,25 +25,18 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = descHeap->GetCPUDescriptorHandleForHeapStart();
 
+		UINT resSize = sizeof(MY_VERTEX_S);
+		pd->dpara.Vview.get()->VertexBufferGPU.CreateSrvBuffer(hDescriptor, resSize);
+
+		D3D12_GPU_VIRTUAL_ADDRESS ad[1] = {};
+		ad[0] = ad3;
 		UINT cbSize[1] = {};
 		cbSize[0] = ad3Size;
-
-		ID3D12Resource* res[1] = {};
-		res[0] = pd->dpara.Vview.get()->VertexBufferGPU.Get();
-		UINT resSize[1] = {};
-		resSize[0] = sizeof(MY_VERTEX_S);
-
-		device->CreateSrvBuffer(hDescriptor, res, numSrv, resSize);
-		D3D12_GPU_VIRTUAL_ADDRESS ad[2] = {};
-		ad[0] = ad3;
 		device->CreateCbv(hDescriptor, ad, cbSize, numCbv);
-		ID3D12Resource* resU[1] = {};
-		resU[0] = SkinnedVer.Get();
-		UINT byteStride[1] = {};
-		byteStride[0] = sizeof(VERTEX_DXR);
-		UINT size[1] = {};
-		size[0] = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
-		device->CreateUavBuffer(hDescriptor, resU, byteStride, size, numUav);
+
+		UINT byteStride = sizeof(VERTEX_DXR);
+		UINT size = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+		SkinnedVer.CreateUavBuffer(hDescriptor, byteStride, size);
 	}
 	return true;
 }
@@ -63,7 +56,7 @@ bool SkinnedCom::createPSO() {
 	return true;
 }
 
-bool SkinnedCom::createParameterDXR(int comNo) {
+bool SkinnedCom::createParameterDXR(int comIndex) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	if (dx->getDxrCreateResourceState() && pd->vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
@@ -71,7 +64,7 @@ bool SkinnedCom::createParameterDXR(int comNo) {
 		int NumMaterial = pd->dxrPara.NumMaterial;
 		Dx_Device* device = Dx_Device::GetInstance();
 
-		Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comNo);
+		Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
 		for (int i = 0; i < NumMaterial; i++) {
 			if (pd->dpara.Iview[i].IndexCount <= 0)continue;
@@ -82,17 +75,12 @@ bool SkinnedCom::createParameterDXR(int comNo) {
 			dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
 			dxI.IndexBufferByteSize = bytesize;
 			dxI.IndexCount = indCnt;
-			if (FAILED(device->createDefaultResourceBuffer(dxI.IndexBufferGPU.GetAddressOf(),
-				dxI.IndexBufferByteSize))) {
+			if (FAILED(dxI.IndexBufferGPU.createDefaultResourceBuffer(dxI.IndexBufferByteSize))) {
 				Dx_Util::ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 				return false;
 			}
 
-			d.ResourceBarrier(dxI.IndexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
-
-			d.CopyResourceGENERIC_READ(dxI.IndexBufferGPU.Get(),
-				pd->dpara.Iview[i].IndexBufferGPU.Get());
+			dxI.IndexBufferGPU.CopyResource(comIndex, &pd->dpara.Iview[i].IndexBufferGPU);
 
 			for (int j = 0; j < 2; j++) {
 				pd->dxrPara.updateDXR[j].currentIndexCount[i][0] = indCnt;
@@ -101,34 +89,30 @@ bool SkinnedCom::createParameterDXR(int comNo) {
 				bytesize = vCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
-				if (FAILED(device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-					dxV.VertexBufferByteSize))) {
+				if (FAILED(dxV.VertexBufferGPU.createDefaultResourceBuffer(dxV.VertexBufferByteSize))) {
 					Dx_Util::ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 					return false;
 				}
 
-				d.ResourceBarrier(dxV.VertexBufferGPU.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
+				dxV.VertexBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_GENERIC_READ);
 			}
-			if (!SkinnedVer) {
-				if (FAILED(device->createDefaultResourceBuffer_UNORDERED_ACCESS(SkinnedVer.GetAddressOf(),
-					bytesize))) {
+			if (!SkinnedVer.getResource()) {
+				if (FAILED(SkinnedVer.createDefaultResourceBuffer_UNORDERED_ACCESS(bytesize))) {
 					Dx_Util::ErrorMessage("SkinnedCom::createParameterDXR Error!!");
 					return false;
 				}
 
-				d.ResourceBarrier(SkinnedVer.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				SkinnedVer.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			}
 		}
 	}
 	return true;
 }
 
-void SkinnedCom::skinning(int comNo) {
+void SkinnedCom::skinning(int comIndex) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
-	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comNo);
+	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 	ID3D12GraphicsCommandList* mCList = d.getCommandList();
 
 	mCList->SetPipelineState(PSO.Get());
@@ -143,25 +127,17 @@ void SkinnedCom::skinning(int comNo) {
 	mCList->SetComputeRootDescriptorTable(0, des);
 	mCList->Dispatch(numVer, 1, 1);
 
-	d.delayResourceBarrierBefore(SkinnedVer.Get(),
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	for (int i = 0; i < pd->dpara.NumMaterial; i++) {
 		//使用されていないマテリアル対策
 		if (pd->dpara.Iview[i].IndexCount <= 0)continue;
 
-		d.delayResourceBarrierBefore(ud.VviewDXR[i][0].VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-		d.delayCopyResource(ud.VviewDXR[i][0].VertexBufferGPU.Get(), SkinnedVer.Get());
-		d.delayResourceBarrierAfter(ud.VviewDXR[i][0].VertexBufferGPU.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		ud.VviewDXR[i][0].VertexBufferGPU.delayCopyResource(comIndex, &SkinnedVer);
 	}
-	d.delayResourceBarrierAfter(SkinnedVer.Get(),
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	ud.firstSet = true;
 }
 
-void SkinnedCom::Skinning(int comNo) {
+void SkinnedCom::Skinning(int comIndex) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 
 	if (pd->vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
@@ -175,7 +151,7 @@ void SkinnedCom::Skinning(int comNo) {
 		pd->dpara.insNum = pd->insNum[dx->cBuffSwapDrawOrStreamoutputIndex()];
 		pd->ParameterDXR_Update();
 		if (pd->dxrPara.updateF || !pd->dxrPara.updateDXR[dx->dxrBuffSwapIndex()].createAS) {
-			skinning(comNo);
+			skinning(comIndex);
 		}
 	}
 }

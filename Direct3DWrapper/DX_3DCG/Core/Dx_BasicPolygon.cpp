@@ -211,18 +211,7 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 			mCList->SOSetTargets(0, 1, &dxr.SviewDXR[i][t].StreamBufferView());
 			mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, 1, 0, 0, 0);
 
-			d.delayResourceBarrierBefore(ud.VviewDXR[i][t].VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-			d.delayResourceBarrierBefore(dxr.SviewDXR[i][t].StreamBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE);
-
-			d.delayCopyResource(ud.VviewDXR[i][t].VertexBufferGPU.Get(),
-				dxr.SviewDXR[i][t].StreamBufferGPU.Get());
-
-			d.delayResourceBarrierAfter(ud.VviewDXR[i][t].VertexBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-			d.delayResourceBarrierAfter(dxr.SviewDXR[i][t].StreamBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT);
+			ud.VviewDXR[i][t].VertexBufferGPU.delayCopyResource(comIndex, &dxr.SviewDXR[i][t].StreamBufferGPU);
 
 			dxr.SviewDXR[i][t].outputReadBack(comIndex);
 			dxr.SviewDXR[i][t].ResetFilledSizeBuffer(comIndex);
@@ -282,15 +271,13 @@ void BasicPolygon::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 
 void BasicPolygon::createDefaultBuffer(int comIndex, void* vertexArr, UINT** indexArr) {
 	Dx_CommandManager& ma = *Dx_CommandManager::GetInstance();
-	dpara.Vview->VertexBufferGPU = ma.CreateDefaultBuffer(comIndex, vertexArr,
-		dpara.Vview->VertexBufferByteSize,
-		dpara.Vview->VertexBufferUploader, false);
+	dpara.Vview->VertexBufferGPU.CreateDefaultBuffer(comIndex, vertexArr,
+		dpara.Vview->VertexBufferByteSize, false);
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
-		dpara.Iview[i].IndexBufferGPU = ma.CreateDefaultBuffer(comIndex, indexArr[i],
-			dpara.Iview[i].IndexBufferByteSize,
-			dpara.Iview[i].IndexBufferUploader, false);
+		dpara.Iview[i].IndexBufferGPU.CreateDefaultBuffer(comIndex, indexArr[i],
+			dpara.Iview[i].IndexBufferByteSize, false);
 	}
 }
 
@@ -421,8 +408,7 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 		dxI.IndexCount = indCnt;
 		UINT* ind = new UINT[indCnt];
 		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
-		dxI.IndexBufferGPU = ma.CreateDefaultBuffer(comIndex, ind,
-			bytesize, dxI.IndexBufferUploader, false);
+		dxI.IndexBufferGPU.CreateDefaultBuffer(comIndex, ind, bytesize, false);
 		ARR_DELETE(ind);
 		for (UINT t = 0; t < dxrPara.NumMaxInstance; t++) {
 			for (int j = 0; j < 2; j++) {
@@ -431,21 +417,14 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 				bytesize = indCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
-				device->createDefaultResourceBuffer(dxV.VertexBufferGPU.GetAddressOf(),
-					dxV.VertexBufferByteSize);
-
-				d.ResourceBarrier(dxV.VertexBufferGPU.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_GENERIC_READ);
-
+				dxV.VertexBufferGPU.createDefaultResourceBuffer(dxV.VertexBufferByteSize);
+				dxV.VertexBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_GENERIC_READ);
 			}
 			StreamView& dxS = dxrPara.SviewDXR[i][t];
 			dxS.StreamByteStride = sizeof(VERTEX_DXR);
 			dxS.StreamBufferByteSize = bytesize;
-			device->createDefaultResourceBuffer(dxS.StreamBufferGPU.GetAddressOf(),
-				dxS.StreamBufferByteSize);
-
-			d.ResourceBarrier(dxS.StreamBufferGPU.Get(),
-				D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_STREAM_OUT);
+			dxS.StreamBufferGPU.createDefaultResourceBuffer(dxS.StreamBufferByteSize);
+			dxS.StreamBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_STREAM_OUT);
 		}
 	}
 }

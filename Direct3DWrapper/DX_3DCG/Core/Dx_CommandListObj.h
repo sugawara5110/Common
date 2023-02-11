@@ -23,6 +23,11 @@ private:
 	ComPtr<ID3D12CommandAllocator> mCmdListAlloc[2];
 	ComPtr<ID3D12GraphicsCommandList4> mCommandList;
 	int mAloc_Num = 0;
+	enum ComListState {
+		USED,
+		OPEN,
+		CLOSE
+	};
 	volatile ComListState mComState = {};
 
 	bool ListCreate(bool Compute, ID3D12Device5* dev);

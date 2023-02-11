@@ -120,30 +120,105 @@ void Dx_Resource::delayResourceBarrierAfter(uint32_t comIndex, D3D12_RESOURCE_ST
 	state = after;
 }
 
+static bool BarrierOn(Dx_Resource* res) {
+
+	D3D12_RESOURCE_DIMENSION dim = res->getResource()->GetDesc().Dimension;
+
+	return dim == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+		dim == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+		dim == D3D12_RESOURCE_DIMENSION_TEXTURE3D ||
+		res->state == D3D12_RESOURCE_STATE_STREAM_OUT;
+}
+
 void Dx_Resource::CopyResource(uint32_t comIndex, Dx_Resource* src) {
 
 	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
-	d.ResourceBarrier(src->res.Get(), src->state, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	if (BarrierOn(src))d.ResourceBarrier(src->res.Get(), src->state, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.ResourceBarrier(res.Get(), state, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (BarrierOn(this))d.ResourceBarrier(res.Get(), state, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	d.getCommandList()->CopyResource(res.Get(), src->res.Get());
 
-	d.ResourceBarrier(res.Get(), D3D12_RESOURCE_STATE_COPY_DEST, state);
+	if (BarrierOn(this))d.ResourceBarrier(res.Get(), D3D12_RESOURCE_STATE_COPY_DEST, state);
 
-	d.ResourceBarrier(src->res.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, src->state);
+	if (BarrierOn(src))d.ResourceBarrier(src->res.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, src->state);
 }
 
 void Dx_Resource::delayCopyResource(uint32_t comIndex, Dx_Resource* src) {
 
 	Dx_CommandListObj& d = *Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
-	d.delayResourceBarrierBefore(src->res.Get(), src->state, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	if (BarrierOn(src))d.delayResourceBarrierBefore(src->res.Get(), src->state, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-	d.delayResourceBarrierBefore(res.Get(), state, D3D12_RESOURCE_STATE_COPY_DEST);
+	if (BarrierOn(this))d.delayResourceBarrierBefore(res.Get(), state, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	d.delayCopyResource(res.Get(), src->res.Get());
 
-	d.delayResourceBarrierAfter(res.Get(), D3D12_RESOURCE_STATE_COPY_DEST, state);
+	if (BarrierOn(this))d.delayResourceBarrierAfter(res.Get(), D3D12_RESOURCE_STATE_COPY_DEST, state);
 
-	d.delayResourceBarrierAfter(src->res.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, src->state);
+	if (BarrierOn(src))d.delayResourceBarrierAfter(src->res.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, src->state);
+}
+
+void Dx_Resource::CreateDefaultBuffer(int comIndex, const void* initData, UINT64 byteSize, bool uav) {
+	Width = byteSize;
+	Height = 1;
+	state = D3D12_RESOURCE_STATE_GENERIC_READ;
+	if (uav)state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	res = Dx_CommandManager::GetInstance()->CreateDefaultBuffer(comIndex, initData, byteSize, up, uav);
+}
+
+D3D12_VERTEX_BUFFER_VIEW VertexView::VertexBufferView() {
+	D3D12_VERTEX_BUFFER_VIEW vbv = {};
+	vbv.BufferLocation = VertexBufferGPU.getResource()->GetGPUVirtualAddress();
+	vbv.StrideInBytes = VertexByteStride;
+	vbv.SizeInBytes = VertexBufferByteSize;
+	return vbv;
+}
+
+D3D12_INDEX_BUFFER_VIEW IndexView::IndexBufferView() {
+	D3D12_INDEX_BUFFER_VIEW ibv = {};
+	ibv.BufferLocation = IndexBufferGPU.getResource()->GetGPUVirtualAddress();
+	ibv.Format = IndexFormat;
+	ibv.SizeInBytes = IndexBufferByteSize;
+	return ibv;
+}
+
+Dx_Resource StreamView::resetBuffer = {};
+
+void StreamView::createResetBuffer(int comIndex) {
+	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	UINT64 zero[1] = {};
+	zero[0] = 0;
+	resetBuffer.CreateDefaultBuffer(comIndex, zero, sizeof(UINT64), false);
+}
+
+StreamView::StreamView() {
+	BufferFilledSizeBufferGPU.createDefaultResourceBuffer(sizeof(UINT64));
+	BufferFilledSizeBufferGPU.state = D3D12_RESOURCE_STATE_STREAM_OUT;
+	ReadBuffer.createReadBackResource(sizeof(UINT64));
+}
+
+void StreamView::ResetFilledSizeBuffer(int comIndex) {
+	BufferFilledSizeBufferGPU.delayCopyResource(comIndex, &resetBuffer);
+}
+
+void StreamView::outputReadBack(int comIndex) {
+	ReadBuffer.CopyResource(comIndex, &BufferFilledSizeBufferGPU);
+}
+
+void StreamView::outputFilledSize() {
+	D3D12_RANGE range;
+	range.Begin = 0;
+	range.End = sizeof(UINT64);
+	UINT* ba = nullptr;
+	ReadBuffer.getResource()->Map(0, &range, reinterpret_cast<void**>(&ba));
+	FilledSize = ba[0];
+	ReadBuffer.getResource()->Unmap(0, nullptr);
+}
+
+D3D12_STREAM_OUTPUT_BUFFER_VIEW StreamView::StreamBufferView() {
+	D3D12_STREAM_OUTPUT_BUFFER_VIEW sbv = {};
+	sbv.BufferLocation = StreamBufferGPU.getResource()->GetGPUVirtualAddress();
+	sbv.SizeInBytes = StreamBufferByteSize;
+	sbv.BufferFilledSizeLocation = BufferFilledSizeBufferGPU.getResource()->GetGPUVirtualAddress();
+	return sbv;
 }

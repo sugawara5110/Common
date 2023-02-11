@@ -9,9 +9,6 @@
 #include <WindowsX.h>
 #include <locale.h>
 
-ComPtr<ID3D12Resource> StreamView::UpresetBuffer = nullptr;
-ComPtr<ID3D12Resource> StreamView::resetBuffer = nullptr;
-
 Dx12Process *Dx12Process::dx = nullptr;
 std::mutex Dx12Process::mtx;
 

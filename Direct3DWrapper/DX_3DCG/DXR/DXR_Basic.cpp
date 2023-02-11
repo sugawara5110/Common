@@ -444,12 +444,12 @@ void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 
 	D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
 	geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-	geomDesc.Triangles.VertexBuffer.StartAddress = vv->VertexBufferGPU->GetGPUVirtualAddress();
+	geomDesc.Triangles.VertexBuffer.StartAddress = vv->VertexBufferGPU.getResource()->GetGPUVirtualAddress();
 	geomDesc.Triangles.VertexBuffer.StrideInBytes = vv->VertexByteStride;
 	geomDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 	UINT numVertices = vv->VertexBufferByteSize / vv->VertexByteStride;
 	geomDesc.Triangles.VertexCount = numVertices;
-	geomDesc.Triangles.IndexBuffer = iv->IndexBufferGPU->GetGPUVirtualAddress();
+	geomDesc.Triangles.IndexBuffer = iv->IndexBufferGPU.getResource()->GetGPUVirtualAddress();
 	geomDesc.Triangles.IndexCount = iv->IndexCount;
 	if (bLB.firstSet)geomDesc.Triangles.IndexCount = currentIndexCount;
 	geomDesc.Triangles.IndexFormat = iv->IndexFormat;
@@ -775,8 +775,8 @@ void DXR_Basic::createShaderResources() {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
 					IndexView& iv = PD[i]->IviewDXR[j];
-					UINT size[1] = { sizeof(uint32_t) };
-					device->CreateSrvBuffer(srvHandle, iv.IndexBufferGPU.GetAddressOf(), 1, size);
+					UINT size = sizeof(uint32_t);
+					iv.IndexBufferGPU.CreateSrvBuffer(srvHandle, size);
 				}
 			}
 		}
@@ -829,8 +829,8 @@ void DXR_Basic::createShaderResources() {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
 					VertexView& vv = PD[i]->updateDXR[heapInd].VviewDXR[j][t];
-					UINT size[1] = { vv.VertexByteStride };
-					device->CreateSrvBuffer(srvHandle, vv.VertexBufferGPU.GetAddressOf(), 1, size);
+					UINT size = vv.VertexByteStride;
+					vv.VertexBufferGPU.CreateSrvBuffer(srvHandle, size);
 				}
 			}
 		}

@@ -15,10 +15,4 @@ enum PrimitiveType {
 	CONTROL_POINT
 };
 
-enum ComListState {
-	USED,
-	OPEN,
-	CLOSE
-};
-
 #endif

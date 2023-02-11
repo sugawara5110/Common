@@ -61,9 +61,9 @@ void Dx_CommandManager::RunGpuNotLock() {
 	static ID3D12CommandList* cmdsLists[COM_NO] = {};
 	UINT cnt = 0;
 	for (int i = 0; i < COM_NO; i++) {
-		if (grList[i].mComState != CLOSE)continue;
+		if (grList[i].mComState != Dx_CommandListObj::CLOSE)continue;
 		cmdsLists[cnt++] = grList[i].mCommandList.Get();
-		grList[i].mComState = USED;
+		grList[i].mComState = Dx_CommandListObj::USED;
 	}
 
 	graphicsQueue.setCommandList(cnt, cmdsLists);
@@ -93,9 +93,9 @@ void Dx_CommandManager::RunGpuNotLockCom() {
 	static ID3D12CommandList* cmdsLists[COM_NO] = {};
 	UINT cnt = 0;
 	for (int i = 0; i < COM_NO; i++) {
-		if (coList[i].mComState != CLOSE)continue;
+		if (coList[i].mComState != Dx_CommandListObj::CLOSE)continue;
 		cmdsLists[cnt++] = coList[i].mCommandList.Get();
-		coList[i].mComState = USED;
+		coList[i].mComState = Dx_CommandListObj::USED;
 	}
 
 	computeQueue.setCommandList(cnt, cmdsLists);
