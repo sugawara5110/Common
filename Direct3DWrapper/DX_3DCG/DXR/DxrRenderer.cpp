@@ -1,11 +1,11 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          DXR_Basic.cpp                                     **//
+//**                   　　　          DxrRenderer.cpp                                   **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "DXR_Basic.h"
+#include "DxrRenderer.h"
 #include <fstream>
 #include <sstream>
 #include "./ShaderDXR/ShaderParametersDXR.h"
@@ -374,7 +374,7 @@ namespace {
 	}
 }
 
-void DXR_Basic::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, ShaderTestMode Mode) {
+void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, ShaderTestMode Mode) {
 
 	PD = pd;
 	Dx12Process* dx = Dx12Process::GetInstance();
@@ -424,12 +424,12 @@ void DXR_Basic::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Shade
 	cMa->WaitFence();
 }
 
-void DXR_Basic::setTMin_TMax(float tMin, float tMax) {
+void DxrRenderer::setTMin_TMax(float tMin, float tMax) {
 	TMin = tMin;
 	TMax = tMax;
 }
 
-void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
+void DxrRenderer::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 	IndexView* iv, UINT currentIndexCount, UINT MaterialNo,
 	bool update, bool tessellation, bool alphaTest) {
 
@@ -503,7 +503,7 @@ void DXR_Basic::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 	com->delayUavResourceBarrier(bLB.pResult.Get());
 }
 
-void DXR_Basic::createBottomLevelAS(Dx_CommandListObj* com) {
+void DxrRenderer::createBottomLevelAS(Dx_CommandListObj* com) {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	for (UINT i = 0; i < numMaterial; i++) {
 		AccelerationStructureBuffers& bLB = asObj[buffSwap[0]].bottomLevelBuffers[i];
@@ -533,7 +533,7 @@ void DXR_Basic::createBottomLevelAS(Dx_CommandListObj* com) {
 	com->RunDelayUavResourceBarrier();
 }
 
-void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
+void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	AccelerationStructureBuffers& tLB = asObj[buffSwap[0]].topLevelBuffers;
@@ -639,16 +639,16 @@ void DXR_Basic::createTopLevelAS(Dx_CommandListObj* com) {
 	com->getCommandList()->ResourceBarrier(1, &uavBarrier);
 }
 
-void DXR_Basic::createAccelerationStructures() {
+void DxrRenderer::createAccelerationStructures() {
 	asObj[0].bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
 	asObj[1].bottomLevelBuffers = std::make_unique<AccelerationStructureBuffers[]>(numMaterial);
 }
 
-ComPtr<ID3D12RootSignature> DXR_Basic::createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc) {
+ComPtr<ID3D12RootSignature> DxrRenderer::createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc) {
 	return Dx_Device::GetInstance()->CreateRsCommon(&desc);
 }
 
-void DXR_Basic::createRtPipelineState(ShaderTestMode Mode) {
+void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	wcscpy(kRayGenShader, kRayGenShaderArr[Mode]);
 	wcscpy(kBasicClosestHitShader, kBasicClosestHitShaderArr[Mode]);
@@ -718,11 +718,11 @@ void DXR_Basic::createRtPipelineState(ShaderTestMode Mode) {
 
 	HRESULT hr = Dx_Device::GetInstance()->getDevice()->CreateStateObject(&desc, IID_PPV_ARGS(mpPipelineState.GetAddressOf()));
 	if (FAILED(hr)) {
-		Dx_Util::ErrorMessage("DXR_Basic::createRtPipelineState() Error");
+		Dx_Util::ErrorMessage("DxrRenderer::createRtPipelineState() Error");
 	}
 }
 
-void DXR_Basic::createShaderResources() {
+void DxrRenderer::createShaderResources() {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
@@ -851,57 +851,95 @@ void DXR_Basic::createShaderResources() {
 	mpSamplerHeap = device->CreateSamplerDescHeap(samLinear);
 }
 
-void DXR_Basic::createShaderTable() {
-	/*
-		シェーダーテーブルの各エントリは同じサイズにする必要あり
-		一番サイズの大きいエントリに合わせる
-		ray-genプログラムには最大のエントリが必要-ディスクリプタテーブルのsizeof（プログラム識別子）+ 8バイト
-		エントリサイズはD3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENTにアライメントする
-	*/
+void DxrRenderer::createShaderTable() {
 
-	//サイズ計算
-	mShaderTableEntrySize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	mShaderTableEntrySize += 8; //ray-genは + 8
-	mShaderTableEntrySize = ALIGNMENT_TO(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mShaderTableEntrySize);
-	uint32_t shaderTableSize = mShaderTableEntrySize * 5;//raygen + miss * 2 + hit * 2
+	//レコードサイズ計算
+	auto RecordSize = [](UINT addRecordSize) {
+		const auto shaderRecordAlignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+		UINT RecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+		RecordSize += addRecordSize;
+		return ALIGNMENT_TO(shaderRecordAlignment, RecordSize);
+	};
+
+	UINT raygenRecordSize = RecordSize(sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
+	UINT missRecordSize = RecordSize(sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
+	UINT hitgroupRecordSize = RecordSize(sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
+
+	//シェーダーテーブルサイズ
+	UINT raygenSize = raygenRecordSize;
+	UINT missSize = missRecordSize * 2;
+	UINT hitGroupSize = hitgroupRecordSize * 2;
+
+	auto tableAlign = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
+	auto raygenRegion = ALIGNMENT_TO(tableAlign, raygenSize);
+	auto missRegion = ALIGNMENT_TO(tableAlign, missSize);
+	auto hitgroupRegion = ALIGNMENT_TO(tableAlign, hitGroupSize);
+
+	uint32_t shaderTableSize = raygenRegion + missRegion + hitgroupRegion;
 
 	Dx_Device::GetInstance()->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
 
-	uint8_t* pData;
+	uint8_t* pData = nullptr;
 	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);
 
 	ComPtr<ID3D12StateObjectProperties> pRtsoProps;
 	mpPipelineState.Get()->QueryInterface(IID_PPV_ARGS(pRtsoProps.GetAddressOf()));
 
-	//Entry 0 - ray-gen shader + DescriptorHeap
-	memcpy(pData, pRtsoProps.Get()->GetShaderIdentifier(kRayGenShader),
+	//rayGen
+	uint8_t* ray = pData;
+	memcpy(ray, pRtsoProps.Get()->GetShaderIdentifier(kRayGenShader),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
+	ray += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 	uint64_t heapStart = mpSrvUavCbvHeap[0].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
-	*(uint64_t*)(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart;
+	*(uint64_t*)ray = heapStart;
+	pData += raygenRegion;
 
-	//Entry 1 - basic miss program
-	memcpy(pData + mShaderTableEntrySize, pRtsoProps.Get()->GetShaderIdentifier(kBasicMissShader),
+	//basic miss
+	uint8_t* miss = pData;
+	memcpy(miss, pRtsoProps.Get()->GetShaderIdentifier(kBasicMissShader),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	miss += missRecordSize;
 
-	// Entry 2 - emissive miss program
-	memcpy(pData + mShaderTableEntrySize * 2, pRtsoProps->GetShaderIdentifier(kEmissiveMiss),
+	//emissive miss
+	memcpy(miss, pRtsoProps->GetShaderIdentifier(kEmissiveMiss),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	pData += missRegion;
 
-	//Entry 3 - basic hit program
-	uint8_t* pHitEntry = pData + mShaderTableEntrySize * 3;
-	memcpy(pHitEntry, pRtsoProps.Get()->GetShaderIdentifier(kBasicHitGroup),
+	//basic hit
+	uint8_t* hit = pData;
+	memcpy(hit, pRtsoProps.Get()->GetShaderIdentifier(kBasicHitGroup),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	hit += hitgroupRecordSize;
 
-	//Entry 4 - emissive hit program
-	uint8_t* pHitEntry2 = pData + mShaderTableEntrySize * 4;
-	memcpy(pHitEntry2, pRtsoProps.Get()->GetShaderIdentifier(kEmissiveHitGroup),
+	//emissive hit
+	memcpy(hit, pRtsoProps.Get()->GetShaderIdentifier(kEmissiveHitGroup),
 		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
 	mpShaderTable.Get()->Unmap(0, nullptr);
+
+	Dx12Process* dx = Dx12Process::GetInstance();
+
+	raytraceDesc.Width = dx->getClientWidth();
+	raytraceDesc.Height = dx->getClientHeight();
+	raytraceDesc.Depth = 1;
+
+	D3D12_GPU_VIRTUAL_ADDRESS startAddress = mpShaderTable.Get()->GetGPUVirtualAddress();
+
+	raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress;
+	raytraceDesc.RayGenerationShaderRecord.SizeInBytes = raygenSize;
+	startAddress += raygenRegion;
+
+	raytraceDesc.MissShaderTable.StartAddress = startAddress;
+	raytraceDesc.MissShaderTable.StrideInBytes = missRecordSize;
+	raytraceDesc.MissShaderTable.SizeInBytes = missSize;
+	startAddress += missRegion;
+
+	raytraceDesc.HitGroupTable.StartAddress = startAddress;
+	raytraceDesc.HitGroupTable.StrideInBytes = hitgroupRecordSize;
+	raytraceDesc.HitGroupTable.SizeInBytes = hitGroupSize;
 }
 
-void DXR_Basic::updateMaterial(CBobj* cbObj) {
+void DxrRenderer::updateMaterial(CBobj* cbObj) {
 
 	using namespace CoordTf;
 	Dx12Process* dx = Dx12Process::GetInstance();
@@ -932,7 +970,7 @@ void DXR_Basic::updateMaterial(CBobj* cbObj) {
 	}
 }
 
-void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
+void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	using namespace CoordTf;
 	Dx12Process* dx = Dx12Process::GetInstance();
 	MATRIX VP;
@@ -1017,18 +1055,18 @@ void DXR_Basic::updateCB(CBobj* cbObj, UINT numRecursion) {
 	}
 }
 
-void DXR_Basic::updateAS(Dx_CommandListObj* com, UINT numRecursion) {
+void DxrRenderer::updateAS(Dx_CommandListObj* com, UINT numRecursion) {
 	createBottomLevelAS(com);
 	createTopLevelAS(com);
 	updateCB(&cbObj[buffSwap[0]], numRecursion);
 }
 
-void DXR_Basic::setCB() {
+void DxrRenderer::setCB() {
 	sCB->CopyData(0, cbObj[buffSwap[1]].cb);
 	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, cbObj[buffSwap[1]].matCb[i]);
 }
 
-void DXR_Basic::swapSrvUavCbvHeap() {
+void DxrRenderer::swapSrvUavCbvHeap() {
 	Dx12Process* dx = Dx12Process::GetInstance();
 	uint8_t* pData = nullptr;
 	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);
@@ -1037,7 +1075,7 @@ void DXR_Basic::swapSrvUavCbvHeap() {
 	mpShaderTable.Get()->Unmap(0, nullptr);
 }
 
-void DXR_Basic::raytrace(Dx_CommandListObj* com) {
+void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 
 	if (!asObj[buffSwap[1]].topLevelBuffers.firstSet)return;
 
@@ -1059,70 +1097,49 @@ void DXR_Basic::raytrace(Dx_CommandListObj* com) {
 	com->getCommandList()->SetComputeRootDescriptorTable(1, samplerHandle);
 	com->getCommandList()->SetComputeRootShaderResourceView(2, asObj[buffSwap[1]].mpTopLevelAS.Get()->GetGPUVirtualAddress());
 
-	D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
-	raytraceDesc.Width = dx->getClientWidth();
-	raytraceDesc.Height = dx->getClientHeight();
-	raytraceDesc.Depth = 1;
-
-	//RayGen
-	raytraceDesc.RayGenerationShaderRecord.StartAddress = mpShaderTable.Get()->GetGPUVirtualAddress();
-	raytraceDesc.RayGenerationShaderRecord.SizeInBytes = mShaderTableEntrySize;
-
-	//Miss
-	size_t missOffset = 1 * mShaderTableEntrySize;
-	raytraceDesc.MissShaderTable.StartAddress = mpShaderTable.Get()->GetGPUVirtualAddress() + missOffset;
-	raytraceDesc.MissShaderTable.StrideInBytes = mShaderTableEntrySize;
-	raytraceDesc.MissShaderTable.SizeInBytes = mShaderTableEntrySize * 2;//missShader 2個
-
-	//Hit
-	size_t hitOffset = 3 * mShaderTableEntrySize;
-	raytraceDesc.HitGroupTable.StartAddress = mpShaderTable.Get()->GetGPUVirtualAddress() + hitOffset;
-	raytraceDesc.HitGroupTable.StrideInBytes = mShaderTableEntrySize;
-	raytraceDesc.HitGroupTable.SizeInBytes = mShaderTableEntrySize * 2;//hitShader 2個
-
 	//Dispatch
 	com->getCommandList()->SetPipelineState1(mpPipelineState.Get());
 	com->getCommandList()->DispatchRays(&raytraceDesc);
 }
 
-void DXR_Basic::copyBackBuffer(uint32_t comNo) {
+void DxrRenderer::copyBackBuffer(uint32_t comNo) {
 	//結果をバックバッファにコピー
 	Dx12Process* dx = Dx12Process::GetInstance();
 	dx->GetRtBuffer()->delayCopyResource(comNo, &mpOutputResource);
 }
 
-void DXR_Basic::copyDepthBuffer(uint32_t comNo) {
+void DxrRenderer::copyDepthBuffer(uint32_t comNo) {
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	dx->GetDepthBuffer()->delayCopyResource(comNo, &mpDepthResource);
 }
 
-void DXR_Basic::update_g(int comNo, UINT numRecursion) {
+void DxrRenderer::update_g(int comNo, UINT numRecursion) {
 	Dx_CommandListObj* d = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comNo);
 	updateAS(d, numRecursion);
 }
 
-void DXR_Basic::update_c(int comNo, UINT numRecursion) {
+void DxrRenderer::update_c(int comNo, UINT numRecursion) {
 	Dx_CommandListObj* d = Dx_CommandManager::GetInstance()->getComputeComListObj(comNo);
 	updateAS(d, numRecursion);
 }
 
-void DXR_Basic::raytrace_g(int comNo) {
+void DxrRenderer::raytrace_g(int comNo) {
 	Dx_CommandListObj* d = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comNo);
 	raytrace(d);
 }
 
-void DXR_Basic::raytrace_c(int comNo) {
+void DxrRenderer::raytrace_c(int comNo) {
 	Dx_CommandListObj* d = Dx_CommandManager::GetInstance()->getComputeComListObj(comNo);
 	raytrace(d);
 }
 
-DXR_Basic::~DXR_Basic() {
+DxrRenderer::~DxrRenderer() {
 	S_DELETE(sCB);
 	S_DELETE(material);
 	S_DELETE(wvp);
 }
 
-Dx_Resource* DXR_Basic::getInstanceIdMap() {
+Dx_Resource* DxrRenderer::getInstanceIdMap() {
 	return &mpInstanceIdMapResource;
 }

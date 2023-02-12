@@ -1,11 +1,11 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          DXR_Basic.h                                       **//
+//**                   　　　          DxrRenderer.h                                     **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
-#ifndef Class_DXR_Basic_Header
-#define Class_DXR_Basic_Header
+#ifndef Class_DxrRenderer_Header
+#define Class_DxrRenderer_Header
 
 #include "../Core/Dx12ProcessCore.h"
 #include "../../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
@@ -62,7 +62,7 @@ enum ShaderTestMode {
 	Normal = 2
 };
 
-class DXR_Basic {
+class DxrRenderer {
 
 private:
 	std::vector<ParameterDXR*> PD = {};
@@ -77,13 +77,13 @@ private:
 	ComPtr<ID3D12StateObject> mpPipelineState;
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;
 	ComPtr<ID3D12Resource> mpShaderTable;
-	uint32_t mShaderTableEntrySize = 0;
 	Dx_Resource mpOutputResource = {};
 	Dx_Resource mpDepthResource = {};
 	Dx_Resource mpInstanceIdMapResource = {};
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[2];
 	uint32_t numSkipLocalHeap = 0;
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
+	D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
 
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
@@ -110,7 +110,7 @@ private:
 	void raytrace(Dx_CommandListObj* com);
 
 public:
-	~DXR_Basic();
+	~DxrRenderer();
 	void initDXR(std::vector<ParameterDXR*>& pd, UINT maxRecursion, ShaderTestMode Mode = Standard);
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
