@@ -1,0 +1,12 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                           ShaderEmissiveMiss.hlsl                                     //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+char* ShaderEmissiveMiss =
+
+"[shader(\"miss\")]\n"
+"void emissiveMiss(inout RayPayload payload)\n"
+"{\n"
+"    payload.color = GlobalAmbientColor.xyz;\n"
+"    payload.reTry = false;\n"
+"}\n";

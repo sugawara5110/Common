@@ -8,9 +8,16 @@
 #include "DxrRenderer.h"
 #include <fstream>
 #include <sstream>
-#include "./ShaderDXR/ShaderParametersDXR.h"
-#include "./ShaderDXR/ShaderCommonDXR.h"
-#include "./ShaderDXR/ShaderBasicDXR.h"
+#include "./ShaderDXR/ShaderBasicAnyHit.h"
+#include "./ShaderDXR/ShaderBasicHit.h"
+#include "./ShaderDXR/ShaderBasicMiss.h"
+#include "./ShaderDXR/ShaderCommon.h"
+#include "./ShaderDXR/ShaderEmissiveHit.h"
+#include "./ShaderDXR/ShaderEmissiveMiss.h"
+#include "./ShaderDXR/ShaderGlobalParameters.h"
+#include "./ShaderDXR/ShaderLocalParameters.h"
+#include "./ShaderDXR/ShaderRayGen.h"
+#include "./ShaderDXR/ShaderTraceRay.h"
 
 namespace {
 	dxc::DxcDllSupport gDxcDllHelper;
@@ -85,51 +92,32 @@ namespace {
 	}
 
 	struct DxilLibrary {
-		DxilLibrary(ComPtr<ID3DBlob> pBlob, const WCHAR* entryPoint[], uint32_t entryPointCount) : pShaderBlob(pBlob)
+		DxilLibrary(ComPtr<ID3DBlob> pBlob, const WCHAR* entryPoint) : pShaderBlob(pBlob)
 		{
 			stateSubobject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
 			stateSubobject.pDesc = &dxilLibDesc;
 
 			dxilLibDesc = {};
-			exportDesc.resize(entryPointCount);
-			exportName.resize(entryPointCount);
 			if (pBlob)
 			{
 				dxilLibDesc.DXILLibrary.pShaderBytecode = pBlob->GetBufferPointer();
 				dxilLibDesc.DXILLibrary.BytecodeLength = pBlob->GetBufferSize();
-				dxilLibDesc.NumExports = entryPointCount;
-				dxilLibDesc.pExports = exportDesc.data();
+				dxilLibDesc.NumExports = 1;
+				dxilLibDesc.pExports = &exportDesc;
 
-				for (uint32_t i = 0; i < entryPointCount; i++)
-				{
-					exportName[i] = entryPoint[i];
-					exportDesc[i].Name = exportName[i].c_str();
-					exportDesc[i].Flags = D3D12_EXPORT_FLAG_NONE;
-					exportDesc[i].ExportToRename = nullptr;
-				}
+				exportName = entryPoint;
+				exportDesc.Name = exportName.c_str();
+				exportDesc.Flags = D3D12_EXPORT_FLAG_NONE;
+				exportDesc.ExportToRename = nullptr;
 			}
 		};
 
 		D3D12_DXIL_LIBRARY_DESC dxilLibDesc = {};
 		D3D12_STATE_SUBOBJECT stateSubobject{};
 		ComPtr<ID3DBlob> pShaderBlob;
-		std::vector<D3D12_EXPORT_DESC> exportDesc;
-		std::vector<std::wstring> exportName;
+		D3D12_EXPORT_DESC exportDesc;
+		std::wstring exportName;
 	};
-
-	DxilLibrary createDxilLibrary(char* add_shader) {
-		addChar dxrShader[3];
-		dxrShader[0].addStr(add_shader, ShaderParametersDXR);
-		dxrShader[1].addStr(dxrShader[0].str, ShaderCommonDXR);
-		dxrShader[2].addStr(dxrShader[1].str, ShaderBasicDXR);
-		//シェーダーのコンパイル
-		ComPtr<ID3DBlob> pDxilLib = CompileLibrary(dxrShader[2].str, L"ShaderBasicDXR", L"lib_6_3");
-		const WCHAR* entryPoints[] = { kRayGenShader,
-			kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
-			kEmissiveMiss, kEmissiveHitShader
-		};
-		return DxilLibrary(pDxilLib, entryPoints, ARRAY_SIZE(entryPoints));
-	}
 
 	struct HitProgram {
 		HitProgram(LPCWSTR ahsExport, LPCWSTR chsExport, const std::wstring& name) : exportName(name)
@@ -658,13 +646,56 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
 	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
 	//↓配列内に同じ配列内のアドレスを保持してる要素有りの場合事前にreserveをしておく(arrayの方が良かったかも・・)
-	subobjects.reserve(15);//後々増やした場合の為に多めに
+	subobjects.reserve(30);//後々増やした場合の為に多めに
+
+	//Shader文字列組み合わせ
+	addChar calcLight = {};
+	calcLight.addStr(Dx_ShaderHolder::ShaderNormalTangentCopy.get(), Dx_ShaderHolder::ShaderCalculateLightingCopy.get());
+
+	addChar para = {};
+	para.addStr(ShaderGlobalParameters, ShaderLocalParameters);
+
+	addChar com_t = {};
+	com_t.addStr(calcLight.str, ShaderCommon);
+
+	addChar com = {};
+	com.addStr(para.str, com_t.str);
+
+	addChar tRay = {};
+	tRay.addStr(com.str, ShaderTraceRay);
+
+	addChar rayGen = {};
+	rayGen.addStr(com.str, ShaderRayGen);
+
+	addChar any = {};
+	any.addStr(com.str, ShaderBasicAnyHit);
+
+	addChar bHit = {};
+	bHit.addStr(tRay.str, ShaderBasicHit);
+
+	addChar bMis = {};
+	bMis.addStr(para.str, ShaderBasicMiss);
+
+	addChar eHit = {};
+	eHit.addStr(com.str, ShaderEmissiveHit);
+
+	addChar eMis = {};
+	eMis.addStr(para.str, ShaderEmissiveMiss);
 
 	//DXIL library 初期化, SUBOBJECT作成
-	addChar str;
-	str.addStr(Dx_ShaderHolder::ShaderNormalTangentCopy.get(), Dx_ShaderHolder::ShaderCalculateLightingCopy.get());
-	DxilLibrary dxilLib = createDxilLibrary(str.str);//Dx12Processに保持してるshaderを入力
-	subobjects.push_back(dxilLib.stateSubobject);
+	DxilLibrary Ray(CompileLibrary(rayGen.str, L"rayGen", L"lib_6_3"), kRayGenShader);
+	DxilLibrary Any(CompileLibrary(any.str, L"any", L"lib_6_3"), kBasicAnyHitShader);
+	DxilLibrary Bhit(CompileLibrary(bHit.str, L"bHit", L"lib_6_3"), kBasicClosestHitShader);
+	DxilLibrary Bmis(CompileLibrary(bMis.str, L"bMis", L"lib_6_3"), kBasicMissShader);
+	DxilLibrary Ehit(CompileLibrary(eHit.str, L"eHit", L"lib_6_3"), kEmissiveHitShader);
+	DxilLibrary Emis(CompileLibrary(eMis.str, L"eMis", L"lib_6_3"), kEmissiveMiss);
+
+	subobjects.push_back(Ray.stateSubobject);
+	subobjects.push_back(Any.stateSubobject);
+	subobjects.push_back(Bhit.stateSubobject);
+	subobjects.push_back(Bmis.stateSubobject);
+	subobjects.push_back(Ehit.stateSubobject);
+	subobjects.push_back(Emis.stateSubobject);
 
 	//BasicHitShader SUBOBJECT作成
 	HitProgram basicHitProgram(kBasicAnyHitShader, kBasicClosestHitShader, kBasicHitGroup);
@@ -679,11 +710,13 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	subobjects.push_back(loRootSignature.subobject);
 	D3D12_STATE_SUBOBJECT* p_rsig = &subobjects[subobjects.size() - 1];
 
-	const WCHAR* loRootExport[] = {
-		kRayGenShader,
-		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
-		kEmissiveHitShader, kEmissiveMiss };
-	ExportAssociation loRootAssociation(loRootExport, ARRAY_SIZE(loRootExport), p_rsig);
+	//シェーダーとローカルルートシグネチャ関連付け
+	const WCHAR* ExportName[] = 
+	{ kRayGenShader,
+	 kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader ,
+	 kEmissiveHitShader, kEmissiveMiss 
+	};
+	ExportAssociation loRootAssociation(ExportName, ARRAY_SIZE(ExportName), p_rsig);
 	subobjects.push_back(loRootAssociation.subobject);
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
@@ -711,7 +744,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	mpGlobalRootSig = root.pRootSig;
 	subobjects.push_back(root.subobject);
 
-	D3D12_STATE_OBJECT_DESC desc;
+	D3D12_STATE_OBJECT_DESC desc = {};
 	desc.NumSubobjects = (UINT)subobjects.size();
 	desc.pSubobjects = subobjects.data();
 	desc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
