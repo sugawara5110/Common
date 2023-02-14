@@ -81,10 +81,8 @@ public:
 private:
 	friend DxCommon;
 
-	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<IDXGISwapChain3> mSwapChain;
 	bool DXR_CreateResource = false;
-	bool ReportLiveDeviceObjectsOn = false;
 
 	//MultiSampleレベルチェック
 	bool m4xMsaaState = false;
@@ -93,8 +91,8 @@ private:
 	static const int SwapChainBufferCount = 2;
 	int mCurrBackBuffer = 0;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE mRtvHeapHandle[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
-	Dx_Resource mRtBuffer[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+	D3D12_CPU_DESCRIPTOR_HANDLE mRtvHeapHandle[SwapChainBufferCount] = {};
+	Dx_Resource mRtBuffer[SwapChainBufferCount] = {};
 	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHeapHandle = {};
 	Dx_Resource mDepthStencilBuffer = {};
 
@@ -225,8 +223,6 @@ public:
 		setRaytraceSwapIndex(1 - sync);
 		return sync;
 	}
-
-	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
 
 	Update getUpdate(int index) { return upd[index]; }
 

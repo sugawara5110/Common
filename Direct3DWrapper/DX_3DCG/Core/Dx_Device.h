@@ -20,6 +20,7 @@ class Dx_Device {
 
 private:
 	static Dx_Device* dev;
+	bool ReportLiveDeviceObjectsOn = false;
 
 	Dx_Device() {}//外部からのオブジェクト生成禁止
 	Dx_Device(const Dx_Device& obj) = delete;   // コピーコンストラクタ禁止
@@ -31,9 +32,13 @@ public:
 	static Dx_Device* GetInstance();
 	static void DeleteInstance();
 
+	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
+
 	HRESULT createDevice();
 
 	ID3D12Device5* getDevice();
+
+	IDXGIFactory4* getFactory();
 
 	UINT64 getRequiredIntermediateSize(ID3D12Resource* res);
 

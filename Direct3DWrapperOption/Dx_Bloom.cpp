@@ -475,11 +475,13 @@ namespace {
 }
 
 namespace {
-	std::unique_ptr<Bloom[]> bloom = {};
+	Bloom* bloom = nullptr;
 }
 
 Dx_Bloom::~Dx_Bloom() {
 	S_DELETE(mObjectCB);
+	mpSamplerHeap.~ComPtr();
+	ARR_DELETE(bloom);
 }
 
 bool Dx_Bloom::createBuffer(int comIndex) {
@@ -610,7 +612,7 @@ bool Dx_Bloom::Create(int comIndex,
 
 	cbb.numInstance = numInstance;
 	mObjectCB->CopyData(0, cbb);
-	bloom = std::make_unique<Bloom[]>(numInstance);
+	bloom = new Bloom[numInstance];
 	for (int i = 0; i < cbb.numInstance; i++) {
 
 		if (sigma) {

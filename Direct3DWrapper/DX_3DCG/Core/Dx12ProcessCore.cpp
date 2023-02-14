@@ -33,22 +33,6 @@ void Dx12Process::DeleteInstance() {
 
 Dx12Process::~Dx12Process() {
 	ARR_DELETE(texture);
-
-#if defined(DEBUG) || defined(_DEBUG) 
-	//ReportLiveDeviceObjectsを呼び出したタイミングでの
-	//生存オブジェクトを調べる
-	if (ReportLiveDeviceObjectsOn) {
-		ID3D12DebugDevice* debugInterface;
-		if (SUCCEEDED(Dx_Device::GetInstance()->getDevice()->QueryInterface(&debugInterface)))
-		{
-			debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
-			debugInterface->Release();
-		}
-	}
-#endif
-
-	Dx_CommandManager::DeleteInstance();
-	Dx_Device::DeleteInstance();
 }
 
 int Dx12Process::GetTexNumber(CHAR* fileName) {
@@ -156,52 +140,9 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	mClientWidth = width;
 	mClientHeight = height;
 
-#if defined(DEBUG) || defined(_DEBUG) 
-	//デバッグ中はデバッグレイヤーを有効化する
-	{
-		ComPtr<ID3D12Debug> debugController;
-		if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
-			Dx_Util::ErrorMessage("D3D12GetDebugInterface Error");
-			return false;
-		}
-		debugController->EnableDebugLayer();
-	}
-#endif
-
-	//ファクトリ生成
-	//アダプターの列挙、スワップ チェーンの作成、
-	//および全画面表示モードとの間の切り替えに使用される Alt + 
-	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
-	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(mdxgiFactory.GetAddressOf())))) {
-		Dx_Util::ErrorMessage("CreateDXGIFactory1 Error");
-		return false;
-	}
-
-	//デバイス生成
-	Dx_Device::InstanceCreate();
 	Dx_Device* device = Dx_Device::GetInstance();
-	HRESULT hardwareResult = device->createDevice();
-	Dx_CommandManager::InstanceCreate();
 
-	//↑ハードウエア処理不可の場合ソフトウエア処理にする,ソフトウエア処理デバイス生成
-	if (FAILED(hardwareResult))
-	{
-		ComPtr<IDXGIAdapter> pWarpAdapter;
-		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(pWarpAdapter.GetAddressOf())))) {
-			Dx_Util::ErrorMessage("EnumWarpAdapter Error");
-			return false;
-		}
-
-		ID3D12Device5* dev = device->getDevice();
-		if (FAILED(D3D12CreateDevice(
-			pWarpAdapter.Get(),
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&dev)))) {
-			Dx_Util::ErrorMessage("D3D12CreateDevice Error");
-			return false;
-		}
-	}
-	else if (DXR_CreateResource) {
+	if (DXR_CreateResource) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
 		HRESULT hr = device->getDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
 		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
@@ -254,7 +195,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	Dx_CommandManager* comMa = Dx_CommandManager::GetInstance();
 
 	ComPtr<IDXGISwapChain1> swapChain;
-	if (FAILED(mdxgiFactory->CreateSwapChainForHwnd(
+	if (FAILED(device->getFactory()->CreateSwapChainForHwnd(
 		comMa->getGraphicsQueue(),
 		hWnd,
 		&sd,
@@ -266,10 +207,9 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	}
 	swapChain->QueryInterface(IID_PPV_ARGS(mSwapChain.GetAddressOf()));
 
-	//Descriptor:何のバッファかを記述される
 	//スワップチェインをRenderTargetとして使用するためのDescriptorHeapを作成(Descriptorの記録場所)
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
+	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;   //RenderTargetView
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE; //シェーダからアクセスしないのでNONEでOK
 	rtvHeapDesc.NodeMask = 0;
@@ -285,34 +225,14 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 			Dx_Util::ErrorMessage("GetSwapChainBuffer Error");
 			return false;
 		}
-	}
-
-	D3D12_HEAP_PROPERTIES pro;
-	D3D12_HEAP_FLAGS flag;
-	mRtBuffer[0].getResource()->GetHeapProperties(&pro, &flag);
-	D3D12_RESOURCE_DESC desc = mRtBuffer[0].getResource()->GetDesc();
-	D3D12_CLEAR_VALUE clearValue = {};
-	clearValue.Color[0] = clearValue.Color[1] = clearValue.Color[2] = 0.0f;
-	clearValue.Color[3] = 1.0f;
-	clearValue.Format = desc.Format;
-	for (int i = SwapChainBufferCount; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
-		if (FAILED(device->getDevice()->CreateCommittedResource(
-			&pro,
-			D3D12_HEAP_FLAG_NONE,
-			&desc,
-			D3D12_RESOURCE_STATE_COMMON,
-			&clearValue,
-			IID_PPV_ARGS(mRtBuffer[i].getResourceAddress())))) {
-			Dx_Util::ErrorMessage("CreateCommittedResource mRtvBuffer Error");
-			return false;
-		}
+		mRtBuffer[i].getResource()->SetName(Dx_Util::charToLPCWSTR("Rt"));
 	}
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
-	for (int i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; i++) {
+	for (int i = 0; i < SwapChainBufferCount; i++) {
 		device->getDevice()->CreateRenderTargetView(mRtBuffer[i].getResource(), &rtvDesc, rtvHeapHandle);
 		mRtvHeapHandle[i] = rtvHeapHandle;
 		rtvHeapHandle.ptr += mRtvDescriptorSize;
@@ -365,6 +285,7 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 		Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
 		return false;
 	}
+	mDepthStencilBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("DepthStencil"));
 
 	//深度ステンシルビューデスクリプターヒープの開始ハンドル取得
 	D3D12_CPU_DESCRIPTOR_HANDLE mDsvHandle(mDsvHeap->GetCPUDescriptorHandleForHeapStart());
