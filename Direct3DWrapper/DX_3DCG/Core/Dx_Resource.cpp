@@ -182,10 +182,8 @@ D3D12_INDEX_BUFFER_VIEW IndexView::IndexBufferView() {
 	return ibv;
 }
 
-Dx_Resource StreamView::resetBuffer = {};
-
 void StreamView::createResetBuffer(int comIndex) {
-	Dx_CommandManager* ma = Dx_CommandManager::GetInstance();
+	if (resetBuffer.getResource())return;
 	UINT64 zero[1] = {};
 	zero[0] = 0;
 	resetBuffer.CreateDefaultBuffer(comIndex, zero, sizeof(UINT64), false);
@@ -198,6 +196,7 @@ StreamView::StreamView() {
 }
 
 void StreamView::ResetFilledSizeBuffer(int comIndex) {
+	createResetBuffer(comIndex);
 	BufferFilledSizeBufferGPU.delayCopyResource(comIndex, &resetBuffer);
 }
 

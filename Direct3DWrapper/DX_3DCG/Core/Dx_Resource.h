@@ -90,9 +90,10 @@ struct IndexView {
 struct StreamView {
 
 private:
-	static Dx_Resource resetBuffer;
+	Dx_Resource resetBuffer;
 	Dx_Resource BufferFilledSizeBufferGPU = {};
 	Dx_Resource ReadBuffer = {};
+	void createResetBuffer(int comIndex);
 
 public:
 	Dx_Resource StreamBufferGPU = {};
@@ -101,8 +102,6 @@ public:
 	UINT StreamByteStride = 0;
 	UINT StreamBufferByteSize = 0;
 	UINT FilledSize = 0;
-
-	static void createResetBuffer(int comIndex);
 
 	StreamView();
 

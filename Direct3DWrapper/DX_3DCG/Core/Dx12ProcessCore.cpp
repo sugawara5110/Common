@@ -305,8 +305,6 @@ bool Dx12Process::Initialize(HWND hWnd, int width, int height) {
 	//深度ステンシルバッファ,リソースバリア共有→深度書き込み
 	GetDepthBuffer()->ResourceBarrier(0, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	StreamView::createResetBuffer(0);
-
 	cObj->End();
 	comMa->RunGpu();
 	comMa->WaitFence();
