@@ -711,10 +711,10 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	D3D12_STATE_SUBOBJECT* p_rsig = &subobjects[subobjects.size() - 1];
 
 	//シェーダーとローカルルートシグネチャ関連付け
-	const WCHAR* ExportName[] = 
+	const WCHAR* ExportName[] =
 	{ kRayGenShader,
-	 kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader ,
-	 kEmissiveHitShader, kEmissiveMiss 
+	 kBasicAnyHitShader, kBasicClosestHitShader,
+	 kEmissiveHitShader, kEmissiveMiss
 	};
 	ExportAssociation loRootAssociation(ExportName, ARRAY_SIZE(ExportName), p_rsig);
 	subobjects.push_back(loRootAssociation.subobject);
@@ -781,17 +781,20 @@ void DxrRenderer::createShaderResources() {
 	int num_b0 = 1;
 	int num_b1 = numMaterial;
 	int num_b2 = maxNumInstancing;
-	numSkipLocalHeap = num_u0 + num_u1 + num_u2 + num_t0 + num_b0 + num_b1 + num_b2;
+	numLocalHeap = num_u0 + num_u1 + num_u2 + num_t0 + num_b0 + num_b1 + num_b2;
 	//Global
 	int num_t00 = numMaterial;
 	int num_t01 = numMaterial;
 	int num_t02 = numMaterial;
 	int num_t03 = numMaterial;
-	int numHeap = numSkipLocalHeap + num_t00 + num_t01 + num_t02 + num_t03;
+	numGlobalHeap = num_t00 + num_t01 + num_t02 + num_t03;
 
-	for (int heapInd = 0; heapInd < 2; heapInd++) {
+	for (int heapInd = 0; heapInd < numSwapIndex; heapInd++) {
 		//Local
-		mpSrvUavCbvHeap[heapInd] = device->CreateDescHeap(numHeap);
+		mpSrvUavCbvHeap[heapInd] = device->CreateDescHeap(numLocalHeap + numGlobalHeap);
+		LocalHandle[heapInd] = mpSrvUavCbvHeap[heapInd].Get()->GetGPUDescriptorHandleForHeapStart();
+		GlobalHandle[heapInd].ptr = LocalHandle[heapInd].ptr + numLocalHeap * dx->getCbvSrvUavDescriptorSize();
+
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[heapInd].Get()->GetCPUDescriptorHandleForHeapStart();
 
 		//UAVを作成 gOutput(u0)
@@ -882,6 +885,7 @@ void DxrRenderer::createShaderResources() {
 	samLinear.MaxLOD = D3D12_FLOAT32_MAX;
 
 	mpSamplerHeap = device->CreateSamplerDescHeap(samLinear);
+	samplerHandle = mpSamplerHeap.Get()->GetGPUDescriptorHandleForHeapStart();
 }
 
 void DxrRenderer::createShaderTable() {
@@ -910,66 +914,75 @@ void DxrRenderer::createShaderTable() {
 
 	uint32_t shaderTableSize = raygenRegion + missRegion + hitgroupRegion;
 
-	Dx_Device::GetInstance()->createUploadResource(mpShaderTable.GetAddressOf(), shaderTableSize);
-
-	uint8_t* pData = nullptr;
-	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);
-
 	ComPtr<ID3D12StateObjectProperties> pRtsoProps;
 	mpPipelineState.Get()->QueryInterface(IID_PPV_ARGS(pRtsoProps.GetAddressOf()));
 
-	//rayGen
-	uint8_t* ray = pData;
-	memcpy(ray, pRtsoProps.Get()->GetShaderIdentifier(kRayGenShader),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-	ray += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-	uint64_t heapStart = mpSrvUavCbvHeap[0].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
-	*(uint64_t*)ray = heapStart;
-	pData += raygenRegion;
+	auto writeTable = [pRtsoProps](uint8_t* dst, LPCWSTR Shader, uint64_t* Handle = nullptr) {
+		memcpy(dst, pRtsoProps.Get()->GetShaderIdentifier(Shader), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		if (Handle) {
+			*(uint64_t*)(dst + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = *Handle;
+		}
+	};
 
-	//basic miss
-	uint8_t* miss = pData;
-	memcpy(miss, pRtsoProps.Get()->GetShaderIdentifier(kBasicMissShader),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-	miss += missRecordSize;
+	for (int i = 0; i < numSwapIndex; i++) {
 
-	//emissive miss
-	memcpy(miss, pRtsoProps->GetShaderIdentifier(kEmissiveMiss),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-	pData += missRegion;
+		Dx_Device::GetInstance()->createUploadResource(mpShaderTable[i].GetAddressOf(), shaderTableSize);
 
-	//basic hit
-	uint8_t* hit = pData;
-	memcpy(hit, pRtsoProps.Get()->GetShaderIdentifier(kBasicHitGroup),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-	hit += hitgroupRecordSize;
+		uint8_t* pData = nullptr;
+		mpShaderTable[i].Get()->Map(0, nullptr, (void**)&pData);
 
-	//emissive hit
-	memcpy(hit, pRtsoProps.Get()->GetShaderIdentifier(kEmissiveHitGroup),
-		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		uint64_t rayHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;//後で分ける
+		uint64_t eMisHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
+		uint64_t bHitHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
+		uint64_t eHitHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
 
-	mpShaderTable.Get()->Unmap(0, nullptr);
+		//rayGen
+		uint8_t* ray = pData;
+		writeTable(ray, kRayGenShader, &rayHandle);
+		pData += raygenRegion;
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+		//basic miss
+		uint8_t* miss = pData;
+		writeTable(miss, kBasicMissShader);
+		miss += missRecordSize;
 
-	raytraceDesc.Width = dx->getClientWidth();
-	raytraceDesc.Height = dx->getClientHeight();
-	raytraceDesc.Depth = 1;
+		//emissive miss
+		writeTable(miss, kEmissiveMiss, &eMisHandle);
+		pData += missRegion;
 
-	D3D12_GPU_VIRTUAL_ADDRESS startAddress = mpShaderTable.Get()->GetGPUVirtualAddress();
+		//basic hit
+		uint8_t* hit = pData;
+		writeTable(hit, kBasicHitGroup, &bHitHandle);
+		hit += hitgroupRecordSize;
 
-	raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress;
-	raytraceDesc.RayGenerationShaderRecord.SizeInBytes = raygenSize;
-	startAddress += raygenRegion;
+		//emissive hit
+		writeTable(hit, kEmissiveHitGroup, &eHitHandle);
 
-	raytraceDesc.MissShaderTable.StartAddress = startAddress;
-	raytraceDesc.MissShaderTable.StrideInBytes = missRecordSize;
-	raytraceDesc.MissShaderTable.SizeInBytes = missSize;
-	startAddress += missRegion;
+		mpShaderTable[i].Get()->Unmap(0, nullptr);
 
-	raytraceDesc.HitGroupTable.StartAddress = startAddress;
-	raytraceDesc.HitGroupTable.StrideInBytes = hitgroupRecordSize;
-	raytraceDesc.HitGroupTable.SizeInBytes = hitGroupSize;
+		Dx12Process* dx = Dx12Process::GetInstance();
+
+		D3D12_DISPATCH_RAYS_DESC& rDesc = raytraceDesc[i];
+
+		rDesc.Width = dx->getClientWidth();
+		rDesc.Height = dx->getClientHeight();
+		rDesc.Depth = 1;
+
+		D3D12_GPU_VIRTUAL_ADDRESS startAddress = mpShaderTable[i].Get()->GetGPUVirtualAddress();
+
+		rDesc.RayGenerationShaderRecord.StartAddress = startAddress;
+		rDesc.RayGenerationShaderRecord.SizeInBytes = raygenSize;
+		startAddress += raygenRegion;
+
+		rDesc.MissShaderTable.StartAddress = startAddress;
+		rDesc.MissShaderTable.StrideInBytes = missRecordSize;
+		rDesc.MissShaderTable.SizeInBytes = missSize;
+		startAddress += missRegion;
+
+		rDesc.HitGroupTable.StartAddress = startAddress;
+		rDesc.HitGroupTable.StrideInBytes = hitgroupRecordSize;
+		rDesc.HitGroupTable.SizeInBytes = hitGroupSize;
+	}
 }
 
 void DxrRenderer::updateMaterial(CBobj* cbObj) {
@@ -1099,40 +1112,25 @@ void DxrRenderer::setCB() {
 	for (UINT i = 0; i < numMaterial; i++)material->CopyData(i, cbObj[buffSwap[1]].matCb[i]);
 }
 
-void DxrRenderer::swapSrvUavCbvHeap() {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	uint8_t* pData = nullptr;
-	mpShaderTable.Get()->Map(0, nullptr, (void**)&pData);
-	uint64_t heapStart = mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
-	*(uint64_t*)(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart;
-	mpShaderTable.Get()->Unmap(0, nullptr);
-}
-
 void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 
 	if (!asObj[buffSwap[1]].topLevelBuffers.firstSet)return;
 
 	Dx12Process* dx = Dx12Process::GetInstance();
 	setCB();
-	swapSrvUavCbvHeap();
 
 	com->getCommandList()->SetComputeRootSignature(mpGlobalRootSig.Get());
 
 	ID3D12DescriptorHeap* heaps[] = { mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get(), mpSamplerHeap.Get() };
 	com->getCommandList()->SetDescriptorHeaps(ARRAY_SIZE(heaps), heaps);
 
-	UINT offsetSize = dx->getCbvSrvUavDescriptorSize();
-	D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get()->GetGPUDescriptorHandleForHeapStart();
-	srvHandle.ptr += offsetSize * numSkipLocalHeap;
-	D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle = mpSamplerHeap.Get()->GetGPUDescriptorHandleForHeapStart();
-
-	com->getCommandList()->SetComputeRootDescriptorTable(0, srvHandle);
+	com->getCommandList()->SetComputeRootDescriptorTable(0, GlobalHandle[dx->dxrBuffSwapRaytraceIndex()]);
 	com->getCommandList()->SetComputeRootDescriptorTable(1, samplerHandle);
 	com->getCommandList()->SetComputeRootShaderResourceView(2, asObj[buffSwap[1]].mpTopLevelAS.Get()->GetGPUVirtualAddress());
 
 	//Dispatch
 	com->getCommandList()->SetPipelineState1(mpPipelineState.Get());
-	com->getCommandList()->DispatchRays(&raytraceDesc);
+	com->getCommandList()->DispatchRays(&raytraceDesc[dx->dxrBuffSwapRaytraceIndex()]);
 }
 
 void DxrRenderer::copyBackBuffer(uint32_t comNo) {

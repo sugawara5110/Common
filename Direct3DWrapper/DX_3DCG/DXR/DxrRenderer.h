@@ -65,10 +65,11 @@ enum ShaderTestMode {
 class DxrRenderer {
 
 private:
+	static const int numSwapIndex = 2;
 	std::vector<ParameterDXR*> PD = {};
-	ASobj asObj[2] = {};
-	CBobj cbObj[2] = {};
-	int buffSwap[2] = { 0,0 };
+	ASobj asObj[numSwapIndex] = {};
+	CBobj cbObj[numSwapIndex] = {};
+	int buffSwap[numSwapIndex] = { 0,0 };
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -76,14 +77,22 @@ private:
 
 	ComPtr<ID3D12StateObject> mpPipelineState;
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;
-	ComPtr<ID3D12Resource> mpShaderTable;
+	ComPtr<ID3D12Resource> mpShaderTable[numSwapIndex];
 	Dx_Resource mpOutputResource = {};
 	Dx_Resource mpDepthResource = {};
 	Dx_Resource mpInstanceIdMapResource = {};
-	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[2];
-	uint32_t numSkipLocalHeap = 0;
+
+	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[numSwapIndex];
+
+	uint32_t numLocalHeap = 0;
+	uint32_t numGlobalHeap = 0;
+
+	D3D12_GPU_DESCRIPTOR_HANDLE LocalHandle[numSwapIndex];
+	D3D12_GPU_DESCRIPTOR_HANDLE GlobalHandle[numSwapIndex];
+	D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
+
 	ComPtr<ID3D12DescriptorHeap> mpSamplerHeap;
-	D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
+	D3D12_DISPATCH_RAYS_DESC raytraceDesc[numSwapIndex] = {};
 
 	UINT numMaterial = 0;//全マテリアル数
 	UINT maxRecursion = 1;
@@ -106,7 +115,6 @@ private:
 	void updateCB(CBobj* cbObj, UINT numRecursion);
 	void updateAS(Dx_CommandListObj* com, UINT numRecursion);
 	void setCB();
-	void swapSrvUavCbvHeap();
 	void raytrace(Dx_CommandListObj* com);
 
 public:
