@@ -209,11 +209,55 @@ namespace {
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	};
 
-	RootSignatureDesc createLocalRootDesc(UINT numMaterial, UINT numInstancing) {
+	RootSignatureDesc createGlobalRootDesc() {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 7;
+		int numDescriptorRanges = 2;
+		desc.range.resize(numDescriptorRanges);
+
+		//cbuffer global(b0)
+		desc.range[0].BaseShaderRegister = 0;
+		desc.range[0].NumDescriptors = 1;
+		desc.range[0].RegisterSpace = 0;
+		desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		desc.range[0].OffsetInDescriptorsFromTableStart = 0;
+
+		//g_samLinear(s0)
+		desc.range[1].BaseShaderRegister = 0;
+		desc.range[1].NumDescriptors = 1;
+		desc.range[1].RegisterSpace = 14;
+		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+		desc.range[1].OffsetInDescriptorsFromTableStart = 0;
+
+		desc.rootParams.resize(3);
+		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
+		desc.rootParams[0].DescriptorTable.pDescriptorRanges = &desc.range[0];
+		desc.rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+		desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[1];
+		desc.rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		//gRtScene(t4)
+		desc.rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		desc.rootParams[2].Descriptor.ShaderRegister = 4;
+		desc.rootParams[2].Descriptor.RegisterSpace = 15;
+		desc.rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		desc.desc.NumParameters = (UINT)desc.rootParams.size();
+		desc.desc.pParameters = desc.rootParams.data();
+		desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+		return desc;
+	}
+
+	RootSignatureDesc createLocalRootDescRayGen() {
+		RootSignatureDesc desc = {};
+		int numDescriptorRanges = 3;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
+
 		//gOutput(u0)
 		desc.range[0].BaseShaderRegister = 0;
 		desc.range[0].NumDescriptors = 1;
@@ -235,37 +279,6 @@ namespace {
 		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		desc.range[2].OffsetInDescriptorsFromTableStart = descCnt++;
 
-		//Indices(t0)
-		desc.range[3].BaseShaderRegister = 0;
-		desc.range[3].NumDescriptors = numMaterial;
-		desc.range[3].RegisterSpace = 1;
-		desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		desc.range[3].OffsetInDescriptorsFromTableStart = descCnt;
-		descCnt += numMaterial;
-
-		//cbuffer global(b0)
-		desc.range[4].BaseShaderRegister = 0;
-		desc.range[4].NumDescriptors = 1;
-		desc.range[4].RegisterSpace = 0;
-		desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		desc.range[4].OffsetInDescriptorsFromTableStart = descCnt++;
-
-		//material(b1)
-		desc.range[5].BaseShaderRegister = 1;
-		desc.range[5].NumDescriptors = numMaterial;
-		desc.range[5].RegisterSpace = 3;
-		desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
-		descCnt += numMaterial;
-
-		//wvp(b2)
-		desc.range[6].BaseShaderRegister = 2;
-		desc.range[6].NumDescriptors = numInstancing;
-		desc.range[6].RegisterSpace = 4;
-		desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
-		descCnt += numInstancing;
-
 		desc.rootParams.resize(1);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = numDescriptorRanges;
@@ -279,70 +292,77 @@ namespace {
 		return desc;
 	}
 
-	RootSignatureDesc createGlobalRootDesc(UINT numMaterial) {
+	RootSignatureDesc createLocalRootDescHit(UINT numMaterial, UINT numInstancing) {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 5;
+		int numDescriptorRanges = 7;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
-		//g_texDiffuse(t0)
+
+		//Indices(t0)
 		desc.range[0].BaseShaderRegister = 0;
 		desc.range[0].NumDescriptors = numMaterial;
-		desc.range[0].RegisterSpace = 10;
+		desc.range[0].RegisterSpace = 1;
 		desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		desc.range[0].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numMaterial;
 
-		//g_texNormal(t1)
+		//material(b1)
 		desc.range[1].BaseShaderRegister = 1;
 		desc.range[1].NumDescriptors = numMaterial;
-		desc.range[1].RegisterSpace = 11;
-		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[1].RegisterSpace = 3;
+		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		desc.range[1].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numMaterial;
 
-		//g_texSpecular(t2)
+		//wvp(b2)
 		desc.range[2].BaseShaderRegister = 2;
-		desc.range[2].NumDescriptors = numMaterial;
-		desc.range[2].RegisterSpace = 12;
-		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[2].NumDescriptors = numInstancing;
+		desc.range[2].RegisterSpace = 4;
+		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		desc.range[2].OffsetInDescriptorsFromTableStart = descCnt;
-		descCnt += numMaterial;
+		descCnt += numInstancing;
 
-		//Vertex(t3)
-		desc.range[3].BaseShaderRegister = 3;
+		//g_texDiffuse(t0)
+		desc.range[3].BaseShaderRegister = 0;
 		desc.range[3].NumDescriptors = numMaterial;
-		desc.range[3].RegisterSpace = 13;
+		desc.range[3].RegisterSpace = 10;
 		desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		desc.range[3].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numMaterial;
 
-		//g_samLinear(s0)
-		desc.range[4].BaseShaderRegister = 0;
-		desc.range[4].NumDescriptors = 1;
-		desc.range[4].RegisterSpace = 14;
-		desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-		desc.range[4].OffsetInDescriptorsFromTableStart = 0;
+		//g_texNormal(t1)
+		desc.range[4].BaseShaderRegister = 1;
+		desc.range[4].NumDescriptors = numMaterial;
+		desc.range[4].RegisterSpace = 11;
+		desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[4].OffsetInDescriptorsFromTableStart = descCnt;
+		descCnt += numMaterial;
 
-		desc.rootParams.resize(3);
+		//g_texSpecular(t2)
+		desc.range[5].BaseShaderRegister = 2;
+		desc.range[5].NumDescriptors = numMaterial;
+		desc.range[5].RegisterSpace = 12;
+		desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[5].OffsetInDescriptorsFromTableStart = descCnt;
+		descCnt += numMaterial;
+
+		//Vertex(t3)
+		desc.range[6].BaseShaderRegister = 3;
+		desc.range[6].NumDescriptors = numMaterial;
+		desc.range[6].RegisterSpace = 13;
+		desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
+		descCnt += numMaterial;
+
+		desc.rootParams.resize(1);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 4;
+		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = numDescriptorRanges;
 		desc.rootParams[0].DescriptorTable.pDescriptorRanges = desc.range.data();
 		desc.rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-		desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[4];
-		desc.rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		//gRtScene(t4)
-		desc.rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		desc.rootParams[2].Descriptor.ShaderRegister = 4;
-		desc.rootParams[2].Descriptor.RegisterSpace = 15;
-		desc.rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		desc.desc.NumParameters = 3;
+		desc.desc.NumParameters = 1;
 		desc.desc.pParameters = desc.rootParams.data();
-		desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
 		return desc;
 	}
@@ -674,13 +694,13 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	bHit.addStr(tRay.str, ShaderBasicHit);
 
 	addChar bMis = {};
-	bMis.addStr(para.str, ShaderBasicMiss);
+	bMis.addStr(ShaderGlobalParameters, ShaderBasicMiss);
 
 	addChar eHit = {};
 	eHit.addStr(com.str, ShaderEmissiveHit);
 
 	addChar eMis = {};
-	eMis.addStr(para.str, ShaderEmissiveMiss);
+	eMis.addStr(ShaderGlobalParameters, ShaderEmissiveMiss);
 
 	//DXIL library 初期化, SUBOBJECT作成
 	DxilLibrary Ray(CompileLibrary(rayGen.str, L"rayGen", L"lib_6_3"), kRayGenShader);
@@ -705,19 +725,30 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	HitProgram emissiveHitProgram(nullptr, kEmissiveHitShader, kEmissiveHitGroup);
 	subobjects.push_back(emissiveHitProgram.subObject);
 
-	//ローカルルートシグネチャ作成, SUBOBJECT作成
-	LocalRootSignature loRootSignature(createRootSignature(createLocalRootDesc(numMaterial, maxNumInstancing).desc));
-	subobjects.push_back(loRootSignature.subobject);
-	D3D12_STATE_SUBOBJECT* p_rsig = &subobjects[subobjects.size() - 1];
+	//RayGen: ローカルルートシグネチャ作成, SUBOBJECT作成
+	LocalRootSignature loRootSignatureRay(createRootSignature(createLocalRootDescRayGen().desc));
+	subobjects.push_back(loRootSignatureRay.subobject);
+	D3D12_STATE_SUBOBJECT* p_rsigRay = &subobjects[subobjects.size() - 1];
 
-	//シェーダーとローカルルートシグネチャ関連付け
-	const WCHAR* ExportName[] =
-	{ kRayGenShader,
+	//RayGen: シェーダーとローカルルートシグネチャ関連付け
+	const WCHAR* ExportNameRay[] =
+	{ kRayGenShader };
+	ExportAssociation loRootAssociationRay(ExportNameRay, ARRAY_SIZE(ExportNameRay), p_rsigRay);
+	subobjects.push_back(loRootAssociationRay.subobject);
+
+	//Hit: ローカルルートシグネチャ作成, SUBOBJECT作成
+	LocalRootSignature loRootSignatureHit(createRootSignature(createLocalRootDescHit(numMaterial, maxNumInstancing).desc));
+	subobjects.push_back(loRootSignatureHit.subobject);
+	D3D12_STATE_SUBOBJECT* p_rsigHit = &subobjects[subobjects.size() - 1];
+
+	//Hit: シェーダーとローカルルートシグネチャ関連付け
+	const WCHAR* ExportNameHit[] =
+	{
 	 kBasicAnyHitShader, kBasicClosestHitShader,
-	 kEmissiveHitShader, kEmissiveMiss
+	 kEmissiveHitShader
 	};
-	ExportAssociation loRootAssociation(ExportName, ARRAY_SIZE(ExportName), p_rsig);
-	subobjects.push_back(loRootAssociation.subobject);
+	ExportAssociation loRootAssociationHit(ExportNameHit, ARRAY_SIZE(ExportNameHit), p_rsigHit);
+	subobjects.push_back(loRootAssociationHit.subobject);
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
@@ -740,7 +771,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	subobjects.push_back(config.subobject);
 
 	//グローバルルートシグネチャ作成 SUBOBJECT作成
-	GlobalRootSignature root(createRootSignature(createGlobalRootDesc(numMaterial).desc));
+	GlobalRootSignature root(createRootSignature(createGlobalRootDesc().desc));
 	mpGlobalRootSig = root.pRootSig;
 	subobjects.push_back(root.subobject);
 
@@ -777,26 +808,30 @@ void DxrRenderer::createShaderResources() {
 	int num_u0 = 1;
 	int num_u1 = 1;
 	int num_u2 = 1;
+	int numLocalHeapRay = num_u0 + num_u1 + num_u2;
 	int num_t0 = numMaterial;
-	int num_b0 = 1;
 	int num_b1 = numMaterial;
 	int num_b2 = maxNumInstancing;
-	numLocalHeap = num_u0 + num_u1 + num_u2 + num_t0 + num_b0 + num_b1 + num_b2;
-	//Global
 	int num_t00 = numMaterial;
 	int num_t01 = numMaterial;
 	int num_t02 = numMaterial;
 	int num_t03 = numMaterial;
-	numGlobalHeap = num_t00 + num_t01 + num_t02 + num_t03;
+	int numLocalHeapHit = num_t0 + num_b1 + num_b2 + num_t00 + num_t01 + num_t02 + num_t03;
+	numLocalHeap = numLocalHeapRay + numLocalHeapHit;
+	//Global
+	int num_b0 = 1;
+	numGlobalHeap = num_b0;
 
 	for (int heapInd = 0; heapInd < numSwapIndex; heapInd++) {
-		//Local
+
 		mpSrvUavCbvHeap[heapInd] = device->CreateDescHeap(numLocalHeap + numGlobalHeap);
-		LocalHandle[heapInd] = mpSrvUavCbvHeap[heapInd].Get()->GetGPUDescriptorHandleForHeapStart();
-		GlobalHandle[heapInd].ptr = LocalHandle[heapInd].ptr + numLocalHeap * dx->getCbvSrvUavDescriptorSize();
+		LocalHandleRay[heapInd] = mpSrvUavCbvHeap[heapInd].Get()->GetGPUDescriptorHandleForHeapStart();
+		LocalHandleHit[heapInd].ptr = LocalHandleRay[heapInd].ptr + numLocalHeapRay * dx->getCbvSrvUavDescriptorSize();
+		GlobalHandle[heapInd].ptr = LocalHandleHit[heapInd].ptr + numLocalHeapHit * dx->getCbvSrvUavDescriptorSize();
 
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[heapInd].Get()->GetCPUDescriptorHandleForHeapStart();
 
+		//Local
 		//UAVを作成 gOutput(u0)
 		mpOutputResource.CreateUavTexture(srvHandle);
 
@@ -817,11 +852,6 @@ void DxrRenderer::createShaderResources() {
 			}
 		}
 
-		//CBVを作成 cbuffer global(b0)
-		D3D12_GPU_VIRTUAL_ADDRESS ad0[1] = { sCB->Resource()->GetGPUVirtualAddress() };
-		UINT size0[1] = { sCB->getSizeInBytes() };
-		device->CreateCbv(srvHandle, ad0, size0, 1);
-
 		//CBVを作成 material(b1)
 		for (UINT i = 0; i < numMaterial; i++) {
 			D3D12_GPU_VIRTUAL_ADDRESS ad1[1] = { material->getGPUVirtualAddress(i) };
@@ -836,7 +866,6 @@ void DxrRenderer::createShaderResources() {
 			device->CreateCbv(srvHandle, ad2, size2, 1);
 		}
 
-		//Global
 		//SRVを作成 g_texDiffuse(t0), g_texNormal(t1), g_texSpecular(t2)
 		for (UINT t = 0; t < 3; t++) {
 			for (auto i = 0; i < PD.size(); i++) {
@@ -870,6 +899,12 @@ void DxrRenderer::createShaderResources() {
 				}
 			}
 		}
+
+		//Global
+		//CBVを作成 cbuffer global(b0)
+		D3D12_GPU_VIRTUAL_ADDRESS ad0[1] = { sCB->Resource()->GetGPUVirtualAddress() };
+		UINT size0[1] = { sCB->getSizeInBytes() };
+		device->CreateCbv(srvHandle, ad0, size0, 1);
 	}
 
 	//g_samLinear(s0)
@@ -931,14 +966,9 @@ void DxrRenderer::createShaderTable() {
 		uint8_t* pData = nullptr;
 		mpShaderTable[i].Get()->Map(0, nullptr, (void**)&pData);
 
-		uint64_t rayHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;//後で分ける
-		uint64_t eMisHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
-		uint64_t bHitHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
-		uint64_t eHitHandle = mpSrvUavCbvHeap[i].Get()->GetGPUDescriptorHandleForHeapStart().ptr;
-
 		//rayGen
 		uint8_t* ray = pData;
-		writeTable(ray, kRayGenShader, &rayHandle);
+		writeTable(ray, kRayGenShader, &LocalHandleRay[i].ptr);
 		pData += raygenRegion;
 
 		//basic miss
@@ -947,16 +977,16 @@ void DxrRenderer::createShaderTable() {
 		miss += missRecordSize;
 
 		//emissive miss
-		writeTable(miss, kEmissiveMiss, &eMisHandle);
+		writeTable(miss, kEmissiveMiss);
 		pData += missRegion;
 
 		//basic hit
 		uint8_t* hit = pData;
-		writeTable(hit, kBasicHitGroup, &bHitHandle);
+		writeTable(hit, kBasicHitGroup, &LocalHandleHit[i].ptr);
 		hit += hitgroupRecordSize;
 
 		//emissive hit
-		writeTable(hit, kEmissiveHitGroup, &eHitHandle);
+		writeTable(hit, kEmissiveHitGroup, &LocalHandleHit[i].ptr);
 
 		mpShaderTable[i].Get()->Unmap(0, nullptr);
 

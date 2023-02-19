@@ -87,7 +87,8 @@ private:
 	uint32_t numLocalHeap = 0;
 	uint32_t numGlobalHeap = 0;
 
-	D3D12_GPU_DESCRIPTOR_HANDLE LocalHandle[numSwapIndex];
+	D3D12_GPU_DESCRIPTOR_HANDLE LocalHandleRay[numSwapIndex];
+	D3D12_GPU_DESCRIPTOR_HANDLE LocalHandleHit[numSwapIndex];
 	D3D12_GPU_DESCRIPTOR_HANDLE GlobalHandle[numSwapIndex];
 	D3D12_GPU_DESCRIPTOR_HANDLE samplerHandle;
 
