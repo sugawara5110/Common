@@ -330,9 +330,7 @@ bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
 
 	Dx_Device* device = Dx_Device::GetInstance();
 
-	int numUav = 0;
-	if (hs)numUav = 1;
-	dpara.numDesc = numSrvTex + numSrvBuf + (numCbv + dpara.NumMaxInstance) + numUav;
+	dpara.numDesc = numSrvTex + numSrvBuf + (numCbv + dpara.NumMaxInstance);
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
 	dpara.descHeap = device->CreateDescHeap(numHeap);
 	ARR_DELETE(te);
@@ -344,22 +342,23 @@ bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
 	cbSize[2] = ad3Size;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(dpara.descHeap->GetCPUDescriptorHandleForHeapStart());
 
-	//ConstantBuffer<WVPCB> wvp[] : register(b0, space1)
-	for (UINT i = 0; i < dpara.NumMaxInstance; i++) {
-		D3D12_GPU_VIRTUAL_ADDRESS ad2[1] = { wvp->getGPUVirtualAddress(i) };
-		UINT size2[1] = { wvp->getSizeInBytes() };
-		device->CreateCbv(hDescriptor, ad2, size2, 1);
-	}
-
-	for (int i = 0; i < dpara.NumMaterial; i++) {
+	for (int m = 0; m < dpara.NumMaterial; m++) {
 		Dx_Device* d = device;
-		d->CreateSrvTexture(hDescriptor, &texture[numSrvTex * i], numSrvTex);
+
+		//ConstantBuffer<WVPCB> wvp[] : register(b0, space1)
+		for (UINT i = 0; i < dpara.NumMaxInstance; i++) {
+			D3D12_GPU_VIRTUAL_ADDRESS ad2[1] = { wvp->getGPUVirtualAddress(i) };
+			UINT size2[1] = { wvp->getSizeInBytes() };
+			device->CreateCbv(hDescriptor, ad2, size2, 1);
+		}
+
+		d->CreateSrvTexture(hDescriptor, &texture[numSrvTex * m], numSrvTex);
 		d->CreateSrvBuffer(hDescriptor, buffer, numSrvBuf, StructureByteStride);
 		D3D12_GPU_VIRTUAL_ADDRESS ad[numMaxCB] = {};
 		//cbuffer global : register(b0, space0)
 		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
 		//cbuffer global_1 : register(b1, space0)
-		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
+		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * m;
 		//‚»‚Ì‘¼ƒ{[ƒ““™
 		ad[2] = ad3;
 		d->CreateCbv(hDescriptor, ad, cbSize, numCbv);

@@ -420,10 +420,19 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 			cpp.y += vm->Pos.y = v->vPos.y;
 			cpp.z += vm->Pos.z = v->vPos.z;
 			cppAddCnt++;
+
 			int norInd = i;
 			int uvInd = i;
-			if (strcmp(mesh->getNormalMappingInformationType(0), "ByPolygonVertex"))norInd = index[i];
-			if (strcmp(mesh->getUVMappingInformationType(0), "ByPolygonVertex"))uvInd = index[i];
+			if (mesh->getNormalMappingInformationType(0) &&
+				strcmp(mesh->getNormalMappingInformationType(0), "ByPolygonVertex")) {
+				norInd = index[i];
+			}
+
+			if (mesh->getUVMappingInformationType(0) &&
+				strcmp(mesh->getUVMappingInformationType(0), "ByPolygonVertex")) {
+				uvInd = index[i];
+			}
+
 			vm->normal.x = v->vNorm.x = (float)nor[norInd * 3];
 			vm->normal.y = v->vNorm.y = (float)nor[norInd * 3 + 1];
 			vm->normal.z = v->vNorm.z = (float)nor[norInd * 3 + 2];
@@ -598,21 +607,21 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		CONSTANT_BUFFER2 sg = {};
 		//拡散反射光
 		CoordTf::VECTOR4* diffuse = &mObj[m].dpara.material[i].diffuse;
-		diffuse->x = (float)mesh->getDiffuseColor(0, 0) + addDiffuse;
-		diffuse->y = (float)mesh->getDiffuseColor(0, 1) + addDiffuse;
-		diffuse->z = (float)mesh->getDiffuseColor(0, 2) + addDiffuse;
+		diffuse->x = (float)mesh->getDiffuseColor(i, 0) + addDiffuse;
+		diffuse->y = (float)mesh->getDiffuseColor(i, 1) + addDiffuse;
+		diffuse->z = (float)mesh->getDiffuseColor(i, 2) + addDiffuse;
 		diffuse->w = 0.0f;//使用してない
 		//スペキュラー
 		CoordTf::VECTOR4* specular = &mObj[m].dpara.material[i].specular;
-		specular->x = (float)mesh->getSpecularColor(0, 0) + addSpecular;
-		specular->y = (float)mesh->getSpecularColor(0, 1) + addSpecular;
-		specular->z = (float)mesh->getSpecularColor(0, 2) + addSpecular;
+		specular->x = (float)mesh->getSpecularColor(i, 0) + addSpecular;
+		specular->y = (float)mesh->getSpecularColor(i, 1) + addSpecular;
+		specular->z = (float)mesh->getSpecularColor(i, 2) + addSpecular;
 		specular->w = 0.0f;//使用してない
 		//アンビエント
 		CoordTf::VECTOR4* ambient = &mObj[m].dpara.material[i].ambient;
-		ambient->x = (float)mesh->getAmbientColor(0, 0) + addAmbient;
-		ambient->y = (float)mesh->getAmbientColor(0, 1) + addAmbient;
-		ambient->z = (float)mesh->getAmbientColor(0, 2) + addAmbient;
+		ambient->x = (float)mesh->getAmbientColor(i, 0) + addAmbient;
+		ambient->y = (float)mesh->getAmbientColor(i, 1) + addAmbient;
+		ambient->z = (float)mesh->getAmbientColor(i, 2) + addAmbient;
 		ambient->w = 0.0f;//使用してない
 
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
