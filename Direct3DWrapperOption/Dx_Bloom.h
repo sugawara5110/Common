@@ -7,7 +7,7 @@
 #ifndef Class_Dx_Bloom_Header
 #define Class_Dx_Bloom_Header
 
-#include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/Dx_Common.h"
 
 class Dx_Bloom :public DxCommon {
 

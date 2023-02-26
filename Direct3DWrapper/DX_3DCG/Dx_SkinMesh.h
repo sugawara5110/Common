@@ -7,7 +7,6 @@
 #ifndef Class_SkinMesh_Header
 #define Class_SkinMesh_Header
 
-#include "Core/Dx12ProcessCore.h"
 #include "DxSkinnedCom.h"
 #include "../../../FbxLoader/FbxLoader.h"
 

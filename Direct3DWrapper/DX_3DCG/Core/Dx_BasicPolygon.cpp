@@ -1,11 +1,93 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          BasicPolygonクラス                                **//
+//**                   　　　          BasicPolygon                                      **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "Dx12ProcessCore.h"
+#include "Dx_BasicPolygon.h"
+
+namespace {
+
+	void Instancing_Internal(int& insNum, int numMaxIns, WVP_CB* cbArr,
+		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
+
+		if (insNum >= numMaxIns) {
+			Dx_Util::ErrorMessage("Error: insNum is greater than numMaxIns.");
+		}
+
+		using namespace CoordTf;
+
+		MATRIX mov;
+		MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
+		MATRIX scale;
+		MATRIX scro;
+		MATRIX world;
+		MATRIX WV;
+
+		//拡大縮小
+		MatrixScaling(&scale, size.x, size.y, size.z);
+		//表示位置
+		MatrixRotationZ(&rotZ, angle.z);
+		MatrixRotationY(&rotY, angle.y);
+		MatrixRotationX(&rotX, angle.x);
+		MatrixMultiply(&rotZY, &rotZ, &rotY);
+		MatrixMultiply(&rotZYX, &rotZY, &rotX);
+		MatrixTranslation(&mov, pos.x, pos.y, pos.z);
+		MatrixMultiply(&scro, &scale, &rotZYX);
+		MatrixMultiply(&world, &scro, &mov);
+
+		Dx_Device* dev = Dx_Device::GetInstance();
+		Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+		Dx_SwapChain::Update& u = sw->getUpdate(dev->cBuffSwapUpdateIndex());
+
+		//ワールド、カメラ、射影行列、等
+		cbArr[insNum].world = world;
+		MatrixMultiply(&WV, &world, &u.mView);
+		MatrixMultiply(&cbArr[insNum].wvp, &WV, &u.mProj);
+		MatrixTranspose(&cbArr[insNum].world);
+		MatrixTranspose(&cbArr[insNum].wvp);
+
+		cbArr[insNum].AddObjColor.as(Color.x, Color.y, Color.z, Color.w);
+
+		insNum++;
+	}
+
+	void InstancingUpdate_Internal(CONSTANT_BUFFER* cb, float disp,
+		float px, float py, float mx, float my,
+		DivideArr* divArr, int numDiv, float shininess, float SmoothRange, float SmoothRatio) {
+
+		using namespace CoordTf;
+
+		Dx_Device* dev = Dx_Device::GetInstance();
+		Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+		Dx_SwapChain::Update& u = sw->getUpdate(dev->cBuffSwapUpdateIndex());
+		Dx_Light::Update& ul = Dx_Light::getUpdate(dev->cBuffSwapUpdateIndex());
+		PointLight& pl = ul.plight;
+		DirectionLight& dl = ul.dlight;
+		Fog& fog = ul.fog;
+
+		cb->C_Pos.as(u.pos.x,
+			u.pos.y,
+			u.pos.z, 0.0f);
+		memcpy(&cb->GlobalAmbientLight, &Dx_Light::getGlobalAmbientLight(), sizeof(VECTOR4));
+		cb->numLight.as((float)pl.LightPcs, 0.0f, 0.0f, 0.0f);
+		memcpy(cb->pLightPos, pl.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
+		memcpy(cb->pLightColor, pl.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
+		memcpy(cb->pLightst, pl.Lightst, sizeof(VECTOR4) * LIGHT_PCS);
+		cb->dDirection = dl.Direction;
+		cb->dLightColor = dl.LightColor;
+		cb->dLightst.x = dl.onoff;
+		cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
+		cb->FogColor = fog.FogColor;
+		cb->DispAmount.as(disp, float(numDiv), shininess, SmoothRange);
+		cb->SmoothRatio.as(SmoothRatio, 0.0f, 0.0f, 0.0f);
+		cb->pXpYmXmY.as(px, py, mx, my);
+		for (int i = 0; i < numDiv; i++) {
+			cb->Divide[i].as(divArr[i].distance, divArr[i].divide, 0.0f, 0.0f);
+		}
+	}
+}
 
 BasicPolygon::BasicPolygon() {
 	sg.vDiffuse.x = 0.7f;
@@ -109,8 +191,8 @@ void BasicPolygon::createBufferDXR(int numMaterial, int numMaxInstance) {
 }
 
 void BasicPolygon::setTextureDXR() {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!dx->getDxrCreateResourceState())return;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (!dev->getDxrCreateResourceState())return;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		dxrPara.difTex[i] = texture[i * 3 + 0];
@@ -120,16 +202,16 @@ void BasicPolygon::setTextureDXR() {
 }
 
 void BasicPolygon::CbSwap() {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	firstCbSet[dx->cBuffSwapUpdateIndex()] = true;
-	insNum[dx->cBuffSwapUpdateIndex()] = ins_no;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	firstCbSet[dev->cBuffSwapUpdateIndex()] = true;
+	insNum[dev->cBuffSwapUpdateIndex()] = ins_no;
 	ins_no = 0;
 	DrawOn = true;
 }
 
 void BasicPolygon::draw(int comIndex, drawPara& para) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
 
 	ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
@@ -151,20 +233,20 @@ void BasicPolygon::draw(int comIndex, drawPara& para) {
 		mCList->IASetPrimitiveTopology(para.TOPOLOGY);
 		mCList->SetPipelineState(para.PSO[i].Get());
 		mCList->SetGraphicsRootDescriptorTable(0, heap);
-		heap.ptr += dx->getCbvSrvUavDescriptorSize() * para.numDesc;
+		heap.ptr += dev->getCbvSrvUavDescriptorSize() * para.numDesc;
 		mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}
 }
 
 void BasicPolygon::ParameterDXR_Update() {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
+	Dx_Device* dev = Dx_Device::GetInstance();
+	UpdateDXR& ud = dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
 	ud.NumInstance = dpara.insNum;
-	ud.shininess = cb[dx->cBuffSwapDrawOrStreamoutputIndex()].DispAmount.z;
+	ud.shininess = cb[dev->cBuffSwapDrawOrStreamoutputIndex()].DispAmount.z;
 	for (UINT i = 0; i < ud.NumInstance; i++) {
-		ud.Transform[i] = cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i].world;
-		ud.WVP[i] = cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i].wvp;
-		ud.AddObjColor[i] = cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i].AddObjColor;
+		ud.Transform[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].world;
+		ud.WVP[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].wvp;
+		ud.AddObjColor[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].AddObjColor;
 	}
 }
 
@@ -174,10 +256,10 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 
 	ID3D12GraphicsCommandList* mCList = d.getCommandList();
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { para.descHeap.Get() };
-	UpdateDXR& ud = dxr.updateDXR[dx->dxrBuffSwapIndex()];
+	UpdateDXR& ud = dxr.updateDXR[dev->dxrBuffSwapIndex()];
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetGraphicsRootSignature(para.rootSignatureDXR.Get());
 	mCList->IASetVertexBuffers(0, 1, &(para.Vview)->VertexBufferView());
@@ -216,7 +298,7 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 			dxr.SviewDXR[i][t].outputReadBack(comIndex);
 			dxr.SviewDXR[i][t].ResetFilledSizeBuffer(comIndex);
 		}
-		heap.ptr += dx->getCbvSrvUavDescriptorSize() * para.numDesc;
+		heap.ptr += dev->getCbvSrvUavDescriptorSize() * para.numDesc;
 		ud.firstSet = true;
 	}
 }
@@ -227,7 +309,7 @@ void BasicPolygon::getBuffer(int numMaterial, int numMaxInstance, DivideArr* div
 		memcpy(divArr, divarr, sizeof(DivideArr) * numdiv);
 	}
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 
 	dpara.NumMaxInstance = numMaxInstance;
 	cbWVP[0] = std::make_unique<WVP_CB[]>(numMaxInstance);
@@ -241,7 +323,7 @@ void BasicPolygon::getBuffer(int numMaterial, int numMaxInstance, DivideArr* div
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
 	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 	dpara.Iview = std::make_unique<IndexView[]>(dpara.NumMaterial);
-	if (dx->getDxrCreateResourceState()) {
+	if (dev->getDxrCreateResourceState()) {
 		dpara.PSO_DXR = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
 		createBufferDXR(dpara.NumMaterial, numMaxInstance);
 	}
@@ -261,8 +343,8 @@ void BasicPolygon::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, U
 }
 
 void BasicPolygon::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!dx->getDxrCreateResourceState())return;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (!dev->getDxrCreateResourceState())return;
 
 	dxrPara.diffuse[materialIndex].as(sg.vDiffuse.x, sg.vDiffuse.y, sg.vDiffuse.z, sg.vDiffuse.w);
 	dxrPara.specular[materialIndex].as(sg.vSpeculer.x, sg.vSpeculer.y, sg.vSpeculer.z, sg.vSpeculer.w);
@@ -270,7 +352,6 @@ void BasicPolygon::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 }
 
 void BasicPolygon::createDefaultBuffer(int comIndex, void* vertexArr, UINT** indexArr) {
-	Dx_CommandManager& ma = *Dx_CommandManager::GetInstance();
 	dpara.Vview->VertexBufferGPU.CreateDefaultBuffer(comIndex, vertexArr,
 		dpara.Vview->VertexBufferByteSize, false);
 
@@ -308,7 +389,7 @@ bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
 	const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
 	const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	TextureNo* te = new TextureNo[dpara.NumMaterial];
 	int tCnt = 0;
 	for (int i = 0; i < dpara.NumMaterial; i++) {
@@ -371,12 +452,12 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 	dxrPara.alphaBlend = blend;
 	int NumMaterial = dxrPara.NumMaterial;
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 
 	if (hs || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())dxrPara.updateF = true;
 	if (hs)dxrPara.tessellationF = true;
 
-	if (!dx->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return;
+	if (!dev->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return;
 
 	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
 	if (hs) {
@@ -391,10 +472,6 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 		int mag = (int)maxDiv / (int)minDiv;
 		numDispPolygon = (int)mag * (int)mag * (int)minDivPolygon;//分割最大数(1ポリゴン)
 	}
-
-	Dx_Device* device = Dx_Device::GetInstance();
-	Dx_CommandManager& ma = *Dx_CommandManager::GetInstance();
-	Dx_CommandListObj& d = *ma.getGraphicsComListObj(comIndex);
 
 	for (int i = 0; i < NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
@@ -431,8 +508,8 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 	const int numSrv, const int numCbv, const int numUav, bool smooth) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!dx->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return true;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (!dev->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return true;
 
 	UINT numDescriptors[1] = {};
 	numDescriptors[0] = dpara.NumMaxInstance;
@@ -466,15 +543,15 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 }
 
 void BasicPolygon::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
 }
 
 void BasicPolygon::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->InstancingUpdate(&cb[dx->cBuffSwapUpdateIndex()], disp, px, py, mx, my,
+	Dx_Device* dev = Dx_Device::GetInstance();
+	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], disp, px, py, mx, my,
 		divArr, numDiv, shininess, SmoothRange, SmoothRatio);
 	CbSwap();
 }
@@ -484,41 +561,41 @@ void BasicPolygon::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	float disp, float SmoothRange, float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->Instancing(ins_no, dpara.NumMaxInstance, cbWVP[dx->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
-	dx->InstancingUpdate(&cb[dx->cBuffSwapUpdateIndex()], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
+	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
 	CbSwap();
 }
 
 void BasicPolygon::Draw(int comIndex) {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!firstCbSet[dx->cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (!firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
-	mObjectCB->CopyData(0, cb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
-	dpara.insNum = insNum[dx->cBuffSwapDrawOrStreamoutputIndex()];
+	mObjectCB->CopyData(0, cb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
+	dpara.insNum = insNum[dev->cBuffSwapDrawOrStreamoutputIndex()];
 	for (UINT i = 0; i < dpara.insNum; i++) {
-		wvp->CopyData(i, cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i]);
+		wvp->CopyData(i, cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i]);
 	}
 	draw(comIndex, dpara);
 }
 
 void BasicPolygon::StreamOutput(int comIndex) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	if (vs != Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 
-		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
+		UpdateDXR& ud = dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
 		ud.InstanceMaskChange(DrawOn);
 
-		if (!firstCbSet[dx->cBuffSwapDrawOrStreamoutputIndex()])return;
+		if (!firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()])return;
 
-		mObjectCB->CopyData(0, cb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
-		dpara.insNum = insNum[dx->cBuffSwapDrawOrStreamoutputIndex()];
+		mObjectCB->CopyData(0, cb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
+		dpara.insNum = insNum[dev->cBuffSwapDrawOrStreamoutputIndex()];
 		for (UINT i = 0; i < dpara.insNum; i++) {
-			wvp->CopyData(i, cbWVP[dx->cBuffSwapDrawOrStreamoutputIndex()][i]);
+			wvp->CopyData(i, cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i]);
 		}
 		ParameterDXR_Update();
-		if (dxrPara.updateF || !dxrPara.updateDXR[dx->dxrBuffSwapIndex()].createAS) {
+		if (dxrPara.updateF || !dxrPara.updateDXR[dev->dxrBuffSwapIndex()].createAS) {
 			streamOutput(comIndex, dpara, dxrPara);
 		}
 	}
@@ -540,8 +617,8 @@ ParameterDXR* BasicPolygon::getParameter() {
 
 void BasicPolygon::UpdateDxrDivideBuffer() {
 	if (hs) {
-		Dx12Process* dx = Dx12Process::GetInstance();
-		UpdateDXR& ud = dxrPara.updateDXR[dx->dxrBuffSwapIndex()];
+		Dx_Device* dev = Dx_Device::GetInstance();
+		UpdateDXR& ud = dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
 		for (int i = 0; i < dpara.NumMaterial; i++) {
 			//使用されていないマテリアル対策
 			if (dpara.Iview[i].IndexCount <= 0)continue;

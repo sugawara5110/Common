@@ -7,7 +7,8 @@
 #ifndef Class_ParticleData_Header
 #define Class_ParticleData_Header
 
-#include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/Dx_Common.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/ParameterDXR.h"
 
 class ParticleData :public DxCommon {
 
@@ -105,7 +106,8 @@ public:
 	void StreamOutputBillboard(int comIndex);
 	ParameterDXR* getParameter();
 	void setRefractiveIndex(float index) {
-		dxrPara.updateDXR[Dx12Process::GetInstance()->dxrBuffSwapIndex()].RefractiveIndex = index;
+		Dx_Device* dev = Dx_Device::GetInstance();
+		dxrPara.updateDXR[dev->dxrBuffSwapIndex()].RefractiveIndex = index;
 	}
 };
 

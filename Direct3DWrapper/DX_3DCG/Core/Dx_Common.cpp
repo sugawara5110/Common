@@ -1,11 +1,11 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          DxCommonクラス                                    **//
+//**                   　　　       DxCommon                                             **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
 #define _CRT_SECURE_NO_WARNINGS
-#include "Dx12ProcessCore.h"
+#include "Dx_Common.h"
 
 DxCommon::DxCommon() {
 
@@ -83,7 +83,7 @@ HRESULT DxCommon::SetTextureMPixel(int comIndex, BYTE* frame, int tInd) {
 }
 
 HRESULT DxCommon::createTex(int comIndex, int tNo, int& resCnt, char* upName, char* defName, char* ObjName) {
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	InternalTexture* tex = &dx->texture[tNo];
 	HRESULT hr = S_OK;
 	if (tex->createRes) {
@@ -393,10 +393,10 @@ ComPtr <ID3D12PipelineState> DxCommon::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		psoDesc.StreamOutput.RasterizedStream = D3D12_SO_NO_RASTERIZED_STREAM;
 	}
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 
 	D3D12_RASTERIZER_DESC rasterizerDesc = {};
-	if (dx->wireframe)
+	if (dev->getWireFrameState())
 		rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
 	else
 		rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
@@ -467,15 +467,17 @@ ComPtr <ID3D12PipelineState> DxCommon::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 		break;
 	}
 
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = dx->mBackBufferFormat;
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 
-	psoDesc.SampleDesc.Count = dx->m4xMsaaState ? 4 : 1;
-	psoDesc.SampleDesc.Quality = dx->m4xMsaaState ? (dx->m4xMsaaQuality - 1) : 0;
-	psoDesc.DSVFormat = dx->mDepthStencilFormat;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = sw->GetRtBuffer()->getResource()->GetDesc().Format;
+
+	psoDesc.SampleDesc.Count = sw->get_m4xMsaaState() ? 4 : 1;
+	psoDesc.SampleDesc.Quality = sw->get_m4xMsaaState() ? (sw->get_m4xMsaaQuality() - 1) : 0;
+	psoDesc.DSVFormat = sw->GetDepthBuffer()->getResource()->GetDesc().Format;
 
 	HRESULT hr;
-	hr = Dx_Device::GetInstance()->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
+	hr = dev->getDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso));
 	if (FAILED(hr)) {
 		Dx_Util::ErrorMessage("Common::CreatePSO Error!!"); return nullptr;
 	}

@@ -7,6 +7,11 @@
 #ifndef Class_Dx_Device_Header
 #define Class_Dx_Device_Header
 
+#if defined(DEBUG) || defined(_DEBUG)
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#endif
+
 #include "Dx_Util.h"
 #include <d3d12.h>
 #include <d3d10_1.h>
@@ -22,6 +27,14 @@ private:
 	static Dx_Device* dev;
 	bool ReportLiveDeviceObjectsOn = false;
 
+	int cBuffSwap[2] = { 0,0 };
+	int dxrBuffSwap[2] = { 0,0 };
+	int sync = 0;
+
+	bool wireframe = false;
+
+	bool DXR_CreateResource = false;
+
 	Dx_Device() {}//外部からのオブジェクト生成禁止
 	Dx_Device(const Dx_Device& obj) = delete;   // コピーコンストラクタ禁止
 	void operator=(const Dx_Device& obj) = delete;// 代入演算子禁止
@@ -32,6 +45,8 @@ public:
 	static Dx_Device* GetInstance();
 	static void DeleteInstance();
 
+	void wireFrameTest(bool f) { wireframe = f; }
+	void dxrCreateResource() { DXR_CreateResource = true; }
 	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
 
 	HRESULT createDevice();
@@ -79,6 +94,30 @@ public:
 		ID3D12Resource** buffer, UINT* byteStride, UINT* bufferSize, int bufNum);
 
 	void CreateUavTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D12Resource** tex, int texNum);
+
+	bool getDxrCreateResourceState() { return DXR_CreateResource; }
+	bool getWireFrameState() { return wireframe; }
+
+	UINT getCbvSrvUavDescriptorSize();
+
+	void setUpSwapIndex(int index) { cBuffSwap[0] = index; }
+	void setDrawSwapIndex(int index) { cBuffSwap[1] = index; }
+	void setStreamOutputSwapIndex(int index) { dxrBuffSwap[0] = index; }
+	void setRaytraceSwapIndex(int index) { dxrBuffSwap[1] = index; }
+
+	int allSwapIndex() {
+		sync = 1 - sync;
+		setUpSwapIndex(sync);
+		setDrawSwapIndex(1 - sync);
+		setStreamOutputSwapIndex(sync);
+		setRaytraceSwapIndex(1 - sync);
+		return sync;
+	}
+
+	int cBuffSwapUpdateIndex() { return cBuffSwap[0]; }
+	int cBuffSwapDrawOrStreamoutputIndex() { return cBuffSwap[1]; }
+	int dxrBuffSwapIndex() { return dxrBuffSwap[0]; }
+	int dxrBuffSwapRaytraceIndex() { return dxrBuffSwap[1]; }
 };
 
 #endif

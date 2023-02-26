@@ -67,7 +67,7 @@ void TextObj::SetText(int comIndex) {
 		}
 	}
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	dx->createTexture(comIndex, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
 		&textureUp[0], &texture[0],
 		Twidth, Twidth * 4, Theight);

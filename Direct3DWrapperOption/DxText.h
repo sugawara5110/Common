@@ -7,7 +7,7 @@
 #ifndef Class_DxText_Header
 #define Class_DxText_Header
 
-#include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/Dx_PolygonData2D.h"
 #define STRTEX_MAX_PCS 125
 #define STR_MAX_LENGTH 125
 #define VAL_PCS 10
@@ -36,7 +36,6 @@ private:
 class DxText {
 
 private:
-	Dx12Process* dx;
 	TextObj text[STRTEX_MAX_PCS];       //文字描画用
 	TextObj value[VAL_PCS];              //可変数字用
 	TCHAR str[STRTEX_MAX_PCS][STR_MAX_LENGTH]; //登録テキスト

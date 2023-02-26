@@ -25,20 +25,15 @@ public:
 	}
 };
 
-class Dx12Process;
-
 class Dx_ShaderHolder {
 
 private:
-	friend Dx12Process;
-	static bool CreateShaderByteCodeBool;
-	static void setNorTestPS();
-	static bool CreateShaderByteCode();
-
 	Dx_ShaderHolder() {};
 	~Dx_ShaderHolder() {};
 
 public:
+	static bool CreateShaderByteCode();
+	static void setNorTestPS();
 	//シェーダーバイトコード
 	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_Smooth;
 	static ComPtr<ID3DBlob> pGeometryShader_Before_ds_Edge;

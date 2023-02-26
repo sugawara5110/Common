@@ -4,6 +4,7 @@
 //**                                                                                     **//
 //*****************************************************************************************//
 
+#define _CRT_SECURE_NO_WARNINGS
 #include "Dx_ShaderHolder.h"
 #include "./ShaderCG/ShaderCommonParameters.h"
 #include "./ShaderCG/ShaderNormalTangent.h"
@@ -28,6 +29,9 @@ void addChar::addStr(char* str1, char* str2) {
 	memcpy(str, str1, size1 + 1);
 	strncat(str, str2, size2 + 1);
 }
+
+static bool CreateShaderByteCodeBool = true;
+static bool CreateFin = false;
 
 ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName) {
 
@@ -58,6 +62,8 @@ void Dx_ShaderHolder::setNorTestPS() {
 }
 
 bool Dx_ShaderHolder::CreateShaderByteCode() {
+
+	if (CreateFin)return true;
 
 	size_t norS_size = strlen(ShaderNormalTangent) + 1;
 	size_t norL_size = strlen(ShaderCalculateLighting) + 1;
@@ -168,10 +174,11 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom, strlen(ShaderSkinMeshCom), "VSSkinCS", "cs_5_1");
 
+	CreateFin = true;
+
 	return CreateShaderByteCodeBool;
 }
 
-bool Dx_ShaderHolder::CreateShaderByteCodeBool = true;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_Smooth = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_ds_Edge = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pGeometryShader_Before_vs = nullptr;

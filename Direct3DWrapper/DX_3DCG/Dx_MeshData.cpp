@@ -29,7 +29,7 @@ ID3D12PipelineState* MeshData::GetPipelineState(int index) {
 }
 
 bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	//マテリアルファイルを開いて内容を読み込む
 	errno_t error;
 	FILE* fp = nullptr;
@@ -251,7 +251,6 @@ bool MeshData::SetVertex() {
 	using namespace CoordTf;
 	//同一座標頂点リスト
 	SameVertexList* svList = new SameVertexList[VCount];
-	Dx12Process* dx = Dx12Process::GetInstance();
 
 	for (int i = 0; i < mObj.dpara.NumMaterial; i++) {
 		CONSTANT_BUFFER2 sg;
@@ -380,26 +379,26 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 void MeshData::setPointLight(int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	mObj.dxrPara.setPointLight(dx->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	mObj.dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void MeshData::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	mObj.dxrPara.setPointLightAll(dx->dxrBuffSwapIndex(), on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	mObj.dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
 }
 
 bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnification) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
 	if (disp) {
 		mObj.GetShaderByteCode(CONTROL_POINT, true, smooth, false, nullptr, nullptr);
 	}
 	else {
 		mObj.GetShaderByteCode(SQUARE, true, smooth, false, nullptr, nullptr);
 	}
+
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	mObj.setDivideArr(divArr, numDiv);

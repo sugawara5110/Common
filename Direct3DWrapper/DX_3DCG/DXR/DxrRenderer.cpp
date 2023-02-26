@@ -18,6 +18,7 @@
 #include "./ShaderDXR/ShaderLocalParameters.h"
 #include "./ShaderDXR/ShaderRayGen.h"
 #include "./ShaderDXR/ShaderTraceRay.h"
+#include "../Core/Dx_Light.h"
 
 namespace {
 	dxc::DxcDllSupport gDxcDllHelper;
@@ -385,7 +386,6 @@ namespace {
 void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, ShaderTestMode Mode) {
 
 	PD = pd;
-	Dx12Process* dx = Dx12Process::GetInstance();
 	TMin = 0.001f;
 	TMax = 10000.0f;
 
@@ -447,7 +447,6 @@ void DxrRenderer::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 
 	if (!update)buildFlag = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
-	Dx12Process* dx = Dx12Process::GetInstance();
 	AccelerationStructureBuffers& bLB = asObj[buffSwap[0]].bottomLevelBuffers[MaterialNo];
 
 	D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = {};
@@ -512,7 +511,7 @@ void DxrRenderer::createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 }
 
 void DxrRenderer::createBottomLevelAS(Dx_CommandListObj* com) {
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	for (UINT i = 0; i < numMaterial; i++) {
 		AccelerationStructureBuffers& bLB = asObj[buffSwap[0]].bottomLevelBuffers[i];
 		if (bLB.firstSet)com->delayUavResourceBarrier(bLB.pResult.Get());
@@ -521,7 +520,7 @@ void DxrRenderer::createBottomLevelAS(Dx_CommandListObj* com) {
 
 	UINT MaterialCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
+		UpdateDXR& ud = PD[i]->updateDXR[dev->dxrBuffSwapRaytraceIndex()];
 		bool createAS = ud.createAS;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
@@ -543,7 +542,7 @@ void DxrRenderer::createBottomLevelAS(Dx_CommandListObj* com) {
 
 void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	AccelerationStructureBuffers& tLB = asObj[buffSwap[0]].topLevelBuffers;
 
 	if (tLB.firstSet) {
@@ -555,7 +554,7 @@ void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 
 	UINT numRayInstance = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
+		UpdateDXR& ud = PD[i]->updateDXR[dev->dxrBuffSwapRaytraceIndex()];
 		if (tLB.firstSet)
 			numRayInstance += ud.NumInstance * PD[i]->NumMaterial;
 		else
@@ -595,7 +594,7 @@ void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 	UINT materialCnt = 0;
 	UINT InstancingCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
+		UpdateDXR& ud = PD[i]->updateDXR[dev->dxrBuffSwapRaytraceIndex()];
 		UINT udInstanceIDCnt = 0;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
@@ -660,8 +659,6 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	wcscpy(kRayGenShader, kRayGenShaderArr[Mode]);
 	wcscpy(kBasicClosestHitShader, kBasicClosestHitShaderArr[Mode]);
-
-	Dx12Process* dx = Dx12Process::GetInstance();
 
 	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
 	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
@@ -788,15 +785,15 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 void DxrRenderer::createShaderResources() {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
-	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight());
+	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight());
 
-	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight(),
+	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
-	mpInstanceIdMapResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight(),
+	mpInstanceIdMapResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
@@ -826,8 +823,8 @@ void DxrRenderer::createShaderResources() {
 
 		mpSrvUavCbvHeap[heapInd] = device->CreateDescHeap(numLocalHeap + numGlobalHeap);
 		LocalHandleRay[heapInd] = mpSrvUavCbvHeap[heapInd].Get()->GetGPUDescriptorHandleForHeapStart();
-		LocalHandleHit[heapInd].ptr = LocalHandleRay[heapInd].ptr + numLocalHeapRay * dx->getCbvSrvUavDescriptorSize();
-		GlobalHandle[heapInd].ptr = LocalHandleHit[heapInd].ptr + numLocalHeapHit * dx->getCbvSrvUavDescriptorSize();
+		LocalHandleHit[heapInd].ptr = LocalHandleRay[heapInd].ptr + numLocalHeapRay * device->getCbvSrvUavDescriptorSize();
+		GlobalHandle[heapInd].ptr = LocalHandleHit[heapInd].ptr + numLocalHeapHit * device->getCbvSrvUavDescriptorSize();
 
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavCbvHeap[heapInd].Get()->GetCPUDescriptorHandleForHeapStart();
 
@@ -990,12 +987,12 @@ void DxrRenderer::createShaderTable() {
 
 		mpShaderTable[i].Get()->Unmap(0, nullptr);
 
-		Dx12Process* dx = Dx12Process::GetInstance();
+		Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 
 		D3D12_DISPATCH_RAYS_DESC& rDesc = raytraceDesc[i];
 
-		rDesc.Width = dx->getClientWidth();
-		rDesc.Height = dx->getClientHeight();
+		rDesc.Width = sw->getClientWidth();
+		rDesc.Height = sw->getClientHeight();
 		rDesc.Depth = 1;
 
 		D3D12_GPU_VIRTUAL_ADDRESS startAddress = mpShaderTable[i].Get()->GetGPUVirtualAddress();
@@ -1018,10 +1015,10 @@ void DxrRenderer::createShaderTable() {
 void DxrRenderer::updateMaterial(CBobj* cbObj) {
 
 	using namespace CoordTf;
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	UINT MaterialCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
+		UpdateDXR& ud = PD[i]->updateDXR[dev->dxrBuffSwapRaytraceIndex()];
 
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
@@ -1048,9 +1045,10 @@ void DxrRenderer::updateMaterial(CBobj* cbObj) {
 
 void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	using namespace CoordTf;
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	MATRIX VP;
-	Dx12Process::Update& upd = dx->getUpdate(dx->cBuffSwapDrawOrStreamoutputIndex());
+	Dx_SwapChain::Update& upd = sw->getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
 	MatrixMultiply(&VP, &upd.mView, &upd.mProj);
 	MatrixTranspose(&VP);
 	DxrConstantBuffer& cb = cbObj->cb;
@@ -1065,7 +1063,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	bool breakF = false;
 	UINT MaterialCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
+		UpdateDXR& ud = PD[i]->updateDXR[dev->dxrBuffSwapRaytraceIndex()];
 		UINT udInstanceIDCnt = 0;
 		for (int j = 0; j < PD[i]->NumMaterial; j++) {
 			for (UINT k = 0; k < ud.NumInstance; k++) {
@@ -1087,8 +1085,8 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.emissivePosition[cntEm].x = v3.x;
 						cb.emissivePosition[cntEm].y = v3.y;
 						cb.emissivePosition[cntEm].z = v3.z;
-						float plightOn = PD[i]->getplightOn(dx->dxrBuffSwapRaytraceIndex(), v, j, k);
-						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dx->dxrBuffSwapRaytraceIndex(), v, j, k);
+						float plightOn = PD[i]->getplightOn(dev->dxrBuffSwapRaytraceIndex(), v, j, k);
+						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dev->dxrBuffSwapRaytraceIndex(), v, j, k);
 						cb.emissivePosition[cntEm].w = plightOn;
 						cb.Lightst[cntEm].x = Lightst.x;
 						cb.Lightst[cntEm].y = Lightst.y;
@@ -1111,15 +1109,18 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 		if (breakF)break;
 	}
 
+	Dx_Light::Update& ul = Dx_Light::getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
+	DirectionLight& dl = ul.dlight;
+
 	cb.numEmissive.x = (float)cntEm;
-	memcpy(&cb.GlobalAmbientColor, &dx->getGlobalAmbientLight(), sizeof(VECTOR4));
-	memcpy(&cb.dDirection, &upd.dlight.Direction, sizeof(VECTOR4));
-	memcpy(&cb.dLightColor, &upd.dlight.LightColor, sizeof(VECTOR4));
-	cb.dLightst.as(upd.dlight.onoff, 0.0f, 0.0f, 0.0f);
+	memcpy(&cb.GlobalAmbientColor, &Dx_Light::getGlobalAmbientLight(), sizeof(VECTOR4));
+	memcpy(&cb.dDirection, &dl.Direction, sizeof(VECTOR4));
+	memcpy(&cb.dLightColor, &dl.LightColor, sizeof(VECTOR4));
+	cb.dLightst.as(dl.onoff, 0.0f, 0.0f, 0.0f);
 
 	UINT InstancingCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {
-		UpdateDXR& ud = PD[i]->updateDXR[dx->dxrBuffSwapRaytraceIndex()];
+		UpdateDXR& ud = PD[i]->updateDXR[dev->dxrBuffSwapRaytraceIndex()];
 		for (UINT k = 0; k < ud.NumInstance; k++) {
 			int index = InstancingCnt + k;
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
@@ -1146,33 +1147,33 @@ void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 
 	if (!asObj[buffSwap[1]].topLevelBuffers.firstSet)return;
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	setCB();
 
 	com->getCommandList()->SetComputeRootSignature(mpGlobalRootSig.Get());
 
-	ID3D12DescriptorHeap* heaps[] = { mpSrvUavCbvHeap[dx->dxrBuffSwapRaytraceIndex()].Get(), mpSamplerHeap.Get() };
+	ID3D12DescriptorHeap* heaps[] = { mpSrvUavCbvHeap[dev->dxrBuffSwapRaytraceIndex()].Get(), mpSamplerHeap.Get() };
 	com->getCommandList()->SetDescriptorHeaps(ARRAY_SIZE(heaps), heaps);
 
-	com->getCommandList()->SetComputeRootDescriptorTable(0, GlobalHandle[dx->dxrBuffSwapRaytraceIndex()]);
+	com->getCommandList()->SetComputeRootDescriptorTable(0, GlobalHandle[dev->dxrBuffSwapRaytraceIndex()]);
 	com->getCommandList()->SetComputeRootDescriptorTable(1, samplerHandle);
 	com->getCommandList()->SetComputeRootShaderResourceView(2, asObj[buffSwap[1]].mpTopLevelAS.Get()->GetGPUVirtualAddress());
 
 	//Dispatch
 	com->getCommandList()->SetPipelineState1(mpPipelineState.Get());
-	com->getCommandList()->DispatchRays(&raytraceDesc[dx->dxrBuffSwapRaytraceIndex()]);
+	com->getCommandList()->DispatchRays(&raytraceDesc[dev->dxrBuffSwapRaytraceIndex()]);
 }
 
 void DxrRenderer::copyBackBuffer(uint32_t comNo) {
 	//結果をバックバッファにコピー
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->GetRtBuffer()->delayCopyResource(comNo, &mpOutputResource);
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	sw->GetRtBuffer()->delayCopyResource(comNo, &mpOutputResource);
 }
 
 void DxrRenderer::copyDepthBuffer(uint32_t comNo) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dx->GetDepthBuffer()->delayCopyResource(comNo, &mpDepthResource);
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	sw->GetDepthBuffer()->delayCopyResource(comNo, &mpDepthResource);
 }
 
 void DxrRenderer::update_g(int comNo, UINT numRecursion) {

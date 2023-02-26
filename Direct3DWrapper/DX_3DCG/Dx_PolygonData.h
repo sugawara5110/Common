@@ -7,7 +7,7 @@
 #ifndef Class_PolygonData_Header
 #define Class_PolygonData_Header
 
-#include "Core/Dx12ProcessCore.h"
+#include "Core/Dx_BasicPolygon.h"
 
 class PolygonData :public BasicPolygon {
 

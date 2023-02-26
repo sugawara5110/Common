@@ -238,14 +238,14 @@ void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame
 	pvVBM = new VertexM * [numMesh];
 	mObj = new BasicPolygon[numMesh];
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), numMaxInstance, divArr, numDiv);
 		if (numBone[i] > 0) {
 			sk[i].getBuffer(&mObj[i]);
 		}
-		if (dx->getDxrCreateResourceState()) {
+		if (dev->getDxrCreateResourceState()) {
 			UpdateDXR& u0 = mObj[i].dxrPara.updateDXR[0];
 			UpdateDXR& u1 = mObj[i].dxrPara.updateDXR[1];
 			u0.useVertex = true;
@@ -546,7 +546,8 @@ void SkinMesh::splitIndex(UINT numMaterial, FbxMeshNode* mesh, int m) {
 void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 	char* uv0Name, char* uv1Name, int* uvSw) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	int m = meshInd;
 	for (UINT i = 0; i < numMaterial; i++) {
 		//ディフェーズテクスチャId取得
@@ -628,7 +629,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 		mObj[m].mObjectCB1->CopyData(i, sg);
-		if (dx->getDxrCreateResourceState()) {
+		if (dev->getDxrCreateResourceState()) {
 			mObj[m].setColorDXR(i, sg);
 		}
 	}
@@ -675,22 +676,21 @@ void SkinMesh::swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw) {
 }
 
 void SkinMesh::SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex) {
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	mObj[meshIndex].dpara.material[materialIndex].diftex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int meshIndex) {
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	mObj[meshIndex].dpara.material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	mObj[meshIndex].dpara.material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
 }
 
 void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
-	Dx12Process* dx = Dx12Process::GetInstance();
 	for (int i = 0; i < numMesh; i++) {
 		BasicPolygon& o = mObj[i];
 		if (disp) {
@@ -720,16 +720,16 @@ void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshInd
 void SkinMesh::setPointLight(int meshIndex, int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	mObj[meshIndex].dxrPara.setPointLight(dx->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	mObj[meshIndex].dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void SkinMesh::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	for (int i = 0; i < numMesh; i++) {
-		mObj[i].dxrPara.setPointLightAll(dx->dxrBuffSwapIndex(), on_off, range, atten);
+		mObj[i].dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
 	}
 }
 
@@ -970,10 +970,10 @@ CoordTf::MATRIX SkinMesh::GetCurrentPoseMatrix(int index) {
 void SkinMesh::GetMeshCenterPos() {
 	using namespace CoordTf;
 	for (int i = 0; i < numMesh; i++) {
-		Dx12Process* dx = Dx12Process::GetInstance();
-		if (dx->getDxrCreateResourceState()) {
+		Dx_Device* dev = Dx_Device::GetInstance();
+		if (dev->getDxrCreateResourceState()) {
 			VECTOR3 cp = centerPos[i].pos;
-			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[dx->dxrBuffSwapIndex()];//StreamOutput内もdxrBuffSwapIndex()だが書き込み箇所が異なるのでOK
+			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[dev->dxrBuffSwapIndex()];//StreamOutput内もdxrBuffSwapIndex()だが書き込み箇所が異なるのでOK
 			VECTOR3* vv = &ud.v[0];
 			vv->as(cp.x, cp.y, cp.z);
 			if (numBone[i] > 0) {
@@ -1048,8 +1048,8 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, int InternalAnimationIndex,
 	bool frame_end = false;
 	int insnum = 0;
 	if (ti != -1.0f)frame_end = SetNewPoseMatrices(ti, ind, InternalAnimationIndex);
-	Dx12Process* dx = Dx12Process::GetInstance();
-	MatrixMap_Bone(&sgb[dx->cBuffSwapUpdateIndex()]);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	MatrixMap_Bone(&sgb[dev->cBuffSwapUpdateIndex()]);
 
 	for (int i = 0; i < numMesh; i++) {
 		if (!noUseMesh[i])
@@ -1077,8 +1077,8 @@ void SkinMesh::DrawOff() {
 
 void SkinMesh::Draw(int comIndex) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 
 	for (int i = 0; i < numMesh; i++)
 		mObj[i].Draw(comIndex);
@@ -1086,8 +1086,8 @@ void SkinMesh::Draw(int comIndex) {
 
 void SkinMesh::StreamOutput(int comIndex) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dx->cBuffSwapDrawOrStreamoutputIndex()]);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 
 	for (int i = 0; i < numMesh; i++) {
 		mObj[i].StreamOutput(comIndex);

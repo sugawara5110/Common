@@ -14,8 +14,6 @@
 #include <string.h>
 
 #define LIGHT_PCS 256
-#define INSTANCE_PCS_2D 256
-#define MAX_BONES 256
 #define RELEASE(p)    if(p){p->Release();  p=nullptr;}
 #define S_DELETE(p)   if(p){delete p;      p=nullptr;}
 #define ARR_DELETE(p) if(p){delete[] p;    p=nullptr;}
@@ -76,37 +74,6 @@ struct cbInstanceID {
 	CoordTf::VECTOR4 instanceID;//x:ID, y:1.0f on 0.0f off
 };
 
-//コンスタントバッファ2D用
-struct CONSTANT_BUFFER2D {
-	CoordTf::VECTOR4 Pos[INSTANCE_PCS_2D];
-	CoordTf::VECTOR4 Color[INSTANCE_PCS_2D];
-	CoordTf::VECTOR4 sizeXY[INSTANCE_PCS_2D];
-	CoordTf::VECTOR4 WidHei;//ウインドウwh
-};
-
-//ポイントライト
-struct PointLight {
-	CoordTf::VECTOR4 LightPos[LIGHT_PCS];   //xyz:Pos, w:オンオフ
-	CoordTf::VECTOR4 LightColor[LIGHT_PCS];//色
-	CoordTf::VECTOR4 Lightst[LIGHT_PCS];  //レンジ, 減衰1, 減衰2, 減衰3
-	int     LightPcs;     //ライト個数
-};
-
-//平行光源
-struct DirectionLight {
-	CoordTf::VECTOR4 Direction;  //方向
-	CoordTf::VECTOR4 LightColor;//色
-	float onoff;
-};
-
-//フォグ
-struct Fog {
-	CoordTf::VECTOR4  FogColor;//フォグの色
-	float    Amount;  //フォグ量
-	float    Density;//密度
-	float    on_off;
-};
-
 //頂点3DTexture無し
 struct VertexBC {
 	CoordTf::VECTOR3 Pos;     //位置
@@ -134,51 +101,6 @@ struct VertexM {
 	CoordTf::VECTOR3 tangent;  //接ベクトル
 	CoordTf::VECTOR3 geoNormal;
 	CoordTf::VECTOR2 tex;      //テクスチャ座標
-};
-
-//以下スキンメッシュ
-struct MY_VERTEX_S {
-	CoordTf::VECTOR3 vPos = {};//頂点
-	CoordTf::VECTOR3 vNorm = {};//法線
-	CoordTf::VECTOR3 vTangent;  //接ベクトル
-	CoordTf::VECTOR3 vGeoNorm = {};//ジオメトリ法線
-	CoordTf::VECTOR2 vTex0 = {};//UV座標0
-	CoordTf::VECTOR2 vTex1 = {};//UV座標1
-	UINT bBoneIndex[4] = {};//ボーン　番号
-	float bBoneWeight[4] = {};//ボーン　重み
-};
-
-struct MY_MATERIAL_S {
-	CoordTf::VECTOR4 diffuse = {};
-	CoordTf::VECTOR4 specular = {};
-	CoordTf::VECTOR4 ambient = {};
-	CHAR difUvName[255] = {};
-	CHAR norUvName[255] = {};
-	CHAR speUvName[255] = {};
-	int diftex_no = -1;
-	int nortex_no = -1;
-	int spetex_no = -1;
-};
-
-struct BONE {
-	CoordTf::MATRIX mBindPose;//初期ポーズ
-	CoordTf::MATRIX mNewPose;//現在のポーズ
-
-	BONE()
-	{
-		ZeroMemory(this, sizeof(BONE));
-	}
-};
-
-struct SHADER_GLOBAL_BONES {
-	CoordTf::MATRIX mBone[MAX_BONES];
-	SHADER_GLOBAL_BONES()
-	{
-		for (int i = 0; i < MAX_BONES; i++)
-		{
-			MatrixIdentity(&mBone[i]);
-		}
-	}
 };
 
 class SameVertexList {

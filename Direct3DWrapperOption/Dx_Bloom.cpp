@@ -285,9 +285,10 @@ namespace {
 			if (!createDescHeap())return false;
 			mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom>(1);
 
-			Dx12Process* dx = Dx12Process::GetInstance();
+			Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+			Dx_Device* dev = Dx_Device::GetInstance();
 
-			if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
+			if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight()))) {
 				Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 			}
 			mpInputBuffer = InputBuffer;
@@ -297,17 +298,17 @@ namespace {
 			if (!GaussianCreate(comIndex, gaBaseSize))return false;
 
 			mGaussianFilterHandleGPU.ptr = gpuHandle;
-			mInputHandleGPU.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
-			mInstanceIdMapHandleGPU.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
-			mOutputHandleGPU.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
+			mInputHandleGPU.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
+			mInstanceIdMapHandleGPU.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
+			mOutputHandleGPU.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
 
 			for (UINT i = 0; i < GaussInout.numGauss; i++) {
-				GaussInout.gInout[i].mGaussInOutHandleGPU0.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
-				GaussInout.gInout[i].mGaussInOutHandleGPU1.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
-				GaussInout.gInout[i].mLuminanceHandleGPU.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
+				GaussInout.gInout[i].mGaussInOutHandleGPU0.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
+				GaussInout.gInout[i].mGaussInOutHandleGPU1.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
+				GaussInout.gInout[i].mLuminanceHandleGPU.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
 			}
-			GaussInout.mGaussTexHandleGPU.ptr = (gpuHandle += dx->getCbvSrvUavDescriptorSize());
-			gpuHandle += dx->getCbvSrvUavDescriptorSize();
+			GaussInout.mGaussTexHandleGPU.ptr = (gpuHandle += dev->getCbvSrvUavDescriptorSize());
+			gpuHandle += dev->getCbvSrvUavDescriptorSize();
 			//ª”z—ñ—p
 
 			UINT StructureByteStride[1] = { sizeof(float) };
@@ -404,7 +405,7 @@ namespace {
 
 			ID3D12GraphicsCommandList* mCList = cObj->getCommandList();
 
-			Dx12Process* dx = Dx12Process::GetInstance();
+			Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 
 			CONSTANT_BUFFER_Bloom cb = {};
 			cb.GaussianWid = (float)GaussianWid;
@@ -426,8 +427,8 @@ namespace {
 			D3D12_RESOURCE_BARRIER ba = {};
 			ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 
-			UINT disX = dx->getClientWidth() / 32;
-			UINT disY = dx->getClientHeight() / 8;
+			UINT disX = sw->getClientWidth() / 32;
+			UINT disY = sw->getClientHeight() / 8;
 
 			for (UINT i = 0; i < GaussInout.numGauss; i++) {
 				UINT gauX = (UINT)GaussInout.gInout[i].mGaussInOutBuffer0.Width / 8;
@@ -472,9 +473,7 @@ namespace {
 			return &mOutputBuffer;
 		}
 	};
-}
 
-namespace {
 	Bloom* bloom = nullptr;
 }
 
@@ -487,17 +486,17 @@ Dx_Bloom::~Dx_Bloom() {
 bool Dx_Bloom::createBuffer(int comIndex) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 
 	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER_Bloom2>(1);
 
-	if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
+	if (FAILED(mOutputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight()))) {
 		Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 	}
 
 	mOutputBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("mOutputBuffer", objName));
 
-	if (FAILED(mInputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(dx->getClientWidth(), dx->getClientHeight()))) {
+	if (FAILED(mInputBuffer.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight()))) {
 		Dx_Util::ErrorMessage("Bloom::ComCreate Error!!"); return false;
 	}
 
@@ -654,7 +653,7 @@ void Dx_Bloom::Compute(
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj& d = *cMa->getGraphicsComListObj(comIndex);
 	ID3D12GraphicsCommandList* mCList = d.getCommandList();
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 
 	d.Bigin();
 
@@ -692,8 +691,8 @@ void Dx_Bloom::Compute(
 	D3D12_RESOURCE_BARRIER ba = {};
 	ba.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 
-	UINT disX = dx->getClientWidth() / 32;
-	UINT disY = dx->getClientHeight() / 8;
+	UINT disX = sw->getClientWidth() / 32;
+	UINT disY = sw->getClientHeight() / 8;
 
 	mCList->SetPipelineState(mPSO.Get());
 	mCList->Dispatch(disX, disY, 1);

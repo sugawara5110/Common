@@ -7,7 +7,7 @@
 #ifndef Class_Wave_Header
 #define Class_Wave_Header
 
-#include "../Direct3DWrapper/DX_3DCG/Core/Dx12ProcessCore.h"
+#include "../Direct3DWrapper/DX_3DCG/Core/Dx_BasicPolygon.h"
 
 class Wave :public BasicPolygon {
 

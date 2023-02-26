@@ -20,9 +20,8 @@ void Wave::createShader() {
 
 	if (createShaderDone)return;
 
-	Dx12Process* dx = Dx12Process::GetInstance();
 	addChar Com, Wave;
-	Com.addStr(dx->getShaderCommonParameters(), dx->getShaderNormalTangent());
+	Com.addStr(Dx_ShaderHolder::ShaderCommonParametersCopy.get(), Dx_ShaderHolder::ShaderNormalTangentCopy.get());
 	Wave.addStr(Com.str, ShaderWaveDraw);
 
 	//Wave
@@ -111,7 +110,6 @@ bool Wave::ComCreateSin(int comIndex) {
 	{
 		tdata[i] = (float)(i % 360);
 	}
-	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(comIndex);
@@ -147,7 +145,7 @@ bool Wave::ComCreateSin(int comIndex) {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	device->getDevice()->CreateUnorderedAccessView(mInputBufferSin.Get(), nullptr, &uavDesc, descHandleCPU);
-	descHandleCPU.ptr += dx->getCbvSrvUavDescriptorSize();
+	descHandleCPU.ptr += device->getCbvSrvUavDescriptorSize();
 
 	return true;
 }
@@ -190,7 +188,6 @@ bool Wave::ComCreateRipples(int comIndex) {
 		Dx_Util::ErrorMessage("Wave::ComCreate Error!!"); return false;
 	}
 
-	Dx12Process* dx = Dx12Process::GetInstance();
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(comIndex);
 
@@ -221,14 +218,14 @@ bool Wave::ComCreateRipples(int comIndex) {
 	uavDesc.Texture2D.MipSlice = 0;
 
 	device->getDevice()->CreateUnorderedAccessView(mInputBuffer.Get(), nullptr, &uavDesc, descHandleCPU);
-	descHandleCPU.ptr += dx->getCbvSrvUavDescriptorSize();
+	descHandleCPU.ptr += device->getCbvSrvUavDescriptorSize();
 	device->getDevice()->CreateUnorderedAccessView(mOutputBuffer.Get(), nullptr, &uavDesc, descHandleCPU);
-	descHandleCPU.ptr += dx->getCbvSrvUavDescriptorSize();
+	descHandleCPU.ptr += device->getCbvSrvUavDescriptorSize();
 	device->getDevice()->CreateUnorderedAccessView(mPrevInputBuffer.Get(), nullptr, &uavDesc, descHandleCPU);
 
-	mInputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 1;
-	mOutputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 2;
-	mPrevInputHandleGPU.ptr += dx->getCbvSrvUavDescriptorSize() * 3;
+	mInputHandleGPU.ptr += device->getCbvSrvUavDescriptorSize() * 1;
+	mOutputHandleGPU.ptr += device->getCbvSrvUavDescriptorSize() * 2;
+	mPrevInputHandleGPU.ptr += device->getCbvSrvUavDescriptorSize() * 3;
 
 	return true;
 }
@@ -297,7 +294,7 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 
 bool Wave::setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, const int numCbv) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	TextureNo* te = new TextureNo[dpara.NumMaterial];
 	int tCnt = 0;
 	for (int i = 0; i < dpara.NumMaterial; i++) {
@@ -352,7 +349,7 @@ bool Wave::setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, 
 
 bool Wave::DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	BasicPolygon::dpara.material[0].diftex_no = texNo;
 	BasicPolygon::dpara.material[0].nortex_no = nortNo;
 	BasicPolygon::dpara.material[0].spetex_no = dx->GetTexNumber("dummyDifSpe.");
@@ -390,13 +387,15 @@ void Wave::setMaterialType(MaterialType type) {
 void Wave::setPointLight(int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	dxrPara.setPointLight(Dx12Process::GetInstance()->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
 }
 
 void Wave::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	dxrPara.setPointLightAll(Dx12Process::GetInstance()->dxrBuffSwapIndex(), on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
 }
 
 bool Wave::Create(int comIndex, int texNo, bool blend, bool alpha, float waveHeight, int divide, bool smooth, float TimeStep) {
@@ -432,11 +431,12 @@ void Wave::InstancingUpdate(int waveNo, float speed, float disp, float SmoothRan
 	mk[1] = (4.0f - 8.0f * e) / d;
 	mk[2] = (2.0f * e) / d;
 
-	Step& st = step[Dx12Process::GetInstance()->cBuffSwapUpdateIndex()];
+	Dx_Device* dev = Dx_Device::GetInstance();
+	Step& st = step[dev->cBuffSwapUpdateIndex()];
 	st.disturbStep = disturbStep;
 	st.updateStep = updateStep;
 	st.waveNo = waveNo;
-	CONSTANT_BUFFER_WAVE& cb = cbw[Dx12Process::GetInstance()->cBuffSwapUpdateIndex()];
+	CONSTANT_BUFFER_WAVE& cb = cbw[dev->cBuffSwapUpdateIndex()];
 	cb.speed = speed;
 	cb.wHei_mk012.y = mk[0];
 	cb.wHei_mk012.z = mk[1];
@@ -468,8 +468,9 @@ void Wave::DrawOff() {
 
 void Wave::Compute(int comIndex) {
 
-	mObjectCB_WAVE->CopyData(0, cbw[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()]);
-	int waveNo = step[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()].waveNo;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	mObjectCB_WAVE->CopyData(0, cbw[dev->cBuffSwapDrawOrStreamoutputIndex()]);
+	int waveNo = step[dev->cBuffSwapDrawOrStreamoutputIndex()].waveNo;
 
 	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex)->getCommandList();
 
@@ -492,7 +493,7 @@ void Wave::Compute(int comIndex) {
 		break;
 
 	case 1:
-		time0 += step[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()].disturbStep;
+		time0 += step[dev->cBuffSwapDrawOrStreamoutputIndex()].disturbStep;
 		if (time0 > TimeStep) {
 			mCList->SetPipelineState(mPSOCom[1].Get());
 			mCList->SetComputeRootDescriptorTable(2, mInputHandleGPU);
@@ -504,7 +505,7 @@ void Wave::Compute(int comIndex) {
 			time0 = 0.0f;
 		}
 
-		time1 += step[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()].updateStep;
+		time1 += step[dev->cBuffSwapDrawOrStreamoutputIndex()].updateStep;
 		if (time1 > TimeStep) {
 			mCList->SetPipelineState(mPSOCom[2].Get());
 			mCList->SetComputeRootDescriptorTable(1, mInputHandleGPU);
@@ -527,7 +528,9 @@ void Wave::Compute(int comIndex) {
 }
 
 void Wave::Draw(int comIndex) {
-	if (!BasicPolygon::firstCbSet[Dx12Process::GetInstance()->cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
+
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (!BasicPolygon::firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
 	Compute(comIndex);
 	BasicPolygon::Draw(comIndex);
 }

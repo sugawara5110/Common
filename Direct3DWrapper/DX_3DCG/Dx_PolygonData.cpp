@@ -49,15 +49,15 @@ void PolygonData::setMaterialType(MaterialType type) {
 void PolygonData::setPointLight(int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dxrPara.setPointLight(dx->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
 }
 
 void PolygonData::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	dxrPara.setPointLightAll(dx->dxrBuffSwapIndex(), on_off, range, atten);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
 }
 
 bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
@@ -87,7 +87,6 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	const int numSrvTex = 3;
 	const int numCbv = 2;
 	int numUav = 0;
-	Dx12Process* dx = Dx12Process::GetInstance();
 	if (tNo == -1 && (!movOn || !movOn[0].m_on)) {
 		VertexBC* v = (VertexBC*)ver;
 		ARR_DELETE(v);

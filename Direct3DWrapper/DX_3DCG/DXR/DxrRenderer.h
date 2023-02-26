@@ -7,7 +7,7 @@
 #ifndef Class_DxrRenderer_Header
 #define Class_DxrRenderer_Header
 
-#include "../Core/Dx12ProcessCore.h"
+#include "../Core/ParameterDXR.h"
 #include "../../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
 
 struct AccelerationStructureBuffers
@@ -134,8 +134,8 @@ public:
 	Dx_Resource* getInstanceIdMap();
 
 	void allSwapIndex() {
-		Dx12Process* dx = Dx12Process::GetInstance();
-		int sync = dx->allSwapIndex();
+		Dx_Device* dev = Dx_Device::GetInstance();
+		int sync = dev->allSwapIndex();
 		setASswapIndex(sync);
 		setRaytraceSwapIndex(1 - sync);
 	}

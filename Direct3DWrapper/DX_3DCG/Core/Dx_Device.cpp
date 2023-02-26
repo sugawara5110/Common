@@ -114,6 +114,17 @@ HRESULT Dx_Device::createDevice() {
 		}
 	}
 
+	if (DXR_CreateResource) {
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
+		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+		{
+			Dx_Util::ErrorMessage("DXR not supported");
+			DXR_CreateResource = false;
+			return hr;
+		}
+	}
+
 	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	return hardwareResult;
@@ -403,6 +414,6 @@ void Dx_Device::CreateUavTexture(D3D12_CPU_DESCRIPTOR_HANDLE& hDescriptor, ID3D1
 	}
 }
 
-
-
-
+UINT Dx_Device::getCbvSrvUavDescriptorSize() {
+	return mCbvSrvUavDescriptorSize;
+}

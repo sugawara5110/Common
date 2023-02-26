@@ -1,10 +1,10 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   　　　          PolygonData2Dクラス                               **//
+//**                   　　　          PolygonData2D                                     **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
-#include "Dx12ProcessCore.h"
+#include "Dx_PolygonData2D.h"
 
 float PolygonData2D::magnificationX = 1.0f;
 float PolygonData2D::magnificationY = 1.0f;
@@ -12,12 +12,13 @@ float PolygonData2D::magnificationY = 1.0f;
 void PolygonData2D::Pos2DCompute(CoordTf::VECTOR3* p) {
 	using namespace CoordTf;
 	MATRIX VP, VP_VP;
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
 	//入力3D座標から変換行列取得
-	MatrixMultiply(&VP, &dx->getUpdate(dx->cBuffSwapUpdateIndex()).mView, &dx->getUpdate(dx->cBuffSwapUpdateIndex()).mProj);
+	MatrixMultiply(&VP, &sw->getUpdate(dev->cBuffSwapUpdateIndex()).mView, &sw->getUpdate(dev->cBuffSwapUpdateIndex()).mProj);
 	//ビューポート行列作成(3D座標→2D座標変換に使用)
 	MATRIX Vp = {};
-	MatrixViewPort(&Vp, dx->getClientWidth(), dx->getClientHeight());
+	MatrixViewPort(&Vp, sw->getClientWidth(), sw->getClientHeight());
 	MatrixMultiply(&VP_VP, &VP, &Vp);
 	//変換後の座標取得
 	VectorMatrixMultiply(p, &VP_VP);
@@ -59,22 +60,23 @@ void PolygonData2D::InstancedSetConstBf(float x, float y, float r, float g, floa
 
 void PolygonData2D::InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	int sw = dx->cBuffSwapUpdateIndex();
-	cb2[sw].Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
-	cb2[sw].Color[ins_no].as(r, g, b, a);
-	cb2[sw].sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
-	cb2[sw].WidHei.as((float)dx->getClientWidth(), (float)dx->getClientHeight(), 0.0f, 0.0f);
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
+	int swI = dev->cBuffSwapUpdateIndex();
+	cb2[swI].Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
+	cb2[swI].Color[ins_no].as(r, g, b, a);
+	cb2[swI].sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
+	cb2[swI].WidHei.as((float)sw->getClientWidth(), (float)sw->getClientHeight(), 0.0f, 0.0f);
 	ins_no++;
 }
 
 void PolygonData2D::SetConstBf(CONSTANT_BUFFER2D* cb, float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 	cb->Pos[ins_no].as(x * magX, y * magY, z, 0.0f);
 	cb->Color[ins_no].as(r, g, b, a);
 	cb->sizeXY[ins_no].as(sizeX * magX, sizeY * magY, 0.0f, 0.0f);
-	cb->WidHei.as((float)dx->getClientWidth(), (float)dx->getClientHeight(), 0.0f, 0.0f);
+	cb->WidHei.as((float)sw->getClientWidth(), (float)sw->getClientHeight(), 0.0f, 0.0f);
 	ins_no++;
 }
 
@@ -187,9 +189,9 @@ bool PolygonData2D::Create(int comIndex, bool blend, bool alpha, int noTex) {
 }
 
 void PolygonData2D::CbSwap() {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	firstCbSet[dx->cBuffSwapUpdateIndex()] = true;
-	insNum[dx->cBuffSwapUpdateIndex()] = ins_no;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	firstCbSet[dev->cBuffSwapUpdateIndex()] = true;
+	insNum[dev->cBuffSwapUpdateIndex()] = ins_no;
 	ins_no = 0;
 	DrawOn = true;
 }
@@ -203,8 +205,8 @@ void PolygonData2D::Update(float x, float y, float r, float g, float b, float a,
 }
 
 void PolygonData2D::Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY) {
-	Dx12Process* dx = Dx12Process::GetInstance();
-	SetConstBf(&cb2[dx->cBuffSwapUpdateIndex()], x, y, z, r, g, b, a, sizeX, sizeY);
+	Dx_Device* dev = Dx_Device::GetInstance();
+	SetConstBf(&cb2[dev->cBuffSwapUpdateIndex()], x, y, z, r, g, b, a, sizeX, sizeY);
 	CbSwap();
 }
 
@@ -214,12 +216,12 @@ void PolygonData2D::DrawOff() {
 
 void PolygonData2D::Draw(int comIndex) {
 
-	Dx12Process* dx = Dx12Process::GetInstance();
-	if (!firstCbSet[dx->cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
+	Dx_Device* dev = Dx_Device::GetInstance();
+	if (!firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
 	ID3D12GraphicsCommandList* mCList = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex)->getCommandList();
 
-	mObjectCB->CopyData(0, cb2[dx->cBuffSwapDrawOrStreamoutputIndex()]);
+	mObjectCB->CopyData(0, cb2[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 
 	mCList->SetPipelineState(mPSO.Get());
 
@@ -235,7 +237,7 @@ void PolygonData2D::Draw(int comIndex) {
 	mCList->SetGraphicsRootDescriptorTable(0, mDescHeap->GetGPUDescriptorHandleForHeapStart());
 
 	mCList->DrawIndexedInstanced(
-		Iview->IndexCount, insNum[dx->cBuffSwapDrawOrStreamoutputIndex()], 0, 0, 0);
+		Iview->IndexCount, insNum[dev->cBuffSwapDrawOrStreamoutputIndex()], 0, 0, 0);
 }
 
 
