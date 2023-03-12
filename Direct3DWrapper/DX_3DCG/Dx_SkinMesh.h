@@ -75,6 +75,7 @@ protected:
 	SkinnedCom* sk = nullptr;
 	CoordTf::MATRIX Axis = {};
 	std::unique_ptr<bool[]> noUseMesh = nullptr;
+	float directTime = 0.0f;
 
 	void DestroyFBX();
 	HRESULT InitFBX(CHAR* szFileName, int p);
@@ -103,6 +104,7 @@ public:
 	void SetConnectStep(int ind, float step);
 	void Vertex_hold();
 	HRESULT GetFbx(CHAR* szFileName);
+	int32_t getMaxEndframe(int fbxIndex, int InternalAnimationIndex);
 	void GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame, bool singleMesh = false, bool deformer = true);
 	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
 	void noUseMeshIndex(int meshIndex);
@@ -125,6 +127,8 @@ public:
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+
+	void setDirectTime(float ti);
 
 	bool InstancingUpdate(int ind, float time, int InternalAnimationIndex = 0,
 		float disp = 1.0f,

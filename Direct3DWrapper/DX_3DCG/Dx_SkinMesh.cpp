@@ -14,7 +14,7 @@ using namespace std;
 SkinMesh::SkinMesh_sub::SkinMesh_sub() {
 	fbxL = new FbxLoader();
 	MatrixIdentity(&rotZYX);
-	connect_step = 3000.0f;
+	connect_step = 300.0f;
 	InternalLastAnimationIndex = -1;
 }
 
@@ -38,6 +38,7 @@ SkinMesh::SkinMesh() {
 	BoneConnect = -1.0f;
 	numDiv = 3;
 	AnimLastInd = -1;
+	directTime = -1.0f;
 }
 
 SkinMesh::~SkinMesh() {
@@ -178,6 +179,19 @@ HRESULT SkinMesh::GetFbx(CHAR* szFileName) {
 		return E_FAIL;
 	}
 	return S_OK;
+}
+
+int32_t SkinMesh::getMaxEndframe(int fbxIndex, int InternalAnimationIndex) {
+	FbxLoader* fl = fbx[fbxIndex].fbxL;
+	FbxMeshNode* mesh = fl->getFbxMeshNode(0);
+	Deformer* defo = nullptr;
+	if (fbxIndex == 0) {
+		defo = mesh->getDeformer(0);
+	}
+	else {
+		defo = fl->getNoneMeshDeformer(0);
+	}
+	return defo->getMaxFRAMES60(InternalAnimationIndex);
 }
 
 void SkinMesh::GetBuffer(int numMaxInstance, float end_frame, bool singleMesh, bool deformer) {
@@ -865,6 +879,11 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind, int InternalAnimationIndex)
 	}
 	bool frame_end = false;
 	fbx[ind].current_frame += ti;
+	if (directTime >= 0.0f) {
+		fbx[ind].current_frame = directTime;
+	}
+	directTime = -1.0f;
+
 	if (fbx[ind].end_frame[InternalAnimationIndex] <= fbx[ind].current_frame) frame_end = true;
 
 	if (frame_end || ind_change) {
@@ -882,7 +901,7 @@ bool SkinMesh::SetNewPoseMatrices(float ti, int ind, int InternalAnimationIndex)
 
 	int frame = (int)fbx[ind].current_frame;
 	Deformer Time;
-	int64_t time = Time.getTimeFRAMES60(frame / 10);
+	int64_t time = Time.getTimeFRAMES60(frame);
 
 	bool subanm = true;
 	if (ind <= 0 || ind > FBX_PCS - 1)subanm = false;
@@ -1105,4 +1124,8 @@ void SkinMesh::TextureInit(int width, int height, int texIndex, int meshIndex) {
 
 HRESULT SkinMesh::SetTextureMPixel(int com_no, BYTE* frame, int texIndex, int meshIndex) {
 	return mObj[meshIndex].SetTextureMPixel(com_no, frame, texIndex);
+}
+
+void SkinMesh::setDirectTime(float ti) {
+	directTime = ti;
 }
