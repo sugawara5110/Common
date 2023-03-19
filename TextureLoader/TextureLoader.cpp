@@ -11,7 +11,7 @@
 #include "../../JPGLoader/JPGLoader.h"
 #include <locale.h>
 
-bool TextureLoader::GetTexture(int numTexArr, Texture* tex, Dx12Process* dx) {
+bool TextureLoader::GetTexture(int numTexArr, Texture* tex, Dx_TextureHolder* dx) {
 
 	char str[100];
 
@@ -61,7 +61,7 @@ bool TextureLoader::GetTexture(int numTexArr, Texture* tex, Dx12Process* dx) {
 	return true;
 }
 
-bool TextureLoader::GetTexture2(int numTexArr, Texture* tex, Dx12Process* dx) {
+bool TextureLoader::GetTexture2(int numTexArr, Texture* tex, Dx_TextureHolder* dx) {
 
 	char str[100];
 	PNGLoader png;
