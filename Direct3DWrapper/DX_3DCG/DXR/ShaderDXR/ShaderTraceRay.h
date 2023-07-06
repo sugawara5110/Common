@@ -27,7 +27,7 @@ char* ShaderTraceRay =
 
 "       float3 SpeculerCol = mcb.Speculer.xyz;\n"
 "       float3 Diffuse = mcb.Diffuse.xyz;\n"
-"       float3 Ambient = mcb.Ambient.xyz;\n"
+"       float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "       float shininess = mcb.shininess;\n"
 
 "       if(RecursionCnt <= maxRecursion) {\n"

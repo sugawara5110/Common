@@ -622,21 +622,24 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		CONSTANT_BUFFER2 sg = {};
 		//拡散反射光
 		CoordTf::VECTOR4* diffuse = &mObj[m].dpara.material[i].diffuse;
-		diffuse->x = (float)mesh->getDiffuseColor(i, 0) + addDiffuse;
-		diffuse->y = (float)mesh->getDiffuseColor(i, 1) + addDiffuse;
-		diffuse->z = (float)mesh->getDiffuseColor(i, 2) + addDiffuse;
+		float DiffuseFactor = (float)mesh->getDiffuseFactor(i);
+		diffuse->x = (float)mesh->getDiffuseColor(i, 0) * DiffuseFactor + addDiffuse;
+		diffuse->y = (float)mesh->getDiffuseColor(i, 1) * DiffuseFactor + addDiffuse;
+		diffuse->z = (float)mesh->getDiffuseColor(i, 2) * DiffuseFactor + addDiffuse;
 		diffuse->w = 0.0f;//使用してない
 		//スペキュラー
 		CoordTf::VECTOR4* specular = &mObj[m].dpara.material[i].specular;
-		specular->x = (float)mesh->getSpecularColor(i, 0) + addSpecular;
-		specular->y = (float)mesh->getSpecularColor(i, 1) + addSpecular;
-		specular->z = (float)mesh->getSpecularColor(i, 2) + addSpecular;
+		float SpecularFactor = (float)mesh->getSpecularFactor(i);
+		specular->x = (float)mesh->getSpecularColor(i, 0) * SpecularFactor + addSpecular;
+		specular->y = (float)mesh->getSpecularColor(i, 1) * SpecularFactor + addSpecular;
+		specular->z = (float)mesh->getSpecularColor(i, 2) * SpecularFactor + addSpecular;
 		specular->w = 0.0f;//使用してない
 		//アンビエント
 		CoordTf::VECTOR4* ambient = &mObj[m].dpara.material[i].ambient;
-		ambient->x = (float)mesh->getAmbientColor(i, 0) + addAmbient;
-		ambient->y = (float)mesh->getAmbientColor(i, 1) + addAmbient;
-		ambient->z = (float)mesh->getAmbientColor(i, 2) + addAmbient;
+		float AmbientFactor = (float)mesh->getAmbientFactor(i);
+		ambient->x = (float)mesh->getAmbientColor(i, 0) * AmbientFactor + addAmbient;
+		ambient->y = (float)mesh->getAmbientColor(i, 1) * AmbientFactor + addAmbient;
+		ambient->z = (float)mesh->getAmbientColor(i, 2) * AmbientFactor + addAmbient;
 		ambient->w = 0.0f;//使用してない
 
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
