@@ -9,6 +9,7 @@
 #define PARANUMAC 1
 
 DxActivation::DxActivation(UINT numNode, UINT inputsetnum) {
+
 	NumNode = numNode;
 	inputSetNum = inputsetnum;
 	inputSetNumCur = inputsetnum;
@@ -58,24 +59,24 @@ void DxActivation::ComCreate(ActivationName name) {
 
 	switch (name) {
 	case CrossEntropySigmoid:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "FPsigmoidCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "BPSigmoidCECS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "FPsigmoidCS", "cs_5_0");
+		pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "BPSigmoidCECS", "cs_5_0");
 		break;
 	case Sigmoid:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "FPsigmoidCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "BPSigmoidCS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "FPsigmoidCS", "cs_5_0");
+		pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "BPSigmoidCS", "cs_5_0");
 		break;
 	case ReLU:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "FPReLUCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "BPReLUCS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "FPReLUCS", "cs_5_0");
+		pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "BPReLUCS", "cs_5_0");
 		break;
 	case ELU:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "FPELUCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "BPELUCS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "FPELUCS", "cs_5_0");
+		pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "BPELUCS", "cs_5_0");
 		break;
 	case Tanh:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "FPtanhCS", "cs_5_0");
-		pCS[1] = CompileShader(repsh, strlen(repsh), "BPtanhCS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "FPtanhCS", "cs_5_0");
+		pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "BPtanhCS", "cs_5_0");
 		break;
 	}
 	ARR_DELETE(repsh);
@@ -101,26 +102,27 @@ void DxActivation::SetTargetEl(float el, UINT ElNum) {
 
 void DxActivation::ForwardPropagation(UINT inputsetnum) {
 	inputSetNumCur = inputsetnum;
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[0].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(NumNode / shaderThreadNum[0], 1, inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer.Get(),
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[0].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mNodeBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(NumNode / shaderThreadNum[0], 1, inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
+
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mNodeReadBuffer.Get(), mNodeBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer.Get(),
+	CList->CopyResource(mNodeReadBuffer.Get(), mNodeBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mNodeBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 	CopyOutputResourse();
 }
 
@@ -142,26 +144,27 @@ float DxActivation::GetcrossEntropyError() {
 }
 
 void DxActivation::BackPropagation() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(NumNode / shaderThreadNum[0], 1, inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer.Get(),
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[1].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mNodeBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(2, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(NumNode / shaderThreadNum[0], 1, inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
+
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mErrorReadBuffer.Get(), mErrorBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer.Get(),
+	CList->CopyResource(mErrorReadBuffer.Get(), mErrorBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 	CopyOutErrResourse();
 }
 

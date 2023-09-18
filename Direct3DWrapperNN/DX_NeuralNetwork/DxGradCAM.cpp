@@ -8,7 +8,6 @@
 #include "ShaderNN\ShaderGradCAM.h"
 
 DxGradCAM::DxGradCAM(UINT SizeFeatureMapW, UINT SizeFeatureMapH, UINT NumGradientEl, UINT NumFil, UINT inputsetnum) {
-	dx = Dx12Process::GetInstance();
 
 	cb.NumFil = NumFil;
 	cb.SizeFeatureMapW = SizeFeatureMapW;
@@ -112,7 +111,7 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap->GetCPUDescriptorHandleForHeapStart());
 	device->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 	//ルートシグネチャ
@@ -128,11 +127,11 @@ void DxGradCAM::ComCreate(UINT srcWid, UINT srcHei, float SignalStrength) {
 	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
 	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
 
-	pCS[0] = CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComGAP", "cs_5_0");
-	pCS[1] = CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComGradCAM", "cs_5_0");
-	pCS[2] = CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "InitGradCAMSynthesis", "cs_5_0");
-	pCS[3] = CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComGradCAMSynthesis", "cs_5_0");
-	pCS[4] = CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComPixelSynthesis", "cs_5_0");
+	pCS[0] = Dx_ShaderHolder::CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComGAP", "cs_5_0");
+	pCS[1] = Dx_ShaderHolder::CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComGradCAM", "cs_5_0");
+	pCS[2] = Dx_ShaderHolder::CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "InitGradCAMSynthesis", "cs_5_0");
+	pCS[3] = Dx_ShaderHolder::CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComGradCAMSynthesis", "cs_5_0");
+	pCS[4] = Dx_ShaderHolder::CompileShader(ShaderGradCAM, strlen(ShaderGradCAM), "ComPixelSynthesis", "cs_5_0");
 
 	for (int i = 0; i < GC_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
@@ -147,57 +146,61 @@ void DxGradCAM::SetGradient(ID3D12Resource* res) {
 }
 
 void DxGradCAM::ComGAP() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[0].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mInputGradientBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mGlobalAveragePoolingBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.NumFil, 1, 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[0].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(1, mInputGradientBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mGlobalAveragePoolingBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(cb.NumFil, 1, 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxGradCAM::ComGradCAM(UINT inputsetnum) {
 	inputSetNumCur = inputsetnum;
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputFeatureMapBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mGlobalAveragePoolingBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutGradCAMBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.SizeFeatureMapW * cb.SizeFeatureMapH, 1, inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[1].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInputFeatureMapBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mGlobalAveragePoolingBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mOutGradCAMBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(cb.SizeFeatureMapW * cb.SizeFeatureMapH, 1, inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxGradCAM::SetPixel3ch(ID3D12Resource* pi) {
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
+
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
-	mCommandList->CopyResource(mInputColBuffer.Get(), pi);
+	CList->CopyResource(mInputColBuffer.Get(), pi);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxGradCAM::SetPixel3ch(BYTE* pi) {
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(pi, cb.srcWid * 4, mInputColBuffer, mInputColUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSlide) {
@@ -208,42 +211,42 @@ void DxGradCAM::GradCAMSynthesis(UINT srcConvMapW, UINT srcConvMapH, UINT MapSli
 	cb.NumFeatureMapH = (cb.srcHei - cb.srcConvMapH + cb.MapSlide) / cb.MapSlide;//ブロック数h
 	mObjectCB->CopyData(0, cb);
 
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[2].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mOutGradCAMSynthesisBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.srcWid, cb.srcHei, 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[2].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(4, mOutGradCAMSynthesisBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(cb.srcWid, cb.srcHei, 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[3].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutGradCAMBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mOutGradCAMSynthesisBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.srcConvMapW, cb.srcConvMapH, 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[3].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(3, mOutGradCAMBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(4, mOutGradCAMSynthesisBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(cb.srcConvMapW, cb.srcConvMapH, 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[4].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[4].Get());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mUavHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	CList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mOutGradCAMSynthesisBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(4, mOutGradCAMSynthesisBuffer->GetGPUVirtualAddress());
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uav(mUavHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetComputeRootDescriptorTable(5, uav);
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb.srcWid, cb.srcHei, 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->SetComputeRootDescriptorTable(5, uav);
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(cb.srcWid, cb.srcHei, 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 ID3D12Resource* DxGradCAM::GetPixel() {

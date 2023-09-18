@@ -8,6 +8,7 @@
 #include "ShaderNN\ShaderSearchPixel.h"
 
 SearchPixel::SearchPixel(UINT srcwid, UINT srchei, UINT seawid, UINT seahei, float outscale, UINT step, UINT outnum, float Threshold) {
+
 	Step = step;
 	srcWidth = srcwid;
 	srcHeight = srchei;
@@ -178,25 +179,30 @@ void SearchPixel::ComCreate() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap->GetCPUDescriptorHandleForHeapStart());
 	device->getDevice()->CreateUnorderedAccessView(mInputColBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 	SubresourcesUp(sdata, searchNum, mInPixPosBuffer, mInPixPosUpBuffer);
 
 	SubresourcesUp(outInd, (UINT)outIndSize, mOutIndBuffer, mOutIndUpBuffer);
 
-	//ルートシグネチャ
-	CD3DX12_DESCRIPTOR_RANGE uavTable;
-	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 5);
+	D3D12_DESCRIPTOR_RANGE uavTable;
+	uavTable.BaseShaderRegister = 5;
+	uavTable.NumDescriptors = 1;
+	uavTable.RegisterSpace = 0;
+	uavTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	uavTable.OffsetInDescriptorsFromTableStart = 0;
 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
-	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
-	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
-	slotRootParameter[2].InitAsUnorderedAccessView(2);//RWStructuredBuffer(u2)
-	slotRootParameter[3].InitAsUnorderedAccessView(3);//RWStructuredBuffer(u3)
-	slotRootParameter[4].InitAsUnorderedAccessView(4);//RWStructuredBuffer(u4)
-	slotRootParameter[5].InitAsDescriptorTable(1, &uavTable);//RWTexture2D(u5)
-	slotRootParameter[6].InitAsConstantBufferView(0);//mObjectCB(b0)
+	D3D12_ROOT_PARAMETER slotRootParameter[7];
+	slotRootParameter[0] = setSlotRootParameter(0);//RWStructuredBuffer(u0)
+	slotRootParameter[1] = setSlotRootParameter(1);//RWStructuredBuffer(u1)
+	slotRootParameter[2] = setSlotRootParameter(2);//RWStructuredBuffer(u2)
+	slotRootParameter[3] = setSlotRootParameter(3);//RWStructuredBuffer(u3)
+	slotRootParameter[4] = setSlotRootParameter(4);//RWStructuredBuffer(u4)
+	slotRootParameter[5] = setSlotRootParameter(
+		0, D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, &uavTable, 1);//RWTexture2D(u5)
+	slotRootParameter[6] = setSlotRootParameter(0, D3D12_ROOT_PARAMETER_TYPE_CBV);//mObjectCB(b0)
+
 	mRootSignatureCom = CreateRsCompute(7, slotRootParameter);
 
 	UINT tmpNum[SEA_SHADER_NUM * 2];
@@ -213,8 +219,8 @@ void SearchPixel::ComCreate() {
 	for (int i = 0; i < SEA_SHADER_NUM * 2; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);
 
-	pCS[0] = CompileShader(repsh, strlen(repsh), "InPixCS", "cs_5_0");
-	pCS[1] = CompileShader(repsh, strlen(repsh), "OutPixCS", "cs_5_0");
+	pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "InPixCS", "cs_5_0");
+	pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "OutPixCS", "cs_5_0");
 	ARR_DELETE(repsh);
 	for (int i = 0; i < SEA_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
@@ -222,45 +228,49 @@ void SearchPixel::ComCreate() {
 
 void SearchPixel::SetPixel(float* pi) {
 	memcpy(srcPix, pi, insize);
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(srcPix, srcWidth * srcHeight, mInputBuffer, mInputUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void SearchPixel::SetPixel3ch(ID3D12Resource* pi) {
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
+
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
 		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
-	mCommandList->CopyResource(mInputColBuffer.Get(), pi);
+	CList->CopyResource(mInputColBuffer.Get(), pi);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pi,
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_GENERIC_READ));
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mInputColBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void SearchPixel::SetPixel3ch(BYTE* pi) {
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(pi, srcWidth * 4, mInputColBuffer, mInputColUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void SearchPixel::SetNNoutput(float* in) {
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(in, outNum, mNNOutputBuffer, mNNOutputUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void SearchPixel::SetNNoutput(ID3D12Resource* in) {
@@ -268,29 +278,30 @@ void SearchPixel::SetNNoutput(ID3D12Resource* in) {
 }
 
 void SearchPixel::SeparationTexture() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[0].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInPixPosBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutIndBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(outIndW / shaderThreadNum[0], outIndH / shaderThreadNum[1], 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
-	TextureCopy(mOutputBuffer.Get(), com_no);
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[0].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInPixPosBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mInputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mOutputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mOutIndBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(outIndW / shaderThreadNum[0], outIndH / shaderThreadNum[1], 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
+	TextureCopy(mOutputBuffer.Get(), 0);
+
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mOutputReadBuffer.Get(), mOutputBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
+	CList->CopyResource(mOutputReadBuffer.Get(), mOutputBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	D3D12_RANGE range;
 	range.Begin = 0;
@@ -302,23 +313,24 @@ void SearchPixel::SeparationTexture() {
 }
 
 void SearchPixel::TextureDraw() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
+
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[1].Get());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mUavHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	CList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
 
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInPixPosBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mNNOutputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(0, mInPixPosBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(4, mNNOutputBuffer->GetGPUVirtualAddress());
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uav(mUavHeap->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetComputeRootDescriptorTable(5, uav);
-	mCommandList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(srcWidth / shaderThreadNum[2], srcHeight / shaderThreadNum[3], 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->SetComputeRootDescriptorTable(5, uav);
+	CList->SetComputeRootConstantBufferView(6, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(srcWidth / shaderThreadNum[2], srcHeight / shaderThreadNum[3], 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 ID3D12Resource *SearchPixel::GetOutputResource() {

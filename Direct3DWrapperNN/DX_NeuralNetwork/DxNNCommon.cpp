@@ -8,15 +8,40 @@
 #include "ShaderNN\ShaderNNCommon.h"
 #include "ShaderNN\ShaderNNCommonCopy.h"
 
+D3D12_ROOT_PARAMETER DxNNCommon::setSlotRootParameter(
+	UINT ShaderRegister,
+	D3D12_ROOT_PARAMETER_TYPE type,
+	D3D12_DESCRIPTOR_RANGE* uavTable,
+	UINT NumDescriptorRanges) {
+
+	D3D12_ROOT_PARAMETER slotRootParameter = {};
+	slotRootParameter.ParameterType = type;
+	if (uavTable) {
+		slotRootParameter.DescriptorTable.NumDescriptorRanges = NumDescriptorRanges;
+		slotRootParameter.DescriptorTable.pDescriptorRanges = uavTable;
+	}
+	else {
+		slotRootParameter.Descriptor.ShaderRegister = ShaderRegister;
+		slotRootParameter.Descriptor.RegisterSpace = 0;
+	}
+	slotRootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	return slotRootParameter;
+}
+
 DxNNCommon::DxNNCommon() {
-	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
-	slotRootParameter[0].InitAsUnorderedAccessView(0);//RWStructuredBuffer(u0)
-	slotRootParameter[1].InitAsUnorderedAccessView(1);//RWStructuredBuffer(u1)
-	slotRootParameter[2].InitAsConstantBufferView(0);//mObjectCB(b0)
+
+	cMa = Dx_CommandManager::GetInstance();
+	d = cMa->getGraphicsComListObj(0);
+	CList = d->getCommandList();
+
+	D3D12_ROOT_PARAMETER slotRootParameter[3];
+	slotRootParameter[0] = setSlotRootParameter(0);//RWStructuredBuffer(u0)
+	slotRootParameter[1] = setSlotRootParameter(1);//RWStructuredBuffer(u1)
+	slotRootParameter[2] = setSlotRootParameter(0, D3D12_ROOT_PARAMETER_TYPE_CBV);//mObjectCB(b0)
 	mRootSignatureCom2Copy = CreateRsCompute(3, slotRootParameter);
 
-	pCS2Copy[0] = CompileShader(ShaderNNCommonCopy, strlen(ShaderNNCommonCopy), "ResourceExpansionCS", "cs_5_0");
-	pCS2Copy[1] = CompileShader(ShaderNNCommonCopy, strlen(ShaderNNCommonCopy), "ResourceReductionCS", "cs_5_0");
+	pCS2Copy[0] = Dx_ShaderHolder::CompileShader(ShaderNNCommonCopy, strlen(ShaderNNCommonCopy), "ResourceExpansionCS", "cs_5_0");
+	pCS2Copy[1] = Dx_ShaderHolder::CompileShader(ShaderNNCommonCopy, strlen(ShaderNNCommonCopy), "ResourceReductionCS", "cs_5_0");
 
 	for (int i = 0; i < Copy_SHADER_NUM; i++)
 		mPSOCom2Copy[i] = CreatePsoCompute(pCS2Copy[i].Get(), mRootSignatureCom2Copy.Get());
@@ -66,7 +91,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mUavHeap2->GetCPUDescriptorHandleForHeapStart());
 	device->getDevice()->CreateUnorderedAccessView(mTextureBuffer.Get(), nullptr, &uavDesc, hDescriptor);
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mTextureBuffer.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mTextureBuffer.Get(),
 		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 	//ルートシグネチャ
@@ -91,7 +116,7 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 	for (int i = 0; i < 2; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);
 
-	pCS2 = CompileShader(repsh, strlen(repsh), "NNTexCopyCS", "cs_5_0");
+	pCS2 = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "NNTexCopyCS", "cs_5_0");
 	ARR_DELETE(repsh);
 	//PSO
 	mPSOCom2 = CreatePsoCompute(pCS2.Get(), mRootSignatureCom2.Get());
@@ -104,22 +129,23 @@ void DxNNCommon::CreareNNTexture(UINT width, UINT height, UINT num) {
 
 void DxNNCommon::TextureCopy(ID3D12Resource* texture, int comNo) {
 	if (!created)return;
-	dx->Bigin(comNo);
-	mCommandList->SetPipelineState(mPSOCom2.Get());
+
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom2.Get());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mUavHeap2.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	CList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	mCommandList->SetComputeRootSignature(mRootSignatureCom2.Get());
+	CList->SetComputeRootSignature(mRootSignatureCom2.Get());
 
-	mCommandList->SetComputeRootUnorderedAccessView(0, texture->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(0, texture->GetGPUVirtualAddress());
 	CD3DX12_GPU_DESCRIPTOR_HANDLE uav(mUavHeap2->GetGPUDescriptorHandleForHeapStart());
-	mCommandList->SetComputeRootDescriptorTable(1, uav);
-	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB2->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(texWid / shaderThreadNum2[0], texHei / shaderThreadNum2[1], 1);
-	dx->End(comNo);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->SetComputeRootDescriptorTable(1, uav);
+	CList->SetComputeRootConstantBufferView(2, mObjectCB2->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(texWid / shaderThreadNum2[0], texHei / shaderThreadNum2[1], 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxNNCommon::CreateResourceDef(Microsoft::WRL::ComPtr<ID3D12Resource>& def, UINT64 size) {
@@ -152,18 +178,18 @@ void DxNNCommon::CreateResourceRead(Microsoft::WRL::ComPtr<ID3D12Resource>& re, 
 		IID_PPV_ARGS(&re));
 }
 
-void DxNNCommon::SubresourcesUp(void *pData, UINT num, Microsoft::WRL::ComPtr<ID3D12Resource> &def,
-	Microsoft::WRL::ComPtr<ID3D12Resource> &up)
+void DxNNCommon::SubresourcesUp(void* pData, UINT num, Microsoft::WRL::ComPtr<ID3D12Resource>& def,
+	Microsoft::WRL::ComPtr<ID3D12Resource>& up)
 {
 	D3D12_SUBRESOURCE_DATA subResourceData = {};
 	subResourceData.pData = pData;
 	subResourceData.RowPitch = num;
 	subResourceData.SlicePitch = subResourceData.RowPitch;
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(def.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(def.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-	UpdateSubresources(mCommandList, def.Get(), up.Get(), 0, 0, 1, &subResourceData);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(def.Get(),
+	UpdateSubresources(CList, def.Get(), up.Get(), 0, 0, 1, &subResourceData);
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(def.Get(),
 		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 }
 
@@ -253,21 +279,21 @@ void DxNNCommon::CopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
 	UINT srcNumNode = (UINT)(src->GetDesc().Width * src->GetDesc().Height / sizeof(float));
 
 	if (destNumNode == srcNumNode) {
-		dx->Bigin(com_no);
-		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
+		d->Bigin();
+		CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST));
-		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
+		CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
-		mCommandList->CopyResource(dest, src);
+		CList->CopyResource(dest, src);
 
-		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
+		CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src,
 			D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-		mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
+		CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest,
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-		dx->End(com_no);
-		dx->RunGpu();
-		dx->WaitFence();
+		d->End();
+		cMa->RunGpu();
+		cMa->WaitFence();
 		return;
 	}
 
@@ -282,14 +308,14 @@ void DxNNCommon::CopyResource(ID3D12Resource* dest, ID3D12Resource* src) {
 	}
 	mObjectCB2Copy->CopyData(0, cb2Copy);
 
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom2Copy[index].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom2Copy.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, src->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, dest->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(2, mObjectCB2Copy->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(cb2Copy.NumNode, 1, inputSetNum);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom2Copy[index].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom2Copy.Get());
+	CList->SetComputeRootUnorderedAccessView(0, src->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, dest->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(2, mObjectCB2Copy->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(cb2Copy.NumNode, 1, inputSetNum);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }

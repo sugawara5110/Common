@@ -12,6 +12,7 @@
 
 void DxConvolution::setOptimizerParameterFil(float LearningRate, float AttenuationRate1,
 	float AttenuationRate2, float DivergencePrevention) {
+
 	optFil->setOptimizerParameter(LearningRate, AttenuationRate1, AttenuationRate2, DivergencePrevention);
 }
 
@@ -87,7 +88,7 @@ DxConvolution::DxConvolution(UINT width, UINT height, UINT filNum, bool deconvol
 
 void DxConvolution::SetDropOut() {
 
-	dx->Bigin(com_no);
+	d->Bigin();
 	for (UINT i = 0; i < Numdrop; i++) {
 		dropout[i] = 1.0f;
 		int rnd = (rand() % 100) + 1;
@@ -96,9 +97,9 @@ void DxConvolution::SetDropOut() {
 		}
 	}
 	SubresourcesUp(dropout, Numdrop, mDropOutFBuffer, mDropOutFUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxConvolution::SetdropThreshold(float Threshold) {
@@ -262,13 +263,13 @@ void DxConvolution::ComCreate(ActivationName node, OptimizerName optName, float 
 	for (int i = 0; i < PARANUMCN; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);
 
-	pCS[0] = CompileShader(repsh, strlen(repsh), "CNFPCS0", "cs_5_0");
-	pCS[1] = CompileShader(repsh, strlen(repsh), "CNFPCS", "cs_5_0");
-	pCS[2] = CompileShader(repsh, strlen(repsh), "CNBPCS0", "cs_5_0");
-	pCS[3] = CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
-	pCS[4] = CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
-	pCS[5] = CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
-	pCS[6] = CompileShader(repsh, strlen(repsh), "CNInitCS", "cs_5_0");
+	pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNFPCS0", "cs_5_0");
+	pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNFPCS", "cs_5_0");
+	pCS[2] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNBPCS0", "cs_5_0");
+	pCS[3] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNBPCS1", "cs_5_0");
+	pCS[4] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNBPCS2", "cs_5_0");
+	pCS[5] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNBPCSBias", "cs_5_0");
+	pCS[6] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "CNInitCS", "cs_5_0");
 
 	ARR_DELETE(repsh);
 	for (int i = 0; i < CN_SHADER_NUM; i++)
@@ -372,31 +373,31 @@ void DxConvolution::InputError(float* inArr, UINT arrNum, UINT inputsetInd) {
 }
 
 void DxConvolution::SetGPUVirtualAddressExpIn() {
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mInputBuffer2->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mInputBuffer2->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
 }
 
 void DxConvolution::SetGPUVirtualAddressExpErr() {
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mInErrorBuffer2->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mInErrorBuffer2->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
 }
 
 void DxConvolution::SetGPUVirtualAddress() {
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer2->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer2->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(7, mGradientBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(8, mGradBiasBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInputBuffer2->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer2->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(4, mFilterBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(6, mBiasBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(7, mGradientBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(8, mGradBiasBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
 }
 
 void DxConvolution::setshaderStep(UINT index) {
@@ -412,48 +413,48 @@ void DxConvolution::ForwardPropagation() {
 
 	//zero‰Šú‰»
 	setshaderStep(6);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[6].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer2->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[6].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInputBuffer2->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	//inputŠg‘å
 	setshaderStep(0);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[0].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[0].Get());
 	SetGPUVirtualAddressExpIn();
-	mCommandList->Dispatch(Width / shaderThreadNum[0], Height * FilNum / shaderThreadNum[1], inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(Width / shaderThreadNum[0], Height * FilNum / shaderThreadNum[1], inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	setshaderStep(1);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[1].Get());
 	SetGPUVirtualAddress();
-	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * FilNum / shaderThreadNum[3], inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(OutWid / shaderThreadNum[2], OutHei * FilNum / shaderThreadNum[3], inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	ac->SetInputResource(mOutputBuffer.Get());
 	ac->ForwardPropagation(inputSetNumCur);
 	CopyResource(mOutputBuffer.Get(), ac->GetOutputResource());
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mOutputReadBuffer.Get(), mOutputBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
+	CList->CopyResource(mOutputReadBuffer.Get(), mOutputBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxConvolution::BackPropagation0() {
@@ -463,70 +464,70 @@ void DxConvolution::BackPropagation0() {
 
 	//zero‰Šú‰»
 	setshaderStep(7);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[6].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInErrorBuffer2->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[6].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInErrorBuffer2->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(9, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch((UINT)cb.WidHei.x, (UINT)cb.WidHei.y * FilNum, inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	//inErrŠg‘å
 	setshaderStep(2);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[2].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[2].Get());
 	SetGPUVirtualAddressExpErr();
-	mCommandList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(OutWid / shaderThreadNum[4], OutHei * FilNum / shaderThreadNum[5], inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	setshaderStep(3);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[3].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[3].Get());
 	SetGPUVirtualAddress();
-	mCommandList->Dispatch(Width / shaderThreadNum[6], Height * FilNum / shaderThreadNum[7], inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(Width / shaderThreadNum[6], Height * FilNum / shaderThreadNum[7], inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mOutErrorReadBuffer.Get(), mOutErrorBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
+	CList->CopyResource(mOutErrorReadBuffer.Get(), mOutErrorBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxConvolution::BackPropagationNoWeightUpdate() {
 	BackPropagation0();
 
 	setshaderStep(4);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[4].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[4].Get());
 	SetGPUVirtualAddress();
-	mCommandList->Dispatch(elNumWid / shaderThreadNum[8], elNumWid * FilNum / shaderThreadNum[9], 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(elNumWid / shaderThreadNum[8], elNumWid * FilNum / shaderThreadNum[9], 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxConvolution::BackPropagation() {
 	BackPropagation0();
 
 	setshaderStep(4);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[4].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[4].Get());
 	SetGPUVirtualAddress();
-	mCommandList->Dispatch(elNumWid / shaderThreadNum[8], elNumWid * FilNum / shaderThreadNum[9], 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(elNumWid / shaderThreadNum[8], elNumWid * FilNum / shaderThreadNum[9], 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	optFil->SetInputGradientBuffer(mGradientBuffer.Get());
 	optFil->SetInputWeightBuffer(mFilterBuffer.Get());
@@ -534,34 +535,34 @@ void DxConvolution::BackPropagation() {
 	CopyResource(mFilterBuffer.Get(), optFil->GetOutputWeightBuffer());
 
 	setshaderStep(5);
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[5].Get());
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[5].Get());
 	SetGPUVirtualAddress();
-	mCommandList->Dispatch(FilNum / shaderThreadNum[10], 1, 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	CList->Dispatch(FilNum / shaderThreadNum[10], 1, 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
 	optBias->SetInputGradientBuffer(mGradBiasBuffer.Get());
 	optBias->SetInputWeightBuffer(mBiasBuffer.Get());
 	optBias->comOptimizer();
 	CopyResource(mBiasBuffer.Get(), optBias->GetOutputWeightBuffer());
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mFilterBuffer.Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mFilterBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mFilterReadBuffer.Get(), mFilterBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mFilterBuffer.Get(),
+	CList->CopyResource(mFilterReadBuffer.Get(), mFilterBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mFilterBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mBiasReadBuffer.Get(), mBiasBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
+	CList->CopyResource(mBiasReadBuffer.Get(), mBiasBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBiasBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxConvolution::Query() {
@@ -571,7 +572,7 @@ void DxConvolution::Query() {
 	inputSetNumCur = inputSetNum;
 	ForwardPropagation();
 	CopyOutputResourse();
-	TextureCopy(mFilterBuffer.Get(), com_no);
+	TextureCopy(mFilterBuffer.Get(), 0);
 	//TestOutput();
 }
 
@@ -592,7 +593,7 @@ void DxConvolution::Detection(UINT inputsetnum) {
 	inputSetNumCur = inputsetnum;
 	ForwardPropagation();
 	CopyOutputResourse();
-	TextureCopy(mFilterBuffer.Get(), com_no);
+	TextureCopy(mFilterBuffer.Get(), 0);
 }
 
 void DxConvolution::Test() {
@@ -675,21 +676,23 @@ void DxConvolution::TestOutErr() {
 
 void DxConvolution::InputResourse() {
 	if (!firstIn)return;
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(input, input_outerrOneNum * FilNum * inputSetNum, mInputBuffer, mInputUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 	firstIn = false;
 }
 
 void DxConvolution::InputErrResourse() {
 	if (!firstInErr)return;
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(inputError, output_inerrOneNum * FilNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 	firstInErr = false;
 }
 
@@ -799,12 +802,13 @@ void DxConvolution::LoadData(char* pass) {
 	}
 	fclose(fp);
 	ARR_DELETE(bifil);
-	dx->Bigin(com_no);
+
+	d->Bigin();
 	SubresourcesUp(fil, ElNum * FilNum, mFilterBuffer, mFilterUpBuffer);
 	SubresourcesUp(bias, FilNum, mBiasBuffer, mBiasUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxConvolution::SetInputResource(ID3D12Resource* res) {

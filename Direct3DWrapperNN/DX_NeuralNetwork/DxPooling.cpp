@@ -94,17 +94,17 @@ void DxPooling::ComCreate() {
 	tmpNum[1] = OutHei * PoolNum;
 	tmpNum[2] = OutWid;
 	tmpNum[3] = OutHei * PoolNum;
-	char **replaceString = nullptr;
+	char** replaceString = nullptr;
 
 	CreateReplaceArr(&shaderThreadNum, &replaceString, PARANUMPO, tmpNum);
 
-	char *repsh = nullptr;
+	char* repsh = nullptr;
 	ReplaceString(&repsh, ShaderPooling, '?', replaceString);
 	for (int i = 0; i < PARANUMPO; i++)ARR_DELETE(replaceString[i]);
 	ARR_DELETE(replaceString);
 
-	pCS[0] = CompileShader(repsh, strlen(repsh), "POFPCS", "cs_5_0");
-	pCS[1] = CompileShader(repsh, strlen(repsh), "POBPCS", "cs_5_0");
+	pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "POFPCS", "cs_5_0");
+	pCS[1] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "POBPCS", "cs_5_0");
 	ARR_DELETE(repsh);
 	for (int i = 0; i < PO_SHADER_NUM; i++)
 		mPSOCom[i] = CreatePsoCompute(pCS[i].Get(), mRootSignatureCom.Get());
@@ -125,53 +125,53 @@ void DxPooling::InputEl(float el, UINT arrNum, UINT ElNum, UINT inputsetInd) {
 }
 
 void DxPooling::ForwardPropagation() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[0].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[0], OutHei * PoolNum / shaderThreadNum[1], inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[0].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(OutWid / shaderThreadNum[0], OutHei * PoolNum / shaderThreadNum[1], inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mOutputReadBuffer.Get(), mOutputBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
+	CList->CopyResource(mOutputReadBuffer.Get(), mOutputBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxPooling::BackPropagation() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[1].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(OutWid / shaderThreadNum[2], OutHei * PoolNum / shaderThreadNum[3], inputSetNumCur);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[1].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mInputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mInErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mOutErrorBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(OutWid / shaderThreadNum[2], OutHei * PoolNum / shaderThreadNum[3], inputSetNumCur);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mOutErrorReadBuffer.Get(), mOutErrorBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
+	CList->CopyResource(mOutErrorReadBuffer.Get(), mOutErrorBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutErrorBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxPooling::Query() {
@@ -179,7 +179,7 @@ void DxPooling::Query() {
 	inputSetNumCur = inputSetNum;
 	ForwardPropagation();
 	CopyOutputResourse();
-	TextureCopy(mOutputBuffer.Get(), com_no);
+	TextureCopy(mOutputBuffer.Get(), 0);
 }
 
 void DxPooling::Training() {
@@ -193,7 +193,7 @@ void DxPooling::Detection(UINT inputsetnum) {
 	inputSetNumCur = inputsetnum;
 	ForwardPropagation();
 	CopyOutputResourse();
-	TextureCopy(mOutputBuffer.Get(), com_no);
+	TextureCopy(mOutputBuffer.Get(), 0);
 }
 
 void DxPooling::Test() {
@@ -205,20 +205,20 @@ void DxPooling::Test() {
 
 void DxPooling::InputResourse() {
 	if (!firstIn)return;
-	dx->Bigin(com_no);
+	d->Bigin();
 	SubresourcesUp(input, input_outerrOneNum * PoolNum * inputSetNum, mInputBuffer, mInputUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 	firstIn = false;
 }
 
 void DxPooling::InputErrResourse() {
-	dx->Bigin(com_no);
+	d->Bigin();
 	SubresourcesUp(inerror, output_inerrOneNum * PoolNum * inputSetNum, mInErrorBuffer, mInErrorUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxPooling::CopyOutputResourse() {

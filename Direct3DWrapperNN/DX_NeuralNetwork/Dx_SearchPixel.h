@@ -31,19 +31,19 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mInputColBuffer = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS[SEA_SHADER_NUM] = { nullptr };
-	int *shaderThreadNum = nullptr;
+	int* shaderThreadNum = nullptr;
 
 	CBSearchPixel cb;
-	ConstantBuffer<CBSearchPixel> *mObjectCB = nullptr;
-	SearchPixelData *sdata;
-	float *outInd;
+	ConstantBuffer<CBSearchPixel>* mObjectCB = nullptr;
+	SearchPixelData* sdata;
+	float* outInd;
 
 	UINT srcWidth;
 	UINT srcHeight;
-	float *srcPix = nullptr;
+	float* srcPix = nullptr;
 	UINT seaWid;//検出範囲1ブロックwidth
 	UINT seaHei;//検出範囲1ブロックheight
-	float *seaPix = nullptr;//検出ブロック分割後ピクセル配列
+	float* seaPix = nullptr;//検出ブロック分割後ピクセル配列
 	UINT outWid;//分割後全widthサイズ
 	UINT outHei;//分割後全heightサイズ
 	UINT Step;
@@ -64,14 +64,14 @@ public:
 	~SearchPixel();
 	UINT GetSearchNum();
 	void ComCreate();
-	void SetPixel(float *pi);
-	void SetPixel3ch(ID3D12Resource *pi);
-	void SetPixel3ch(BYTE *pi);
-	void SetNNoutput(float *in);
-	void SetNNoutput(ID3D12Resource *in);
+	void SetPixel(float* pi);
+	void SetPixel3ch(ID3D12Resource* pi);
+	void SetPixel3ch(BYTE* pi);
+	void SetNNoutput(float* in);
+	void SetNNoutput(ID3D12Resource* in);
 	void SeparationTexture();
 	void TextureDraw();
-	ID3D12Resource *GetOutputResource();
+	ID3D12Resource* GetOutputResource();
 	UINT GetOutWid();
 	UINT GetOutHei();
 	float GetOutputEl(UINT Num);

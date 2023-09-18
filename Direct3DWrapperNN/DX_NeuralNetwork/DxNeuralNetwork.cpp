@@ -29,7 +29,7 @@ DxNeuralNetwork::DxNeuralNetwork(UINT* numNode, int depth, UINT split, UINT inpu
 
 void DxNeuralNetwork::SetDropOut() {
 
-	dx->Bigin(com_no);
+	d->Bigin();
 	for (int k = 0; k < Depth - 1; k++) {
 		for (UINT i = 0; i < NumNode[k]; i++) {
 			dropout[k][i] = 1.0f;
@@ -40,9 +40,9 @@ void DxNeuralNetwork::SetDropOut() {
 		}
 		SubresourcesUp(dropout[k], NumNode[k], mDropOutFBuffer[k], mDropOutFUpBuffer[k]);
 	}
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxNeuralNetwork::SetdropThreshold(float *ThresholdArr) {
@@ -241,9 +241,9 @@ void DxNeuralNetwork::ComCreate(ActivationName node, OptimizerName optName, Acti
 		for (int i = 0; i < PARANUM; i++)ARR_DELETE(replaceString[i]);
 		ARR_DELETE(replaceString);
 
-		pCS[0][k] = CompileShader(repsh, strlen(repsh), "NNFPCS", "cs_5_0");
-		pCS[1][k] = CompileShader(repsh, strlen(repsh), "NNBPCS0", "cs_5_0");
-		pCS[2][k] = CompileShader(repsh, strlen(repsh), "NNBPCS1", "cs_5_0");
+		pCS[0][k] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "NNFPCS", "cs_5_0");
+		pCS[1][k] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "NNBPCS0", "cs_5_0");
+		pCS[2][k] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "NNBPCS1", "cs_5_0");
 		ARR_DELETE(repsh);
 		for (int i = 0; i < NN_SHADER_NUM; i++) {
 			mPSOCom[i][k] = CreatePsoCompute(pCS[i][k].Get(), mRootSignatureCom.Get());
@@ -267,22 +267,22 @@ void DxNeuralNetwork::ForwardPropagation() {
 	int repInd = 0;
 	cb.Lear_Depth_inputS.w = (float)inputSetNumCur;
 	for (int i = 0; i < Depth - 1; i++) {
-		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[0][repInd].Get());
-		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
+		d->Bigin();
+		CList->SetPipelineState(mPSOCom[0][repInd].Get());
+		CList->SetComputeRootSignature(mRootSignatureCom.Get());
+		CList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
+		CList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
 		//Dispatchは1回毎にGPU処理完了させる事
-		mCommandList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputSetNumCur);
+		CList->Dispatch(NumNode[i + 1] / shaderThreadNum[repInd][0], 1, inputSetNumCur);
 		repInd++;
-		dx->End(com_no);
-		dx->RunGpu();
-		dx->WaitFence();
+		d->End();
+		cMa->RunGpu();
+		cMa->WaitFence();
 
 		if (i == Depth - 2) {
 			topAc->SetInputResource(mNodeBuffer[Depth - 1].Get());
@@ -311,34 +311,34 @@ void DxNeuralNetwork::BackPropagationNoWeightUpdate() {
 			CopyResource(mErrorBuffer[i + 1].Get(), ac[i]->GetOutErrorResource());
 		}
 
-		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[1][repInd].Get());
-		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
+		d->Bigin();
+		CList->SetPipelineState(mPSOCom[1][repInd].Get());
+		CList->SetComputeRootSignature(mRootSignatureCom.Get());
+		CList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(3, mErrorBuffer[i]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(5, mDropOutFBuffer[i]->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][1], 1, inputSetNumCur);
+		CList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
+		CList->Dispatch(NumNode[i] / shaderThreadNum[repInd][1], 1, inputSetNumCur);
 		repInd++;
-		dx->End(com_no);
-		dx->RunGpu();
-		dx->WaitFence();
+		d->End();
+		cMa->RunGpu();
+		cMa->WaitFence();
 	}
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mErrorReadBuffer.Get(), mErrorBuffer[0].Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
+	CList->CopyResource(mErrorReadBuffer.Get(), mErrorBuffer[0].Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mErrorBuffer[0].Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxNeuralNetwork::BackPropagation() {
@@ -347,23 +347,23 @@ void DxNeuralNetwork::BackPropagation() {
 	int repInd = 0;
 	//勾配値更新
 	for (int i = Depth - 2; i >= 0; i--) {
-		dx->Bigin(com_no);
-		mCommandList->SetPipelineState(mPSOCom[2][repInd].Get());
-		mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-		mCommandList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
-		mCommandList->SetComputeRootUnorderedAccessView(6, mGradientBuffer->GetGPUVirtualAddress());
+		d->Bigin();
+		CList->SetPipelineState(mPSOCom[2][repInd].Get());
+		CList->SetComputeRootSignature(mRootSignatureCom.Get());
+		CList->SetComputeRootUnorderedAccessView(0, mNodeBuffer[i]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(1, mNodeBuffer[i + 1]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(2, mWeightBuffer->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(4, mErrorBuffer[i + 1]->GetGPUVirtualAddress());
+		CList->SetComputeRootUnorderedAccessView(6, mGradientBuffer->GetGPUVirtualAddress());
 		cb.Lear_Depth_inputS.y = (float)i;
 		mObjectCB->CopyData(0, cb);
-		mCommandList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
-		mCommandList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2],
+		CList->SetComputeRootConstantBufferView(7, mObjectCB->Resource()->GetGPUVirtualAddress());
+		CList->Dispatch(NumNode[i] / shaderThreadNum[repInd][2],
 			NumNode[i + 1] / shaderThreadNum[repInd][3], 1);
 		repInd++;
-		dx->End(com_no);
-		dx->RunGpu();
-		dx->WaitFence();
+		d->End();
+		cMa->RunGpu();
+		cMa->WaitFence();
 	}
 	//オプティマイザー
 	opt->SetInputGradientBuffer(mGradientBuffer.Get());
@@ -371,15 +371,15 @@ void DxNeuralNetwork::BackPropagation() {
 	opt->comOptimizer();
 	CopyResource(mWeightBuffer.Get(), opt->GetOutputWeightBuffer());
 
-	dx->Bigin(com_no);
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
+	d->Bigin();
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	mCommandList->CopyResource(mWeightReadBuffer.Get(), mWeightBuffer.Get());
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
+	CList->CopyResource(mWeightReadBuffer.Get(), mWeightBuffer.Get());
+	CList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mWeightBuffer.Get(),
 		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 void DxNeuralNetwork::CopyWeightResourse() {
@@ -440,11 +440,11 @@ void DxNeuralNetwork::InputArrayEl(float el, UINT arrNum, UINT ElNum, UINT input
 
 void DxNeuralNetwork::InputResourse() {
 	if (!firstIn)return;
-	dx->Bigin(com_no);
+	d->Bigin();
 	SubresourcesUp(input, NumNode[0] * inputSetNum, mNodeBuffer[0], mNodeUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 	firstIn = false;
 }
 
@@ -487,14 +487,14 @@ void DxNeuralNetwork::TrainingBp() {
 	BackPropagation();
 	CopyWeightResourse();
 	CopyErrorResourse();
-	TextureCopy(mErrorBuffer[0].Get(), com_no);
+	TextureCopy(mErrorBuffer[0].Get(), 0);
 }
 
 void DxNeuralNetwork::TrainingBpNoWeightUpdate() {
 	BackPropagationNoWeightUpdate();
 	CopyWeightResourse();
 	CopyErrorResourse();
-	TextureCopy(mErrorBuffer[0].Get(), com_no);
+	TextureCopy(mErrorBuffer[0].Get(), 0);
 }
 
 float DxNeuralNetwork::GetcrossEntropyError() {
@@ -568,11 +568,11 @@ void DxNeuralNetwork::LoadData(char* pass) {
 	}
 	ARR_DELETE(weightArr);
 
-	dx->Bigin(com_no);
+	d->Bigin();
 	SubresourcesUp(weight, weightNumAll, mWeightBuffer, mWeightUpBuffer);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
 
 float* DxNeuralNetwork::getWeightArr() {

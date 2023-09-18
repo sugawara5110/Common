@@ -11,7 +11,7 @@
 #include "DxNNstruct.h"
 #define Copy_SHADER_NUM 2
 
-class DxNNCommon :public Common {
+class DxNNCommon :public DxCommon {
 
 protected:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> mRootSignatureCom2 = nullptr;
@@ -37,6 +37,10 @@ protected:
 	ConstantBuffer<CBResourceCopy>* mObjectCB2Copy = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> pCS2Copy[Copy_SHADER_NUM] = { nullptr };
 
+	Dx_CommandManager* cMa;
+	Dx_CommandListObj* d;
+	ID3D12GraphicsCommandList* CList;
+
 	DxNNCommon();//外部からのオブジェクト生成禁止
 	DxNNCommon(const DxNNCommon& obj) {}     // コピーコンストラクタ禁止
 	void operator=(const DxNNCommon& obj) {}// 代入演算子禁止
@@ -52,6 +56,12 @@ protected:
 	void ReplaceString(char** destination, char* source, char placeholderStartPoint, char** replaceArr);
 	//destinationは関数外部で解放
 	void CopyResource(ID3D12Resource* dest, ID3D12Resource* src);
+
+	D3D12_ROOT_PARAMETER setSlotRootParameter(
+		UINT ShaderRegister,
+		D3D12_ROOT_PARAMETER_TYPE type = D3D12_ROOT_PARAMETER_TYPE_UAV,
+		D3D12_DESCRIPTOR_RANGE* uavTable = nullptr,
+		UINT NumDescriptorRanges = 1);
 
 public:
 	void CreareNNTexture(UINT width, UINT height, UINT num);

@@ -54,10 +54,10 @@ void DxOptimizer::ComCreate(OptimizerName name) {
 
 	switch (name) {
 	case SGD:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "SGDCS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "SGDCS", "cs_5_0");
 		break;
 	case ADAM:
-		pCS[0] = CompileShader(repsh, strlen(repsh), "AdamCS", "cs_5_0");
+		pCS[0] = Dx_ShaderHolder::CompileShader(repsh, strlen(repsh), "AdamCS", "cs_5_0");
 		break;
 	}
 	ARR_DELETE(repsh);
@@ -90,16 +90,16 @@ ID3D12Resource* DxOptimizer::GetOutputWeightBuffer() {
 }
 
 void DxOptimizer::comOptimizer() {
-	dx->Bigin(com_no);
-	mCommandList->SetPipelineState(mPSOCom[0].Get());
-	mCommandList->SetComputeRootSignature(mRootSignatureCom.Get());
-	mCommandList->SetComputeRootUnorderedAccessView(0, mGradientBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mGradientMovAve1Buffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(2, mGradientMovAve2Buffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(3, mWeightBuffer->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
-	mCommandList->Dispatch(NumNode / shaderThreadNum[0], 1, 1);
-	dx->End(com_no);
-	dx->RunGpu();
-	dx->WaitFence();
+	d->Bigin();
+	CList->SetPipelineState(mPSOCom[0].Get());
+	CList->SetComputeRootSignature(mRootSignatureCom.Get());
+	CList->SetComputeRootUnorderedAccessView(0, mGradientBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(1, mGradientMovAve1Buffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(2, mGradientMovAve2Buffer->GetGPUVirtualAddress());
+	CList->SetComputeRootUnorderedAccessView(3, mWeightBuffer->GetGPUVirtualAddress());
+	CList->SetComputeRootConstantBufferView(4, mObjectCB->Resource()->GetGPUVirtualAddress());
+	CList->Dispatch(NumNode / shaderThreadNum[0], 1, 1);
+	d->End();
+	cMa->RunGpu();
+	cMa->WaitFence();
 }
