@@ -286,18 +286,27 @@ static void createAxisSub(CoordTf::VECTOR3& v3, int axis, int sign) {
 	}
 }
 void SkinMesh::createAxis() {
+	using namespace CoordTf;
 	GlobalSettings gSet = fbx[0].fbxL->getGlobalSettings();
-	CoordTf::VECTOR3 upVec = {};
+	VECTOR3 upVec = {};
 	createAxisSub(upVec, gSet.UpAxis, gSet.UpAxisSign);
-	CoordTf::VECTOR3 frontVec = {};
+	VECTOR3 frontVec = {};
 	createAxisSub(frontVec, gSet.FrontAxis, gSet.FrontAxisSign);
-	CoordTf::VECTOR3 coordVec = {};
+	VECTOR3 coordVec = {};
 	createAxisSub(coordVec, gSet.CoordAxis, gSet.CoordAxisSign);
+
+	MATRIX scale;
+	MatrixScaling(&scale,
+		(float)gSet.UnitScaleFactor,
+		(float)gSet.UnitScaleFactor,
+		(float)gSet.UnitScaleFactor);
 
 	Axis._11 = coordVec.x; Axis._12 = coordVec.y; Axis._13 = coordVec.z; Axis._14 = 0.0f;
 	Axis._21 = upVec.x;    Axis._22 = upVec.y;    Axis._23 = upVec.z;    Axis._24 = 0.0f;
 	Axis._31 = frontVec.x; Axis._32 = frontVec.y; Axis._33 = frontVec.z; Axis._34 = 0.0f;
 	Axis._41 = 0.0f;       Axis._42 = 0.0f;       Axis._43 = 0.0f;       Axis._44 = 1.0f;
+
+	Axis = Axis * scale;
 }
 
 void SkinMesh::LclTransformation(FbxMeshNode* mesh, CoordTf::VECTOR3* vec) {
