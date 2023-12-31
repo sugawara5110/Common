@@ -86,14 +86,12 @@ void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame
 	}
 }
 
-void SkinMesh::noUseMeshIndex(int meshIndex) {
-	noUseMesh[meshIndex] = true;
-}
-
 void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 
 	Skin_VERTEX_Set vset = setVertex(lclOn, axisOn, VerCentering);
 	pvVB = vset.pvVB;
+	NumNewIndex = vset.NumNewIndex;
+	newIndex = vset.newIndex;
 
 	using namespace CoordTf;
 	for (int m = 0; m < numMesh; m++) {
@@ -153,62 +151,26 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 		createMaterial(m, numMaterial, mesh, uv0Name, uv1Name, uvSw);
 		if (numBone[m] > 0)swapTex(vb, mesh, uvSw);
 		ARR_DELETE(uvSw);
-		splitIndex(numMaterial, mesh, m);
 	}
 
+	for (int m = 0; m < numMesh; m++) {
+		FbxLoader* fbL = fbx[0].fbxL;
+		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);
+		//インデックスバッファ
+		uint32_t* numNewIndex = NumNewIndex[m];
+		for (UINT i = 0; i < mesh->getNumMaterial(); i++) {
+			const UINT indexSize = numNewIndex[i] * sizeof(uint32_t);
+			mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
+		}
+		ARR_DELETE(numNewIndex);
+	}
+
+	ARR_DELETE(NumNewIndex);
 	ARR_DELETE(vset.pvVB_M);
 }
 
 void SkinMesh::Vertex_hold() {
 	pvVB_delete_f = false;
-}
-
-void SkinMesh::splitIndex(UINT numMaterial, FbxMeshNode* mesh, int m) {
-
-	//ポリゴン分割後のIndex数カウント
-	UINT* numNewIndex = new UINT[numMaterial];
-	memset(numNewIndex, 0, sizeof(UINT) * numMaterial);
-
-	for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
-		UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
-		UINT pSize = mesh->getPolygonSize(i);
-		if (pSize >= 3) {
-			numNewIndex[currentMatNo] += (pSize - 2) * 3;
-		}
-	}
-
-	//分割後のIndex生成
-	newIndex[m] = new UINT * [numMaterial];
-	for (UINT ind1 = 0; ind1 < numMaterial; ind1++) {
-		if (numNewIndex[ind1] <= 0) {
-			newIndex[m][ind1] = nullptr;
-			continue;
-		}
-		newIndex[m][ind1] = new UINT[numNewIndex[ind1]];
-	}
-	std::unique_ptr<UINT[]> indexCnt;
-	indexCnt = std::make_unique<UINT[]>(numMaterial);
-
-	int Icnt = 0;
-	for (UINT i = 0; i < mesh->getNumPolygon(); i++) {
-		UINT currentMatNo = mesh->getMaterialNoOfPolygon(i);
-		UINT pSize = mesh->getPolygonSize(i);
-		if (pSize >= 3) {
-			for (UINT ps = 0; ps < pSize - 2; ps++) {
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 1 + ps;
-				newIndex[m][currentMatNo][indexCnt[currentMatNo]++] = Icnt + 2 + ps;
-			}
-			Icnt += pSize;
-		}
-	}
-
-	//インデックスバッファ
-	for (UINT i = 0; i < numMaterial; i++) {
-		const UINT indexSize = numNewIndex[i] * sizeof(UINT);
-		mObj[m].getIndexBuffer(i, indexSize, numNewIndex[i]);
-	}
-	ARR_DELETE(numNewIndex);
 }
 
 void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
@@ -413,9 +375,9 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		BasicPolygon& o = mObj[i];
 		o.setDivideArr(divArr, numDiv);
 
-		UINT* indexCntArr = new UINT[mObj[i].dpara.NumMaterial];
-		for (int m = 0; m < mObj[i].dpara.NumMaterial; m++) {
-			indexCntArr[m] = mObj[i].dpara.Iview[m].IndexCount;
+		UINT* indexCntArr = new UINT[o.dpara.NumMaterial];
+		for (int m = 0; m < o.dpara.NumMaterial; m++) {
+			indexCntArr[m] = o.dpara.Iview[m].IndexCount;
 		}
 		int vSize = sizeof(VertexM);
 		void* vertex = pvVBM[i];
@@ -423,7 +385,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 			vSize = sizeof(Skin_VERTEX);
 			vertex = pvVB[i];
 		}
-		Dx_Util::createTangent(mObj[i].dpara.NumMaterial, indexCntArr,
+		Dx_Util::createTangent(o.dpara.NumMaterial, indexCntArr,
 			vertex, newIndex[i], vSize, 0, 3 * 4, 12 * 4, 6 * 4);
 		ARR_DELETE(indexCntArr);
 
@@ -432,7 +394,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 			ARR_DELETE(pvVBM[i]);
 			ARR_DELETE(pvVB[i]);
 		}
-		for (int m = 0; m < mObj[i].dpara.NumMaterial; m++) {
+		for (int m = 0; m < o.dpara.NumMaterial; m++) {
 			ARR_DELETE(newIndex[i][m]);
 		}
 		ARR_DELETE(newIndex[i]);
@@ -462,65 +424,6 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 	return true;
 }
 
-HRESULT SkinMesh::GetFbxSub(CHAR* szFileName, int ind) {
-	if (ind <= 0) {
-		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
-		return E_FAIL;
-	}
-
-	if (FAILED(InitFBX(szFileName, ind))) {
-		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
-		return E_FAIL;
-	}
-	return S_OK;
-}
-
-HRESULT SkinMesh::GetBuffer_Sub(int ind, float end_frame) {
-	float ef[1] = { end_frame };
-	return GetBuffer_Sub(ind, 1, ef);
-}
-
-HRESULT SkinMesh::GetBuffer_Sub(int ind, int num_end_frame, float* end_frame) {
-
-	fbx[ind].end_frame = std::make_unique<float[]>(num_end_frame);
-	memcpy(fbx[ind].end_frame.get(), end_frame, num_end_frame * sizeof(float));
-
-	int BoneNum = fbx[ind].fbxL->getNumNoneMeshDeformer();
-	if (BoneNum == 0) {
-		MessageBox(0, L"FBXローダー初期化失敗", nullptr, MB_OK);
-		return E_FAIL;
-	}
-
-	if (!m_ppSubAnimationBone) {
-		m_ppSubAnimationBone = new Deformer * [(FBX_PCS - 1) * maxNumBone];
-	}
-	return S_OK;
-}
-
-void SkinMesh::CreateFromFBX_SubAnimation(int ind) {
-	int loopind = 0;
-	int searchCount = 0;
-	int name2Num = 0;
-	while (loopind < maxNumBone) {
-		int sa_ind = (ind - 1) * maxNumBone + loopind;
-		m_ppSubAnimationBone[sa_ind] = fbx[ind].fbxL->getNoneMeshDeformer(searchCount);
-		searchCount++;
-		const char* name = m_ppSubAnimationBone[sa_ind]->getName();
-		if (!strncmp("Skeleton", name, 8))continue;
-		char* name2 = &boneName[loopind * 255];//各Bone名の先頭アドレスを渡す
-		//Bone名に空白が含まれている場合最後の空白以降の文字から終端までの文字を比較する為,
-		//終端文字までポインタを進め, 終端から検査して空白位置手前まで比較する
-		while (*name != '\0')name++;//終端文字までポインタを進める
-		//終端文字までポインタを進める, 空白が含まれない文字の場合もあるので文字数カウントし,
-		//文字数で比較完了を判断する
-		while (*name2 != '\0') { name2++; name2Num++; }
-		while (*(--name) == *(--name2) && *name2 != ' ' && (--name2Num) > 0);
-		if (*name2 != ' ' && name2Num > 0) { name2Num = 0; continue; }
-		name2Num = 0;
-		loopind++;
-	}
-}
-
 void SkinMesh::GetMeshCenterPos() {
 	using namespace CoordTf;
 	for (int i = 0; i < numMesh; i++) {
@@ -539,39 +442,6 @@ void SkinMesh::GetMeshCenterPos() {
 			}
 		}
 	}
-}
-
-CoordTf::VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
-	float thetaZ, float thetaY, float thetaX, float scal) {
-
-	using namespace CoordTf;
-	//頂点にボーン行列を掛け出力
-	VECTOR3 ret, pos;
-	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
-	MATRIX scale, scaro;
-	MatrixScaling(&scale, scal, scal, scal);
-	MatrixRotationZ(&rotZ, thetaZ);
-	MatrixRotationY(&rotY, thetaY);
-	MatrixRotationX(&rotX, thetaX);
-	MatrixMultiply(&rotZY, &rotZ, &rotY);
-	MatrixMultiply(&rotZYX, &rotZY, &rotX);
-	MatrixMultiply(&scaro, &scale, &rotZYX);
-	ret.x = ret.y = ret.z = 0.0f;
-
-	for (int i = 0; i < 4; i++) {
-		pos.x = pvVB[meshIndex][verNum].vPos.x;
-		pos.y = pvVB[meshIndex][verNum].vPos.y;
-		pos.z = pvVB[meshIndex][verNum].vPos.z;
-		MATRIX m = GetCurrentPoseMatrix(pvVB[meshIndex][verNum].bBoneIndex[i]);
-		VectorMatrixMultiply(&pos, &m);
-		VectorMultiply(&pos, pvVB[meshIndex][verNum].bBoneWeight[i]);
-		VectorAddition(&ret, &ret, &pos);
-	}
-	ret.x += adjustX;
-	ret.y += adjustY;
-	ret.z += adjustZ;
-	VectorMatrixMultiply(&ret, &scaro);
-	return ret;
 }
 
 void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
@@ -650,6 +520,35 @@ HRESULT SkinMesh::SetTextureMPixel(int com_no, BYTE* frame, int texIndex, int me
 	return mObj[meshIndex].SetTextureMPixel(com_no, frame, texIndex);
 }
 
-void SkinMesh::setDirectTime(float ti) {
-	directTime = ti;
+CoordTf::VECTOR3 SkinMesh::GetVertexPosition(int meshIndex, int verNum, float adjustZ, float adjustY, float adjustX,
+	float thetaZ, float thetaY, float thetaX, float scal) {
+
+	using namespace CoordTf;
+	//頂点にボーン行列を掛け出力
+	VECTOR3 ret, pos;
+	MATRIX rotZ, rotY, rotX, rotZY, rotZYX;
+	MATRIX scale, scaro;
+	MatrixScaling(&scale, scal, scal, scal);
+	MatrixRotationZ(&rotZ, thetaZ);
+	MatrixRotationY(&rotY, thetaY);
+	MatrixRotationX(&rotX, thetaX);
+	MatrixMultiply(&rotZY, &rotZ, &rotY);
+	MatrixMultiply(&rotZYX, &rotZY, &rotX);
+	MatrixMultiply(&scaro, &scale, &rotZYX);
+	ret.x = ret.y = ret.z = 0.0f;
+
+	for (int i = 0; i < 4; i++) {
+		pos.x = pvVB[meshIndex][verNum].vPos.x;
+		pos.y = pvVB[meshIndex][verNum].vPos.y;
+		pos.z = pvVB[meshIndex][verNum].vPos.z;
+		MATRIX m = GetCurrentPoseMatrix(pvVB[meshIndex][verNum].bBoneIndex[i]);
+		VectorMatrixMultiply(&pos, &m);
+		VectorMultiply(&pos, pvVB[meshIndex][verNum].bBoneWeight[i]);
+		VectorAddition(&ret, &ret, &pos);
+	}
+	ret.x += adjustX;
+	ret.y += adjustY;
+	ret.z += adjustZ;
+	VectorMatrixMultiply(&ret, &scaro);
+	return ret;
 }
