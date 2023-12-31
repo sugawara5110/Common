@@ -21,8 +21,6 @@ namespace Dx_Util {
 		void* vertexArr, unsigned int** indexArr, int structByteStride,
 		int posBytePos, int norBytePos, int texBytePos, int tangentBytePos);
 
-	CoordTf::VECTOR3 normalRecalculation(CoordTf::VECTOR3 Nor[3]);
-
 	LPCWSTR charToLPCWSTR(char* str);
 
 	char* strcat2(char* s1, char* s2);

@@ -8,30 +8,10 @@
 #define Class_SkinMesh_Header
 
 #include "DxSkinnedCom.h"
-#include "../../../FbxLoader/FbxLoader.h"
 
-class SkinMesh {
+class SkinMesh :public SkinMeshHelper {
 
 protected:
-	class SkinMesh_sub {
-	public:
-		FbxLoader* fbxL = nullptr;
-		std::unique_ptr<float[]> end_frame = nullptr;
-		float current_frame = 0.0f;
-		bool centering = false;
-		bool offset = false;
-		float cx = 0.0f;
-		float cy = 0.0f;
-		float cz = 0.0f;
-		float connect_step;
-		CoordTf::MATRIX rotZYX = {};
-		int InternalLastAnimationIndex = 0;
-
-		SkinMesh_sub();
-		~SkinMesh_sub();
-		bool Create(CHAR* szFileName);
-	};
-
 	bool alpha = false;
 	bool blend = false;
 	float addDiffuse = 0.0f;
@@ -43,72 +23,30 @@ protected:
 
 	//コンスタントバッファOBJ
 	ConstantBuffer<SHADER_GLOBAL_BONES>* mObject_BONES = nullptr;
-	SHADER_GLOBAL_BONES sgb[2] = {};
 
-	MY_VERTEX_S** pvVB = nullptr;//使用後保持するか破棄するかフラグで決める,通常は破棄
+	Skin_VERTEX** pvVB = nullptr;//使用後保持するか破棄するかフラグで決める,通常は破棄
 	VertexM** pvVBM = nullptr;
-	UINT*** newIndex = nullptr;
 	bool pvVB_delete_f = true;
 
-	//ボーン
-	int* numBone = nullptr;
-	int maxNumBone = 0;
-	int maxNumBoneMeshIndex = 0;
-	BONE* m_BoneArray = nullptr;
-	char* boneName = nullptr;
-
-	struct meshCenterPos {
-		CoordTf::VECTOR3 pos = {};
-		UINT bBoneIndex = {};
-		float bBoneWeight = {};
-	};
-	std::unique_ptr<meshCenterPos[]> centerPos = nullptr;
-
-	//FBX
-	int numMesh = 0;
-	SkinMesh_sub* fbx = nullptr;
-	Deformer** m_ppSubAnimationBone = nullptr;//その他アニメーションボーンポインタ配列
-	CoordTf::MATRIX* m_pLastBoneMatrix = nullptr;
-	int AnimLastInd;
-	float BoneConnect;
 	BasicPolygon* mObj = nullptr;
 	SkinnedCom* sk = nullptr;
-	CoordTf::MATRIX Axis = {};
-	std::unique_ptr<bool[]> noUseMesh = nullptr;
-	float directTime = 0.0f;
 
-	void DestroyFBX();
-	HRESULT InitFBX(CHAR* szFileName, int p);
-	void ReadSkinInfo(FbxMeshNode* mesh, MY_VERTEX_S* pvVB, meshCenterPos* centerPos);
-	CoordTf::MATRIX GetCurrentPoseMatrix(int index);
-	void MatrixMap_Bone(SHADER_GLOBAL_BONES* sbB);
-	bool SetNewPoseMatrices(float time, int ind, int InternalAnimationIndex);
-	void CreateRotMatrix(float thetaZ, float thetaY, float thetaX, int ind);
 	void GetShaderByteCode(bool disp, bool smooth);
 	void GetMeshCenterPos();
 	void createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh, char* uv0Name, char* uv1Name, int* uvSw);
-	void swapTex(MY_VERTEX_S* vb, FbxMeshNode* mesh, int* uvSw);
+	void swapTex(Skin_VERTEX* vb, FbxMeshNode* mesh, int* uvSw);
 	void splitIndex(UINT numMaterial, FbxMeshNode* mesh, int meshIndex);
-	void normalRecalculation(bool lclOn, double** nor, FbxMeshNode* mesh);
-	void createAxis();
-	void LclTransformation(FbxMeshNode* mesh, CoordTf::VECTOR3* vec);
 
 public:
 	SkinMesh();
 	~SkinMesh();
 
 	void SetState(bool alpha, bool blend, float diffuse = 0.0f, float specu = 0.0f, float ambi = 0.0f);
-	void ObjCentering(bool f, int ind);
-	void ObjCentering(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind);
-	void ObjOffset(float x, float y, float z, float thetaZ, float thetaY, float thetaX, int ind);
-	void SetConnectStep(int ind, float step);
-	void Vertex_hold();
-	HRESULT GetFbx(CHAR* szFileName);
-	int32_t getMaxEndframe(int fbxIndex, int InternalAnimationIndex);
 	void GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame, bool singleMesh = false, bool deformer = true);
 	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
 	void noUseMeshIndex(int meshIndex);
 	void SetVertex(bool lclOn = false, bool axisOn = false, bool VerCentering = false);
+	void Vertex_hold();
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);

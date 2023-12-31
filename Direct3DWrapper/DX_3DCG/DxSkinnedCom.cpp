@@ -26,7 +26,7 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = descHeap->GetCPUDescriptorHandleForHeapStart();
 
-		UINT resSize = sizeof(MY_VERTEX_S);
+		UINT resSize = sizeof(Skin_VERTEX);
 		pd->dpara.Vview.get()->VertexBufferGPU.CreateSrvBuffer(hDescriptor, resSize);
 
 		D3D12_GPU_VIRTUAL_ADDRESS ad[1] = {};
@@ -36,7 +36,7 @@ bool SkinnedCom::createDescHeap(D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 		device->CreateCbv(hDescriptor, ad, cbSize, numCbv);
 
 		UINT byteStride = sizeof(VERTEX_DXR);
-		UINT size = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+		UINT size = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(Skin_VERTEX);
 		SkinnedVer.CreateUavBuffer(hDescriptor, byteStride, size);
 	}
 	return true;
@@ -88,7 +88,7 @@ bool SkinnedCom::createParameterDXR(int comIndex) {
 			for (int j = 0; j < 2; j++) {
 				pd->dxrPara.updateDXR[j].currentIndexCount[i][0] = indCnt;
 				VertexView& dxV = pd->dxrPara.updateDXR[j].VviewDXR[i][0];
-				UINT vCnt = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+				UINT vCnt = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(Skin_VERTEX);
 				bytesize = vCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
@@ -124,7 +124,7 @@ void SkinnedCom::skinning(int comIndex) {
 	mCList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	mCList->SetComputeRootSignature(rootSignature.Get());
 
-	UINT numVer = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(MY_VERTEX_S);
+	UINT numVer = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(Skin_VERTEX);
 	D3D12_GPU_DESCRIPTOR_HANDLE des = descHeap->GetGPUDescriptorHandleForHeapStart();
 	UpdateDXR& ud = pd->dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
 
