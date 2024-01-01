@@ -89,18 +89,18 @@ public:
 		memcpy(divArr, arr, sizeof(DivideArr) * numDiv);
 	}
 	void UpdateDxrDivideBuffer() {
-		for (int i = 0; i < numMesh; i++)
+		for (int i = 0; i < getNumMesh(); i++)
 			mObj[i].UpdateDxrDivideBuffer();
 	}
 	void setRefractiveIndex(int meshIndex, float RefractiveIndex) {
 		mObj[meshIndex].setRefractiveIndex(RefractiveIndex);
 	}
 	void setAllRefractiveIndex(float Index) {
-		for (int i = 0; i < numMesh; i++)
+		for (int i = 0; i < getNumMesh(); i++)
 			mObj[i].setRefractiveIndex(Index);
 	}
 	void SetName(char* name) {
-		for (int i = 0; i < numMesh; i++)
+		for (int i = 0; i < getNumMesh(); i++)
 			mObj[i].SetName(name);
 	}
 };

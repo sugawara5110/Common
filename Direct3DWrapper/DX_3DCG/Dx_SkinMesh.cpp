@@ -22,12 +22,12 @@ SkinMesh::SkinMesh() {
 
 SkinMesh::~SkinMesh() {
 	if (pvVB) {
-		for (int i = 0; i < numMesh; i++) {
+		for (int i = 0; i < getNumMesh(); i++) {
 			ARR_DELETE(pvVB[i]);
 		}
 	}
 	if (pvVBM) {
-		for (int i = 0; i < numMesh; i++) {
+		for (int i = 0; i < getNumMesh(); i++) {
 			ARR_DELETE(pvVBM[i]);
 		}
 	}
@@ -58,19 +58,19 @@ void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame
 	getBuffer(num_end_frame, end_frame, singleMesh, deformer);
 
 	if (maxNumBone > 0) {
-		sk = new SkinnedCom[numMesh];
+		sk = new SkinnedCom[getNumMesh()];
 		mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
 	}
 
-	pvVBM = new VertexM * [numMesh];
-	mObj = new BasicPolygon[numMesh];
+	pvVBM = new VertexM * [getNumMesh()];
+	mObj = new BasicPolygon[getNumMesh()];
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	FbxLoader* fbL = fbx[0].fbxL;
+	FbxLoader* fbL = getFbxLoader();
 
-	for (int i = 0; i < numMesh; i++) {
+	for (int i = 0; i < getNumMesh(); i++) {
 		mObj[i].getBuffer(fbL->getFbxMeshNode(i)->getNumMaterial(), numMaxInstance, divArr, numDiv);
-		if (numBone[i] > 0) {
+		if (getNumBone(i) > 0) {
 			sk[i].getBuffer(&mObj[i]);
 		}
 		if (dev->getDxrCreateResourceState()) {
@@ -94,9 +94,9 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 	newIndex = vset.newIndex;
 
 	using namespace CoordTf;
-	for (int m = 0; m < numMesh; m++) {
+	for (int m = 0; m < getNumMesh(); m++) {
 
-		FbxLoader* fbL = fbx[0].fbxL;
+		FbxLoader* fbL = getFbxLoader();
 		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);//メッシュ毎に処理する
 
 		Skin_VERTEX* vb = pvVB[m];
@@ -126,7 +126,7 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 
 		//同一座標頂点の法線統一化(テセレーション用)
 		SameVertexListNormalization svn;
-		if (numBone[m] > 0) {
+		if (getNumBone(m) > 0) {
 			svn.Normalization(vb, sizeof(Skin_VERTEX), sizeof(VECTOR3) * 3, mesh->getNumVertices(), svList);
 			//頂点バッファ
 			mObj[m].getVertexBuffer(sizeof(Skin_VERTEX), mesh->getNumPolygonVertices());
@@ -149,12 +149,12 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 		auto numMaterial = mesh->getNumMaterial();
 		int* uvSw = new int[numMaterial];
 		createMaterial(m, numMaterial, mesh, uv0Name, uv1Name, uvSw);
-		if (numBone[m] > 0)swapTex(vb, mesh, uvSw);
+		if (getNumBone(m) > 0)swapTex(vb, mesh, uvSw);
 		ARR_DELETE(uvSw);
 	}
 
-	for (int m = 0; m < numMesh; m++) {
-		FbxLoader* fbL = fbx[0].fbxL;
+	for (int m = 0; m < getNumMesh(); m++) {
+		FbxLoader* fbL = getFbxLoader();
 		FbxMeshNode* mesh = fbL->getFbxMeshNode(m);
 		//インデックスバッファ
 		uint32_t* numNewIndex = NumNewIndex[m];
@@ -278,7 +278,7 @@ static void swap(CoordTf::VECTOR2* a, CoordTf::VECTOR2* b) {
 	b->y = tmp;
 }
 
-static void swaptex(Skin_VERTEX* v, int uvSw) {
+static void swaptex(SkinMeshHelper::Skin_VERTEX* v, int uvSw) {
 	switch (uvSw) {
 	case 0:
 		break;
@@ -324,16 +324,16 @@ void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int 
 }
 
 void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
-	for (int i = 0; i < numMesh; i++) {
+	for (int i = 0; i < getNumMesh(); i++) {
 		BasicPolygon& o = mObj[i];
 		if (disp) {
-			if (numBone[i] > 0)
+			if (getNumBone(i) > 0)
 				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, Dx_ShaderHolder::pVertexShader_SKIN_D.Get(), nullptr);
 			else
 				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH_D.Get(), nullptr);
 		}
 		else {
-			if (numBone[i] > 0)
+			if (getNumBone(i) > 0)
 				o.GetShaderByteCode(SQUARE, true, smooth, false, Dx_ShaderHolder::pVertexShader_SKIN.Get(), nullptr);
 			else
 				o.GetShaderByteCode(SQUARE, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH.Get(), nullptr);
@@ -343,7 +343,7 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 
 void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshIndex) {
 	if (materialIndex == -1) {
-		for (int i = 0; i < numMesh; i++)
+		for (int i = 0; i < getNumMesh(); i++)
 			mObj[i].dxrPara.setAllMaterialType(type);
 		return;
 	}
@@ -361,7 +361,7 @@ void SkinMesh::setPointLightAll(bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	for (int i = 0; i < numMesh; i++) {
+	for (int i = 0; i < getNumMesh(); i++) {
 		mObj[i].dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
 	}
 }
@@ -371,7 +371,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 	const int numSrvTex = 3;
 	const int numCbv = 3;
 
-	for (int i = 0; i < numMesh; i++) {
+	for (int i = 0; i < getNumMesh(); i++) {
 		BasicPolygon& o = mObj[i];
 		o.setDivideArr(divArr, numDiv);
 
@@ -381,7 +381,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		}
 		int vSize = sizeof(VertexM);
 		void* vertex = pvVBM[i];
-		if (numBone[i] > 0) {
+		if (getNumBone(i) > 0) {
 			vSize = sizeof(Skin_VERTEX);
 			vertex = pvVB[i];
 		}
@@ -400,7 +400,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		ARR_DELETE(newIndex[i]);
 		int numUav = 0;
 		o.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
-		if (numBone[i] > 0) {
+		if (getNumBone(i) > 0) {
 			if (!sk[i].createParameterDXR(comIndex))return false;
 			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
 			if (!o.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
@@ -426,16 +426,16 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 
 void SkinMesh::GetMeshCenterPos() {
 	using namespace CoordTf;
-	for (int i = 0; i < numMesh; i++) {
+	for (int i = 0; i < getNumMesh(); i++) {
 		Dx_Device* dev = Dx_Device::GetInstance();
 		if (dev->getDxrCreateResourceState()) {
-			VECTOR3 cp = centerPos[i].pos;
+			VECTOR3 cp = getMeshCenterPos(i).pos;
 			UpdateDXR& ud = mObj[i].dxrPara.updateDXR[dev->dxrBuffSwapIndex()];//StreamOutput内もdxrBuffSwapIndex()だが書き込み箇所が異なるのでOK
 			VECTOR3* vv = &ud.v[0];
 			vv->as(cp.x, cp.y, cp.z);
-			if (numBone[i] > 0) {
-				float w = centerPos[i].bBoneWeight;
-				UINT ind = centerPos[i].bBoneIndex;
+			if (getNumBone(i) > 0) {
+				float w = getMeshCenterPos(i).bBoneWeight;
+				UINT ind = getMeshCenterPos(i).bBoneIndex;
 				MATRIX m = GetCurrentPoseMatrix(ind);
 				VectorMatrixMultiply(vv, &m);
 				VectorMultiply(vv, w);
@@ -447,8 +447,8 @@ void SkinMesh::GetMeshCenterPos() {
 void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
 
-	for (int i = 0; i < numMesh; i++) {
-		if (!noUseMesh[i])
+	for (int i = 0; i < getNumMesh(); i++) {
+		if (!isNoUseMesh(i))
 			mObj[i].Instancing(pos, angle, size, Color);
 	}
 }
@@ -464,8 +464,8 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, int InternalAnimationIndex,
 	MatrixMap_Bone(&sgb[dev->cBuffSwapUpdateIndex()]);
 	GetMeshCenterPos();
 
-	for (int i = 0; i < numMesh; i++) {
-		if (!noUseMesh[i])
+	for (int i = 0; i < getNumMesh(); i++) {
+		if (!isNoUseMesh(i))
 			mObj[i].InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess);
 	}
 
@@ -484,7 +484,7 @@ bool SkinMesh::Update(int ind, float ti,
 }
 
 void SkinMesh::DrawOff() {
-	for (int i = 0; i < numMesh; i++)
+	for (int i = 0; i < getNumMesh(); i++)
 		mObj[i].DrawOff();
 }
 
@@ -493,7 +493,7 @@ void SkinMesh::Draw(int comIndex) {
 	Dx_Device* dev = Dx_Device::GetInstance();
 	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 
-	for (int i = 0; i < numMesh; i++)
+	for (int i = 0; i < getNumMesh(); i++)
 		mObj[i].Draw(comIndex);
 }
 
@@ -502,9 +502,9 @@ void SkinMesh::StreamOutput(int comIndex) {
 	Dx_Device* dev = Dx_Device::GetInstance();
 	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 
-	for (int i = 0; i < numMesh; i++) {
+	for (int i = 0; i < getNumMesh(); i++) {
 		mObj[i].StreamOutput(comIndex);
-		if (numBone[i] > 0)sk[i].Skinning(comIndex);
+		if (getNumBone(i) > 0)sk[i].Skinning(comIndex);
 	}
 }
 
