@@ -13,7 +13,7 @@ Dx_TextureHolder* Dx_TextureHolder::dx = nullptr;
 
 void Dx_TextureHolder::InstanceCreate() {
 
-	if (dx == nullptr)dx = new Dx_TextureHolder();
+	if (dx == nullptr)dx = NEW Dx_TextureHolder();
 }
 
 Dx_TextureHolder* Dx_TextureHolder::GetInstance() {
@@ -79,7 +79,7 @@ void Dx_TextureHolder::createTextureArr(int numTexArr, int resourceIndex, char* 
 
 	if (!texture) {
 		texNum = numTexArr + 2;//dummyNor,dummyDifSpe•ª
-		texture = new InternalTexture[texNum];
+		texture = NEW InternalTexture[texNum];
 		UCHAR dm[8 * 4 * 8] = {};
 		UCHAR ndm[4] = { 128,128,255,0 };
 		for (int i = 0; i < 8 * 4 * 8; i += 4)

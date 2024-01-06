@@ -58,12 +58,12 @@ void SkinMesh::GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame
 	getBuffer(num_end_frame, end_frame, singleMesh, deformer);
 
 	if (maxNumBone > 0) {
-		sk = new SkinnedCom[getNumMesh()];
-		mObject_BONES = new ConstantBuffer<SHADER_GLOBAL_BONES>(1);
+		sk = NEW SkinnedCom[getNumMesh()];
+		mObject_BONES = NEW ConstantBuffer<SHADER_GLOBAL_BONES>(1);
 	}
 
-	pvVBM = new VertexM * [getNumMesh()];
-	mObj = new BasicPolygon[getNumMesh()];
+	pvVBM = NEW VertexM * [getNumMesh()];
+	mObj = NEW BasicPolygon[getNumMesh()];
 
 	Dx_Device* dev = Dx_Device::GetInstance();
 	FbxLoader* fbL = getFbxLoader();
@@ -102,7 +102,7 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 		Skin_VERTEX* vb = pvVB[m];
 		Vertex_M* vb_m = vset.pvVB_M[m];
 
-		VertexM* vbm = pvVBM[m] = new VertexM[mesh->getNumPolygonVertices()];
+		VertexM* vbm = pvVBM[m] = NEW VertexM[mesh->getNumPolygonVertices()];
 
 		for (uint32_t i = 0; i < mesh->getNumPolygonVertices(); i++) {
 			VertexM* v = &vbm[i];
@@ -119,7 +119,7 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 		auto index = mesh->getPolygonVertices();//頂点Index取得(頂点xyzに対してのIndex)
 
 		//同一座標頂点リスト
-		SameVertexList* svList = new SameVertexList[mesh->getNumVertices()];
+		SameVertexList* svList = NEW SameVertexList[mesh->getNumVertices()];
 		for (uint32_t i = 0; i < mesh->getNumPolygonVertices(); i++) {
 			svList[index[i]].Push(i);
 		}
@@ -147,7 +147,7 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 		}
 
 		auto numMaterial = mesh->getNumMaterial();
-		int* uvSw = new int[numMaterial];
+		int* uvSw = NEW int[numMaterial];
 		createMaterial(m, numMaterial, mesh, uv0Name, uv1Name, uvSw);
 		if (getNumBone(m) > 0)swapTex(vb, mesh, uvSw);
 		ARR_DELETE(uvSw);
@@ -375,7 +375,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		BasicPolygon& o = mObj[i];
 		o.setDivideArr(divArr, numDiv);
 
-		UINT* indexCntArr = new UINT[o.dpara.NumMaterial];
+		UINT* indexCntArr = NEW UINT[o.dpara.NumMaterial];
 		for (int m = 0; m < o.dpara.NumMaterial; m++) {
 			indexCntArr[m] = o.dpara.Iview[m].IndexCount;
 		}

@@ -16,7 +16,7 @@ void Dx_CommandManager::setNumResourceBarrier(int numResourceBarrier) {
 
 void Dx_CommandManager::InstanceCreate() {
 	if (!com) {
-		com = new Dx_CommandManager(Dx_Device::GetInstance()->getDevice());
+		com = NEW Dx_CommandManager(Dx_Device::GetInstance()->getDevice());
 	}
 }
 

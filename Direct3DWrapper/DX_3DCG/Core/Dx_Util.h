@@ -26,6 +26,8 @@ namespace Dx_Util {
 	char* strcat2(char* s1, char* s2);
 
 	LPCWSTR charToLPCWSTR(char* s1, char* s2);
+
+	void memory_leak_test();
 }
 
 #endif

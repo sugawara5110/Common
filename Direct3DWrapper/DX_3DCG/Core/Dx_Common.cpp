@@ -43,13 +43,13 @@ void DxCommon::CopyResource(int comIndex, ID3D12Resource* Intexture, D3D12_RESOU
 void DxCommon::TextureInit(int width, int height, int index) {
 	if (movOnSize < index + 1) {
 		if (!movOn) {
-			movOn = new MovieTexture[index + 1];
+			movOn = NEW MovieTexture[index + 1];
 		}
 		else {
-			MovieTexture* movOnT = new MovieTexture[index + 1];
+			MovieTexture* movOnT = NEW MovieTexture[index + 1];
 			memcpy(movOnT, movOn, sizeof(MovieTexture) * movOnSize);
 			ARR_DELETE(movOn);
-			movOn = new MovieTexture[index + 1];
+			movOn = NEW MovieTexture[index + 1];
 			memcpy(movOn, movOnT, sizeof(MovieTexture) * index + 1);
 			ARR_DELETE(movOnT);
 		}
@@ -106,17 +106,17 @@ HRESULT DxCommon::createTextureResource(int comIndex, int resourceStartIndex, in
 	numTexRes = MaterialNum * 3;
 	createRes = std::make_unique<bool[]>(numTexRes);
 	for (int i = 0; i < numTexRes; i++)createRes[i] = false;
-	textureUp = std::make_unique<ID3D12Resource* []>(numTexRes);
-	texture = std::make_unique<ID3D12Resource* []>(numTexRes);
+	textureUp = std::make_unique<ID3D12Resource * []>(numTexRes);
+	texture = std::make_unique<ID3D12Resource * []>(numTexRes);
 	if (!movOn) {
-		movOn = new MovieTexture[MaterialNum];
+		movOn = NEW MovieTexture[MaterialNum];
 	}
 	else {
-		MovieTexture* movOnT = new MovieTexture[MaterialNum];
+		MovieTexture* movOnT = NEW MovieTexture[MaterialNum];
 		if (movOnSize > MaterialNum)movOnSize = MaterialNum;
 		memcpy(movOnT, movOn, sizeof(MovieTexture) * movOnSize);
 		ARR_DELETE(movOn);
-		movOn = new MovieTexture[MaterialNum];
+		movOn = NEW MovieTexture[MaterialNum];
 		memcpy(movOn, movOnT, sizeof(MovieTexture) * MaterialNum);
 		ARR_DELETE(movOnT);
 	}

@@ -41,11 +41,11 @@ public:
 	}
 	void setName(char* name) {
 		int ln = (int)strlen(name) + 1;
-		texName = new char[ln];
+		texName = NEW char[ln];
 		memcpy(texName, name, sizeof(char) * ln);
 	}
 	void setData(UCHAR* ByteArr) {
-		byteArr = new UCHAR[RowPitch * height];
+		byteArr = NEW UCHAR[RowPitch * height];
 		memcpy(byteArr, ByteArr, sizeof(UCHAR) * RowPitch * height);
 	}
 	~InternalTexture() {

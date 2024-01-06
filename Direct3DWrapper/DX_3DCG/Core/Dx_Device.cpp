@@ -52,7 +52,7 @@ namespace {
 Dx_Device* Dx_Device::dev = nullptr;
 
 void Dx_Device::InstanceCreate() {
-	if (!dev)dev = new Dx_Device();
+	if (!dev)dev = NEW Dx_Device();
 }
 
 Dx_Device* Dx_Device::GetInstance() {

@@ -9,7 +9,7 @@
 Dx_SwapChain* Dx_SwapChain::sw = nullptr;
 
 void Dx_SwapChain::InstanceCreate() {
-	if (!sw)sw = new Dx_SwapChain();
+	if (!sw)sw = NEW Dx_SwapChain();
 }
 
 Dx_SwapChain* Dx_SwapChain::GetInstance() {

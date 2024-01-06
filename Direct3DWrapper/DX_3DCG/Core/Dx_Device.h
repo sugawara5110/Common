@@ -7,11 +7,6 @@
 #ifndef Class_Dx_Device_Header
 #define Class_Dx_Device_Header
 
-#if defined(DEBUG) || defined(_DEBUG)
-#define _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
-#endif
-
 #include "Dx_Util.h"
 #include <d3d12.h>
 #include <d3d10_1.h>

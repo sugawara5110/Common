@@ -25,7 +25,7 @@ void addChar::addStr(char* str1, char* str2) {
 	size_t size1 = strlen(str1);
 	size_t size2 = strlen(str2);
 	size = size1 + size2 + 1;
-	str = new char[size];
+	str = NEW char[size];
 	memcpy(str, str1, size1 + 1);
 	strncat(str, str2, size2 + 1);
 }

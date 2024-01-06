@@ -70,7 +70,7 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	GetShaderByteCode(primType_create, light, smooth, (tNo == -1 && (!movOn || !movOn[0].m_on)), nullptr, nullptr);
 	mObjectCB1->CopyData(0, sg);
 
-	UINT* indexCntArr = new UINT[dpara.NumMaterial];
+	UINT* indexCntArr = NEW UINT[dpara.NumMaterial];
 	for (int m = 0; m < dpara.NumMaterial; m++) {
 		indexCntArr[m] = dpara.Iview[m].IndexCount;
 	}
@@ -80,6 +80,7 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	}
 	ARR_DELETE(indexCntArr);
 	createDefaultBuffer(comIndex, ver, index);
+	ARR_DELETE(index[0]);
 	ARR_DELETE(index);
 	createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
 	setColorDXR(0, sg);

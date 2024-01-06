@@ -115,3 +115,9 @@ char* Dx_Util::strcat2(char* s1, char* s2) {
 LPCWSTR Dx_Util::charToLPCWSTR(char* s1, char* s2) {
 	return charToLPCWSTR(strcat2(s1, s2));
 }
+
+void Dx_Util::memory_leak_test() {
+#if defined(DEBUG) || defined(_DEBUG)
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+}

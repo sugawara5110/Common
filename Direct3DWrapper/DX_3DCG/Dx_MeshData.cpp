@@ -178,14 +178,14 @@ bool MeshData::GetBuffer(char* FileName, int numMaxInstance) {
 
 	//一時的なメモリ確保
 	using namespace CoordTf;
-	pvCoord = new VECTOR3[VCount];
-	pvNormal = new VECTOR3[VNCount];
-	pvTexture = new VECTOR2[VTCount];
+	pvCoord = NEW VECTOR3[VCount];
+	pvNormal = NEW VECTOR3[VNCount];
+	pvTexture = NEW VECTOR2[VTCount];
 
-	piFaceBuffer = new UINT * [mObj.dpara.NumMaterial];
+	piFaceBuffer = NEW UINT * [mObj.dpara.NumMaterial];
 	for (int i = 0; i < mObj.dpara.NumMaterial; i++)
-		piFaceBuffer[i] = new UINT[FaceCount * 3];//3頂点なので3インデックス * Material個数
-	pvVertexBuffer = new VertexM[FaceCount * 3];
+		piFaceBuffer[i] = NEW UINT[FaceCount * 3];//3頂点なので3インデックス * Material個数
+	pvVertexBuffer = NEW VertexM[FaceCount * 3];
 
 	return true;
 }
@@ -250,7 +250,7 @@ bool MeshData::SetVertex() {
 
 	using namespace CoordTf;
 	//同一座標頂点リスト
-	SameVertexList* svList = new SameVertexList[VCount];
+	SameVertexList* svList = NEW SameVertexList[VCount];
 
 	for (int i = 0; i < mObj.dpara.NumMaterial; i++) {
 		CONSTANT_BUFFER2 sg;
@@ -403,7 +403,7 @@ bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnifica
 	const int numCbv = 2;
 	mObj.setDivideArr(divArr, numDiv);
 
-	UINT* indexCntArr = new UINT[mObj.dpara.NumMaterial];
+	UINT* indexCntArr = NEW UINT[mObj.dpara.NumMaterial];
 	for (int m = 0; m < mObj.dpara.NumMaterial; m++) {
 		indexCntArr[m] = mObj.dpara.Iview[m].IndexCount;
 	}

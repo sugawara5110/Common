@@ -88,7 +88,7 @@ void PolygonData2D::GetVBarray2D(int pcs) {
 	ver = pcs * 4;
 	d2varray = (MY_VERTEX2*)malloc(sizeof(MY_VERTEX2) * ver);
 	d2varrayI = (std::uint16_t*)malloc(sizeof(std::uint16_t) * (int)(ver * 1.5));
-	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER2D>(1);
+	mObjectCB = NEW ConstantBuffer<CONSTANT_BUFFER2D>(1);
 	Vview = std::make_unique<VertexView>();
 	Iview = std::make_unique<IndexView>();
 }

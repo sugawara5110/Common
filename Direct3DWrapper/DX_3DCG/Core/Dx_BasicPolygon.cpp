@@ -314,11 +314,11 @@ void BasicPolygon::getBuffer(int numMaterial, int numMaxInstance, DivideArr* div
 	dpara.NumMaxInstance = numMaxInstance;
 	cbWVP[0] = std::make_unique<WVP_CB[]>(numMaxInstance);
 	cbWVP[1] = std::make_unique<WVP_CB[]>(numMaxInstance);
-	mObjectCB = new ConstantBuffer<CONSTANT_BUFFER>(1);
+	mObjectCB = NEW ConstantBuffer<CONSTANT_BUFFER>(1);
 	dpara.NumMaterial = numMaterial;
-	mObjectCB1 = new ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
-	mObjectCB_Ins = new ConstantBuffer<cbInstanceID>(dpara.NumMaterial * numMaxInstance);
-	wvp = new ConstantBuffer<WVP_CB>(numMaxInstance);
+	mObjectCB1 = NEW ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
+	mObjectCB_Ins = NEW ConstantBuffer<cbInstanceID>(dpara.NumMaterial * numMaxInstance);
+	wvp = NEW ConstantBuffer<WVP_CB>(numMaxInstance);
 
 	dpara.material = std::make_unique<MY_MATERIAL_S[]>(dpara.NumMaterial);
 	dpara.PSO = std::make_unique<ComPtr<ID3D12PipelineState>[]>(dpara.NumMaterial);
@@ -390,7 +390,7 @@ bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
 	const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 
 	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
-	TextureNo* te = new TextureNo[dpara.NumMaterial];
+	TextureNo* te = NEW TextureNo[dpara.NumMaterial];
 	int tCnt = 0;
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
@@ -482,7 +482,7 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 		dxI.IndexFormat = DXGI_FORMAT_R32_UINT;
 		dxI.IndexBufferByteSize = bytesize;
 		dxI.IndexCount = indCnt;
-		UINT* ind = new UINT[indCnt];
+		UINT* ind = NEW UINT[indCnt];
 		for (UINT in = 0; in < indCnt; in++)ind[in] = in;
 		dxI.IndexBufferGPU.CreateDefaultBuffer(comIndex, ind, bytesize, false);
 		ARR_DELETE(ind);

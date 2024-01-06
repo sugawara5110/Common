@@ -401,13 +401,13 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 		maxNumInstancing += PD[i]->NumMaxInstance;
 	}
 
-	wvp = new ConstantBuffer<WVP_CB>(maxNumInstancing);
+	wvp = NEW ConstantBuffer<WVP_CB>(maxNumInstancing);
 	cbObj[0].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
 	cbObj[1].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
-	material = new ConstantBuffer<DxrMaterialCB>(numMaterial);
+	material = NEW ConstantBuffer<DxrMaterialCB>(numMaterial);
 	cbObj[0].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 	cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
-	sCB = new ConstantBuffer<DxrConstantBuffer>(1);
+	sCB = NEW ConstantBuffer<DxrConstantBuffer>(1);
 
 	createAccelerationStructures();
 
