@@ -4,16 +4,6 @@
 
 char* ShaderRayGen =
 
-//RGB Å® sRGBÇ…ïœä∑
-"float3 linearToSrgb(in float3 c)\n"
-"{\n"
-"    float3 sq1 = sqrt(c);\n"
-"    float3 sq2 = sqrt(sq1);\n"
-"    float3 sq3 = sqrt(sq2);\n"
-"    float3 srgb = 0.662002687 * sq1 + 0.684122060 * sq2 - 0.323583601 * sq3 - 0.0225411470 * c;\n"
-"    return srgb;\n"
-"}\n"
-
 //ã§í 
 "void rayGenIn()\n"
 "{\n"
@@ -63,7 +53,7 @@ char* ShaderRayGen =
 
 "    gInstanceIdMap[index] = payload.hitInstanceId;\n"
 
-"    float3 col = linearToSrgb(payload.color);\n"
+"    float3 col = payload.color;\n"
 "    float3 colsatu;\n"
 "    colsatu.x = saturate(col.x);\n"
 "    colsatu.y = saturate(col.y);\n"

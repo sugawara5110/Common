@@ -12,7 +12,7 @@ char *ShaderCommonPS =
 //フォグ計算(テクスチャに対して計算)
 "    Tdif = FogCom(g_FogColor, g_FogAmo_Density, g_C_Pos, input.wPos, Tdif);\n"
 
-//アンビエント乗算
+//アンビエント加算
 "    float3 Ambient = g_Ambient.xyz + g_GlobalAmbientLight.xyz;"
 
 //ライト計算
