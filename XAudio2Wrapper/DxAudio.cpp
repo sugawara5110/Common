@@ -1,11 +1,10 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   @@@	       DxAudio                                           **//
+//**                                   DxAudio                                           **//
 //**                                                                                     **//
 //*****************************************************************************************//
 
 #include "DxAudio.h"
-#include "../../WAVELoader/WAVELoader.h"
 
 namespace {
 
@@ -79,10 +78,28 @@ DxAudioSourceVoice::~DxAudioSourceVoice() {
 
 HRESULT DxAudioSourceVoice::CreateSource(
     const char* szFileName,
-    UINT32 LoopLength, UINT32 LoopBegin, UINT32 LoopCount) {
+    UINT32 LoopLength, UINT32 LoopBegin, UINT32 LoopCount,
+    WAVE_Input* input) {
 
     WAVELoader wav;
-    WAVE_Output out = wav.loadWAVE(szFileName);
+    WAVE_Output out;
+    if (input) {
+        out.format = input->format;
+        out.numChannels = input->numChannels;
+        out.SamplesPerSec = input->SamplesPerSec;
+        out.AvgBytesPerSec = input->AvgBytesPerSec;
+        out.BlockAlign = input->BlockAlign;
+        out.BitsPerSample = input->BitsPerSample;
+        out.cbSize = input->cbSize;
+        if (input->cbSize > 0) {
+            out.cb = std::move(input->cb);
+        }
+        out.wave_size = input->wave_size;
+        out.wave_data = std::move(input->wave_data);
+    }
+    else {
+        out = wav.loadWAVE(szFileName);
+    }
     WAVEFORMATEX wfx = {};
 
     switch (out.format) {
@@ -91,10 +108,11 @@ HRESULT DxAudioSourceVoice::CreateSource(
         break;
 
     case ALAW:
-
+        wfx.wFormatTag = WAVE_FORMAT_ALAW;
         break;
 
     case MULAW:
+        wfx.wFormatTag = WAVE_FORMAT_MULAW;
         break;
     }
 

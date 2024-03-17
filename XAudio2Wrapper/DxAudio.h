@@ -1,6 +1,6 @@
 //*****************************************************************************************//
 //**                                                                                     **//
-//**                   Å@Å@Å@	       DxAudio                                           **//
+//**                                   DxAudio                                           **//
 //**                                                                                     **//
 //*****************************************************************************************//
 #ifndef Class_DxAudio_Header
@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include <memory>
 #pragma comment(lib,"xaudio2.lib")
+#include "../../WAVELoader/WAVELoader.h"
+
+typedef WAVE_Output WAVE_Input;
 
 class DxAudio {
 
@@ -41,7 +44,7 @@ public:
 
 	HRESULT CreateSource(
 		const char* szFileName,
-		UINT32 LoopLength = 0, UINT32 LoopBegin = 0, UINT32 LoopCount = 0);
+		UINT32 LoopLength = 0, UINT32 LoopBegin = 0, UINT32 LoopCount = 0, WAVE_Input* input = nullptr);
 
 	HRESULT Start();
 	HRESULT Stop();
