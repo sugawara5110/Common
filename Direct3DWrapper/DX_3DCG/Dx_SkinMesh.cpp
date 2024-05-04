@@ -185,7 +185,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 			textureType type = mesh->getDiffuseTextureType(i, tNo);
 			if (type.DiffuseColor && !type.SpecularColor ||
 				mesh->getNumDiffuseTexture(i) == 1) {
-				auto diffName = Dx_Util::GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
+				auto diffName = mesh->getDiffuseTextureName(i, tNo);
 				mObj[m].dpara.material[i].diftex_no = dx->GetTexNumber(diffName);
 				auto str = mesh->getDiffuseTextureUVName(i, tNo);
 				if (str)strcpy(mObj[m].dpara.material[i].difUvName, str);
@@ -196,7 +196,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
 			textureType type = mesh->getDiffuseTextureType(i, tNo);
 			if (type.SpecularColor) {
-				auto speName = Dx_Util::GetNameFromPass(mesh->getDiffuseTextureName(i, tNo));
+				auto speName = mesh->getDiffuseTextureName(i, tNo);
 				mObj[m].dpara.material[i].spetex_no = dx->GetTexNumber(speName);
 				auto str = mesh->getDiffuseTextureUVName(i, tNo);
 				if (str)strcpy(mObj[m].dpara.material[i].speUvName, str);
@@ -210,7 +210,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 			auto uvNorName = mesh->getNormalTextureUVName(i, tNo);
 			if (mesh->getNumNormalTexture(i) == 1 ||
 				uvNorName && !strcmp(mObj[m].dpara.material[i].difUvName, uvNorName)) {
-				auto norName = Dx_Util::GetNameFromPass(mesh->getNormalTextureName(i, tNo));
+				auto norName = mesh->getNormalTextureName(i, tNo);
 				mObj[m].dpara.material[i].nortex_no = dx->GetTexNumber(norName);
 				auto str = mesh->getNormalTextureUVName(i, tNo);
 				if (str)strcpy(mObj[m].dpara.material[i].norUvName, str);
@@ -399,7 +399,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		}
 		ARR_DELETE(newIndex[i]);
 		int numUav = 0;
-		o.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
+		if (!o.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification))return false;
 		if (getNumBone(i) > 0) {
 			if (!sk[i].createParameterDXR(comIndex))return false;
 			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
@@ -407,13 +407,17 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 			if (!sk[i].createPSO())return false;
 			UINT cbSize = mObject_BONES->getSizeInBytes();
 			D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
-			if (!o.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
+			if (!o.createTexResource(comIndex))return false;
+			o.setTextureDXR();
+			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
 			if (!sk[i].createDescHeap(ad, cbSize))return false;
 		}
 		else {
 			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 			if (!o.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
-			if (!o.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
+			if (!o.createTexResource(comIndex))return false;
+			o.setTextureDXR();
+			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 		}
 	}
 	if (pvVB_delete_f) {

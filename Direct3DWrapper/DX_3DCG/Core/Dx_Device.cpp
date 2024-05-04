@@ -64,29 +64,27 @@ void Dx_Device::DeleteInstance() {
 	S_DELETE(dev);
 }
 
-HRESULT Dx_Device::createDevice() {
+void Dx_Device::createDevice() {
 
 #if defined(DEBUG) || defined(_DEBUG) 
-	//デバッグ中はデバッグレイヤーを有効化する
+		//デバッグ中はデバッグレイヤーを有効化する
 	{
 		ComPtr<ID3D12Debug> debugController;
 		HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf()));
 		if (FAILED(hr)) {
-			Dx_Util::ErrorMessage("D3D12GetDebugInterface Error");
-			return hr;
+			throw std::runtime_error("D3D12GetDebugInterface Error");
 		}
 		debugController->EnableDebugLayer();
 	}
 #endif
 
-	//ファクトリ生成
-	//アダプターの列挙、スワップ チェーンの作成、
-	//および全画面表示モードとの間の切り替えに使用される Alt + 
-	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
+		//ファクトリ生成
+		//アダプターの列挙、スワップ チェーンの作成、
+		//および全画面表示モードとの間の切り替えに使用される Alt + 
+		//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
 	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory));
 	if (FAILED(hr)) {
-		Dx_Util::ErrorMessage("CreateDXGIFactory1 Error");
-		return hr;
+		throw std::runtime_error("CreateDXGIFactory1 Error");
 	}
 
 	HRESULT hardwareResult = D3D12CreateDevice(
@@ -100,8 +98,7 @@ HRESULT Dx_Device::createDevice() {
 		ComPtr<IDXGIAdapter> pWarpAdapter;
 		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(pWarpAdapter.GetAddressOf())))) {
 
-			Dx_Util::ErrorMessage("EnumWarpAdapter Error");
-			return hardwareResult;
+			throw std::runtime_error("EnumWarpAdapter Error");
 		}
 
 		if (FAILED(D3D12CreateDevice(
@@ -109,25 +106,23 @@ HRESULT Dx_Device::createDevice() {
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&md3dDevice)))) {
 
-			Dx_Util::ErrorMessage("D3D12CreateDevice Error");
-			return hardwareResult;
+			throw std::runtime_error("D3D12CreateDevice Error");
 		}
 	}
 
 	if (DXR_CreateResource) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
-		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+		HRESULT hr = md3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,
+			&features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+
 		if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 		{
-			Dx_Util::ErrorMessage("DXR not supported");
 			DXR_CreateResource = false;
-			return hr;
+			throw std::runtime_error("DXR not supported");
 		}
 	}
 
 	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-	return hardwareResult;
 }
 
 Dx_Device::~Dx_Device() {
@@ -140,15 +135,13 @@ Dx_Device::~Dx_Device() {
 		if (SUCCEEDED(Dx_Device::GetInstance()->getDevice()->QueryInterface(&debugInterface)))
 		{
 			debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
-			debugInterface->Release();
+			RELEASE(debugInterface);
 		}
 	}
 #endif
 
-	md3dDevice->Release();
-	md3dDevice = nullptr;
-	mdxgiFactory->Release();
-	mdxgiFactory = nullptr;
+	RELEASE(md3dDevice);
+	RELEASE(mdxgiFactory);
 }
 
 ID3D12Device5* Dx_Device::getDevice() {

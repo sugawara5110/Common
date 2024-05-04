@@ -31,15 +31,15 @@ void Dx_CommandManager::DeleteInstance() {
 Dx_CommandManager::Dx_CommandManager(ID3D12Device5* dev) {
 
 	//コマンドキュー生成
-	if (!graphicsQueue.Create(dev, false))Dx_Util::ErrorMessage("Dx_CommandManager: graphicsQueue.Create Error!!");
-	if (!computeQueue.Create(dev, true))Dx_Util::ErrorMessage("Dx_CommandManager: computeQueue.Create Error!!");
+	if (!graphicsQueue.Create(dev, false))throw std::runtime_error("Dx_CommandManager: graphicsQueue.Create Error!!");
+	if (!computeQueue.Create(dev, true))throw std::runtime_error("Dx_CommandManager: computeQueue.Create Error!!");
 
 	for (int i = 0; i < COM_NO; i++) {
 		//コマンドアロケータ,コマンドリスト生成
-		if (!grList[i].ListCreate(false, dev))Dx_Util::ErrorMessage("Dx_CommandManager: ListCreate.Create Error!!");
+		if (!grList[i].ListCreate(false, dev))throw std::runtime_error("Dx_CommandManager: ListCreate.Create Error!!");
 		grList[i].createResourceBarrierList();
 		grList[i].createUavResourceBarrierList();
-		if (!coList[i].ListCreate(true, dev))Dx_Util::ErrorMessage("Dx_CommandManager: ListCreate.Create Error!!");
+		if (!coList[i].ListCreate(true, dev))throw std::runtime_error("Dx_CommandManager: ListCreate.Create Error!!");
 		coList[i].createUavResourceBarrierList();
 	}
 }

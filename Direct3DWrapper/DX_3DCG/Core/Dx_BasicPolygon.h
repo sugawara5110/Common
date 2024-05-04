@@ -99,11 +99,13 @@ protected:
 	bool createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool blend, bool alpha);
 
-	bool setDescHeap(int comIndex, const int numSrvTex,
-		const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
+	bool createTexResource(int comIndex);
+
+	bool setDescHeap(const int numSrvTex, const int numSrvBuf,
+		ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification);
+	bool createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification);
 
 	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool smooth);

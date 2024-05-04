@@ -10,6 +10,7 @@
 #include "Dx_Util.h"
 #include <d3d12.h>
 #include <d3d10_1.h>
+#include <stdexcept>
 
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -44,7 +45,7 @@ public:
 	void dxrCreateResource() { DXR_CreateResource = true; }
 	void reportLiveDeviceObjectsOn() { ReportLiveDeviceObjectsOn = true; }
 
-	HRESULT createDevice();
+	void createDevice();
 
 	ID3D12Device5* getDevice();
 

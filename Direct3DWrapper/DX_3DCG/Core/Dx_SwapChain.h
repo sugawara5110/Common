@@ -74,7 +74,7 @@ public:
 	static Dx_SwapChain* GetInstance();
 	static void DeleteInstance();
 
-	bool Initialize(HWND hWnd, int width = 800, int height = 600);
+	void Initialize(HWND hWnd, int width = 800, int height = 600);
 
 	void setPerspectiveFov(float ViewAngle, float NearPlane, float FarPlane);
 

@@ -13,7 +13,7 @@ namespace Dx_Util {
 
 	void ErrorMessage(char* E_mes);
 
-	bool getErrorState();
+	bool getErrorState();//事前にErrorMessageが一回でも呼ばれればtrue
 
 	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
 

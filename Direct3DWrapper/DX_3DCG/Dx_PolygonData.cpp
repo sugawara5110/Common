@@ -82,7 +82,7 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	createDefaultBuffer(comIndex, ver, index);
 	ARR_DELETE(index[0]);
 	ARR_DELETE(index);
-	createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
+	if (!createParameterDXR(comIndex, alpha, blend, divideBufferMagnification))return false;
 	setColorDXR(0, sg);
 
 	const int numSrvTex = 3;
@@ -100,7 +100,11 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 		if (!createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 	}
 
-	return setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
+	if (!createTexResource(comIndex))return false;
+
+	setTextureDXR();
+
+	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
 
 void PolygonData::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,

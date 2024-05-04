@@ -369,7 +369,10 @@ bool BasicPolygon::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout
 	UINT numDescriptors[1] = {};
 	numDescriptors[0] = dpara.NumMaxInstance;
 	dpara.rootSignature = CreateRootSignature(numSrv, numCbv, numUav, 1, 3, 1, numDescriptors);
-	if (dpara.rootSignature == nullptr)return false;
+	if (dpara.rootSignature == nullptr) {
+		Dx_Util::ErrorMessage("BasicPolygon::createPSO Error");
+		return false;
+	}
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.material[i].nortex_no < 0)
@@ -379,15 +382,16 @@ bool BasicPolygon::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout
 			dpara.PSO[i] = CreatePsoVsHsDsPs(vs, hs, ds, ps, gs, dpara.rootSignature.Get(),
 				vertexLayout, alpha, blend, primType_create);
 
-		if (dpara.PSO[i] == nullptr)return false;
+		if (dpara.PSO[i] == nullptr) {
+			Dx_Util::ErrorMessage("BasicPolygon::createPSO Error");
+			return false;
+		}
 	}
 
 	return true;
 }
 
-bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
-	const int numSrvBuf, ID3D12Resource** buffer, UINT* StructureByteStride,
-	const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
+bool BasicPolygon::createTexResource(int comIndex) {
 
 	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	TextureNo* te = NEW TextureNo[dpara.NumMaterial];
@@ -406,16 +410,27 @@ bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
 			te[tCnt].specular = dpara.material[i].spetex_no;
 		tCnt++;
 	}
-	createTextureResource(comIndex, 0, tCnt, te, objName);
-	setTextureDXR();
+	if (FAILED(createTextureResource(comIndex, 0, tCnt, te, objName))) {
+		Dx_Util::ErrorMessage("BasicPolygon::createTexResource Error");
+		return false;
+	}
+	ARR_DELETE(te);
+	return true;
+}
+
+bool BasicPolygon::setDescHeap(const int numSrvTex, const int numSrvBuf,
+	ID3D12Resource** buffer, UINT* StructureByteStride,
+	const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
 
 	dpara.numDesc = numSrvTex + numSrvBuf + (numCbv + dpara.NumMaxInstance);
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
 	dpara.descHeap = device->CreateDescHeap(numHeap);
-	ARR_DELETE(te);
-	if (dpara.descHeap == nullptr)return false;
+	if (dpara.descHeap == nullptr) {
+		Dx_Util::ErrorMessage("BasicPolygon::setDescHeap Error");
+		return false;
+	}
 	const int numMaxCB = 3;
 	UINT cbSize[numMaxCB] = {};
 	cbSize[0] = mObjectCB->getSizeInBytes();
@@ -447,7 +462,7 @@ bool BasicPolygon::setDescHeap(int comIndex, const int numSrvTex,
 	return true;
 }
 
-void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification) {
+bool BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification) {
 	dxrPara.alphaTest = alpha;
 	dxrPara.alphaBlend = blend;
 	int NumMaterial = dxrPara.NumMaterial;
@@ -457,7 +472,7 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 	if (hs || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())dxrPara.updateF = true;
 	if (hs)dxrPara.tessellationF = true;
 
-	if (!dev->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return;
+	if (!dev->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return true;
 
 	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
 	if (hs) {
@@ -493,16 +508,24 @@ void BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 				bytesize = indCnt * sizeof(VERTEX_DXR);
 				dxV.VertexByteStride = sizeof(VERTEX_DXR);
 				dxV.VertexBufferByteSize = bytesize;
-				dxV.VertexBufferGPU.createDefaultResourceBuffer(dxV.VertexBufferByteSize);
+				if (FAILED(dxV.VertexBufferGPU.createDefaultResourceBuffer(dxV.VertexBufferByteSize))) {
+					Dx_Util::ErrorMessage("BasicPolygon::createParameterDXR Error");
+					return false;
+				}
 				dxV.VertexBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_GENERIC_READ);
 			}
 			StreamView& dxS = dxrPara.SviewDXR[i][t];
 			dxS.StreamByteStride = sizeof(VERTEX_DXR);
 			dxS.StreamBufferByteSize = bytesize;
-			dxS.StreamBufferGPU.createDefaultResourceBuffer(dxS.StreamBufferByteSize);
+			if (FAILED(dxS.StreamBufferGPU.createDefaultResourceBuffer(dxS.StreamBufferByteSize))) {
+				Dx_Util::ErrorMessage("BasicPolygon::createParameterDXR Error");
+				return false;
+			}
 			dxS.StreamBufferGPU.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_STREAM_OUT);
 		}
 	}
+
+	return true;
 }
 
 bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
@@ -526,7 +549,10 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 		gs = Dx_ShaderHolder::pGeometryShader_Before_vs_Output.Get();
 		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, false, 1, 3, 1, numDescriptors);
 	}
-	if (dpara.rootSignature == nullptr)return false;
+	if (dpara.rootSignatureDXR == nullptr) {
+		Dx_Util::ErrorMessage("BasicPolygon::createPSO_DXR Error");
+		return false;
+	}
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
@@ -537,6 +563,11 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 			&dxrPara.SviewDXR[i][0].StreamByteStride,
 			1,
 			primType_create);
+
+		if (dpara.PSO_DXR[i] == nullptr) {
+			Dx_Util::ErrorMessage("BasicPolygon::createPSO_DXR Error");
+			return false;
+		}
 	}
 
 	return true;

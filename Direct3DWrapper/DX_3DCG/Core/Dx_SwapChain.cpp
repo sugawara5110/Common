@@ -23,7 +23,7 @@ void Dx_SwapChain::DeleteInstance() {
 	}
 }
 
-bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
+void Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 
 	mClientWidth = width;
 	mClientHeight = height;
@@ -44,12 +44,13 @@ bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&msQualityLevels,     //機能のサポートを示すデータが格納
 		sizeof(msQualityLevels)))) {
-		Dx_Util::ErrorMessage("CheckFeatureSupport Error");
-		return false;
+		throw std::runtime_error("CheckFeatureSupport Error");
 	}
 
 	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
-	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
+	if (m4xMsaaQuality <= 0) {
+		throw std::runtime_error("Unexpected MSAA quality level.");
+	}
 
 	//初期化
 	mSwapChain.Reset();
@@ -78,8 +79,7 @@ bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 		nullptr,
 		nullptr,
 		swapChain.GetAddressOf()))) {
-		Dx_Util::ErrorMessage("CreateSwapChain Error");
-		return false;
+		throw std::runtime_error("CreateSwapChain Error");
 	}
 	swapChain->QueryInterface(IID_PPV_ARGS(mSwapChain.GetAddressOf()));
 
@@ -91,15 +91,13 @@ bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 	rtvHeapDesc.NodeMask = 0;
 	if (FAILED(device->getDevice()->CreateDescriptorHeap(
 		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())))) {
-		Dx_Util::ErrorMessage("CreateDescriptorHeap Error");
-		return false;
+		throw std::runtime_error("CreateDescriptorHeap Error");
 	}
 
 	for (UINT i = 0; i < SwapChainBufferCount; i++) {
 		//スワップチェインバッファ取得
 		if (FAILED(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mRtBuffer[i].getResourceAddress())))) {
-			Dx_Util::ErrorMessage("GetSwapChainBuffer Error");
-			return false;
+			throw std::runtime_error("GetSwapChainBuffer Error");
 		}
 		mRtBuffer[i].getResource()->SetName(Dx_Util::charToLPCWSTR("Rt"));
 	}
@@ -122,8 +120,7 @@ bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 	dsvHeapDesc.NodeMask = 0;
 	if (FAILED(device->getDevice()->CreateDescriptorHeap(
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())))) {
-		Dx_Util::ErrorMessage("CreateDescriptorHeap Error");
-		return false;
+		throw std::runtime_error("CreateDescriptorHeap Error");
 	}
 
 	D3D12_RESOURCE_DESC depthStencilDesc = {};
@@ -158,8 +155,7 @@ bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 		D3D12_RESOURCE_STATE_COMMON,
 		&optClear,
 		IID_PPV_ARGS(mDepthStencilBuffer.getResourceAddress())))) {
-		Dx_Util::ErrorMessage("CreateCommittedResource DepthStencil Error");
-		return false;
+		throw std::runtime_error("CreateCommittedResource DepthStencil Error");
 	}
 	mDepthStencilBuffer.getResource()->SetName(Dx_Util::charToLPCWSTR("DepthStencil"));
 
@@ -209,8 +205,6 @@ bool Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 	FarPlane = 10000.0f;
 	MatrixPerspectiveFovLH(&upd[0].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
 	MatrixPerspectiveFovLH(&upd[1].mProj, ViewY_theta, aspect, NearPlane, FarPlane);
-
-	return true;
 }
 
 void Dx_SwapChain::setPerspectiveFov(float ViewAngle, float nearPlane, float farPlane) {

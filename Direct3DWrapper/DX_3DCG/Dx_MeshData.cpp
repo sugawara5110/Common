@@ -418,13 +418,17 @@ bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnifica
 	}
 	ARR_DELETE(piFaceBuffer);
 	int numUav = 0;
-	mObj.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
+	if (!mObj.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification))return false;
 
 	if (!mObj.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 	if (!mObj.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 
-	if (!mObj.setDescHeap(comIndex, numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
+	if (!mObj.createTexResource(comIndex))return false;
+
+	mObj.setTextureDXR();
+
+	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
 	return true;
 }
 
