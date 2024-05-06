@@ -399,26 +399,43 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		}
 		ARR_DELETE(newIndex[i]);
 		int numUav = 0;
-		if (!o.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification))return false;
+
+		if (!o.createTexResource(comIndex))return false;
+
+		std::vector<D3D12_INPUT_ELEMENT_DESC> pVertexLayout;
+		UINT cbSize = 0;
+		D3D12_GPU_VIRTUAL_ADDRESS ad = 0;
+
 		if (getNumBone(i) > 0) {
-			if (!sk[i].createParameterDXR(comIndex))return false;
-			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, blend, alpha))return false;
-			if (!o.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_SKIN, numSrvTex, numCbv, numUav, smooth))return false;
-			if (!sk[i].createPSO())return false;
-			UINT cbSize = mObject_BONES->getSizeInBytes();
-			D3D12_GPU_VIRTUAL_ADDRESS ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
-			if (!o.createTexResource(comIndex))return false;
-			o.setTextureDXR();
-			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
-			if (!sk[i].createDescHeap(ad, cbSize))return false;
+			pVertexLayout.resize(Dx_ShaderHolder::pVertexLayout_SKIN.size());
+			std::copy(Dx_ShaderHolder::pVertexLayout_SKIN.begin(), Dx_ShaderHolder::pVertexLayout_SKIN.end(), pVertexLayout.begin());
+			cbSize = mObject_BONES->getSizeInBytes();
+			ad = mObject_BONES->Resource()->GetGPUVirtualAddress();
 		}
 		else {
-			if (!o.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-			if (!o.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
-			if (!o.createTexResource(comIndex))return false;
-			o.setTextureDXR();
-			if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
+			pVertexLayout.resize(Dx_ShaderHolder::pVertexLayout_MESH.size());
+			std::copy(Dx_ShaderHolder::pVertexLayout_MESH.begin(), Dx_ShaderHolder::pVertexLayout_MESH.end(), pVertexLayout.begin());
 		}
+
+		if (!o.createPSO(pVertexLayout, numSrvTex, numCbv, numUav, blend, alpha))return false;
+
+		if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
+			o.setParameterDXR(alpha, blend);
+			o.setTextureDXR();
+
+			if (o.vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
+				if (!sk[i].createParameter(comIndex))return false;
+				if (!sk[i].createPSO())return false;
+				if (!sk[i].createDescHeap(ad, cbSize))return false;
+			}
+			else {
+				//pVertexShader_SKIN‚Ìê‡Žg—p‚µ‚È‚¢ˆ×, ¶¬–³‚µ
+				if (!o.createStreamOutputResource(comIndex, divideBufferMagnification))return false;
+				if (!o.createPSO_DXR(pVertexLayout, numSrvTex, numCbv, numUav, smooth))return false;
+			}
+		}
+
+		if (!o.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, ad, cbSize))return false;
 	}
 	if (pvVB_delete_f) {
 		ARR_DELETE(pvVBM);
@@ -507,8 +524,13 @@ void SkinMesh::StreamOutput(int comIndex) {
 	if (mObject_BONES)mObject_BONES->CopyData(0, sgb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 
 	for (int i = 0; i < getNumMesh(); i++) {
-		mObj[i].StreamOutput(comIndex);
-		if (getNumBone(i) > 0)sk[i].Skinning(comIndex);
+
+		if (mObj[i].vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
+			sk[i].Skinning(comIndex);
+		}
+		else {
+			mObj[i].StreamOutput(comIndex);
+		}
 	}
 }
 

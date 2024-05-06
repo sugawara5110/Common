@@ -82,8 +82,8 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	createDefaultBuffer(comIndex, ver, index);
 	ARR_DELETE(index[0]);
 	ARR_DELETE(index);
-	if (!createParameterDXR(comIndex, alpha, blend, divideBufferMagnification))return false;
-	setColorDXR(0, sg);
+
+	if (!createTexResource(comIndex))return false;
 
 	const int numSrvTex = 3;
 	const int numCbv = 2;
@@ -97,12 +97,15 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 		VertexM* vm = (VertexM*)ver;
 		ARR_DELETE(vm);
 		if (!createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-		if (!createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
+
+		if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
+			setParameterDXR(alpha, blend);
+			if (!createStreamOutputResource(comIndex, divideBufferMagnification))return false;
+			setColorDXR(0, sg);
+			if (!createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
+			setTextureDXR();
+		}
 	}
-
-	if (!createTexResource(comIndex))return false;
-
-	setTextureDXR();
 
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }

@@ -65,7 +65,7 @@ protected:
 	bool ComCreateSin(int comIndex);
 	bool ComCreateRipples(int comIndex);
 	bool ComCreate(int comIndex);
-	bool setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, const int numCbv);
+	bool setDescHeap(const int numSrvTex, const int numSrvTex2, const int numCbv);
 	bool DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alpha, bool smooth, float divideBufferMagnification);
 	void Compute(int comIndex);
 

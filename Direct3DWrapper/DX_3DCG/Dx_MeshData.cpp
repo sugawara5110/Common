@@ -271,7 +271,9 @@ bool MeshData::SetVertex() {
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 		mObj.mObjectCB1->CopyData(i, sg);
-		mObj.setColorDXR(i, sg);
+		if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
+			mObj.setColorDXR(i, sg);
+		}
 	}
 
 	//フェイス　読み込み　バラバラに収録されている可能性があるので、マテリアル名を頼りにつなぎ合わせる
@@ -418,18 +420,19 @@ bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnifica
 	}
 	ARR_DELETE(piFaceBuffer);
 	int numUav = 0;
-	if (!mObj.createParameterDXR(comIndex, alpha, blend, divideBufferMagnification))return false;
-
-	if (!mObj.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
-
-	if (!mObj.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
 
 	if (!mObj.createTexResource(comIndex))return false;
+	if (!mObj.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
-	mObj.setTextureDXR();
+	if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
+		mObj.setParameterDXR(alpha, blend);
+		if (!mObj.createStreamOutputResource(comIndex, divideBufferMagnification))return false;
+		if (!mObj.dxrPara.tessellationF)mObj.dxrPara.updateF = false;
+		if (!mObj.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;
+		mObj.setTextureDXR();
+	}
 
-	if (!mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0))return false;
-	return true;
+	return mObj.setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
 }
 
 void MeshData::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {

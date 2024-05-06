@@ -59,7 +59,7 @@ struct ParameterDXR {
 	std::unique_ptr<IndexView[]> IviewDXR = nullptr;
 	std::unique_ptr<std::unique_ptr<StreamView[]>[]> SviewDXR = nullptr;
 	UpdateDXR updateDXR[2] = {};
-	bool updateF = false;//AS構築後のupdateの有無
+	bool updateF = true;//AS構築後のupdateの有無
 	bool tessellationF = false;//テセレーション有無
 
 	void create(int numMaterial, int numMaxInstance);

@@ -105,7 +105,9 @@ protected:
 		ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	bool createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification);
+	void setParameterDXR(bool alpha, bool blend);
+
+	bool createStreamOutputResource(int comIndex, float divideBufferMagnification);
 
 	bool createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 		const int numSrv, const int numCbv, const int numUav, bool smooth);

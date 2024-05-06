@@ -191,8 +191,6 @@ void BasicPolygon::createBufferDXR(int numMaterial, int numMaxInstance) {
 }
 
 void BasicPolygon::setTextureDXR() {
-	Dx_Device* dev = Dx_Device::GetInstance();
-	if (!dev->getDxrCreateResourceState())return;
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		dxrPara.difTex[i] = texture[i * 3 + 0];
@@ -343,8 +341,6 @@ void BasicPolygon::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, U
 }
 
 void BasicPolygon::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
-	Dx_Device* dev = Dx_Device::GetInstance();
-	if (!dev->getDxrCreateResourceState())return;
 
 	dxrPara.diffuse[materialIndex].as(sg.vDiffuse.x, sg.vDiffuse.y, sg.vDiffuse.z, sg.vDiffuse.w);
 	dxrPara.specular[materialIndex].as(sg.vSpeculer.x, sg.vSpeculer.y, sg.vSpeculer.z, sg.vSpeculer.w);
@@ -462,17 +458,15 @@ bool BasicPolygon::setDescHeap(const int numSrvTex, const int numSrvBuf,
 	return true;
 }
 
-bool BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, float divideBufferMagnification) {
+void BasicPolygon::setParameterDXR(bool alpha, bool blend) {
 	dxrPara.alphaTest = alpha;
 	dxrPara.alphaBlend = blend;
-	int NumMaterial = dxrPara.NumMaterial;
-
-	Dx_Device* dev = Dx_Device::GetInstance();
-
-	if (hs || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())dxrPara.updateF = true;
 	if (hs)dxrPara.tessellationF = true;
+}
 
-	if (!dev->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return true;
+bool BasicPolygon::createStreamOutputResource(int comIndex, float divideBufferMagnification) {
+
+	int NumMaterial = dxrPara.NumMaterial;
 
 	int numDispPolygon = 1;//テセレーション分割数(1ポリゴン)
 	if (hs) {
@@ -530,9 +524,6 @@ bool BasicPolygon::createParameterDXR(int comIndex, bool alpha, bool blend, floa
 
 bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout,
 	const int numSrv, const int numCbv, const int numUav, bool smooth) {
-
-	Dx_Device* dev = Dx_Device::GetInstance();
-	if (!dev->getDxrCreateResourceState() || vs == Dx_ShaderHolder::pVertexShader_SKIN.Get())return true;
 
 	UINT numDescriptors[1] = {};
 	numDescriptors[0] = dpara.NumMaxInstance;
@@ -613,22 +604,20 @@ void BasicPolygon::Draw(int comIndex) {
 void BasicPolygon::StreamOutput(int comIndex) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	if (vs != Dx_ShaderHolder::pVertexShader_SKIN.Get()) {
 
-		UpdateDXR& ud = dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
-		ud.InstanceMaskChange(DrawOn);
+	UpdateDXR& ud = dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
+	ud.InstanceMaskChange(DrawOn);
 
-		if (!firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()])return;
+	if (!firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()])return;
 
-		mObjectCB->CopyData(0, cb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
-		dpara.insNum = insNum[dev->cBuffSwapDrawOrStreamoutputIndex()];
-		for (UINT i = 0; i < dpara.insNum; i++) {
-			wvp->CopyData(i, cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i]);
-		}
-		ParameterDXR_Update();
-		if (dxrPara.updateF || !dxrPara.updateDXR[dev->dxrBuffSwapIndex()].createAS) {
-			streamOutput(comIndex, dpara, dxrPara);
-		}
+	mObjectCB->CopyData(0, cb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
+	dpara.insNum = insNum[dev->cBuffSwapDrawOrStreamoutputIndex()];
+	for (UINT i = 0; i < dpara.insNum; i++) {
+		wvp->CopyData(i, cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i]);
+	}
+	ParameterDXR_Update();
+	if (dxrPara.updateF || !dxrPara.updateDXR[dev->dxrBuffSwapIndex()].createAS) {
+		streamOutput(comIndex, dpara, dxrPara);
 	}
 }
 

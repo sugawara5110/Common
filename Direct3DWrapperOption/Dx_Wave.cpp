@@ -292,27 +292,7 @@ void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, fl
 	sg.vAmbient.z = amB;
 }
 
-bool Wave::setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, const int numCbv) {
-
-	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
-	TextureNo* te = new TextureNo[dpara.NumMaterial];
-	int tCnt = 0;
-	for (int i = 0; i < dpara.NumMaterial; i++) {
-		if (dpara.material[i].diftex_no < 0)te[tCnt].diffuse = dx->GetTexNumber("dummyDifSpe.");
-		else
-			te[tCnt].diffuse = dpara.material[i].diftex_no;
-
-		if (dpara.material[i].nortex_no < 0)te[tCnt].normal = dx->GetTexNumber("dummyNor.");
-		else
-			te[tCnt].normal = dpara.material[i].nortex_no;
-
-		if (dpara.material[i].spetex_no < 0)te[tCnt].specular = dx->GetTexNumber("dummyDifSpe.");
-		else
-			te[tCnt].specular = dpara.material[i].spetex_no;
-		tCnt++;
-	}
-	createTextureResource(comIndex, 0, tCnt, te, objName);
-	setTextureDXR();
+bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numCbv) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
 
@@ -321,7 +301,7 @@ bool Wave::setDescHeap(int comIndex, const int numSrvTex, const int numSrvTex2, 
 	dpara.numDesc = numSrvTex + numSrvTex2 + (numCbv + dpara.NumMaxInstance) + numUav;
 	int numHeap = dpara.NumMaterial * dpara.numDesc;
 	dpara.descHeap = device->CreateDescHeap(numHeap);
-	ARR_DELETE(te);
+
 	if (dpara.descHeap == nullptr)return false;
 	UINT cbSize[2] = {};
 	cbSize[0] = mObjectCB->getSizeInBytes();
@@ -371,12 +351,19 @@ bool Wave::DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alph
 	ARR_DELETE(ver);
 	ARR_DELETE(index);
 	int numUav = 0;
-	BasicPolygon::createParameterDXR(comIndex, alpha, blend, divideBufferMagnification);
-	BasicPolygon::setColorDXR(0, sg);
-	if (!BasicPolygon::createPSO(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, blend, alpha))return false;
-	if (!BasicPolygon::createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, smooth))return false;
 
-	if (!setDescHeap(comIndex, numSrvTex, numSrvTex2, numCbv))return false;
+	if (!BasicPolygon::createTexResource(comIndex))return false;
+	if (!BasicPolygon::createPSO(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, blend, alpha))return false;
+
+	if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
+		BasicPolygon::setParameterDXR(alpha, blend);
+		if (!BasicPolygon::createStreamOutputResource(comIndex, divideBufferMagnification))return false;
+		BasicPolygon::setColorDXR(0, sg);
+		if (!BasicPolygon::createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, smooth))return false;
+		setTextureDXR();
+	}
+
+	if (!setDescHeap(numSrvTex, numSrvTex2, numCbv))return false;
 	return true;
 }
 
