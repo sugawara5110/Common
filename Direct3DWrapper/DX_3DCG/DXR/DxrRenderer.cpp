@@ -1031,12 +1031,6 @@ void DxrRenderer::updateMaterial(CBobj* cbObj) {
 				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;
-				if (PD[i]->alphaBlend) {
-					mcb.AlphaBlend = 1.0f;
-				}
-				else {
-					mcb.AlphaBlend = 0.0f;
-				}
 				MaterialCnt++;
 			}
 		}

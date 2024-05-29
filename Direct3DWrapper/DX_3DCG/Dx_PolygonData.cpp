@@ -99,7 +99,7 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 		if (!createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 		if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
-			setParameterDXR(alpha, blend);
+			setParameterDXR(alpha);
 			if (!createStreamOutputResource(comIndex, divideBufferMagnification))return false;
 			setColorDXR(0, sg);
 			if (!createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;

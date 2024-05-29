@@ -136,8 +136,9 @@ char* ShaderTraceRay =
 "    MaterialCB mcb = material[materialID];\n"
 "    uint mNo = mcb.materialNo;\n"
 "    float3 ret = difTexColor.xyz;\n"
+"    float Alpha = difTexColor.w;\n"
 
-"    if(materialIdent(mNo, TRANSLUCENCE)) {\n"
+"    if(materialIdent(mNo, TRANSLUCENCE) && Alpha < 1.0f) {\n"
 
 "       float Alpha = difTexColor.w;\n"
 "       RayPayload payload;\n"
@@ -148,40 +149,7 @@ char* ShaderTraceRay =
 "       ray.TMax = TMin_TMax.y;\n"
 //視線ベクトル 
 "       float3 eyeVec = WorldRayDirection();\n"
-"       ray.Direction = normalize(eyeVec + -normal * mcb.RefractiveIndex);\n"
-
-"       if (RecursionCnt <= maxRecursion) {\n"
-"           payload.hitPosition = hitPosition;\n"
-"           ray.Origin = payload.hitPosition;\n"
-"           TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                    0xFF, 0, 0, 0, ray, payload);\n"
-"       }\n"
-//アルファ値の比率で元の色と光線衝突先の色を配合
-"       ret = payload.color * (1.0f - Alpha) + difTexColor * Alpha;\n"
-"    }\n"
-"    return ret;\n"
-"}\n"
-
-////////////////////////////////////アルファブレンド//////////////////////////////////////
-"float3 AlphaBlend(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor)\n"
-"{\n"
-"    uint materialID = getMaterialID();\n"
-"    MaterialCB mcb = material[materialID];\n"
-"    uint mNo = mcb.materialNo;\n"
-"    float3 ret = difTexColor.xyz;\n"
-"    float blend = mcb.AlphaBlend;\n"
-"    float Alpha = difTexColor.w;\n"
-
-"    bool mf = materialIdent(mNo, TRANSLUCENCE);\n"
-"    if(blend == 1.0f && !mf && Alpha < 1.0f) {\n"
-
-"       RayPayload payload;\n"
-"       RecursionCnt++;\n"
-"       payload.RecursionCnt = RecursionCnt;\n"
-"       RayDesc ray; \n"
-"       ray.TMin = TMin_TMax.x;\n"
-"       ray.TMax = TMin_TMax.y;\n"
-"       ray.Direction = WorldRayDirection();\n"
+"       ray.Direction = refract(eyeVec, normalize(normal), mcb.RefractiveIndex);\n"
 
 "       if (RecursionCnt <= maxRecursion) {\n"
 "           payload.hitPosition = hitPosition;\n"

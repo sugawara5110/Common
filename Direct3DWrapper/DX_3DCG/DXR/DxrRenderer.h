@@ -40,7 +40,6 @@ struct DxrMaterialCB {
 	CoordTf::VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
 	float shininess = 4.0f;//スペキュラ強さ
 	float RefractiveIndex = 0.0f;//屈折率
-	float AlphaBlend = 0.0f;//on:1.0f, off:0.0f
 	UINT materialNo = 0;
 };
 

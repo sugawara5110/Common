@@ -78,7 +78,7 @@ protected:
 	void DrawParts2(int comIndex);
 	void DrawParts2StreamOutput(int comIndex);
 	void CbSwap(bool init);
-	void createDxr(bool alpha, bool blend);
+	void createDxr(bool alpha);
 	CoordTf::MATRIX BillboardAngleCalculation(float angle);
 
 public:

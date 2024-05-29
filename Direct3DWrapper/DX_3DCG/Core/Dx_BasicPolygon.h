@@ -105,7 +105,7 @@ protected:
 		ID3D12Resource** buffer, UINT* StructureByteStride,
 		const int numCbv, D3D12_GPU_VIRTUAL_ADDRESS ad3, UINT ad3Size);
 
-	void setParameterDXR(bool alpha, bool blend);
+	void setParameterDXR(bool alpha);
 
 	bool createStreamOutputResource(int comIndex, float divideBufferMagnification);
 

@@ -22,7 +22,6 @@ char* ShaderLocalParameters =
 "    float4 Ambient;\n"
 "    float shininess;\n"
 "    float RefractiveIndex;\n"//‹üÜ—¦
-"    float AlphaBlend;\n"
 "    uint materialNo;\n"
 "};\n"
 "ConstantBuffer<MaterialCB> material[] : register(b1, space3);\n"

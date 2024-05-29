@@ -420,7 +420,7 @@ bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideB
 		if (!o.createPSO(pVertexLayout, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 		if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
-			o.setParameterDXR(alpha, blend);
+			o.setParameterDXR(alpha);
 			o.setTextureDXR();
 
 			if (o.vs == Dx_ShaderHolder::pVertexShader_SKIN.Get()) {

@@ -214,11 +214,10 @@ void ParticleData::GetBufferBill(int v) {
 	}
 }
 
-void ParticleData::createDxr(bool alpha, bool blend) {
+void ParticleData::createDxr(bool alpha) {
 	dxrPara.updateDXR[0].shininess = 1.0f;
 	dxrPara.updateDXR[1].shininess = 1.0f;
 	dxrPara.alphaTest = alpha;
-	dxrPara.alphaBlend = blend;
 }
 
 void ParticleData::CreateVbObj(int comIndex, bool alpha, bool blend) {
@@ -241,7 +240,7 @@ void ParticleData::CreateVbObj(int comIndex, bool alpha, bool blend) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
 	if (dev->getDxrCreateResourceState()) {
-		createDxr(alpha, blend);
+		createDxr(alpha);
 	}
 }
 

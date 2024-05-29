@@ -425,7 +425,7 @@ bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnifica
 	if (!mObj.createPSO(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, blend, alpha))return false;
 
 	if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
-		mObj.setParameterDXR(alpha, blend);
+		mObj.setParameterDXR(alpha);
 		if (!mObj.createStreamOutputResource(comIndex, divideBufferMagnification))return false;
 		if (!mObj.dxrPara.tessellationF)mObj.dxrPara.updateF = false;
 		if (!mObj.createPSO_DXR(Dx_ShaderHolder::pVertexLayout_MESH, numSrvTex, numCbv, numUav, smooth))return false;

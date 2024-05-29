@@ -68,7 +68,6 @@ struct ParameterDXR {
 
 	void resetCreateAS();
 
-	bool alphaBlend = false;
 	bool alphaTest = false;
 
 	void setPointLight(

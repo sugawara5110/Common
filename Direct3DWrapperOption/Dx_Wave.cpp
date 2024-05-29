@@ -356,7 +356,7 @@ bool Wave::DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alph
 	if (!BasicPolygon::createPSO(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, blend, alpha))return false;
 
 	if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
-		BasicPolygon::setParameterDXR(alpha, blend);
+		BasicPolygon::setParameterDXR(alpha);
 		if (!BasicPolygon::createStreamOutputResource(comIndex, divideBufferMagnification))return false;
 		BasicPolygon::setColorDXR(0, sg);
 		if (!BasicPolygon::createPSO_DXR(pVertexLayout_MESH, numSrvTex + numSrvTex2, numCbv, numUav, smooth))return false;

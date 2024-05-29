@@ -458,9 +458,8 @@ bool BasicPolygon::setDescHeap(const int numSrvTex, const int numSrvBuf,
 	return true;
 }
 
-void BasicPolygon::setParameterDXR(bool alpha, bool blend) {
+void BasicPolygon::setParameterDXR(bool alpha) {
 	dxrPara.alphaTest = alpha;
-	dxrPara.alphaBlend = blend;
 	if (hs)dxrPara.tessellationF = true;
 }
 

@@ -26,8 +26,6 @@ char* ShaderBasicHit =
 "    difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, normalMap, payload.hitInstanceId);\n"
 //半透明
 "    difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, difTex, normalMap);\n"
-//アルファブレンド
-"    difTex.xyz = AlphaBlend(payload.RecursionCnt, payload.hitPosition, difTex);\n"
 
 "    payload.color = difTex.xyz;\n"
 "    payload.hit = true;\n"
