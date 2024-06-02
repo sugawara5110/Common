@@ -20,12 +20,22 @@ char* ShaderBasicHit =
 "    if(payload.depth == -1.0f) {\n"
 "       payload.depth = getDepth(attr, v3);\n"
 "    }\n"
+
+//フレネル計算
+"    float3 r_eyeVec = -WorldRayDirection();\n"//視線へのベクトル
+"    float fresnel = dot(r_eyeVec, normalMap);\n"
+
 //光源への光線
-"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, speTex, normalMap);\n"
+"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
+"                                          difTex.xyz, speTex, normalMap);\n"
+
 //反射方向への光線
-"    difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, difTex.xyz, normalMap, payload.hitInstanceId);\n"
+"    difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
+"                                          difTex.xyz, normalMap, payload.hitInstanceId, fresnel);\n"
+
 //半透明
-"    difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, difTex, normalMap);\n"
+"    difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, \n"
+"                             difTex, normalMap, fresnel);\n"
 
 "    payload.color = difTex.xyz;\n"
 "    payload.hit = true;\n"
