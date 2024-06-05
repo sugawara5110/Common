@@ -21,9 +21,13 @@ char* ShaderBasicHit =
 "       payload.depth = getDepth(attr, v3);\n"
 "    }\n"
 
-//フレネル計算
+//法線切り替え
 "    float3 r_eyeVec = -WorldRayDirection();\n"//視線へのベクトル
-"    float fresnel = dot(r_eyeVec, normalMap);\n"
+"    float norDir = dot(r_eyeVec, normalMap);\n"
+"    if(norDir < 0.0f)normalMap *= -1.0f;\n"
+
+//フレネル計算
+"    float fresnel = saturate(dot(r_eyeVec, normalMap));\n"
 
 //光源への光線
 "    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"

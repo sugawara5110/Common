@@ -612,6 +612,9 @@ void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 					pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
 					pID.InstanceContributionToHitGroupIndex = 0;//使用するhitShaderインデックス
 					pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+					if (PD[i]->mType[j] == TRANSLUCENCE) {
+						pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
+					}
 					memcpy(pID.Transform, &ud.Transform[k], sizeof(pID.Transform));
 					pID.AccelerationStructure = asObj[buffSwap[0]].bottomLevelBuffers[materialCnt + matAddInd].pResult.Get()->GetGPUVirtualAddress();
 					pID.InstanceMask = ud.InstanceMask;
