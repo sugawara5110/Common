@@ -270,7 +270,7 @@ bool MeshData::SetVertex() {
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
-		mObj.mObjectCB1->CopyData(i, sg);
+		mObj.mObjectCB2->CopyData(i, sg);
 		if (Dx_Device::GetInstance()->getDxrCreateResourceState()) {
 			mObj.setColorDXR(i, sg);
 		}
@@ -402,7 +402,7 @@ bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnifica
 	}
 
 	const int numSrvTex = 3;
-	const int numCbv = 2;
+	const int numCbv = 1;
 	mObj.setDivideArr(divArr, numDiv);
 
 	UINT* indexCntArr = NEW UINT[mObj.dpara.NumMaterial];

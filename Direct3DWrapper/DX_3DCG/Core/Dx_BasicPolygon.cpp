@@ -53,7 +53,7 @@ namespace {
 		insNum++;
 	}
 
-	void InstancingUpdate_Internal(CONSTANT_BUFFER* cb, float disp,
+	void InstancingUpdate_Internal(CONSTANT_BUFFER* cb, CONSTANT_BUFFER3* cb3, float disp,
 		float px, float py, float mx, float my,
 		DivideArr* divArr, int numDiv, float shininess, float SmoothRange, float SmoothRatio) {
 
@@ -70,16 +70,16 @@ namespace {
 		cb->C_Pos.as(u.pos.x,
 			u.pos.y,
 			u.pos.z, 0.0f);
-		memcpy(&cb->GlobalAmbientLight, &Dx_Light::getGlobalAmbientLight(), sizeof(VECTOR4));
-		cb->numLight.as((float)pl.LightPcs, 0.0f, 0.0f, 0.0f);
-		memcpy(cb->pLightPos, pl.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
-		memcpy(cb->pLightColor, pl.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
-		memcpy(cb->pLightst, pl.Lightst, sizeof(VECTOR4) * LIGHT_PCS);
-		cb->dDirection = dl.Direction;
-		cb->dLightColor = dl.LightColor;
-		cb->dLightst.x = dl.onoff;
-		cb->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
-		cb->FogColor = fog.FogColor;
+		memcpy(&cb3->GlobalAmbientLight, &Dx_Light::getGlobalAmbientLight(), sizeof(VECTOR4));
+		cb3->numLight.as((float)pl.LightPcs, 0.0f, 0.0f, 0.0f);
+		memcpy(cb3->pLightPos, pl.LightPos, sizeof(VECTOR4) * LIGHT_PCS);
+		memcpy(cb3->pLightColor, pl.LightColor, sizeof(VECTOR4) * LIGHT_PCS);
+		memcpy(cb3->pLightst, pl.Lightst, sizeof(VECTOR4) * LIGHT_PCS);
+		cb3->dDirection = dl.Direction;
+		cb3->dLightColor = dl.LightColor;
+		cb3->dLightst.x = dl.onoff;
+		cb3->FogAmo_Density.as(fog.Amount, fog.Density, fog.on_off, 0.0f);
+		cb3->FogColor = fog.FogColor;
 		cb->DispAmount.as(disp, float(numDiv), shininess, SmoothRange);
 		cb->SmoothRatio.as(SmoothRatio, 0.0f, 0.0f, 0.0f);
 		cb->pXpYmXmY.as(px, py, mx, my);
@@ -119,7 +119,8 @@ BasicPolygon::BasicPolygon() {
 
 BasicPolygon::~BasicPolygon() {
 	S_DELETE(mObjectCB);
-	S_DELETE(mObjectCB1);
+	S_DELETE(mObjectCB2);
+	S_DELETE(mObjectCB3);
 	S_DELETE(mObjectCB_Ins);
 	S_DELETE(wvp);
 }
@@ -220,7 +221,8 @@ void BasicPolygon::draw(int comIndex, drawPara& para) {
 	cbInstanceID cI = {};
 	cI.instanceID.as(0.0f, 0.0f, 0.0f, 0.0f);
 	mObjectCB_Ins->CopyData(0, cI);
-	mCList->SetGraphicsRootConstantBufferView(1, mObjectCB_Ins->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootConstantBufferView(3, mObjectCB_Ins->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootConstantBufferView(2, mObjectCB3->Resource()->GetGPUVirtualAddress());
 
 	D3D12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
@@ -232,6 +234,7 @@ void BasicPolygon::draw(int comIndex, drawPara& para) {
 		mCList->SetPipelineState(para.PSO[i].Get());
 		mCList->SetGraphicsRootDescriptorTable(0, heap);
 		heap.ptr += dev->getCbvSrvUavDescriptorSize() * para.numDesc;
+		mCList->SetGraphicsRootConstantBufferView(1, mObjectCB2->getGPUVirtualAddress(i));
 		mCList->DrawIndexedInstanced(para.Iview[i].IndexCount, para.insNum, 0, 0, 0);
 	}
 }
@@ -264,7 +267,7 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 	cbInstanceID cI = {};
 	cI.instanceID.as(0.0f, 0.0f, 0.0f, 0.0f);
 	mObjectCB_Ins->CopyData(0, cI);
-	mCList->SetGraphicsRootConstantBufferView(1, mObjectCB_Ins->Resource()->GetGPUVirtualAddress());
+	mCList->SetGraphicsRootConstantBufferView(3, mObjectCB_Ins->Resource()->GetGPUVirtualAddress());
 
 	D3D12_GPU_DESCRIPTOR_HANDLE heap(para.descHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < para.NumMaterial; i++) {
@@ -284,7 +287,7 @@ void BasicPolygon::streamOutput(int comIndex, drawPara& para, ParameterDXR& dxr)
 				cbInstanceID cI = {};
 				cI.instanceID.as((float)t, 1.0f, 0.0f, 0.0f);
 				mObjectCB_Ins->CopyData(t, cI);
-				mCList->SetGraphicsRootConstantBufferView(1, mObjectCB_Ins->getGPUVirtualAddress(t));
+				mCList->SetGraphicsRootConstantBufferView(3, mObjectCB_Ins->getGPUVirtualAddress(t));
 			}
 
 			mCList->SetGraphicsRootDescriptorTable(0, heap);
@@ -314,7 +317,8 @@ void BasicPolygon::getBuffer(int numMaterial, int numMaxInstance, DivideArr* div
 	cbWVP[1] = std::make_unique<WVP_CB[]>(numMaxInstance);
 	mObjectCB = NEW ConstantBuffer<CONSTANT_BUFFER>(1);
 	dpara.NumMaterial = numMaterial;
-	mObjectCB1 = NEW ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
+	mObjectCB2 = NEW ConstantBuffer<CONSTANT_BUFFER2>(dpara.NumMaterial);
+	mObjectCB3 = NEW ConstantBuffer<CONSTANT_BUFFER3>(1);
 	mObjectCB_Ins = NEW ConstantBuffer<cbInstanceID>(dpara.NumMaterial * numMaxInstance);
 	wvp = NEW ConstantBuffer<WVP_CB>(numMaxInstance);
 
@@ -364,7 +368,7 @@ bool BasicPolygon::createPSO(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLayout
 	//パイプラインステートオブジェクト生成
 	UINT numDescriptors[1] = {};
 	numDescriptors[0] = dpara.NumMaxInstance;
-	dpara.rootSignature = CreateRootSignature(numSrv, numCbv, numUav, 1, 3, 1, numDescriptors);
+	dpara.rootSignature = CreateRootSignature(numSrv, numCbv, numUav, 3, 2, 1, numDescriptors);
 	if (dpara.rootSignature == nullptr) {
 		Dx_Util::ErrorMessage("BasicPolygon::createPSO Error");
 		return false;
@@ -427,11 +431,10 @@ bool BasicPolygon::setDescHeap(const int numSrvTex, const int numSrvBuf,
 		Dx_Util::ErrorMessage("BasicPolygon::setDescHeap Error");
 		return false;
 	}
-	const int numMaxCB = 3;
+	const int numMaxCB = 2;
 	UINT cbSize[numMaxCB] = {};
 	cbSize[0] = mObjectCB->getSizeInBytes();
-	cbSize[1] = mObjectCB1->getSizeInBytes();
-	cbSize[2] = ad3Size;
+	cbSize[1] = ad3Size;
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(dpara.descHeap->GetCPUDescriptorHandleForHeapStart());
 
 	for (int m = 0; m < dpara.NumMaterial; m++) {
@@ -449,10 +452,8 @@ bool BasicPolygon::setDescHeap(const int numSrvTex, const int numSrvBuf,
 		D3D12_GPU_VIRTUAL_ADDRESS ad[numMaxCB] = {};
 		//cbuffer global : register(b0, space0)
 		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
-		//cbuffer global_1 : register(b1, space0)
-		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * m;
 		//その他ボーン等
-		ad[2] = ad3;
+		ad[1] = ad3;
 		d->CreateCbv(hDescriptor, ad, cbSize, numCbv);
 	}
 	return true;
@@ -533,11 +534,11 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 		else
 			gs = Dx_ShaderHolder::pGeometryShader_Before_ds_Output_Edge.Get();
 
-		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true, 1, 3, 1, numDescriptors);
+		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, true, 3, 2, 1, numDescriptors);
 	}
 	else {
 		gs = Dx_ShaderHolder::pGeometryShader_Before_vs_Output.Get();
-		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, false, 1, 3, 1, numDescriptors);
+		dpara.rootSignatureDXR = CreateRootSignatureStreamOutput(numSrv, numCbv, numUav, false, 3, 2, 1, numDescriptors);
 	}
 	if (dpara.rootSignatureDXR == nullptr) {
 		Dx_Util::ErrorMessage("BasicPolygon::createPSO_DXR Error");
@@ -572,7 +573,8 @@ void BasicPolygon::InstancingUpdate(float disp, float SmoothRange, float SmoothR
 	float px, float py, float mx, float my) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], disp, px, py, mx, my,
+	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], &cb3[dev->cBuffSwapUpdateIndex()],
+		disp, px, py, mx, my,
 		divArr, numDiv, shininess, SmoothRange, SmoothRatio);
 	CbSwap();
 }
@@ -584,7 +586,8 @@ void BasicPolygon::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 
 	Dx_Device* dev = Dx_Device::GetInstance();
 	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
-	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
+	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], &cb3[dev->cBuffSwapUpdateIndex()],
+		disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
 	CbSwap();
 }
 
@@ -593,6 +596,7 @@ void BasicPolygon::Draw(int comIndex) {
 	if (!firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()] | !DrawOn)return;
 
 	mObjectCB->CopyData(0, cb[dev->cBuffSwapDrawOrStreamoutputIndex()]);
+	mObjectCB3->CopyData(0, cb3[dev->cBuffSwapDrawOrStreamoutputIndex()]);
 	dpara.insNum = insNum[dev->cBuffSwapDrawOrStreamoutputIndex()];
 	for (UINT i = 0; i < dpara.insNum; i++) {
 		wvp->CopyData(i, cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i]);

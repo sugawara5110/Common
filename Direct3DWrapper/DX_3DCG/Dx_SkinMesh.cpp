@@ -261,7 +261,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
-		mObj[m].mObjectCB1->CopyData(i, sg);
+		mObj[m].mObjectCB2->CopyData(i, sg);
 		if (dev->getDxrCreateResourceState()) {
 			mObj[m].setColorDXR(i, sg);
 		}
@@ -369,7 +369,7 @@ void SkinMesh::setPointLightAll(bool on_off,
 bool SkinMesh::CreateFromFBX(int comIndex, bool disp, bool smooth, float divideBufferMagnification) {
 	GetShaderByteCode(disp, smooth);
 	const int numSrvTex = 3;
-	const int numCbv = 3;
+	const int numCbv = 2;
 
 	for (int i = 0; i < getNumMesh(); i++) {
 		BasicPolygon& o = mObj[i];

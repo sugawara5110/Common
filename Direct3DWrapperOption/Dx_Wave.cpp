@@ -303,9 +303,8 @@ bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numC
 	dpara.descHeap = device->CreateDescHeap(numHeap);
 
 	if (dpara.descHeap == nullptr)return false;
-	UINT cbSize[2] = {};
+	UINT cbSize[1] = {};
 	cbSize[0] = mObjectCB->getSizeInBytes();
-	cbSize[1] = mObjectCB1->getSizeInBytes();
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor(dpara.descHeap->GetCPUDescriptorHandleForHeapStart());
 
 	//ConstantBuffer<WVPCB> wvp[] : register(b0, space1)
@@ -319,9 +318,8 @@ bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numC
 		Dx_Device* d = device;
 		d->CreateSrvTexture(hDescriptor, &texture[numSrvTex * i], numSrvTex);
 		d->CreateSrvTexture(hDescriptor, mOutputBuffer.GetAddressOf(), numSrvTex2);
-		D3D12_GPU_VIRTUAL_ADDRESS ad[2] = {};
+		D3D12_GPU_VIRTUAL_ADDRESS ad[1] = {};
 		ad[0] = mObjectCB->Resource()->GetGPUVirtualAddress();
-		ad[1] = mObjectCB1->Resource()->GetGPUVirtualAddress() + cbSize[1] * i;
 		d->CreateCbv(hDescriptor, ad, cbSize, numCbv);
 	}
 	return true;
@@ -333,10 +331,10 @@ bool Wave::DrawCreate(int comIndex, int texNo, int nortNo, bool blend, bool alph
 	BasicPolygon::dpara.material[0].diftex_no = texNo;
 	BasicPolygon::dpara.material[0].nortex_no = nortNo;
 	BasicPolygon::dpara.material[0].spetex_no = dx->GetTexNumber("dummyDifSpe.");
-	BasicPolygon::mObjectCB1->CopyData(0, sg);
+	BasicPolygon::mObjectCB2->CopyData(0, sg);
 	const int numSrvTex = 3;
 	const int numSrvTex2 = 1;
-	const int numCbv = 2;
+	const int numCbv = 1;
 	BasicPolygon::setDivideArr(divArr, numDiv);
 
 	UINT* indexCntArr = new UINT[BasicPolygon::dpara.NumMaterial];

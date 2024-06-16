@@ -21,6 +21,18 @@ char* ShaderCommonParameters =
 "{\n"
 //視点
 "    float4 g_C_Pos;\n"
+//x:ディスプ起伏量, y:divide配列数, z:shininess, w:Smooth範囲
+"    float4 g_DispAmount;\n"
+//x:Smooth比率(初期値0.999f)
+"    float4 g_SmoothRatio;\n"
+//divide配列 x:distance, y:divide
+"    float4 g_divide[16];\n"
+//UV座標移動用
+"    float4 g_pXpYmXmY;\n"
+"};\n"
+
+"cbuffer global_3 : register(b3, space0)\n"
+"{\n"
 //グローバルアンビエント
 "    float4 g_GlobalAmbientLight;\n"
 //xyz:光源位置, w:オンオフ
@@ -41,25 +53,9 @@ char* ShaderCommonParameters =
 "    float4 g_FogAmo_Density;\n"
 //フォグ色
 "    float4 g_FogColor;\n"
-//x:ディスプ起伏量, y:divide配列数, z:shininess, w:Smooth範囲
-"    float4 g_DispAmount;\n"
-//x:Smooth比率(初期値0.999f)
-"    float4 g_SmoothRatio;\n"
-//divide配列 x:distance, y:divide
-"    float4 g_divide[16];\n"
-//UV座標移動用
-"    float4 g_pXpYmXmY;\n"
-"};\n"
+"}\n"
 
-//マテリアル毎の色
-"cbuffer global_1 : register(b1, space0)\n"
-"{\n"
-"    float4 g_Diffuse;\n"
-"    float4 g_Speculer; \n"
-"    float4 g_Ambient;\n"
-"};\n"
-
-"cbuffer global_2 : register(b3, space0)\n"
+"cbuffer global_4 : register(b4, space0)\n"
 "{\n"
 //DXR用
 "    float4 g_instanceID;\n"//x:ID, y:1.0f on 0.0f off
@@ -194,23 +190,5 @@ char* ShaderCommonParameters =
 "   Input[0].Tan += differenceN[0];\n"
 "   Input[1].Tan += differenceN[1];\n"
 "   Input[2].Tan += differenceN[2];\n"
-"}\n"
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
- 
-////////////////////////////////フォグ計算(テクスチャに対して計算)////////////////////////////////////////
-"float4 FogCom(float4 FogCol, float4 Fog, float4 CPos, float4 wPos, float4 Tex)\n"
-"{\n"
-"    float fd;\n"//距離
-"    float ff;\n"//フォグファクター
-"    if(Fog.z == 1.0f){\n"
-"       fd = length(CPos.xyz - wPos.xyz) * 0.01f;\n"//距離計算, 0.01は補正値
-"       ff = pow(2.71828, -fd * Fog.y);\n"//フォグファクター計算(変化量)
-"       ff *= Fog.x;\n"//フォグ全体の量(小さい方が多くなる)
-"       ff = saturate(ff);\n"
-"       if(Tex.w > 0.3f){\n"
-"         Tex = ff * Tex + (1.0f - ff) * FogCol;\n"
-"       }\n"
-"    }\n"
-"   return Tex;\n"
 "}\n";
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

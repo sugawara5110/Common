@@ -47,10 +47,12 @@ protected:
 	//コンスタントバッファOBJ
 	ConstantBuffer<CONSTANT_BUFFER>* mObjectCB = nullptr;
 	ConstantBuffer<cbInstanceID>* mObjectCB_Ins = nullptr;
-	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB1 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER2>* mObjectCB2 = nullptr;
+	ConstantBuffer<CONSTANT_BUFFER3>* mObjectCB3 = nullptr;
 	ConstantBuffer<WVP_CB>* wvp = nullptr;
 
 	CONSTANT_BUFFER cb[2] = {};
+	CONSTANT_BUFFER3 cb3[2] = {};
 	std::unique_ptr<WVP_CB[]> cbWVP[2] = {};
 	bool firstCbSet[2];
 	CONSTANT_BUFFER2 sg;

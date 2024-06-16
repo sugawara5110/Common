@@ -39,23 +39,6 @@ struct WVP_CB {
 struct CONSTANT_BUFFER {
 
 	CoordTf::VECTOR4 C_Pos;//視点位置
-	//グローバルアンビエント
-	CoordTf::VECTOR4 GlobalAmbientLight;
-
-	//ポイントライト
-	CoordTf::VECTOR4 pLightPos[LIGHT_PCS];//xyz:Pos, w:オンオフ
-	CoordTf::VECTOR4 pLightColor[LIGHT_PCS];
-	CoordTf::VECTOR4 pLightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
-	CoordTf::VECTOR4 numLight;//x:ライト個数
-
-	//ディレクショナルライト
-	CoordTf::VECTOR4 dDirection;
-	CoordTf::VECTOR4 dLightColor;
-	CoordTf::VECTOR4 dLightst;//x:オンオフ
-
-	//フォグ
-	CoordTf::VECTOR4  FogAmo_Density; //フォグ量:x, フォグの密度:y, onoff:z
-	CoordTf::VECTOR4  FogColor;   //フォグの色
 
 	//x:ディスプレイトメントマッピングの起伏量
 	//y:divide配列数
@@ -77,6 +60,26 @@ struct CONSTANT_BUFFER2 {
 	CoordTf::VECTOR4 vDiffuse;//ディフューズ色
 	CoordTf::VECTOR4 vSpeculer;//スぺキュラ色
 	CoordTf::VECTOR4 vAmbient;//アンビエント
+};
+
+struct CONSTANT_BUFFER3 {
+	//グローバルアンビエント
+	CoordTf::VECTOR4 GlobalAmbientLight;
+
+	//ポイントライト
+	CoordTf::VECTOR4 pLightPos[LIGHT_PCS];//xyz:Pos, w:オンオフ
+	CoordTf::VECTOR4 pLightColor[LIGHT_PCS];
+	CoordTf::VECTOR4 pLightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
+	CoordTf::VECTOR4 numLight;//x:ライト個数
+
+	//ディレクショナルライト
+	CoordTf::VECTOR4 dDirection;
+	CoordTf::VECTOR4 dLightColor;
+	CoordTf::VECTOR4 dLightst;//x:オンオフ
+
+	//フォグ
+	CoordTf::VECTOR4  FogAmo_Density; //フォグ量:x, フォグの密度:y, onoff:z
+	CoordTf::VECTOR4  FogColor;   //フォグの色
 };
 
 struct cbInstanceID {

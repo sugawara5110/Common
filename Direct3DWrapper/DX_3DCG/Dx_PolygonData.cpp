@@ -68,7 +68,7 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	dpara.material[0].nortex_no = nortNo;
 	dpara.material[0].spetex_no = spetNo;
 	GetShaderByteCode(primType_create, light, smooth, (tNo == -1 && (!movOn || !movOn[0].m_on)), nullptr, nullptr);
-	mObjectCB1->CopyData(0, sg);
+	mObjectCB2->CopyData(0, sg);
 
 	UINT* indexCntArr = NEW UINT[dpara.NumMaterial];
 	for (int m = 0; m < dpara.NumMaterial; m++) {
@@ -86,7 +86,7 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	if (!createTexResource(comIndex))return false;
 
 	const int numSrvTex = 3;
-	const int numCbv = 2;
+	const int numCbv = 1;
 	int numUav = 0;
 	if (tNo == -1 && (!movOn || !movOn[0].m_on)) {
 		VertexBC* v = (VertexBC*)ver;
