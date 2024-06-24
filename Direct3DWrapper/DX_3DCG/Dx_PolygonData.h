@@ -26,10 +26,14 @@ public:
 		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
 
 	void setMaterialType(MaterialType type);
+
 	void setPointLight(int InstanceIndex, bool on_off,
-		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f },
+		float plight_RandArea = 0.5f, int plight_numRandRay = 1);
+
 	void setPointLightAll(bool on_off,
-		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f },
+		float plight_RandArea = 0.5f, int plight_numRandRay = 1);
 
 	bool Create(int comIndex, bool light, int tNo, bool blend, bool alpha);
 

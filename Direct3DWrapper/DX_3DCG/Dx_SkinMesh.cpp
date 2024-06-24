@@ -351,18 +351,20 @@ void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshInd
 }
 
 void SkinMesh::setPointLight(int meshIndex, int materialIndex, int InstanceIndex, bool on_off,
-	float range, CoordTf::VECTOR3 atten) {
+	float range, CoordTf::VECTOR3 atten, float plight_RandArea, int plight_numRandRay) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	mObj[meshIndex].dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
+	mObj[meshIndex].dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten,
+		plight_RandArea, plight_numRandRay);
 }
 
 void SkinMesh::setPointLightAll(bool on_off,
-	float range, CoordTf::VECTOR3 atten) {
+	float range, CoordTf::VECTOR3 atten, float plight_RandArea, int plight_numRandRay) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
 	for (int i = 0; i < getNumMesh(); i++) {
-		mObj[i].dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
+		mObj[i].dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten,
+			plight_RandArea, plight_numRandRay);
 	}
 }
 

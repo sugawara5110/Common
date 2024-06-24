@@ -22,16 +22,17 @@ char* ShaderNormalTangent =
 "   return Out;\n"
 "}\n"
 
+"float3 getVerticalVector(float3 u)\n"
+"{\n"
+"   float3 a = abs(u);\n"
+"   uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;\n"
+"   uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;\n"
+"   uint zm = 1 ^ (xm | ym);\n"
+"   return cross(u, float3(xm, ym, zm));\n"
+"}\n"
+
 "float3 normalTexConvert(float3 norT, float3 normal, float3 tangent)\n"
 "{\n"
-/*
-"   float3 N = normal;\n"
-"   float3 T = normalize(tangent - dot(tangent, N) * N);\n"
-"   float3 B = cross(N, T);\n"
-"   float3x3 TBN = float3x3(T, B, N);\n"
-
-"   return mul(norT, TBN);\n"
-*/
 "   float3 N = normal;\n"
 "   float3 T = tangent;\n"
 "   float3 B = cross(T, N);\n"

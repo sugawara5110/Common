@@ -15,6 +15,8 @@ void UpdateDXR::create(int numMaterial, int numMaxInstance) {
 	plightOn = std::make_unique<float[]>(numMaxInstance * numMaterial * numVertex);
 	for (UINT i = 0; i < numMaxInstance * numMaterial * numVertex; i++)plightOn[i] = 0.0f;
 	Lightst = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance * numMaterial * numVertex);
+	plight_area_numRandRay = std::make_unique<CoordTf::VECTOR2[]>(numMaxInstance * numMaterial * numVertex);
+	for (UINT i = 0; i < numMaxInstance * numMaterial * numVertex; i++)plight_area_numRandRay[i].as(0.5f, 1.0f);
 	InstanceID = std::make_unique<UINT[]>(numMaxInstance * numMaterial);
 	Transform = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 	WVP = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
@@ -61,7 +63,8 @@ void ParameterDXR::setPointLight(
 	int SwapNo,
 	UINT VertexIndex, int MaterialIndex, int InstanceIndex,
 	bool on_off,
-	float range, CoordTf::VECTOR3 atten) {
+	float range, CoordTf::VECTOR3 atten,
+	float plight_RandArea, int plight_numRandRay) {
 
 	int index = VertexIndex * NumMaterial * NumMaxInstance +
 		MaterialIndex * NumMaxInstance +
@@ -71,12 +74,14 @@ void ParameterDXR::setPointLight(
 	float& plightOn = ud.plightOn[index];
 	if (on_off)plightOn = 1.0f; else plightOn = 0.0f;
 	ud.Lightst[index].as(range, atten.x, atten.y, atten.z);
+	ud.plight_area_numRandRay[index].as(plight_RandArea, (float)plight_numRandRay);
 }
 
 void ParameterDXR::setPointLightAll(
 	int SwapNo,
 	bool on_off,
-	float range, CoordTf::VECTOR3 atten) {
+	float range, CoordTf::VECTOR3 atten,
+	float plight_RandArea, int plight_numRandRay) {
 
 	UpdateDXR& ud = updateDXR[SwapNo];
 
@@ -86,6 +91,7 @@ void ParameterDXR::setPointLightAll(
 		float& plightOn = ud.plightOn[i];
 		if (on_off)plightOn = 1.0f; else plightOn = 0.0f;
 		ud.Lightst[i].as(range, atten.x, atten.y, atten.z);
+		ud.plight_area_numRandRay[i].as(plight_RandArea, (float)plight_numRandRay);
 	}
 }
 
@@ -109,4 +115,15 @@ CoordTf::VECTOR4 ParameterDXR::getLightst(int SwapNo,
 		InstanceIndex;
 
 	return ud.Lightst[index];
+}
+
+CoordTf::VECTOR2 ParameterDXR::getPlight_area_numRandRay(int SwapNo,
+	UINT VertexIndex, int MaterialIndex, int InstanceIndex) {
+
+	UpdateDXR& ud = updateDXR[SwapNo];
+	int index = VertexIndex * NumMaterial * NumMaxInstance +
+		MaterialIndex * NumMaxInstance +
+		InstanceIndex;
+
+	return ud.plight_area_numRandRay[index];
 }

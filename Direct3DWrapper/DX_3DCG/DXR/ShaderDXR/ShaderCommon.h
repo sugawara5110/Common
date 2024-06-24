@@ -4,6 +4,33 @@
 
 char* ShaderCommon =
 
+///////////////////////////////////////////ランダム////////////////////////////////////////////////
+"float Rand(float2 v2)\n"
+"{\n"
+"    int Seed = 0;\n"
+"    return frac(sin(dot(v2, float2(12.9898, 78.233)) + Seed) * 43758.5453);\n"
+"}\n"
+
+///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
+"float3 RandomVector(float3 v, float area, int cnt)\n"
+"{\n"
+"    float j = (float)cnt + 0.5f;\n"
+"    float rand1 = Rand(float2(j, (float)cnt));\n"
+"    float rand2 = Rand(float2((float)cnt, j));\n"
+
+//ランダムなベクトルを生成
+"    float z = area * rand1 - 1.0f;\n"
+"    float phi = 3.1415f * (2.0f * rand2 - 1.0f);\n"
+"    float x = sqrt(1.0f - z * z) * cos(phi);\n"
+"    float y = sqrt(1.0f - z * z) * sin(phi);\n"
+"    float3 randV = float3(x, y, z);\n"
+
+//入力ベクトルに垂直なベクトルの生成
+"    float3 vVec = getVerticalVector(v);\n"
+//ランダムベクトルを入力ベクトルの方向に合せる, (マイナスにしておく)
+"    return normalize(-normalTexConvert(randV, v, vVec));\n"
+"}\n"
+
 ///////////////////////////////////////////Material識別////////////////////////////////////////////
 "bool materialIdent(uint matNo, uint MaterialBit)\n"
 "{\n"

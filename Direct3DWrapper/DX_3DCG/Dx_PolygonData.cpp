@@ -47,17 +47,19 @@ void PolygonData::setMaterialType(MaterialType type) {
 }
 
 void PolygonData::setPointLight(int InstanceIndex, bool on_off,
-	float range, CoordTf::VECTOR3 atten) {
+	float range, CoordTf::VECTOR3 atten, float plight_RandArea, int plight_numRandRay) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten);
+	dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, 0, InstanceIndex, on_off, range, atten,
+		plight_RandArea, plight_numRandRay);
 }
 
 void PolygonData::setPointLightAll(bool on_off,
-	float range, CoordTf::VECTOR3 atten) {
+	float range, CoordTf::VECTOR3 atten, float plight_RandArea, int plight_numRandRay) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
+	dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten,
+		plight_RandArea, plight_numRandRay);
 }
 
 bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,

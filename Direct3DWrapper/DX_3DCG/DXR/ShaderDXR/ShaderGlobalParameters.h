@@ -26,7 +26,7 @@ char* ShaderGlobalParameters =
 "    float4 numEmissive;\n"//x:Em, y:numInstance
 "    float4 lightst[256];\n"//レンジ, 減衰1, 減衰2, 減衰3
 "    float4 GlobalAmbientColor;\n"
-"    float4 emissiveNo[256];\n"//.xのみ
+"    float4 emissiveNo[256];\n"//x:emissiveNo, y:乱数範囲area(2.0で全方向), z:乱数個数
 "    float4 dDirection;\n"
 "    float4 dLightColor;\n"
 "    float4 dLightst;\n"//.x:オンオフ

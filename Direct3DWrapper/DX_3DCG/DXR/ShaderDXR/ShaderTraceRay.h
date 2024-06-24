@@ -35,23 +35,35 @@ char* ShaderTraceRay =
 "          for(uint i = 0; i < numEmissive.x; i++) {\n"
 "              if(emissivePosition[i].w == 1.0f) {\n"
 "                 float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
-"                 ray.Direction = lightVec;\n"
-"                 payload.instanceID = (uint)emissiveNo[i].x;\n"
-"                 bool loop = true;\n"
-"                 payload.hitPosition = hitPosition;\n"
-"                 while(loop){\n"
-"                    payload.mNo = EMISSIVE;\n"//処理分岐用
-"                    ray.Origin = payload.hitPosition;\n"
-"                    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                             0xFF, 1, 0, 1, ray, payload);\n"
-"                    loop = payload.reTry;\n"
+
+"                 float3 dif = float3(0.0f, 0.0f, 0.0f);\n"
+"                 float3 spe = float3(0.0f, 0.0f, 0.0f);\n"
+"                 for(int k = 0; k < emissiveNo[i].z; k++){\n"
+"                    if(k == 0){\n"
+"                       ray.Direction = lightVec;\n"
+"                    }else{\n"
+"                       ray.Direction = RandomVector(lightVec, emissiveNo[i].y, k);\n"
+"                    }\n"
+"                    payload.instanceID = (uint)emissiveNo[i].x; \n"
+"                    bool loop = true;\n"
+"                    payload.hitPosition = hitPosition;\n"
+"                    while(loop){\n"
+"                       payload.mNo = EMISSIVE;\n"//処理分岐用
+"                       ray.Origin = payload.hitPosition;\n"
+"                       TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                                0xFF, 1, 0, 1, ray, payload);\n"
+"                       loop = payload.reTry;\n"
+"                    }\n"
+
+"                    float4 emissiveHitPos = emissivePosition[i];\n"
+"                    emissiveHitPos.xyz = payload.hitPosition;\n"
+"                    Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
+"                                        hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
+"                    dif += Out.Diffuse;\n"
+"                    spe += Out.Speculer;\n"
 "                 }\n"
-
-"                 Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissivePosition[i], \n"//ShaderCG内関数
-"                                     hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
-
-"                 emissiveColor.Diffuse += Out.Diffuse;\n"
-"                 emissiveColor.Speculer += Out.Speculer;\n"
+"                 emissiveColor.Diffuse += (dif / 10);\n"
+"                 emissiveColor.Speculer += (spe / 10);\n"
 "              }\n"
 "          }\n"
 //平行光源計算

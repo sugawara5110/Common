@@ -31,6 +31,7 @@ struct UpdateDXR {
 	//ポイントライト
 	std::unique_ptr<float[]> plightOn = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> Lightst = nullptr;
+	std::unique_ptr<CoordTf::VECTOR2[]> plight_area_numRandRay = nullptr;
 
 	void InstanceMaskChange(bool DrawOn);
 
@@ -74,17 +75,22 @@ struct ParameterDXR {
 		int SwapNo,
 		UINT VertexIndex, int MaterialIndex, int InstanceIndex,
 		bool on_off,
-		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f },
+		float plight_RandArea = 0.5f, int plight_numRandRay = 1);
 
 	void setPointLightAll(
 		int SwapNo,
 		bool on_off,
-		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
+		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f },
+		float plight_RandArea = 0.5f, int plight_numRandRay = 1);
 
 	float getplightOn(int SwapNo,
 		UINT VertexIndex, int MaterialIndex, int InstanceIndex);
 
 	CoordTf::VECTOR4 getLightst(int SwapNo,
+		UINT VertexIndex, int MaterialIndex, int InstanceIndex);
+
+	CoordTf::VECTOR2 getPlight_area_numRandRay(int SwapNo,
 		UINT VertexIndex, int MaterialIndex, int InstanceIndex);
 };
 

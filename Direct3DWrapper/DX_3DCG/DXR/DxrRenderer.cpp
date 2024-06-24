@@ -1082,14 +1082,20 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.emissivePosition[cntEm].x = v3.x;
 						cb.emissivePosition[cntEm].y = v3.y;
 						cb.emissivePosition[cntEm].z = v3.z;
+
 						float plightOn = PD[i]->getplightOn(dev->dxrBuffSwapRaytraceIndex(), v, j, k);
 						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dev->dxrBuffSwapRaytraceIndex(), v, j, k);
+						CoordTf::VECTOR2 plight_area_numRandRay = PD[i]->getPlight_area_numRandRay(
+							dev->dxrBuffSwapRaytraceIndex(), v, j, k);
+
 						cb.emissivePosition[cntEm].w = plightOn;
 						cb.Lightst[cntEm].x = Lightst.x;
 						cb.Lightst[cntEm].y = Lightst.y;
 						cb.Lightst[cntEm].z = Lightst.z;
 						cb.Lightst[cntEm].w = Lightst.w;
 						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[udInstanceIDCnt + k];
+						cb.emissiveNo[cntEm].y = plight_area_numRandRay.x;
+						cb.emissiveNo[cntEm].z = plight_area_numRandRay.y;
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {
 							breakF = true;
