@@ -35,15 +35,20 @@ char* ShaderTraceRay =
 "          for(uint i = 0; i < numEmissive.x; i++) {\n"
 "              if(emissivePosition[i].w == 1.0f) {\n"
 "                 float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
+"                 float area = emissiveNo[i].y;\n"
 
 "                 float3 dif = float3(0.0f, 0.0f, 0.0f);\n"
 "                 float3 spe = float3(0.0f, 0.0f, 0.0f);\n"
-"                 for(int k = 0; k < emissiveNo[i].z; k++){\n"
+
+"                 int randCnt = (int)emissiveNo[i].z;\n"
+"                 for(int k = 0; k < randCnt; k++){\n"
+
 "                    if(k == 0){\n"
 "                       ray.Direction = lightVec;\n"
 "                    }else{\n"
-"                       ray.Direction = RandomVector(lightVec, emissiveNo[i].y, k);\n"
+"                       ray.Direction = RandomVector(lightVec, area, k);\n"
 "                    }\n"
+
 "                    payload.instanceID = (uint)emissiveNo[i].x; \n"
 "                    bool loop = true;\n"
 "                    payload.hitPosition = hitPosition;\n"
@@ -62,8 +67,8 @@ char* ShaderTraceRay =
 "                    dif += Out.Diffuse;\n"
 "                    spe += Out.Speculer;\n"
 "                 }\n"
-"                 emissiveColor.Diffuse += (dif / 10);\n"
-"                 emissiveColor.Speculer += (spe / 10);\n"
+"                 emissiveColor.Diffuse += (dif / (float)randCnt);\n"
+"                 emissiveColor.Speculer += (spe / (float)randCnt);\n"
 "              }\n"
 "          }\n"
 //•½sŒõŒ¹ŒvŽZ
