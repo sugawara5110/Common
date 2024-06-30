@@ -4,6 +4,8 @@
 
 char* ShaderGlobalParameters =
 
+"static uint Seed = 0;\n"
+
 "struct RayPayload\n"
 "{\n"
 "    float3 color;\n"

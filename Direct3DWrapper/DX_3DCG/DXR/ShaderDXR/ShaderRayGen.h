@@ -11,6 +11,8 @@ char* ShaderRayGen =
 "    uint2 dim = DispatchRaysDimensions();\n"//画面全体の幅と高さを取得
 "    float2 screenPos = (index + 0.5f) / dim * 2.0f - 1.0f;\n"
 
+"    Seed = 0;\n"
+
 "    RayDesc ray;\n"
 //光線の原点, ここが光線スタート, 視線から始まる
 "    ray.Origin = cameraPosition.xyz;\n"

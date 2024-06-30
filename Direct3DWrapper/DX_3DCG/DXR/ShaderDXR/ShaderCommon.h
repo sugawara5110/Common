@@ -7,16 +7,16 @@ char* ShaderCommon =
 ///////////////////////////////////////////ランダム////////////////////////////////////////////////
 "float Rand(float2 v2)\n"
 "{\n"
-"    int Seed = 0;\n"
+"    Seed++;\n"
 "    return frac(sin(dot(v2, float2(12.9898, 78.233)) + Seed) * 43758.5453);\n"
 "}\n"
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
-"float3 RandomVector(float3 v, float area, int cnt)\n"
+"float3 RandomVector(float3 v, float area)\n"
 "{\n"
-"    float j = (float)cnt + 0.5f;\n"
-"    float rand1 = Rand(float2(j, (float)cnt));\n"
-"    float rand2 = Rand(float2((float)cnt, j));\n"
+"    float2 index = (float2)DispatchRaysIndex();\n"
+"    float rand1 = Rand(index);\n"
+"    float rand2 = Rand(float2(index.x + 0.1f, index.y + 0.1f));\n"
 
 //ランダムなベクトルを生成
 "    float z = area * rand1 - 1.0f;\n"

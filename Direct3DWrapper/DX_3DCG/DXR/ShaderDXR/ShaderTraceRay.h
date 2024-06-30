@@ -46,7 +46,7 @@ char* ShaderTraceRay =
 "                    if(k == 0){\n"
 "                       ray.Direction = lightVec;\n"
 "                    }else{\n"
-"                       ray.Direction = RandomVector(lightVec, area, k);\n"
+"                       ray.Direction = RandomVector(lightVec, area);\n"
 "                    }\n"
 
 "                    payload.instanceID = (uint)emissiveNo[i].x; \n"
