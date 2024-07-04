@@ -32,24 +32,25 @@ char* ShaderTraceRay =
 
 "       if(RecursionCnt <= maxRecursion) {\n"
 //ì_åıåπåvéZ
-"          for(uint i = 0; i < numEmissive.x; i++) {\n"
-"              if(emissivePosition[i].w == 1.0f) {\n"
+"          uint NumEmissive = numEmissive.x;\n"
+"          float LightArea = LightArea_RandNum.x;\n"
+"          uint RandNum = LightArea_RandNum.y;\n"
+"          if(RandNum > 1)NumEmissive = 1;\n"
+"          for(uint i = 0; i < NumEmissive; i++) {\n"
+"              if(emissivePosition[i].w == 1.0f || RandNum > 1) {\n"
 "                 float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
-"                 float area = emissiveNo[i].y;\n"
 
 "                 float3 dif = float3(0.0f, 0.0f, 0.0f);\n"
 "                 float3 spe = float3(0.0f, 0.0f, 0.0f);\n"
 
-"                 int randCnt = (int)emissiveNo[i].z;\n"
-"                 for(int k = 0; k < randCnt; k++){\n"
+"                 for(uint k = 0; k < RandNum; k++){\n"
 
-"                    if(k == 0){\n"
-"                       ray.Direction = lightVec;\n"
+"                    if(RandNum > 1){\n"
+"                       ray.Direction = RandomVector(normal, LightArea);\n"
 "                    }else{\n"
-"                       ray.Direction = RandomVector(lightVec, area);\n"
+"                       ray.Direction = lightVec;\n"
 "                    }\n"
 
-"                    payload.instanceID = (uint)emissiveNo[i].x; \n"
 "                    bool loop = true;\n"
 "                    payload.hitPosition = hitPosition;\n"
 "                    while(loop){\n"
@@ -62,13 +63,14 @@ char* ShaderTraceRay =
 
 "                    float4 emissiveHitPos = emissivePosition[i];\n"
 "                    emissiveHitPos.xyz = payload.hitPosition;\n"
+"                    if(RandNum > 1)emissiveHitPos.w = 1.0f;\n"
 "                    Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCGì‡ä÷êî
 "                                        hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
 "                    dif += Out.Diffuse;\n"
 "                    spe += Out.Speculer;\n"
 "                 }\n"
-"                 emissiveColor.Diffuse += (dif / (float)randCnt);\n"
-"                 emissiveColor.Speculer += (spe / (float)randCnt);\n"
+"                 emissiveColor.Diffuse += (dif / (float)RandNum);\n"
+"                 emissiveColor.Speculer += (spe / (float)RandNum);\n"
 "              }\n"
 "          }\n"
 //ïΩçsåıåπåvéZ

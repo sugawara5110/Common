@@ -389,6 +389,10 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	TMin = 0.001f;
 	TMax = 10000.0f;
 
+	LightArea = 1.0f;
+	RandNum = 1;
+	frameInd = 0;
+
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
 
@@ -1054,6 +1058,8 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	cb.maxRecursion = numRecursion;
 	cb.TMin_TMax.x = TMin;
 	cb.TMin_TMax.y = TMax;
+	cb.LightArea_RandNum.as(LightArea, (float)RandNum, 0.0f, 0.0f);
+	cb.frameInd = frameInd;
 	updateMaterial(cbObj);
 
 	int cntEm = 0;
@@ -1085,8 +1091,6 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 
 						float plightOn = PD[i]->getplightOn(dev->dxrBuffSwapRaytraceIndex(), v, j, k);
 						CoordTf::VECTOR4 Lightst = PD[i]->getLightst(dev->dxrBuffSwapRaytraceIndex(), v, j, k);
-						CoordTf::VECTOR2 plight_area_numRandRay = PD[i]->getPlight_area_numRandRay(
-							dev->dxrBuffSwapRaytraceIndex(), v, j, k);
 
 						cb.emissivePosition[cntEm].w = plightOn;
 						cb.Lightst[cntEm].x = Lightst.x;
@@ -1094,8 +1098,6 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.Lightst[cntEm].z = Lightst.z;
 						cb.Lightst[cntEm].w = Lightst.w;
 						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[udInstanceIDCnt + k];
-						cb.emissiveNo[cntEm].y = plight_area_numRandRay.x;
-						cb.emissiveNo[cntEm].z = plight_area_numRandRay.y;
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {
 							breakF = true;
@@ -1165,6 +1167,7 @@ void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 	//Dispatch
 	com->getCommandList()->SetPipelineState1(mpPipelineState.Get());
 	com->getCommandList()->DispatchRays(&raytraceDesc[dev->dxrBuffSwapRaytraceIndex()]);
+	if (INT_MAX <= frameInd++)frameInd = 0;
 }
 
 void DxrRenderer::copyBackBuffer(uint32_t comNo) {
@@ -1207,4 +1210,9 @@ DxrRenderer::~DxrRenderer() {
 
 Dx_Resource* DxrRenderer::getInstanceIdMap() {
 	return &mpInstanceIdMapResource;
+}
+
+void DxrRenderer::setGIparameter(float lightArea, int randNum) {
+	LightArea = lightArea;
+	RandNum = randNum;
 }

@@ -379,19 +379,17 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 }
 
 void MeshData::setPointLight(int materialIndex, int InstanceIndex, bool on_off,
-	float range, CoordTf::VECTOR3 atten, float plight_RandArea, int plight_numRandRay) {
+	float range, CoordTf::VECTOR3 atten) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	mObj.dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten,
-		plight_RandArea, plight_numRandRay);
+	mObj.dxrPara.setPointLight(dev->dxrBuffSwapIndex(), 0, materialIndex, InstanceIndex, on_off, range, atten);
 }
 
 void MeshData::setPointLightAll(bool on_off,
-	float range, CoordTf::VECTOR3 atten, float plight_RandArea, int plight_numRandRay) {
+	float range, CoordTf::VECTOR3 atten) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	mObj.dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten,
-		plight_RandArea, plight_numRandRay);
+	mObj.dxrPara.setPointLightAll(dev->dxrBuffSwapIndex(), on_off, range, atten);
 }
 
 bool MeshData::CreateMesh(int comIndex, bool smooth, float divideBufferMagnification) {

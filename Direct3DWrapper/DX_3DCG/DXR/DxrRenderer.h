@@ -26,11 +26,13 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 numEmissive;//x:Em, y:numInstance
 	CoordTf::VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	CoordTf::VECTOR4 GlobalAmbientColor;
-	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//x:emissiveNo, y:乱数範囲area(2.0で全方向), z:乱数個数
+	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//x:emissiveNo
 	CoordTf::VECTOR4 dDirection;
 	CoordTf::VECTOR4 dLightColor;
 	CoordTf::VECTOR4 dLightst;//x:オンオフ
 	CoordTf::VECTOR4 TMin_TMax;//x, y
+	CoordTf::VECTOR4 LightArea_RandNum;//x:乱数範囲area(2.0で全方向), y:乱数個数
+	UINT frameInd;//フレームインデックス
 	UINT maxRecursion;
 };
 
@@ -69,6 +71,10 @@ private:
 	ASobj asObj[numSwapIndex] = {};
 	CBobj cbObj[numSwapIndex] = {};
 	int buffSwap[numSwapIndex] = { 0,0 };
+
+	float LightArea;
+	int RandNum;
+	UINT frameInd;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -138,6 +144,8 @@ public:
 		setASswapIndex(sync);
 		setRaytraceSwapIndex(1 - sync);
 	}
+
+	void setGIparameter(float LightArea, int RandNum);
 };
 
 #endif

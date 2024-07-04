@@ -19,8 +19,8 @@ char* ShaderEmissiveHit =
 "    bool mNoF     = materialIdent(mNo, EMISSIVE);\n"
 "    if(pay_mNoF && mNoF) {\n"
 "       payload.color = difTex.xyz;\n"
-"       if(InstanceID() != payload.instanceID || difTex.w <= 0.0f) {\n"
-"          payload.reTry = true;\n"//–Ú•W‚Ì“_ŒõŒ¹ˆÈŠO‚Ìê‡‘f’Ê‚è
+"       if(difTex.w <= 0.0f) {\n"
+"          payload.reTry = true;\n"//“§–¾‚Ìê‡‘f’Ê‚è
 "       }\n"
 "    }\n"
 //////•½sŒõŒ¹
