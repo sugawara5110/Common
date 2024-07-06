@@ -16,13 +16,14 @@ char* ShaderCommon =
 "{\n"
 "    float2 index = (float2)DispatchRaysIndex();\n"
 "    float rand1 = Rand(index);\n"
-"    float rand2 = Rand(float2(index.x + 0.1f, index.y + 0.1f));\n"
+"    float rand2 = Rand(index + 0.5f);\n"
 
 //ランダムなベクトルを生成
 "    float z = area * rand1 - 1.0f;\n"
 "    float phi = 3.1415f * (2.0f * rand2 - 1.0f);\n"
-"    float x = sqrt(1.0f - z * z) * cos(phi);\n"
-"    float y = sqrt(1.0f - z * z) * sin(phi);\n"
+"    float sq = sqrt(1.0f - z * z);\n"
+"    float x = sq * cos(phi);\n"
+"    float y = sq * sin(phi);\n"
 "    float3 randV = float3(x, y, z);\n"
 
 //入力ベクトルに垂直なベクトルの生成

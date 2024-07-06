@@ -4,6 +4,17 @@
 
 char* ShaderEmissiveHit =
 
+"uint getEmissiveIndex(){\n"
+"   uint ret = 0;\n"
+"   for(uint i = 0; i < 256; i++){\n"
+"      if(emissiveNo[i].x == InstanceID()){\n"
+"         ret = i;\n"
+"         break;\n"
+"      }\n"
+"   }\n"
+"   return ret;\n"
+"}\n"
+
 "[shader(\"closesthit\")]\n"
 "void emissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
@@ -19,6 +30,7 @@ char* ShaderEmissiveHit =
 "    bool mNoF     = materialIdent(mNo, EMISSIVE);\n"
 "    if(pay_mNoF && mNoF) {\n"
 "       payload.color = difTex.xyz;\n"
+"       payload.EmissiveIndex = getEmissiveIndex();\n"
 "       if(difTex.w <= 0.0f) {\n"
 "          payload.reTry = true;\n"//“§–¾‚Ìê‡‘f’Ê‚è
 "       }\n"

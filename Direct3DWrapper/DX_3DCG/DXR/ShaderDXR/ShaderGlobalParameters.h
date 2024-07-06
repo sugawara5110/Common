@@ -14,7 +14,7 @@ char* ShaderGlobalParameters =
 "    bool hit;\n"
 "    float Alpha;\n"
 "    uint RecursionCnt;\n"
-"    uint instanceID;\n"
+"    uint EmissiveIndex;\n"
 "    uint mNo;\n"
 "    float depth;\n"
 "    int hitInstanceId;\n"

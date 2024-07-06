@@ -53,6 +53,7 @@ char* ShaderTraceRay =
 
 "                    bool loop = true;\n"
 "                    payload.hitPosition = hitPosition;\n"
+"                    payload.EmissiveIndex = 0;\n"
 "                    while(loop){\n"
 "                       payload.mNo = EMISSIVE;\n"//èàóùï™äÚóp
 "                       ray.Origin = payload.hitPosition;\n"
@@ -61,11 +62,11 @@ char* ShaderTraceRay =
 "                       loop = payload.reTry;\n"
 "                    }\n"
 
-"                    float4 emissiveHitPos = emissivePosition[i];\n"
+"                    uint emInd = payload.EmissiveIndex;\n"
+"                    float4 emissiveHitPos = emissivePosition[emInd];\n"
 "                    emissiveHitPos.xyz = payload.hitPosition;\n"
-"                    if(RandNum > 1)emissiveHitPos.w = 1.0f;\n"
 "                    Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCGì‡ä÷êî
-"                                        hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
+"                                        hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);\n"
 "                    dif += Out.Diffuse;\n"
 "                    spe += Out.Speculer;\n"
 "                 }\n"
