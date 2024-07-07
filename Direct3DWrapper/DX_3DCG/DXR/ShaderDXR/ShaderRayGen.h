@@ -60,7 +60,16 @@ char* ShaderRayGen =
 "    colsatu.x = saturate(col.x);\n"
 "    colsatu.y = saturate(col.y);\n"
 "    colsatu.z = saturate(col.z);\n"
-"    gOutput[index] = float4(colsatu, 1.0f);\n"
+
+"    uint RandNum = LightArea_RandNum.y;\n"
+"    if(RandNum > 1){\n"
+"       float3 prev = gOutput[index];\n"
+"       float3 ave = (prev + colsatu) * 0.5f;\n"
+"       gOutput[index] = float4(ave, 1.0f);\n"
+"    }\n"
+"    else{\n"
+"       gOutput[index] = float4(colsatu, 1.0f);\n"
+"    }\n"
 "}\n"
 
 //’Êí

@@ -72,6 +72,10 @@ char* ShaderTraceRay =
 "                 }\n"
 "                 emissiveColor.Diffuse += (dif / (float)RandNum);\n"
 "                 emissiveColor.Speculer += (spe / (float)RandNum);\n"
+"                 if(RandNum > 1){\n"
+"                    emissiveColor.Diffuse *= (2 * PI);\n"
+"                    emissiveColor.Speculer *= (2 * PI);\n"
+"                 }\n"
 "              }\n"
 "          }\n"
 //ïΩçsåıåπåvéZ

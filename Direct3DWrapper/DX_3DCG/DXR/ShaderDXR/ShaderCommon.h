@@ -8,7 +8,7 @@ char* ShaderCommon =
 "float Rand(float2 v2)\n"
 "{\n"
 "    Seed++;\n"
-"    return frac(sin(dot(v2, float2(12.9898, 78.233)) + Seed) * 43758.5453);\n"
+"    return frac(sin(dot(v2, float2(12.9898, 78.233)) * (frameInd % 100 + 1) * 0.001 + Seed + frameInd) * 43758.5453);\n"
 "}\n"
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
@@ -20,7 +20,7 @@ char* ShaderCommon =
 
 //ランダムなベクトルを生成
 "    float z = area * rand1 - 1.0f;\n"
-"    float phi = 3.1415f * (2.0f * rand2 - 1.0f);\n"
+"    float phi = PI * (2.0f * rand2 - 1.0f);\n"
 "    float sq = sqrt(1.0f - z * z);\n"
 "    float x = sq * cos(phi);\n"
 "    float y = sq * sin(phi);\n"
