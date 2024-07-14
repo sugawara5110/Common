@@ -155,3 +155,25 @@ ComPtr<ID3D12Resource> Dx_CommandManager::CreateDefaultBuffer(
 
 	return defaultBuffer;
 }
+
+HRESULT Dx_CommandManager::createTexture(int comIndex, const void* byteArr, DXGI_FORMAT format,
+	ID3D12Resource** up, ID3D12Resource** def,
+	int width, LONG_PTR RowPitch, int height, bool uav) {
+
+	HRESULT hr = Dx_Device::GetInstance()->textureInit(width, height, up, def, format,
+		D3D12_RESOURCE_STATE_COMMON, uav);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
+
+	D3D12_RESOURCE_STATES afterState = D3D12_RESOURCE_STATE_GENERIC_READ;
+	if (uav)afterState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	hr = cObj->CopyResourcesToGPU(*up, *def, byteArr, RowPitch);
+	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COPY_DEST, afterState);
+
+	return hr;
+}

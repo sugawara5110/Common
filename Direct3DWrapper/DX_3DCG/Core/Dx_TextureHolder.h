@@ -72,10 +72,6 @@ private:
 	~Dx_TextureHolder();
 
 public:
-	HRESULT createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
-		ID3D12Resource** up, ID3D12Resource** def,
-		int width, LONG_PTR RowPitch, int height);
-
 	static void InstanceCreate();
 	static Dx_TextureHolder* GetInstance();
 	static void DeleteInstance();

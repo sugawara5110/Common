@@ -252,11 +252,21 @@ HRESULT Dx_Device::createReadBackResource(ID3D12Resource** ba, UINT64 BufferSize
 
 HRESULT Dx_Device::textureInit(int width, int height,
 	ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
-	D3D12_RESOURCE_STATES firstState) {
+	D3D12_RESOURCE_STATES firstState, bool uav) {
 
-	HRESULT hr = createDefaultResourceTEXTURE2D(def, width, height, format, firstState);
-	if (FAILED(hr)) {
-		return hr;
+	HRESULT hr;
+
+	if (uav) {
+		hr = createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(def, width, height, firstState, format);
+		if (FAILED(hr)) {
+			return hr;
+		}
+	}
+	else {
+		hr = createDefaultResourceTEXTURE2D(def, width, height, format, firstState);
+		if (FAILED(hr)) {
+			return hr;
+		}
 	}
 
 	//upload

@@ -16,10 +16,10 @@ char* ShaderBasicHit =
 "    float3 speTex = getSpePixel(attr, v3);\n"
 
 "    payload.reTry = false;\n"
-//深度取得
-"    if(payload.depth == -1.0f) {\n"
-"       payload.depth = getDepth(attr, v3);\n"
-"    }\n"
+
+//光源への光線
+"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
+"                                          difTex.xyz, speTex, normalMap);\n"
 
 //法線切り替え
 "    float3 r_eyeVec = -WorldRayDirection();\n"//視線へのベクトル
@@ -29,10 +29,6 @@ char* ShaderBasicHit =
 //フレネル計算
 "    float fresnel = saturate(dot(r_eyeVec, normalMap));\n"
 
-//光源への光線
-"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
-"                                          difTex.xyz, speTex, normalMap);\n"
-
 //反射方向への光線
 "    difTex.xyz = MetallicPayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
 "                                          difTex.xyz, normalMap, payload.hitInstanceId, fresnel);\n"
@@ -40,6 +36,11 @@ char* ShaderBasicHit =
 //半透明
 "    difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, \n"
 "                             difTex, normalMap, fresnel);\n"
+
+//深度取得
+"    payload.depth = getDepth(attr, v3);\n"
+//法線取得
+"    payload.normal = normalMap;\n"
 
 "    payload.color = difTex.xyz;\n"
 "    payload.hit = true;\n"
@@ -58,11 +59,11 @@ char* ShaderBasicHit =
 
 "    payload.reTry = false;\n"
 //深度取得
-"    if(payload.depth == -1.0f) {\n"
-"       payload.depth = getDepth(attr, v3);\n"
-"    }\n"
+"    payload.depth = getDepth(attr, v3);\n"
+//法線取得
+"    payload.normal = normalMap;\n"
 
-"    payload.color = normalMap.xyz;\n"
+"    payload.color = normalMap;\n"
 "    payload.hit = true;\n"
 "    payload.Alpha = difTex.w;\n"
 "}\n";

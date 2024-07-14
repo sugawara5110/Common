@@ -67,10 +67,9 @@ void TextObj::SetText(int comIndex) {
 		}
 	}
 
-	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
-	dx->createTexture(comIndex, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
+	Dx_CommandManager::GetInstance()->createTexture(comIndex, pBits, DXGI_FORMAT_B8G8R8A8_UNORM,
 		&textureUp[0], &texture[0],
-		Twidth, Twidth * 4, Theight);
+		Twidth, Twidth * 4, Theight, false);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
 	Dx_Device::GetInstance()->CreateSrvTexture(hDescriptor, &texture[0], 1);

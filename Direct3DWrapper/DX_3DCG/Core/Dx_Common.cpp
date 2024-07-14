@@ -91,9 +91,9 @@ HRESULT DxCommon::createTex(int comIndex, int tNo, int& resCnt, char* upName, ch
 		texture[resCnt] = tex->texture.Get();
 	}
 	else {
-		hr = dx->createTexture(comIndex, tex->byteArr, tex->format,
+		hr = Dx_CommandManager::GetInstance()->createTexture(comIndex, tex->byteArr, tex->format,
 			&textureUp[resCnt], &texture[resCnt],
-			tex->width, tex->RowPitch, tex->height);
+			tex->width, tex->RowPitch, tex->height, false);
 		textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR(upName, ObjName));
 		texture[resCnt]->SetName(Dx_Util::charToLPCWSTR(defName, ObjName));
 		if (SUCCEEDED(hr))createRes[resCnt] = true;
@@ -131,7 +131,7 @@ HRESULT DxCommon::createTextureResource(int comIndex, int resourceStartIndex, in
 			hr = device->textureInit(movOn[i].width, movOn[i].height,
 				&textureUp[resCnt], &texture[resCnt],
 				DXGI_FORMAT_R8G8B8A8_UNORM,
-				D3D12_RESOURCE_STATE_GENERIC_READ);
+				D3D12_RESOURCE_STATE_GENERIC_READ, false);
 			if (SUCCEEDED(hr))createRes[resCnt] = true;
 			movOn[i].resIndex = resCnt;
 			textureUp[resCnt]->SetName(Dx_Util::charToLPCWSTR("movTexUp", ObjName));

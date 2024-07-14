@@ -47,6 +47,10 @@ public:
 
 	ComPtr<ID3D12Resource> CreateDefaultBuffer(int comIndex, const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& uploadBuffer, bool uav);
 
+	HRESULT createTexture(int comIndex, const void* byteArr, DXGI_FORMAT format,
+		ID3D12Resource** up, ID3D12Resource** def,
+		int width, LONG_PTR RowPitch, int height, bool uav);
+
 	Dx_CommandListObj* getComputeComListObj(int comIndex);
 	void RunGpuNotLockCom();
 	void RunGpuCom();

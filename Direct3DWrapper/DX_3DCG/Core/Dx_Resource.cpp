@@ -166,6 +166,18 @@ void Dx_Resource::CreateDefaultBuffer(int comIndex, const void* initData, UINT64
 	res = Dx_CommandManager::GetInstance()->CreateDefaultBuffer(comIndex, initData, byteSize, up, uav);
 }
 
+HRESULT Dx_Resource::createTexture(int comIndex, const void* byteArr, DXGI_FORMAT format,
+	int width, LONG_PTR RowPitch, int height, bool uav) {
+	Width = width;
+	Height = height;
+	state = D3D12_RESOURCE_STATE_GENERIC_READ;
+	if (uav)state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+	return Dx_CommandManager::GetInstance()->createTexture(comIndex, byteArr, format,
+		up.GetAddressOf(), res.GetAddressOf(),
+		width, RowPitch, height, uav);
+}
+
 D3D12_VERTEX_BUFFER_VIEW VertexView::VertexBufferView() {
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
 	vbv.BufferLocation = VertexBufferGPU.getResource()->GetGPUVirtualAddress();

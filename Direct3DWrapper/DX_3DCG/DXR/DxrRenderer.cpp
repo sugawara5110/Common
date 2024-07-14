@@ -212,7 +212,7 @@ namespace {
 
 	RootSignatureDesc createGlobalRootDesc() {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 2;
+		int numDescriptorRanges = 3;
 		desc.range.resize(numDescriptorRanges);
 
 		//cbuffer global(b0)
@@ -222,22 +222,29 @@ namespace {
 		desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		desc.range[0].OffsetInDescriptorsFromTableStart = 0;
 
-		//g_samLinear(s0)
-		desc.range[1].BaseShaderRegister = 0;
+		//gFrameIndexMap(u6)
+		desc.range[1].BaseShaderRegister = 6;
 		desc.range[1].NumDescriptors = 1;
-		desc.range[1].RegisterSpace = 14;
-		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-		desc.range[1].OffsetInDescriptorsFromTableStart = 0;
+		desc.range[1].RegisterSpace = 0;
+		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[1].OffsetInDescriptorsFromTableStart = 1;
+
+		//g_samLinear(s0)
+		desc.range[2].BaseShaderRegister = 0;
+		desc.range[2].NumDescriptors = 1;
+		desc.range[2].RegisterSpace = 14;
+		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+		desc.range[2].OffsetInDescriptorsFromTableStart = 0;
 
 		desc.rootParams.resize(3);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
+		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
 		desc.rootParams[0].DescriptorTable.pDescriptorRanges = &desc.range[0];
 		desc.rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-		desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[1];
+		desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[2];
 		desc.rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		//gRtScene(t4)
@@ -255,7 +262,7 @@ namespace {
 
 	RootSignatureDesc createLocalRootDescRayGen() {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 3;
+		int numDescriptorRanges = 6;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
 
@@ -279,6 +286,27 @@ namespace {
 		desc.range[2].RegisterSpace = 0;
 		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		desc.range[2].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gNormalMap(u3)
+		desc.range[3].BaseShaderRegister = 3;
+		desc.range[3].NumDescriptors = 1;
+		desc.range[3].RegisterSpace = 0;
+		desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[3].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gPrevDepthOut(u4)
+		desc.range[4].BaseShaderRegister = 4;
+		desc.range[4].NumDescriptors = 1;
+		desc.range[4].RegisterSpace = 0;
+		desc.range[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[4].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gPrevNormalMap(u5)
+		desc.range[5].BaseShaderRegister = 5;
+		desc.range[5].NumDescriptors = 1;
+		desc.range[5].RegisterSpace = 0;
+		desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[5].OffsetInDescriptorsFromTableStart = descCnt++;
 
 		desc.rootParams.resize(1);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -392,6 +420,9 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	LightArea = 1.0f;
 	RandNum = 1;
 	frameInd = 0;
+	frameReset = 0.0f;
+	depthRange = 0.0001f;
+	norRange = 0.999f;
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
@@ -756,7 +787,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 14;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 17;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects.push_back(shaderConfig.subobject);
 	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];
@@ -804,15 +835,39 @@ void DxrRenderer::createShaderResources() {
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
+	std::unique_ptr<UINT[]> uintArr = std::make_unique<UINT[]>(sw->getClientWidth() * sw->getClientHeight());
+	for (int i = 0; i < sw->getClientWidth() * sw->getClientHeight(); i++)uintArr[i] = 0;
+	frameIndexMap.createTexture(0, uintArr.get(), DXGI_FORMAT_R32_UINT,
+		sw->getClientWidth(), sw->getClientWidth() * 4, sw->getClientHeight(), true);
+
+	normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R8G8B8A8_SNORM);
+
+	mpPrevDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R32_FLOAT);
+
+	prev_normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R8G8B8A8_SNORM);
+
 	mpOutputResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpInstanceIdMapResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	frameIndexMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	normalMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	mpPrevDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	prev_normalMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//Local
 	int num_u0 = 1;
 	int num_u1 = 1;
 	int num_u2 = 1;
-	int numLocalHeapRay = num_u0 + num_u1 + num_u2;
+	int num_u3 = 1;
+	int num_u4 = 1;
+	int num_u5 = 1;
+	int numLocalHeapRay = num_u0 + num_u1 + num_u2 + num_u3 + num_u4 + num_u5;
 	int num_t0 = numMaterial;
 	int num_b1 = numMaterial;
 	int num_b2 = maxNumInstancing;
@@ -824,7 +879,8 @@ void DxrRenderer::createShaderResources() {
 	numLocalHeap = numLocalHeapRay + numLocalHeapHit;
 	//Global
 	int num_b0 = 1;
-	numGlobalHeap = num_b0;
+	int num_u6 = 1;
+	numGlobalHeap = num_b0 + num_u6;
 
 	for (int heapInd = 0; heapInd < numSwapIndex; heapInd++) {
 
@@ -844,6 +900,15 @@ void DxrRenderer::createShaderResources() {
 
 		//UAVを作成 gInstanceIdMap(u2)
 		mpInstanceIdMapResource.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gNormalMap(u3)
+		normalMap.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gPrevDepthOut(u4)
+		mpPrevDepthResource.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gPrevNormalMap(u5)
+		prev_normalMap.CreateUavTexture(srvHandle);
 
 		//SRVを作成 Indices(t0)
 		for (auto i = 0; i < PD.size(); i++) {
@@ -909,6 +974,9 @@ void DxrRenderer::createShaderResources() {
 		D3D12_GPU_VIRTUAL_ADDRESS ad0[1] = { sCB->Resource()->GetGPUVirtualAddress() };
 		UINT size0[1] = { sCB->getSizeInBytes() };
 		device->CreateCbv(srvHandle, ad0, size0, 1);
+
+		//UAVを作成 gFrameIndexMap(u6)
+		frameIndexMap.CreateUavTexture(srvHandle);
 	}
 
 	//g_samLinear(s0)
@@ -1053,13 +1121,15 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	MatrixMultiply(&VP, &upd.mView, &upd.mProj);
 	MatrixTranspose(&VP);
 	DxrConstantBuffer& cb = cbObj->cb;
+	MatrixInverse(&cb.prevViewProjection, &cb.projectionToWorld);
 	MatrixInverse(&cb.projectionToWorld, &VP);
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
 	cb.TMin_TMax.x = TMin;
 	cb.TMin_TMax.y = TMax;
 	cb.LightArea_RandNum.as(LightArea, (float)RandNum, 0.0f, 0.0f);
-	cb.frameInd = frameInd;
+	cb.frameReset_DepthRange_NorRange.as(frameReset, depthRange, norRange, 1.0f);
+	frameReset = 0.0f;
 	updateMaterial(cbObj);
 
 	int cntEm = 0;
@@ -1167,13 +1237,20 @@ void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 	//Dispatch
 	com->getCommandList()->SetPipelineState1(mpPipelineState.Get());
 	com->getCommandList()->DispatchRays(&raytraceDesc[dev->dxrBuffSwapRaytraceIndex()]);
-	if (INT_MAX <= frameInd++)frameInd = 0;
+
+	if (INT_MAX <= frameInd++) {
+		frameInd = 0;
+		resetFrameIndex();
+	}
 }
 
 void DxrRenderer::copyBackBuffer(uint32_t comNo) {
 	//結果をバックバッファにコピー
 	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 	sw->GetRtBuffer()->delayCopyResource(comNo, &mpOutputResource);
+
+	mpPrevDepthResource.CopyResource(comNo, &mpDepthResource);
+	prev_normalMap.CopyResource(comNo, &normalMap);
 }
 
 void DxrRenderer::copyDepthBuffer(uint32_t comNo) {
@@ -1215,4 +1292,13 @@ Dx_Resource* DxrRenderer::getInstanceIdMap() {
 void DxrRenderer::setGIparameter(float lightArea, int randNum) {
 	LightArea = lightArea;
 	RandNum = randNum;
+}
+
+void DxrRenderer::resetFrameIndex() {
+	frameReset = 1.0f;
+}
+
+void DxrRenderer::set_DepthRange_NorRange(float DepthRange, float NorRange) {
+	depthRange = DepthRange;
+	norRange = NorRange;
 }

@@ -108,7 +108,7 @@ char* ShaderTraceRay =
 
 ///////////////////////反射方向へ光線を飛ばす, ヒットした場合ピクセル値乗算///////////////////////
 "float3 MetallicPayloadCalculate(in uint RecursionCnt, in float3 hitPosition, \n"
-"                                in float3 difTexColor, in float3 normal, inout int hitInstanceId, float fresnel)\n"
+"                                in float3 difTexColor, in float3 normal, inout int hitInstanceId, in float fresnel)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    uint mNo = material[materialID].materialNo;\n"
@@ -156,7 +156,7 @@ char* ShaderTraceRay =
 "}\n"
 
 ////////////////////////////////////////半透明//////////////////////////////////////////
-"float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor, in float3 normal, float fresnel)\n"
+"float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor, in float3 normal, in float fresnel)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    MaterialCB mcb = material[materialID];\n"

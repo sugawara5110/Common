@@ -12,6 +12,7 @@ char* ShaderGlobalParameters =
 "{\n"
 "    float3 color;\n"
 "    float3 hitPosition;\n"
+"    float3 normal;\n"
 "    bool reTry;\n"
 "    bool hit;\n"
 "    float Alpha;\n"
@@ -24,6 +25,7 @@ char* ShaderGlobalParameters =
 
 "cbuffer global : register(b0, space0)\n"
 "{\n"
+"    matrix prevViewProjection;\n"
 "    matrix projectionToWorld;\n"
 "    float4 cameraPosition;\n"
 "    float4 emissivePosition[256];\n"//.w:onoff
@@ -36,9 +38,11 @@ char* ShaderGlobalParameters =
 "    float4 dLightst;\n"//.x:オンオフ
 "    float4 TMin_TMax;\n"//.x, .y
 "    float4 LightArea_RandNum;\n"//x:乱数範囲area(2.0で全方向), y:乱数個数
-"    uint frameInd;\n"//フレームインデックス
+"    float4 frameReset_DepthRange_NorRange;\n"//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 "    uint maxRecursion;\n"
 "};\n"
+
+"RWTexture2D<uint> gFrameIndexMap : register(u6, space0);\n"
 
 "SamplerState g_samLinear : register(s0, space14);\n"
 "RaytracingAccelerationStructure gRtScene : register(t4, space15);\n";

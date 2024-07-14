@@ -7,11 +7,11 @@ char* ShaderRayGen =
 //共通
 "void rayGenIn()\n"
 "{\n"
-"    uint2 index = DispatchRaysIndex();\n"//この関数を実行しているピクセル座標を取得
+"    uint2 index = DispatchRaysIndex().xy;\n"//この関数を実行しているピクセル座標を取得
 "    uint2 dim = DispatchRaysDimensions();\n"//画面全体の幅と高さを取得
 "    float2 screenPos = (index + 0.5f) / dim * 2.0f - 1.0f;\n"
 
-"    Seed = frameInd;\n"
+"    Seed = gFrameIndexMap[index];\n"
 
 "    RayDesc ray;\n"
 //光線の原点, ここが光線スタート, 視線から始まる
@@ -40,7 +40,8 @@ char* ShaderRayGen =
 "    bool loop = true;\n"
 "    payload.hitPosition = ray.Origin;\n"
 "    gDepthOut[index] = 1.0f;\n"
-"    payload.depth = -1.0f;\n"
+"    payload.depth = 1.0f;\n"
+"    payload.normal = float3(0.0f, 0.0f, 0.0f);\n"
 "    payload.reTry = false;\n"
 "    payload.hitInstanceId = -1;\n"
 
@@ -50,8 +51,9 @@ char* ShaderRayGen =
 "       loop = payload.reTry;\n"
 "    }\n"
 
-"    if(payload.depth != -1.0f)\n"
-"       gDepthOut[index] = payload.depth;\n"
+"    gDepthOut[index] = payload.depth;\n"
+
+"    gNormalMap[index] = float4(payload.normal, 1.0f);\n"
 
 "    gInstanceIdMap[index] = payload.hitInstanceId;\n"
 
@@ -63,9 +65,32 @@ char* ShaderRayGen =
 
 "    uint RandNum = LightArea_RandNum.y;\n"
 "    if(RandNum > 1){\n"
+"       float4 prev_screenPos4 = mul(float4(payload.hitPosition, 1.0f), prevViewProjection);\n"
+"       float2 prev_screenPos = (prev_screenPos4.xy / prev_screenPos4.z * payload.depth);\n"
+"       prev_screenPos.y *= -1.0f;\n"
+"       uint2 prevInd = (prev_screenPos + 1.0f) * dim * 0.5f;\n"
+"       float prevDepth = gPrevDepthOut[prevInd];\n"
+"       float3 prevNor = gPrevNormalMap[prevInd].xyz;\n"
+"       float crruentDepth = gDepthOut[index];\n"
+"       float3 crruentNor = gNormalMap[index].xyz;\n"
+
+"       float frameReset = frameReset_DepthRange_NorRange.x;\n"
+"       float DepthRange = frameReset_DepthRange_NorRange.y;\n"
+"       float NorRange = frameReset_DepthRange_NorRange.z;\n"
+
+"       if(abs(prevDepth - crruentDepth) <= DepthRange && dot(prevNor, crruentNor) >= NorRange){\n"
+"          gFrameIndexMap[index]++;\n"
+"       }\n"
+"       else{\n"
+"          gFrameIndexMap[index] = 0;\n"
+"       }\n"
+
+"       if(frameReset == 1.0f)gFrameIndexMap[index] = 0;\n"
+
+"       const float CMA_Ratio = 1.0f / ((float)gFrameIndexMap[index] + 1.0f);\n"
 "       float3 prev = gOutput[index];\n"
-"       float3 ave = (prev + colsatu) * 0.5f;\n"
-"       gOutput[index] = float4(ave, 1.0f);\n"
+"       float3 le = lerp(prev, colsatu, CMA_Ratio);\n"
+"       gOutput[index] = float4(le, 1.0f);\n"
 "    }\n"
 "    else{\n"
 "       gOutput[index] = float4(colsatu, 1.0f);\n"

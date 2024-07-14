@@ -20,6 +20,7 @@ struct AccelerationStructureBuffers
 
 struct DxrConstantBuffer
 {
+	CoordTf::MATRIX prevViewProjection;
 	CoordTf::MATRIX projectionToWorld;
 	CoordTf::VECTOR4 cameraPosition;
 	CoordTf::VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:オンオフ
@@ -32,7 +33,7 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 dLightst;//x:オンオフ
 	CoordTf::VECTOR4 TMin_TMax;//x, y
 	CoordTf::VECTOR4 LightArea_RandNum;//x:乱数範囲area(2.0で全方向), y:乱数個数
-	UINT frameInd;//フレームインデックス
+	CoordTf::VECTOR4 frameReset_DepthRange_NorRange;//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 	UINT maxRecursion;
 };
 
@@ -55,6 +56,11 @@ struct CBobj {
 	DxrConstantBuffer cb = {};
 	std::unique_ptr<DxrMaterialCB[]> matCb = nullptr;
 	std::unique_ptr<WVP_CB[]> wvpCb = nullptr;
+
+	CBobj() {
+		CoordTf::MatrixIdentity(&cb.prevViewProjection);
+		CoordTf::MatrixIdentity(&cb.projectionToWorld);
+	}
 };
 
 enum ShaderTestMode {
@@ -75,6 +81,9 @@ private:
 	float LightArea;
 	int RandNum;
 	UINT frameInd;
+	float frameReset;
+	float depthRange;
+	float norRange;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -86,6 +95,10 @@ private:
 	Dx_Resource mpOutputResource = {};
 	Dx_Resource mpDepthResource = {};
 	Dx_Resource mpInstanceIdMapResource = {};
+	Dx_Resource frameIndexMap = {};
+	Dx_Resource normalMap = {};
+	Dx_Resource mpPrevDepthResource = {};
+	Dx_Resource prev_normalMap = {};
 
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[numSwapIndex];
 
@@ -146,6 +159,8 @@ public:
 	}
 
 	void setGIparameter(float LightArea, int RandNum);
+	void resetFrameIndex();
+	void set_DepthRange_NorRange(float DepthRange, float NorRange);
 };
 
 #endif

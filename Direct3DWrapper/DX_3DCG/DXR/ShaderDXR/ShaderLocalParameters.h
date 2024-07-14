@@ -13,6 +13,9 @@ char* ShaderLocalParameters =
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
 "RWTexture2D<float> gDepthOut : register(u1, space0);\n"
 "RWTexture2D<float> gInstanceIdMap : register(u2, space0);\n"
+"RWTexture2D<float4> gNormalMap : register(u3, space0);\n"
+"RWTexture2D<float> gPrevDepthOut : register(u4, space0);\n"
+"RWTexture2D<float4> gPrevNormalMap : register(u5, space0);\n"
 
 "StructuredBuffer<uint> Indices[] : register(t0, space1);\n"//無制限配列の場合,別なレジスタ空間にした方が(・∀・)ｲｲ!! みたい
 

@@ -61,6 +61,9 @@ public:
 	void delayCopyResource(uint32_t comIndex, Dx_Resource* src);
 
 	void CreateDefaultBuffer(int comIndex, const void* initData, UINT64 byteSize, bool uav);
+
+	HRESULT createTexture(int comIndex, const void* byteArr, DXGI_FORMAT format,
+		int width, LONG_PTR RowPitch, int height, bool uav);
 };
 
 struct VertexView {

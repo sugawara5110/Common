@@ -72,7 +72,7 @@ public:
 
 	HRESULT textureInit(int width, int height,
 		ID3D12Resource** up, ID3D12Resource** def, DXGI_FORMAT format,
-		D3D12_RESOURCE_STATES firstState);
+		D3D12_RESOURCE_STATES firstState, bool uav);
 
 	ComPtr<ID3D12RootSignature> CreateRsCommon(D3D12_ROOT_SIGNATURE_DESC* rootSigDesc);
 	ComPtr<ID3D12DescriptorHeap> CreateDescHeap(int numDesc);

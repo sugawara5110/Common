@@ -52,25 +52,6 @@ int Dx_TextureHolder::GetTexNumber(CHAR* fileName) {
 	return -1;
 }
 
-HRESULT Dx_TextureHolder::createTexture(int com_no, UCHAR* byteArr, DXGI_FORMAT format,
-	ID3D12Resource** up, ID3D12Resource** def,
-	int width, LONG_PTR RowPitch, int height) {
-
-	HRESULT hr = Dx_Device::GetInstance()->textureInit(width, height, up, def, format,
-		D3D12_RESOURCE_STATE_COMMON);
-	if (FAILED(hr)) {
-		return hr;
-	}
-
-	Dx_CommandListObj* cObj = Dx_CommandManager::GetInstance()->getGraphicsComListObj(com_no);
-
-	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	hr = cObj->CopyResourcesToGPU(*up, *def, byteArr, RowPitch);
-	cObj->ResourceBarrier(*def, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-
-	return hr;
-}
-
 void Dx_TextureHolder::createTextureArr(int numTexArr, int resourceIndex, char* texName,
 	UCHAR* byteArr, DXGI_FORMAT format,
 	int width, LONG_PTR RowPitch, int height,
@@ -111,9 +92,9 @@ void Dx_TextureHolder::createTextureArr(int numTexArr, int resourceIndex, char* 
 HRESULT Dx_TextureHolder::createTextureResourceArr(int com_no) {
 	for (int i = 0; i < texNum; i++) {
 		InternalTexture* tex = &texture[i];
-		HRESULT hr = createTexture(com_no, tex->byteArr, tex->format,
+		HRESULT hr = Dx_CommandManager::GetInstance()->createTexture(com_no, tex->byteArr, tex->format,
 			tex->textureUp.GetAddressOf(), tex->texture.GetAddressOf(),
-			tex->width, tex->RowPitch, tex->height);
+			tex->width, tex->RowPitch, tex->height, false);
 		tex->textureUp->SetName(Dx_Util::charToLPCWSTR("Up", tex->texName));
 		tex->texture->SetName(Dx_Util::charToLPCWSTR("def", tex->texName));
 
