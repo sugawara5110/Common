@@ -732,7 +732,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	bMis.addStr(ShaderGlobalParameters, ShaderBasicMiss);
 
 	addChar eHit = {};
-	eHit.addStr(com.str, ShaderEmissiveHit);
+	eHit.addStr(tRay.str, ShaderEmissiveHit);
 
 	addChar eMis = {};
 	eMis.addStr(ShaderGlobalParameters, ShaderEmissiveMiss);

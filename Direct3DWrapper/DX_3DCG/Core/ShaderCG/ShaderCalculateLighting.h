@@ -86,6 +86,22 @@ char* ShaderCalculateLighting =
 "}\n"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////ポイントライト計算, 距離減衰無し///////////////////////////////////////////////////
+"LightOut PointLightComNoDistance(float3 SpeculerCol, float3 Diffuse, float3 Ambient, float3 Nor, \n"
+"                                 float4 lightPos, float3 wPos, float3 lightCol, float3 eyePos, float shininess)\n"
+"{\n"
+//ライトベクトル (頂点の位置 - 点光源の位置)
+"    float3 lightVec = wPos - lightPos.xyz;\n"
+
+//距離減衰率         
+"    float distAtten = 1.0f;\n"
+
+//光源計算
+"    return LightCom(SpeculerCol, Diffuse, Ambient, Nor, \n"
+"                    wPos, lightCol, eyePos, lightVec, distAtten, shininess);\n"
+"}\n"
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /////////////////////////////////////平行光源計算/////////////////////////////////////////////////////////
 "LightOut DirectionalLightCom(float3 SpeculerCol, float3 Diffuse, float3 Ambient, float3 Nor, \n"
 "                             float4 DlightSt, float3 Dir, float3 DCol, float3 wPos, float3 eyePos, float shininess)\n"

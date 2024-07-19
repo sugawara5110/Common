@@ -16,6 +16,7 @@ char* ShaderBasicHit =
 "    float3 speTex = getSpePixel(attr, v3);\n"
 
 "    payload.reTry = false;\n"
+"    payload.hit = false;\n"
 
 //ŒõŒ¹‚Ö‚ÌŒõü
 "    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"

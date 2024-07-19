@@ -22,7 +22,10 @@ char* ShaderEmissiveHit =
 "    uint mNo = material[materialID].materialNo;\n"
 "    Vertex3 v3 = getVertex();\n"
 "    float4 difTex = getDifPixel(attr, v3);\n"
+"    float3 normalMap = getNorPixel(attr, v3);\n"
+"    float3 speTex = getSpePixel(attr, v3);\n"
 "    payload.hitPosition = HitWorldPosition();\n"
+"    payload.hit = false;\n"
 "    payload.reTry = false;\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
 //////点光源
@@ -34,9 +37,13 @@ char* ShaderEmissiveHit =
 "       if(difTex.w <= 0.0f) {\n"
 "          payload.reTry = true;\n"//透明の場合素通り
 "       }\n"
+"       else{\n"
+"          payload.hit = true;\n"
+"       }\n"
+"       return;\n"
 "    }\n"
 //////平行光源
-"    pay_mNoF = materialIdent(payload.mNo, DIRECTIONLIGHT | METALLIC);\n"
+"    pay_mNoF = materialIdent(payload.mNo, DIRECTIONLIGHT);\n"
 "    if(pay_mNoF) {\n"
 "       if(materialIdent(mNo, DIRECTIONLIGHT)) {\n"//平行光源発生マテリアルか?
 "          payload.color = dLightColor.xyz;\n"
@@ -45,18 +52,19 @@ char* ShaderEmissiveHit =
 "          payload.reTry = true;\n"
 "       }\n"
 "    }\n"
-//////影
-"    if( \n"
-"       !materialIdent(mNo, EMISSIVE) && \n"
-"       materialIdent(payload.mNo, EMISSIVE) || \n"
-"       (mNo == METALLIC || mNo == NONREFLECTION) && \n"
-"       materialIdent(payload.mNo, DIRECTIONLIGHT | METALLIC) \n"
-"       ) {\n"
-"       if(difTex.w >= 1.0f) {\n"
+//////光源意外
+"    if(difTex.w >= 1.0f) {\n"
+"       uint RandNum = LightArea_RandNum.y;\n"
+"       if(RandNum > 1){\n"
+//光源への光線
+"          payload.color = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                   difTex.xyz, speTex, normalMap);\n"
+"       }\n"
+"       else{\n"
 "          payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 "       }\n"
-"       else {\n"
-"          payload.reTry = true;\n"
-"       }\n"
+"    }\n"
+"    else {\n"
+"       payload.reTry = true;\n"
 "    }\n"
 "}\n";

@@ -11,12 +11,13 @@ char* ShaderTraceRay =
 "    uint materialID = getMaterialID();\n"
 "    MaterialCB mcb = material[materialID];\n"
 "    uint mNo = mcb.materialNo;\n"
-"    float3 ret = difTexColor;\n"
+"    float3 ret = difTexColor;\n"//光源だった場合、映り込みがそのまま出る・・・あとで変更する
 
 "    bool mf = materialIdent(mNo, EMISSIVE);\n"
 "    if(!mf) {\n"//emissive以外
 
 "       RayPayload payload;\n"
+"       payload.hit = false;\n"
 "       LightOut emissiveColor = (LightOut)0;\n"
 "       LightOut Out;\n"
 "       RayDesc ray;\n"
@@ -24,6 +25,7 @@ char* ShaderTraceRay =
 "       ray.TMin = TMin_TMax.x;\n"
 "       ray.TMax = TMin_TMax.y;\n"
 "       RecursionCnt++;\n"
+"       payload.RecursionCnt = RecursionCnt;\n"
 
 "       float3 SpeculerCol = mcb.Speculer.xyz;\n"
 "       float3 Diffuse = mcb.Diffuse.xyz;\n"
@@ -65,26 +67,34 @@ char* ShaderTraceRay =
 "                    uint emInd = payload.EmissiveIndex;\n"
 "                    float4 emissiveHitPos = emissivePosition[emInd];\n"
 "                    emissiveHitPos.xyz = payload.hitPosition;\n"
-"                    Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
-"                                        hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);\n"
+
+"                    if(RandNum > 1){\n"
+"                       Out = PointLightComNoDistance(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
+"                                                     hitPosition, payload.color, cameraPosition.xyz, shininess);\n"
+"                    }\n"
+"                    else{\n"
+"                       Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
+"                                           hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);\n"
+"                    }\n"
 "                    dif += Out.Diffuse;\n"
 "                    spe += Out.Speculer;\n"
 "                 }\n"
 "                 emissiveColor.Diffuse += (dif / (float)RandNum);\n"
 "                 emissiveColor.Speculer += (spe / (float)RandNum);\n"
 "                 if(RandNum > 1){\n"
-"                    emissiveColor.Diffuse *= (2 * PI);\n"
-"                    emissiveColor.Speculer *= (2 * PI);\n"
+"                    float PI2 = (2 * PI) * 0.4f;\n"//後で考える
+"                    emissiveColor.Diffuse *= PI2;\n"
+"                    emissiveColor.Speculer *= PI2;\n"
 "                 }\n"
 "              }\n"
 "          }\n"
 //平行光源計算
-"          if(dLightst.x == 1.0f){\n"
+"          if(dLightst.x == 1.0f && RandNum <= 1){\n"//ランダムベクトルモードでは実行しない
 "             payload.hitPosition = hitPosition;\n"
 "             ray.Direction = -dDirection.xyz;\n"
 "             bool loop = true;\n"
 "             while(loop){\n"
-"                payload.mNo = DIRECTIONLIGHT | METALLIC;\n"//処理分岐用
+"                payload.mNo = DIRECTIONLIGHT;\n"//処理分岐用
 "                ray.Origin = payload.hitPosition;\n"
 "                TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
 "                         0xFF, 1, 0, 1, ray, payload);\n"
@@ -119,6 +129,7 @@ char* ShaderTraceRay =
 "    if(materialIdent(mNo, METALLIC)) {\n"//METALLIC
 
 "       RayPayload payload;\n"
+"       payload.hit = false;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 "       RayDesc ray;\n"
