@@ -19,8 +19,16 @@ char* ShaderBasicHit =
 "    payload.hit = false;\n"
 
 //光源への光線
-"    difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
-"                                          difTex.xyz, speTex, normalMap);\n"
+"    if(traceMode == 0){\n"
+"       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
+"                                             difTex.xyz, speTex, normalMap);\n"
+"    }else if(traceMode == 1){\n"
+"       difTex.xyz = EmissivePayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                         difTex.xyz, speTex, normalMap);\n"
+"    }else if(traceMode == 2){\n"
+"       difTex.xyz = EmissivePayloadCalculate_NEE(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                 difTex.xyz, speTex, normalMap);\n"
+"    }\n"
 
 //法線切り替え
 "    float3 r_eyeVec = -WorldRayDirection();\n"//視線へのベクトル

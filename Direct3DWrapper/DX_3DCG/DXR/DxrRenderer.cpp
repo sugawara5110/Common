@@ -18,6 +18,8 @@
 #include "./ShaderDXR/ShaderLocalParameters.h"
 #include "./ShaderDXR/ShaderRayGen.h"
 #include "./ShaderDXR/ShaderTraceRay.h"
+#include "./ShaderDXR/ShaderTraceRay_NEE.h"
+#include "./ShaderDXR/ShaderTraceRay_PathTracing.h"
 #include "../Core/Dx_Light.h"
 
 namespace {
@@ -423,6 +425,7 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	frameReset = 0.0f;
 	depthRange = 0.0001f;
 	norRange = 0.999f;
+	traceMode = 0;
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
@@ -716,8 +719,14 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	addChar com = {};
 	com.addStr(para.str, com_t.str);
 
+	addChar nee = {};
+	nee.addStr(ShaderTraceRay_NEE, ShaderTraceRay_PathTracing);
+
+	addChar pt = {};
+	pt.addStr(nee.str, ShaderTraceRay);
+
 	addChar tRay = {};
-	tRay.addStr(com.str, ShaderTraceRay);
+	tRay.addStr(com.str, pt.str);
 
 	addChar rayGen = {};
 	rayGen.addStr(com.str, ShaderRayGen);
@@ -1125,6 +1134,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	MatrixInverse(&cb.projectionToWorld, &VP);
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
+	cb.traceMode = traceMode;
 	cb.TMin_TMax.x = TMin;
 	cb.TMin_TMax.y = TMax;
 	cb.LightArea_RandNum.as(LightArea, (float)RandNum, 0.0f, 0.0f);
@@ -1289,9 +1299,10 @@ Dx_Resource* DxrRenderer::getInstanceIdMap() {
 	return &mpInstanceIdMapResource;
 }
 
-void DxrRenderer::setGIparameter(float lightArea, int randNum) {
+void DxrRenderer::setGIparameter(float lightArea, int randNum, TraceMode mode) {
 	LightArea = lightArea;
 	RandNum = randNum;
+	traceMode = mode;
 }
 
 void DxrRenderer::resetFrameIndex() {

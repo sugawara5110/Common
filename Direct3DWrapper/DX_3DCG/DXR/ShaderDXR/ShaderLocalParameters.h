@@ -4,11 +4,13 @@
 
 char* ShaderLocalParameters =
 
-"#define NONREFLECTION  0b0000 \n"
-"#define METALLIC       0b1000 \n"
-"#define EMISSIVE       0b0100 \n"
-"#define DIRECTIONLIGHT 0b0010 \n"
-"#define TRANSLUCENCE   0b0001 \n"
+"#define NONREFLECTION  0b000000 \n"
+"#define METALLIC       0b100000 \n"
+"#define EMISSIVE       0b010000 \n"
+"#define DIRECTIONLIGHT 0b001000 \n"
+"#define TRANSLUCENCE   0b000100 \n"
+"#define NEE            0b000010 \n"
+"#define NEE_PATHTRACER 0b000001 \n"
 
 "RWTexture2D<float4> gOutput : register(u0, space0);\n"
 "RWTexture2D<float> gDepthOut : register(u1, space0);\n"

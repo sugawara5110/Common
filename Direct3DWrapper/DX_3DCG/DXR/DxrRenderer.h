@@ -35,6 +35,7 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 LightArea_RandNum;//x:乱数範囲area(2.0で全方向), y:乱数個数
 	CoordTf::VECTOR4 frameReset_DepthRange_NorRange;//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 	UINT maxRecursion;
+	UINT traceMode;
 };
 
 struct DxrMaterialCB {
@@ -69,6 +70,12 @@ enum ShaderTestMode {
 	Normal = 2
 };
 
+enum TraceMode {
+	ONE_RAY = 0,
+	PathTracing = 1,
+	NEE = 2
+};
+
 class DxrRenderer {
 
 private:
@@ -84,6 +91,7 @@ private:
 	float frameReset;
 	float depthRange;
 	float norRange;
+	UINT traceMode = 0;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -158,7 +166,7 @@ public:
 		setRaytraceSwapIndex(1 - sync);
 	}
 
-	void setGIparameter(float LightArea, int RandNum);
+	void setGIparameter(float LightArea, int RandNum, TraceMode mode = ONE_RAY);
 	void resetFrameIndex();
 	void set_DepthRange_NorRange(float DepthRange, float NorRange);
 };

@@ -3,21 +3,33 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char* ShaderCommon =
-
-///////////////////////////////////////////ランダム////////////////////////////////////////////////
-"float Rand(float2 v2)\n"
+///////////////////////////////////////////ランダムfloat///////////////////////////////////////////
+"float Rand_float(float2 v2)\n"
 "{\n"
 "    Seed++;\n"
 "    uint frameIndex = gFrameIndexMap[DispatchRaysIndex().xy];\n"
-"    return frac(sin(dot(v2, float2(12.9898, 78.233)) * (frameIndex % 100 + 1) * 0.001 + Seed + frameIndex) * 43758.5453);\n"
+"    return sin(dot(v2, float2(12.9898, 78.233)) * (frameIndex % 100 + 1) * 0.001 + Seed + frameIndex) * 43758.5453;\n"
+"}\n"
+
+///////////////////////////////////////////ランダム整数////////////////////////////////////////////
+"uint Rand_integer()\n"
+"{\n"
+"    float2 index = (float2)DispatchRaysIndex().xy;\n"
+"    return (uint)(abs(Rand_float(index)));\n"
+"}\n"
+
+///////////////////////////////////////////ランダム少数////////////////////////////////////////////
+"float Rand_frac(float2 v2)\n"
+"{\n"
+"    return frac(Rand_float(v2));\n"
 "}\n"
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
 "float3 RandomVector(float3 v, float area)\n"
 "{\n"
 "    float2 index = (float2)DispatchRaysIndex().xy;\n"
-"    float rand1 = Rand(index);\n"
-"    float rand2 = Rand(index + 0.5f);\n"
+"    float rand1 = Rand_frac(index);\n"
+"    float rand2 = Rand_frac(index + 0.5f);\n"
 
 //ランダムなベクトルを生成
 "    float z = area * rand1 - 1.0f;\n"

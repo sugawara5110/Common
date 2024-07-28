@@ -63,8 +63,7 @@ char* ShaderRayGen =
 "    colsatu.y = saturate(col.y);\n"
 "    colsatu.z = saturate(col.z);\n"
 
-"    uint RandNum = LightArea_RandNum.y;\n"
-"    if(RandNum > 1){\n"
+"    if(traceMode != 0){\n"
 "       float4 prev_screenPos4 = mul(float4(payload.hitPosition, 1.0f), prevViewProjection);\n"
 "       float2 prev_screenPos = (prev_screenPos4.xy / prev_screenPos4.z * payload.depth);\n"
 "       prev_screenPos.y *= -1.0f;\n"

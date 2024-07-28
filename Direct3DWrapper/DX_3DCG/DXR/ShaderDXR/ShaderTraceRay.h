@@ -35,61 +35,34 @@ char* ShaderTraceRay =
 "       if(RecursionCnt <= maxRecursion) {\n"
 //点光源計算
 "          uint NumEmissive = numEmissive.x;\n"
-"          float LightArea = LightArea_RandNum.x;\n"
-"          uint RandNum = LightArea_RandNum.y;\n"
-"          if(RandNum > 1)NumEmissive = 1;\n"
 "          for(uint i = 0; i < NumEmissive; i++) {\n"
-"              if(emissivePosition[i].w == 1.0f || RandNum > 1) {\n"
+"              if(emissivePosition[i].w == 1.0f) {\n"
 "                 float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
 
-"                 float3 dif = float3(0.0f, 0.0f, 0.0f);\n"
-"                 float3 spe = float3(0.0f, 0.0f, 0.0f);\n"
+"                 ray.Direction = lightVec;\n"
+"                 payload.mNo = EMISSIVE;\n"//処理分岐用
 
-"                 for(uint k = 0; k < RandNum; k++){\n"
-
-"                    if(RandNum > 1){\n"
-"                       ray.Direction = RandomVector(normal, LightArea);\n"
-"                    }else{\n"
-"                       ray.Direction = lightVec;\n"
-"                    }\n"
-
-"                    bool loop = true;\n"
-"                    payload.hitPosition = hitPosition;\n"
-"                    payload.EmissiveIndex = 0;\n"
-"                    while(loop){\n"
-"                       payload.mNo = EMISSIVE;\n"//処理分岐用
-"                       ray.Origin = payload.hitPosition;\n"
-"                       TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                                0xFF, 1, 0, 1, ray, payload);\n"
-"                       loop = payload.reTry;\n"
-"                    }\n"
-
-"                    uint emInd = payload.EmissiveIndex;\n"
-"                    float4 emissiveHitPos = emissivePosition[emInd];\n"
-"                    emissiveHitPos.xyz = payload.hitPosition;\n"
-
-"                    if(RandNum > 1){\n"
-"                       Out = PointLightComNoDistance(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
-"                                                     hitPosition, payload.color, cameraPosition.xyz, shininess);\n"
-"                    }\n"
-"                    else{\n"
-"                       Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
-"                                           hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);\n"
-"                    }\n"
-"                    dif += Out.Diffuse;\n"
-"                    spe += Out.Speculer;\n"
+"                 bool loop = true;\n"
+"                 payload.hitPosition = hitPosition;\n"
+"                 while(loop){\n"
+"                    ray.Origin = payload.hitPosition;\n"
+"                    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
+"                             0xFF, 1, 0, 1, ray, payload);\n"
+"                    loop = payload.reTry;\n"
 "                 }\n"
-"                 emissiveColor.Diffuse += (dif / (float)RandNum);\n"
-"                 emissiveColor.Speculer += (spe / (float)RandNum);\n"
-"                 if(RandNum > 1){\n"
-"                    float PI2 = (2 * PI) * 0.4f;\n"//後で考える
-"                    emissiveColor.Diffuse *= PI2;\n"
-"                    emissiveColor.Speculer *= PI2;\n"
-"                 }\n"
+
+"                 float4 emissiveHitPos = emissivePosition[i];\n"
+"                 emissiveHitPos.xyz = payload.hitPosition;\n"
+
+"                 Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
+"                                     hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
+
+"                 emissiveColor.Diffuse += Out.Diffuse;\n"
+"                 emissiveColor.Speculer += Out.Speculer;\n"
 "              }\n"
 "          }\n"
 //平行光源計算
-"          if(dLightst.x == 1.0f && RandNum <= 1){\n"//ランダムベクトルモードでは実行しない
+"          if(dLightst.x == 1.0f){\n"
 "             payload.hitPosition = hitPosition;\n"
 "             ray.Direction = -dDirection.xyz;\n"
 "             bool loop = true;\n"
