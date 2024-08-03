@@ -3,6 +3,22 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 char* ShaderCommon =
+
+///////////////////////////////////////////DiffuseBRDF/////////////////////////////////////////////
+"float3 DiffuseBRDF(float3 diffuse)\n"
+"{\n"
+    "return diffuse / PI;\n"
+"}\n"
+
+///////////////////////////////////////////SpecularBRDF////////////////////////////////////////////
+"float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
+"{\n"
+"    float norm = (shininess + 2.0f) / (2 * PI);\n"
+"    float3 halfDir = normalize(viewDir + lightDir);\n"
+"    float dotNH = saturate(dot(normal, halfDir));\n"
+"    return Specular * pow(dotNH, shininess) * norm;\n"
+"}\n"
+
 ///////////////////////////////////////////ƒ‰ƒ“ƒ_ƒ€float///////////////////////////////////////////
 "float Rand_float(float2 v2)\n"
 "{\n"

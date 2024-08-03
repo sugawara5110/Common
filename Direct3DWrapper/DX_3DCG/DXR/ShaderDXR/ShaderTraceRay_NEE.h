@@ -5,7 +5,7 @@
 char* ShaderTraceRay_NEE =
 
 ///////////////////////NEE/////////////////////////////////////////////////////////////////////
-"float3 Nee(in float3 hitPosition, in float3 normal)\n"
+"LightOut Nee(in float3 hitPosition, in float3 normal)\n"
 "{\n"
 "    uint NumEmissive = numEmissive.x;\n"
 "    uint emIndex = Rand_integer() % NumEmissive;\n"
@@ -28,7 +28,7 @@ char* ShaderTraceRay_NEE =
 "       loop = payload.reTry;\n"
 "    }\n"
 
-"    float3 ret = float3(0.0f, 0.0f, 0.0f);\n"
+"    LightOut col = (LightOut)0;\n"
 
 "    if(payload.hit){\n"
 "       float3 lightVec = payload.hitPosition - hitPosition;\n"
@@ -46,15 +46,30 @@ char* ShaderTraceRay_NEE =
 
 "       lightVec = payload.hitPosition - hitPosition;\n"
 "       float3 light_normal = payload.normal;\n"
+"       float3 hitnormal = normal;\n"
 "       float3 Lvec = normalize(lightVec);\n"
 "       float cosine1 = abs(dot(-Lvec, light_normal));\n"
-"       float cosine2 = abs(dot(Lvec, normal));\n"
+"       float cosine2 = abs(dot(Lvec, hitnormal));\n"
 "       float distance = length(lightVec);\n"
 "       float distAtten = 1.0f / (distance * distance);\n"
 "       float G = cosine1 * cosine2 * distAtten;\n"
-"       ret = G * payload.color * 1000;\n"//1000:真っ暗で見えない為一時的に補正値ww
+
+"       uint materialID = getMaterialID();\n"
+"       MaterialCB mcb = material[materialID];\n"
+
+"       float3 SpeculerCol = mcb.Speculer.xyz;\n"
+"       float3 Diffuse = mcb.Diffuse.xyz;\n"
+"       float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
+"       float shininess = mcb.shininess;\n"
+
+"       float3 difBRDF = DiffuseBRDF(Diffuse);\n"
+"       float3 eyeVec = normalize(cameraPosition.xyz - hitPosition);\n"
+"       float3 speBRDF = SpecularPhongBRDF(SpeculerCol, normal, eyeVec, Lvec, shininess);\n"
+
+"       col.Diffuse = difBRDF * G * payload.color * 1400;\n"
+"       col.Speculer = speBRDF * G * payload.color * 1400;\n"
 "    }\n"
-"    return ret;\n"
+"    return col;\n"
 "}\n"
 
 ///////////////////////光源へ光線を飛ばす, ヒットした場合明るさが加算//////////////////////////
@@ -72,18 +87,12 @@ char* ShaderTraceRay_NEE =
 "       RayPayload payload;\n"
 "       payload.hit = false;\n"
 "       LightOut emissiveColor = (LightOut)0;\n"
-"       LightOut Out;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
 "       ray.TMin = TMin_TMax.x;\n"
 "       ray.TMax = TMin_TMax.y;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
-
-"       float3 SpeculerCol = mcb.Speculer.xyz;\n"
-"       float3 Diffuse = mcb.Diffuse.xyz;\n"
-"       float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
-"       float shininess = mcb.shininess;\n"
 
 "       if(RecursionCnt <= maxRecursion) {\n"
 //点光源計算
@@ -108,20 +117,15 @@ char* ShaderTraceRay_NEE =
 "                loop = payload.reTry;\n"
 "             }\n"
 
-"             uint emInd = payload.EmissiveIndex;\n"
-"             float4 emissiveHitPos = emissivePosition[emInd];\n"
-"             emissiveHitPos.xyz = payload.hitPosition;\n"
+"             LightOut col = Nee(hitPosition, normal);\n"
 
-"             float3 nee = Nee(hitPosition, normal);\n"
-"             float3 col = payload.color * nee;\n"
-"             if(payload.hit)col = nee;\n"
+"             if(payload.hit){\n"
+"                col.Diffuse *= payload.color;\n"
+"                col.Speculer *= payload.color;\n"
+"             }\n"
 
-///////////////かぶってる計算があるので直す
-"             Out = PointLightComNoDistance(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
-"                                           hitPosition, col, cameraPosition.xyz, shininess);\n"
-
-"             dif += Out.Diffuse;\n"
-"             spe += Out.Speculer;\n"
+"             dif += col.Diffuse;\n"
+"             spe += col.Speculer;\n"
 "          }\n"
 "          emissiveColor.Diffuse += (dif / (float)RandNum);\n"
 "          emissiveColor.Speculer += (spe / (float)RandNum);\n"

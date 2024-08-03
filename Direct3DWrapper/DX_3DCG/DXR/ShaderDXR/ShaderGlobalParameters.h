@@ -5,7 +5,6 @@
 char* ShaderGlobalParameters =
 
 "static uint Seed = 0;\n"
-
 "static const float PI = 3.1415926;\n"
 
 "struct RayPayload\n"
