@@ -28,18 +28,18 @@ char* ShaderEmissiveHit =
 "    payload.hitPosition = HitWorldPosition();\n"
 "    payload.hit = false;\n"
 "    payload.reTry = false;\n"
+"    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+
+"    if(difTex.w < 1.0f){\n"
+"       payload.reTry = true;\n"
+"       return;\n"
+"    }\n"
 //ヒットした位置のテクスチャの色をpayload.color格納する
 //////点光源
 "    if(materialIdent(payload.mNo, EMISSIVE) && materialIdent(mNo, EMISSIVE)){\n"
-"       payload.color = difTex.xyz;\n"
 "       payload.EmissiveIndex = getEmissiveIndex();\n"
-"       if(difTex.w <= 0.0f){\n"
-"          payload.reTry = true;\n"//透明の場合素通り
-"       }\n"
-"       else{\n"
-"          payload.hit = true;\n"
-"          if(materialIdent(payload.mNo, NEE_PATHTRACER))payload.color = float3(0.0f, 0.0f, 0.0f);\n"
-"       }\n"
+"       payload.hit = true;\n"
+"       if(!materialIdent(payload.mNo, NEE_PATHTRACER))payload.color = difTex.xyz;\n"
 "       return;\n"
 "    }\n"
 //////平行光源
@@ -54,17 +54,14 @@ char* ShaderEmissiveHit =
 "       }\n"
 "    }\n"
 //////光源意外
-"    if(difTex.w >= 1.0f){\n"
-"       if(traceMode != 0 && !materialIdent(payload.mNo, NEE)){\n"
-//光源への光線
-"          payload.color = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                   difTex.xyz, speTex, normalMap);\n"
+"    if(!materialIdent(payload.mNo, NEE)){\n"
+
+"       if(traceMode == 1){\n"
+"          payload.color = EmissivePayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                               difTex.xyz, speTex, normalMap);\n"
+"       }else if(traceMode == 2){\n"
+"          payload.color = EmissivePayloadCalculate_NEE(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                       difTex.xyz, speTex, normalMap);\n"
 "       }\n"
-"       else{\n"
-"          payload.color = float3(0.0f, 0.0f, 0.0f);\n"
-"       }\n"
-"    }\n"
-"    else{\n"
-"       payload.reTry = true;\n"
 "    }\n"
 "}\n";

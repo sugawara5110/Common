@@ -5,7 +5,7 @@
 char* ShaderTraceRay_NEE =
 
 ///////////////////////NEE/////////////////////////////////////////////////////////////////////
-"float3 Nee(in float3 hitPosition)\n"
+"float3 Nee(in float3 hitPosition, in float3 normal)\n"
 "{\n"
 "    uint NumEmissive = numEmissive.x;\n"
 "    uint emIndex = Rand_integer() % NumEmissive;\n"
@@ -14,7 +14,7 @@ char* ShaderTraceRay_NEE =
 "    RayDesc ray;\n"
 "    ray.TMin = TMin_TMax.x;\n"
 "    ray.TMax = TMin_TMax.y;\n"
-"    ray.Direction = RandomVector(float3(1.0f, 0.0f, 0.0f), 2.0f);\n"
+"    ray.Direction = RandomVector(float3(1.0f, 0.0f, 0.0f), 2.0f);\n"//全方向
 
 "    RayPayload payload;\n"
 "    payload.hitPosition = ePos;\n"
@@ -28,7 +28,6 @@ char* ShaderTraceRay_NEE =
 "       loop = payload.reTry;\n"
 "    }\n"
 
-"    float3 normal1 = payload.normal;\n"
 "    float3 ret = float3(0.0f, 0.0f, 0.0f);\n"
 
 "    if(payload.hit){\n"
@@ -44,14 +43,16 @@ char* ShaderTraceRay_NEE =
 "                   0xFF, 1, 0, 1, ray, payload);\n"
 "          loop = payload.reTry;\n"
 "       }\n"
-"       float3 normal2 = payload.normal;\n"
+
+"       lightVec = payload.hitPosition - hitPosition;\n"
+"       float3 light_normal = payload.normal;\n"
 "       float3 Lvec = normalize(lightVec);\n"
-"       float cosine1 = abs(dot(-lightVec, normal1));\n"
-"       float cosine2 = abs(dot(lightVec, normal2));\n"
+"       float cosine1 = abs(dot(-Lvec, light_normal));\n"
+"       float cosine2 = abs(dot(Lvec, normal));\n"
 "       float distance = length(lightVec);\n"
-"       float distAtten = 1.0f / (distance * distance);\n"//後で考える
+"       float distAtten = 1.0f / (distance * distance);\n"
 "       float G = cosine1 * cosine2 * distAtten;\n"
-"       ret = G * payload.color;\n"
+"       ret = G * payload.color * 1000;\n"//1000:真っ暗で見えない為一時的に補正値ww
 "    }\n"
 "    return ret;\n"
 "}\n"
@@ -111,8 +112,11 @@ char* ShaderTraceRay_NEE =
 "             float4 emissiveHitPos = emissivePosition[emInd];\n"
 "             emissiveHitPos.xyz = payload.hitPosition;\n"
 
-"             float3 col = payload.color * Nee(hitPosition);\n"
-"             if(payload.hit)col = Nee(hitPosition);\n"
+"             float3 nee = Nee(hitPosition, normal);\n"
+"             float3 col = payload.color * nee;\n"
+"             if(payload.hit)col = nee;\n"
+
+///////////////かぶってる計算があるので直す
 "             Out = PointLightComNoDistance(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
 "                                           hitPosition, col, cameraPosition.xyz, shininess);\n"
 
@@ -121,7 +125,7 @@ char* ShaderTraceRay_NEE =
 "          }\n"
 "          emissiveColor.Diffuse += (dif / (float)RandNum);\n"
 "          emissiveColor.Speculer += (spe / (float)RandNum);\n"
-"          float PI2 = (2 * PI) * 0.4f;\n"//後で考える
+"          float PI2 = (2 * PI);\n"//後で考える
 "          emissiveColor.Diffuse *= PI2;\n"
 "          emissiveColor.Speculer *= PI2;\n"
 "       }\n"
