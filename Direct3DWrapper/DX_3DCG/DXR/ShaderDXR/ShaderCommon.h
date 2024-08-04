@@ -4,6 +4,26 @@
 
 char* ShaderCommon =
 
+///////////////////////////////////////////traceRay////////////////////////////////////////////////
+"void traceRay(in uint RecursionCnt, \n"
+"              in uint RayFlags, \n"
+"              in uint HitGroupIndex, \n"
+"              in uint MissShaderIndex, \n"
+"              in RayDesc ray, \n"
+"              inout RayPayload payload)\n"
+"{\n"
+"    ray.TMin = TMin_TMax.x;\n"
+"    ray.TMax = TMin_TMax.y;\n"
+"    if(RecursionCnt <= maxRecursion) {\n"
+"       bool loop = true;\n"
+"       while(loop){\n"
+"          ray.Origin = payload.hitPosition;\n"
+"          TraceRay(gRtScene, RayFlags, 0xFF, HitGroupIndex, 0, MissShaderIndex, ray, payload);\n"
+"          loop = payload.reTry;\n"
+"       }\n"
+"    }\n"
+"}\n"
+
 ///////////////////////////////////////////DiffuseBRDF/////////////////////////////////////////////
 "float3 DiffuseBRDF(float3 diffuse)\n"
 "{\n"

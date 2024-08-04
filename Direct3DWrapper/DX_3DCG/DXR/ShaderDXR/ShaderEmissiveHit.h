@@ -53,7 +53,7 @@ char* ShaderEmissiveHit =
 "          return;\n"
 "       }\n"
 "    }\n"
-//////ŒõŒ¹ˆÓŠO
+//////ŒõŒ¹ˆÈŠO
 "    if(!materialIdent(payload.mNo, NEE)){\n"
 
 "       if(traceMode == 1){\n"

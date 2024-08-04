@@ -20,10 +20,6 @@ char* ShaderRayGen =
 "    float4 world = mul(float4(screenPos.x, -screenPos.y, 0, 1), projectionToWorld);\n"
 "    world.xyz /= world.w;\n"
 "    ray.Direction = normalize(world.xyz - ray.Origin);\n"
-//Œõü‚ÌÅ¬”ÍˆÍ
-"    ray.TMin = TMin_TMax.x;\n"
-//Œõü‚ÌÅ‘å”ÍˆÍ
-"    ray.TMax = TMin_TMax.y;\n"
 
 "    RayPayload payload;\n"
 //TraceRay(AccelerationStructure, 
@@ -45,11 +41,7 @@ char* ShaderRayGen =
 "    payload.reTry = false;\n"
 "    payload.hitInstanceId = -1;\n"
 
-"    while(loop){\n"
-"       ray.Origin = payload.hitPosition;\n"
-"       TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 0, 0, ray, payload);\n"
-"       loop = payload.reTry;\n"
-"    }\n"
+"    traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);\n"
 
 "    gDepthOut[index] = payload.depth;\n"
 

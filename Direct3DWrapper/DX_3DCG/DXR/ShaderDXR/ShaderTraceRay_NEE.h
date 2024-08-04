@@ -5,51 +5,38 @@
 char* ShaderTraceRay_NEE =
 
 ///////////////////////NEE/////////////////////////////////////////////////////////////////////
-"LightOut Nee(in float3 hitPosition, in float3 normal)\n"
+"LightOut Nee(in uint RecursionCnt, in float3 hitPosition, in float3 normal)\n"
 "{\n"
 "    uint NumEmissive = numEmissive.x;\n"
 "    uint emIndex = Rand_integer() % NumEmissive;\n"
 "    float3 ePos = emissivePosition[emIndex].xyz;\n"
 
 "    RayDesc ray;\n"
-"    ray.TMin = TMin_TMax.x;\n"
-"    ray.TMax = TMin_TMax.y;\n"
 "    ray.Direction = RandomVector(float3(1.0f, 0.0f, 0.0f), 2.0f);\n"//全方向
+
+"    LightOut col = (LightOut)0;\n"
 
 "    RayPayload payload;\n"
 "    payload.hitPosition = ePos;\n"
-"    bool loop = true;\n"
-/////光源から点をランダムで取得
-"    while(loop){\n"
-"       payload.mNo = EMISSIVE | NEE;\n"//処理分岐用
-"       ray.Origin = payload.hitPosition;\n"
-"       TraceRay(gRtScene, RAY_FLAG_CULL_FRONT_FACING_TRIANGLES, \n"
-"                0xFF, 1, 0, 1, ray, payload);\n"
-"       loop = payload.reTry;\n"
-"    }\n"
+"    payload.mNo = EMISSIVE | NEE;\n"//処理分岐用
 
-"    LightOut col = (LightOut)0;\n"
+/////光源から点をランダムで取得
+"    traceRay(RecursionCnt, RAY_FLAG_CULL_FRONT_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
 "    if(payload.hit){\n"
 "       float3 lightVec = payload.hitPosition - hitPosition;\n"
 "       ray.Direction = normalize(lightVec);\n"
 "       payload.hitPosition = hitPosition;\n"
-"       loop = true;\n"
+"       payload.mNo = EMISSIVE | NEE;\n"//処理分岐用
 ////////今の位置から取得した光源位置へ飛ばす
-"       while(loop){\n"
-"          payload.mNo = EMISSIVE | NEE;\n"//処理分岐用
-"          ray.Origin = payload.hitPosition;\n"
-"          TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                   0xFF, 1, 0, 1, ray, payload);\n"
-"          loop = payload.reTry;\n"
-"       }\n"
+"       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
 "       lightVec = payload.hitPosition - hitPosition;\n"
 "       float3 light_normal = payload.normal;\n"
 "       float3 hitnormal = normal;\n"
 "       float3 Lvec = normalize(lightVec);\n"
-"       float cosine1 = abs(dot(-Lvec, light_normal));\n"
-"       float cosine2 = abs(dot(Lvec, hitnormal));\n"
+"       float cosine1 = saturate(dot(-Lvec, light_normal));\n"
+"       float cosine2 = saturate(dot(Lvec, hitnormal));\n"
 "       float distance = length(lightVec);\n"
 "       float distAtten = 1.0f / (distance * distance);\n"
 "       float G = cosine1 * cosine2 * distAtten;\n"
@@ -66,7 +53,7 @@ char* ShaderTraceRay_NEE =
 "       float3 eyeVec = normalize(cameraPosition.xyz - hitPosition);\n"
 "       float3 speBRDF = SpecularPhongBRDF(SpeculerCol, normal, eyeVec, Lvec, shininess);\n"
 
-"       col.Diffuse = difBRDF * G * payload.color * 1400;\n"
+"       col.Diffuse = (difBRDF * G * payload.color + Ambient) * 1400;\n"
 "       col.Speculer = speBRDF * G * payload.color * 1400;\n"
 "    }\n"
 "    return col;\n"
@@ -89,8 +76,6 @@ char* ShaderTraceRay_NEE =
 "       LightOut emissiveColor = (LightOut)0;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
-"       ray.TMin = TMin_TMax.x;\n"
-"       ray.TMax = TMin_TMax.y;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 
@@ -110,14 +95,10 @@ char* ShaderTraceRay_NEE =
 "             bool loop = true;\n"
 "             payload.hitPosition = hitPosition;\n"
 "             payload.EmissiveIndex = 0;\n"
-"             while(loop){\n"
-"                ray.Origin = payload.hitPosition;\n"
-"                TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                         0xFF, 1, 0, 1, ray, payload);\n"
-"                loop = payload.reTry;\n"
-"             }\n"
 
-"             LightOut col = Nee(hitPosition, normal);\n"
+"             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+
+"             LightOut col = Nee(RecursionCnt, hitPosition, normal);\n"
 
 "             if(payload.hit){\n"
 "                col.Diffuse *= payload.color;\n"

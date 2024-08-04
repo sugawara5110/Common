@@ -22,8 +22,6 @@ char* ShaderTraceRay_PathTracing =
 "       LightOut Out;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
-"       ray.TMin = TMin_TMax.x;\n"
-"       ray.TMax = TMin_TMax.y;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 
@@ -48,12 +46,8 @@ char* ShaderTraceRay_PathTracing =
 "             bool loop = true;\n"
 "             payload.hitPosition = hitPosition;\n"
 "             payload.EmissiveIndex = 0;\n"
-"             while(loop){\n"
-"                ray.Origin = payload.hitPosition;\n"
-"                TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                         0xFF, 1, 0, 1, ray, payload);\n"
-"                loop = payload.reTry;\n"
-"             }\n"
+
+"             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
 "             uint emInd = payload.EmissiveIndex;\n"
 "             float4 emissiveHitPos = emissivePosition[emInd];\n"

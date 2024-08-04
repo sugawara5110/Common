@@ -22,8 +22,6 @@ char* ShaderTraceRay =
 "       LightOut Out;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
-"       ray.TMin = TMin_TMax.x;\n"
-"       ray.TMax = TMin_TMax.y;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 
@@ -42,14 +40,9 @@ char* ShaderTraceRay =
 "                 ray.Direction = lightVec;\n"
 "                 payload.mNo = EMISSIVE;\n"//処理分岐用
 
-"                 bool loop = true;\n"
 "                 payload.hitPosition = hitPosition;\n"
-"                 while(loop){\n"
-"                    ray.Origin = payload.hitPosition;\n"
-"                    TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                             0xFF, 1, 0, 1, ray, payload);\n"
-"                    loop = payload.reTry;\n"
-"                 }\n"
+
+"                 traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
 "                 float4 emissiveHitPos = emissivePosition[i];\n"
 "                 emissiveHitPos.xyz = payload.hitPosition;\n"
@@ -65,14 +58,9 @@ char* ShaderTraceRay =
 "          if(dLightst.x == 1.0f){\n"
 "             payload.hitPosition = hitPosition;\n"
 "             ray.Direction = -dDirection.xyz;\n"
-"             bool loop = true;\n"
-"             while(loop){\n"
-"                payload.mNo = DIRECTIONLIGHT;\n"//処理分岐用
-"                ray.Origin = payload.hitPosition;\n"
-"                TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                         0xFF, 1, 0, 1, ray, payload);\n"
-"                loop = payload.reTry;\n"
-"             }\n"
+"             payload.mNo = DIRECTIONLIGHT;\n"//処理分岐用
+
+"             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
 "             Out = DirectionalLightCom(SpeculerCol, Diffuse, Ambient, normal, dLightst, dDirection.xyz, \n"//ShaderCG内関数
 "                                       payload.color, hitPosition, cameraPosition.xyz, shininess);\n"
@@ -111,15 +99,10 @@ char* ShaderTraceRay =
 //反射ベクトル
 "       float3 reflectVec = reflect(eyeVec, normalize(normal));\n"
 "       ray.Direction = reflectVec;\n"//反射方向にRayを飛ばす
-"       ray.TMin = TMin_TMax.x;\n"
-"       ray.TMax = TMin_TMax.y;\n"
+"       payload.hitPosition = hitPosition;\n"
 
-"       if (RecursionCnt <= maxRecursion) {\n"
-"           payload.hitPosition = hitPosition;\n"
-"           ray.Origin = payload.hitPosition;\n"
-"           TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                    0xFF, 0, 0, 0, ray, payload);\n"
-"       }\n"
+"       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);\n"
+
 "       float3 outCol = float3(0.0f, 0.0f, 0.0f);\n"
 "       if (payload.hit) {\n"
 "           float3 refCol = payload.color * (1.0f - fresnel);\n"
@@ -155,18 +138,13 @@ char* ShaderTraceRay =
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
 "       RayDesc ray; \n"
-"       ray.TMin = TMin_TMax.x;\n"
-"       ray.TMax = TMin_TMax.y;\n"
 //視線ベクトル 
 "       float3 eyeVec = WorldRayDirection();\n"
 "       ray.Direction = refract(eyeVec, normalize(normal), mcb.RefractiveIndex);\n"
+"       payload.hitPosition = hitPosition;\n"
 
-"       if (RecursionCnt <= maxRecursion) {\n"
-"           payload.hitPosition = hitPosition;\n"
-"           ray.Origin = payload.hitPosition;\n"
-"           TraceRay(gRtScene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, \n"
-"                    0xFF, 0, 0, 0, ray, payload);\n"
-"       }\n"
+"       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);\n"
+
 //アルファ値の比率で元の色と光線衝突先の色を配合
 "       ret = payload.color * fresnel * (1.0f - Alpha) + difTexColor * Alpha;\n"
 "    }\n"
