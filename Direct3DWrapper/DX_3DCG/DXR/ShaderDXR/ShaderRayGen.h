@@ -33,7 +33,6 @@ char* ShaderRayGen =
 //この関数からRayがスタートする
 //payloadに各hit, miss シェーダーで計算された値が格納される
 "    payload.RecursionCnt = 1;\n"
-"    bool loop = true;\n"
 "    payload.hitPosition = ray.Origin;\n"
 "    gDepthOut[index] = 1.0f;\n"
 "    payload.depth = 1.0f;\n"

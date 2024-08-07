@@ -38,7 +38,12 @@ char* ShaderTraceRay_NEE =
 "       float cosine1 = saturate(dot(-Lvec, light_normal));\n"
 "       float cosine2 = saturate(dot(Lvec, hitnormal));\n"
 "       float distance = length(lightVec);\n"
-"       float distAtten = 1.0f / (distance * distance);\n"
+
+"       float distAtten = 1.0f / \n"
+"                        (lightst[emIndex].y + \n"
+"                         lightst[emIndex].z * distance + \n"
+"                         lightst[emIndex].w * distance * distance);\n"
+
 "       float G = cosine1 * cosine2 * distAtten;\n"
 
 "       uint materialID = getMaterialID();\n"
@@ -53,8 +58,8 @@ char* ShaderTraceRay_NEE =
 "       float3 eyeVec = normalize(cameraPosition.xyz - hitPosition);\n"
 "       float3 speBRDF = SpecularPhongBRDF(SpeculerCol, normal, eyeVec, Lvec, shininess);\n"
 
-"       col.Diffuse = (difBRDF * G * payload.color + Ambient) * 1400;\n"
-"       col.Speculer = speBRDF * G * payload.color * 1400;\n"
+"       col.Diffuse = difBRDF * G * payload.color + Ambient;\n"
+"       col.Speculer = speBRDF * G * payload.color;\n"
 "    }\n"
 "    return col;\n"
 "}\n"
@@ -78,38 +83,27 @@ char* ShaderTraceRay_NEE =
 "       payload.hitPosition = hitPosition;\n"
 "       RecursionCnt++;\n"
 "       payload.RecursionCnt = RecursionCnt;\n"
+"       payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 
 "       if(RecursionCnt <= maxRecursion) {\n"
 //点光源計算
 "          float LightArea = LightArea_RandNum.x;\n"
-"          uint RandNum = LightArea_RandNum.y;\n"
 
-"          float3 dif = float3(0.0f, 0.0f, 0.0f);\n"
-"          float3 spe = float3(0.0f, 0.0f, 0.0f);\n"
+"          ray.Direction = RandomVector(normal, LightArea);\n"
+"          payload.mNo = EMISSIVE | NEE_PATHTRACER;\n"//処理分岐用
 
-"          for(uint k = 0; k < RandNum; k++){\n"
+"          payload.hitPosition = hitPosition;\n"
+"          payload.EmissiveIndex = 0;\n"
 
-"             ray.Direction = RandomVector(normal, LightArea);\n"
-"             payload.mNo = EMISSIVE | NEE_PATHTRACER;\n"//処理分岐用
+"          traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
-"             bool loop = true;\n"
-"             payload.hitPosition = hitPosition;\n"
-"             payload.EmissiveIndex = 0;\n"
+"          emissiveColor = Nee(RecursionCnt, hitPosition, normal);\n"
 
-"             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
-
-"             LightOut col = Nee(RecursionCnt, hitPosition, normal);\n"
-
-"             if(payload.hit){\n"
-"                col.Diffuse *= payload.color;\n"
-"                col.Speculer *= payload.color;\n"
-"             }\n"
-
-"             dif += col.Diffuse;\n"
-"             spe += col.Speculer;\n"
+"          if(!payload.hit){\n"
+"             emissiveColor.Diffuse *= payload.color;\n"
+"             emissiveColor.Speculer *= payload.color;\n"
 "          }\n"
-"          emissiveColor.Diffuse += (dif / (float)RandNum);\n"
-"          emissiveColor.Speculer += (spe / (float)RandNum);\n"
+
 "          float PI2 = (2 * PI);\n"//後で考える
 "          emissiveColor.Diffuse *= PI2;\n"
 "          emissiveColor.Speculer *= PI2;\n"

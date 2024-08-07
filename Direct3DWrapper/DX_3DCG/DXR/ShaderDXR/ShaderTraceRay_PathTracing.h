@@ -19,7 +19,6 @@ char* ShaderTraceRay_PathTracing =
 "       RayPayload payload;\n"
 "       payload.hit = false;\n"
 "       LightOut emissiveColor = (LightOut)0;\n"
-"       LightOut Out;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
 "       RecursionCnt++;\n"
@@ -33,34 +32,22 @@ char* ShaderTraceRay_PathTracing =
 "       if(RecursionCnt <= maxRecursion) {\n"
 //点光源計算
 "          float LightArea = LightArea_RandNum.x;\n"
-"          uint RandNum = LightArea_RandNum.y;\n"
 
-"          float3 dif = float3(0.0f, 0.0f, 0.0f);\n"
-"          float3 spe = float3(0.0f, 0.0f, 0.0f);\n"
+"          ray.Direction = RandomVector(normal, LightArea);\n"
+"          payload.mNo = EMISSIVE;\n"//処理分岐用
 
-"          for(uint k = 0; k < RandNum; k++){\n"
+"          payload.hitPosition = hitPosition;\n"
+"          payload.EmissiveIndex = 0;\n"
 
-"             ray.Direction = RandomVector(normal, LightArea);\n"
-"             payload.mNo = EMISSIVE;\n"//処理分岐用
+"          traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
-"             bool loop = true;\n"
-"             payload.hitPosition = hitPosition;\n"
-"             payload.EmissiveIndex = 0;\n"
+"          uint emInd = payload.EmissiveIndex;\n"
+"          float4 emissiveHitPos = emissivePosition[emInd];\n"
+"          emissiveHitPos.xyz = payload.hitPosition;\n"
 
-"             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"          emissiveColor = PointLightComNoDistance(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
+"                                                  hitPosition, payload.color, cameraPosition.xyz, shininess);\n"
 
-"             uint emInd = payload.EmissiveIndex;\n"
-"             float4 emissiveHitPos = emissivePosition[emInd];\n"
-"             emissiveHitPos.xyz = payload.hitPosition;\n"
-
-"             Out = PointLightComNoDistance(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
-"                                           hitPosition, payload.color, cameraPosition.xyz, shininess);\n"
-
-"             dif += Out.Diffuse;\n"
-"             spe += Out.Speculer;\n"
-"          }\n"
-"          emissiveColor.Diffuse += (dif / (float)RandNum);\n"
-"          emissiveColor.Speculer += (spe / (float)RandNum);\n"
 "          float PI2 = (2 * PI) * 0.4f;\n"//後で考える
 "          emissiveColor.Diffuse *= PI2;\n"
 "          emissiveColor.Speculer *= PI2;\n"
