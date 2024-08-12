@@ -22,52 +22,48 @@ char* ShaderTraceRay =
 "       LightOut Out;\n"
 "       RayDesc ray;\n"
 "       payload.hitPosition = hitPosition;\n"
-"       RecursionCnt++;\n"
-"       payload.RecursionCnt = RecursionCnt;\n"
 
 "       float3 SpeculerCol = mcb.Speculer.xyz;\n"
 "       float3 Diffuse = mcb.Diffuse.xyz;\n"
 "       float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "       float shininess = mcb.shininess;\n"
 
-"       if(RecursionCnt <= maxRecursion) {\n"
 //点光源計算
-"          uint NumEmissive = numEmissive.x;\n"
-"          for(uint i = 0; i < NumEmissive; i++) {\n"
-"              if(emissivePosition[i].w == 1.0f) {\n"
-"                 float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
+"       uint NumEmissive = numEmissive.x;\n"
+"       for(uint i = 0; i < NumEmissive; i++) {\n"
+"           if(emissivePosition[i].w == 1.0f) {\n"
+"              float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);\n"
 
-"                 ray.Direction = lightVec;\n"
-"                 payload.mNo = EMISSIVE;\n"//処理分岐用
+"              ray.Direction = lightVec;\n"
+"              payload.mNo = EMISSIVE;\n"//処理分岐用
 
-"                 payload.hitPosition = hitPosition;\n"
+"              payload.hitPosition = hitPosition;\n"
 
-"                 traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"              traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
-"                 float4 emissiveHitPos = emissivePosition[i];\n"
-"                 emissiveHitPos.xyz = payload.hitPosition;\n"
+"              float4 emissiveHitPos = emissivePosition[i];\n"
+"              emissiveHitPos.xyz = payload.hitPosition;\n"
 
-"                 Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
-"                                     hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
+"              Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, \n"//ShaderCG内関数
+"                                  hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);\n"
 
-"                 emissiveColor.Diffuse += Out.Diffuse;\n"
-"                 emissiveColor.Speculer += Out.Speculer;\n"
-"              }\n"
-"          }\n"
+"              emissiveColor.Diffuse += Out.Diffuse;\n"
+"              emissiveColor.Speculer += Out.Speculer;\n"
+"           }\n"
+"       }\n"
 //平行光源計算
-"          if(dLightst.x == 1.0f){\n"
-"             payload.hitPosition = hitPosition;\n"
-"             ray.Direction = -dDirection.xyz;\n"
-"             payload.mNo = DIRECTIONLIGHT;\n"//処理分岐用
+"       if(dLightst.x == 1.0f){\n"
+"          payload.hitPosition = hitPosition;\n"
+"          ray.Direction = -dDirection.xyz;\n"
+"          payload.mNo = DIRECTIONLIGHT;\n"//処理分岐用
 
-"             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"          traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 
-"             Out = DirectionalLightCom(SpeculerCol, Diffuse, Ambient, normal, dLightst, dDirection.xyz, \n"//ShaderCG内関数
-"                                       payload.color, hitPosition, cameraPosition.xyz, shininess);\n"
+"          Out = DirectionalLightCom(SpeculerCol, Diffuse, Ambient, normal, dLightst, dDirection.xyz, \n"//ShaderCG内関数
+"                                    payload.color, hitPosition, cameraPosition.xyz, shininess);\n"
 
-"             emissiveColor.Diffuse += Out.Diffuse;\n"
-"             emissiveColor.Speculer += Out.Speculer;\n"
-"          }\n"
+"          emissiveColor.Diffuse += Out.Diffuse;\n"
+"          emissiveColor.Speculer += Out.Speculer;\n"
 "       }\n"
 //最後にテクスチャの色に掛け合わせ
 "       difTexColor *= emissiveColor.Diffuse;\n"
@@ -91,8 +87,6 @@ char* ShaderTraceRay =
 
 "       RayPayload payload;\n"
 "       payload.hit = false;\n"
-"       RecursionCnt++;\n"
-"       payload.RecursionCnt = RecursionCnt;\n"
 "       RayDesc ray;\n"
 //視線ベクトル 
 "       float3 eyeVec = WorldRayDirection();\n"
@@ -135,8 +129,6 @@ char* ShaderTraceRay =
 
 "       float Alpha = difTexColor.w;\n"
 "       RayPayload payload;\n"
-"       RecursionCnt++;\n"
-"       payload.RecursionCnt = RecursionCnt;\n"
 "       RayDesc ray; \n"
 //視線ベクトル 
 "       float3 eyeVec = WorldRayDirection();\n"

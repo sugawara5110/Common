@@ -34,7 +34,7 @@ char* ShaderBasicHit =
 "                                                         difTex.xyz, speTex, normalMap);\n"
 "          }else if(traceMode == 2){\n"
 "             col += EmissivePayloadCalculate_NEE(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                 difTex.xyz, speTex, normalMap);\n"
+"                                                 difTex.xyz, speTex, normalMap, float3(1.0f, 1.0f, 1.0f));\n"
 "          }\n"
 "       }\n"
 "       difTex.xyz = col / (float)loop;\n"

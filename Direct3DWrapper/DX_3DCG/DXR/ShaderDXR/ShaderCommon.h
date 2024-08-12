@@ -14,6 +14,10 @@ char* ShaderCommon =
 "{\n"
 "    ray.TMin = TMin_TMax.x;\n"
 "    ray.TMax = TMin_TMax.y;\n"
+"    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+"    RecursionCnt++;\n"
+"    payload.RecursionCnt = RecursionCnt;\n"
+
 "    if(RecursionCnt <= maxRecursion) {\n"
 "       bool loop = true;\n"
 "       while(loop){\n"
@@ -30,12 +34,19 @@ char* ShaderCommon =
     "return diffuse / PI;\n"
 "}\n"
 
+///////////////////////////////////////////CosinePDF///////////////////////////////////////////////
+"float CosinePDF(float3 normal, float3 dir)\n"
+"{\n"
+"    const float dotNL = abs(dot(normal, dir));\n"
+"    return dotNL / PI;\n"
+"}\n"
+
 ///////////////////////////////////////////SpecularBRDF////////////////////////////////////////////
 "float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
 "{\n"
 "    float norm = (shininess + 2.0f) / (2 * PI);\n"
 "    float3 halfDir = normalize(viewDir + lightDir);\n"
-"    float dotNH = saturate(dot(normal, halfDir));\n"
+"    float dotNH = abs(dot(normal, halfDir));\n"
 "    return Specular * pow(dotNH, shininess) * norm;\n"
 "}\n"
 

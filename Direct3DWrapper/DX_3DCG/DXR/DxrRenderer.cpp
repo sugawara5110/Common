@@ -796,7 +796,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 17;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 20;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects.push_back(shaderConfig.subobject);
 	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];

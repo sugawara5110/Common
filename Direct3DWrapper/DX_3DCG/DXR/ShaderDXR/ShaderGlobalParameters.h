@@ -12,6 +12,7 @@ char* ShaderGlobalParameters =
 "    float3 color;\n"
 "    float3 hitPosition;\n"
 "    float3 normal;\n"
+"    float3 throughput;\n"
 "    bool reTry;\n"
 "    bool hit;\n"
 "    float Alpha;\n"

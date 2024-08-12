@@ -61,7 +61,7 @@ char* ShaderEmissiveHit =
 "                                                               difTex.xyz, speTex, normalMap);\n"
 "       }else if(traceMode == 2){\n"
 "          payload.color = EmissivePayloadCalculate_NEE(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                       difTex.xyz, speTex, normalMap);\n"
+"                                                       difTex.xyz, speTex, normalMap, payload.throughput);\n"
 "       }\n"
 "    }\n"
 "}\n";
