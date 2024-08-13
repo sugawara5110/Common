@@ -28,28 +28,6 @@ char* ShaderCommon =
 "    }\n"
 "}\n"
 
-///////////////////////////////////////////DiffuseBRDF/////////////////////////////////////////////
-"float3 DiffuseBRDF(float3 diffuse)\n"
-"{\n"
-    "return diffuse / PI;\n"
-"}\n"
-
-///////////////////////////////////////////CosinePDF///////////////////////////////////////////////
-"float CosinePDF(float3 normal, float3 dir)\n"
-"{\n"
-"    const float dotNL = abs(dot(normal, dir));\n"
-"    return dotNL / PI;\n"
-"}\n"
-
-///////////////////////////////////////////SpecularBRDF////////////////////////////////////////////
-"float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
-"{\n"
-"    float norm = (shininess + 2.0f) / (2 * PI);\n"
-"    float3 halfDir = normalize(viewDir + lightDir);\n"
-"    float dotNH = abs(dot(normal, halfDir));\n"
-"    return Specular * pow(dotNH, shininess) * norm;\n"
-"}\n"
-
 ///////////////////////////////////////////ランダムfloat///////////////////////////////////////////
 "float Rand_float(float2 v2)\n"
 "{\n"
@@ -253,4 +231,57 @@ char* ShaderCommon =
 //ピクセル値
 "    float4 spe = g_texSpecular[materialID].SampleLevel(g_samLinear, UV, 0.0);\n"
 "    return spe.xyz;\n"
+"}\n"
+
+///////////////////////////////////////////DiffuseBRDF/////////////////////////////////////////////
+"float3 DiffuseBRDF(float3 diffuse)\n"
+"{\n"
+"return diffuse / PI;\n"
+"}\n"
+
+///////////////////////////////////////////SpecularBRDF////////////////////////////////////////////
+"float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
+"{\n"
+"    float norm = (shininess + 2.0f) / (2 * PI);\n"
+"    float3 halfDir = normalize(viewDir + lightDir);\n"
+"    float dotNH = abs(dot(normal, halfDir));\n"
+"    return Specular * pow(dotNH, shininess) * norm;\n"
+"}\n"
+
+///////////////////////////////////////////CosinePDF///////////////////////////////////////////////
+"float CosinePDF(float3 normal, float3 dir)\n"
+"{\n"
+"    const float dotNL = abs(dot(normal, dir));\n"
+"    return dotNL / PI;\n"
+"}\n"
+
+///////////////////////////////////////////LightPDF////////////////////////////////////////////////
+"float LightPDF()\n"
+"{\n"
+"    float NumEmissive = (float)numEmissive.x;\n"
+"    return 1.0f / NumEmissive;\n"//後で表面積も追加？
+"}\n"
+
+///////////////////////////////////////////radiusPDF///////////////////////////////////////////////
+"float radiusPDF()\n"
+"{\n"
+"    return 1.0f / 2 * PI;\n"
+"}\n"
+
+///////////////////////////////////////////sumBRDF/////////////////////////////////////////////////
+"float3 sumBRDF(float3 LightHitPosition, float3 hitPosition, float3 difTexColor, float3 speTexColor, float3 normal)\n"
+"{\n"
+"    uint materialID = getMaterialID();\n"
+"    MaterialCB mcb = material[materialID];\n"
+"    float3 Diffuse = mcb.Diffuse.xyz * difTexColor;\n"
+"    float3 Speculer = mcb.Speculer.xyz * speTexColor;\n"
+//"    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
+"    float shininess = mcb.shininess;\n"
+
+"    float3 Lvec = normalize(LightHitPosition - hitPosition);\n"
+"    float3 difBRDF = DiffuseBRDF(Diffuse);\n"
+"    float3 eyeVec = normalize(cameraPosition.xyz - hitPosition);\n"
+"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, eyeVec, Lvec, shininess);\n"
+
+"    return difBRDF + speBRDF;\n"
 "}\n";
