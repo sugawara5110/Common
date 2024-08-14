@@ -27,7 +27,24 @@ char* ShaderTraceRay_NEE =
 "RayPayload Nee(in uint RecursionCnt, in float3 hitPosition, in float3 normal, inout uint emIndex)\n"
 "{\n"
 "    uint NumEmissive = numEmissive.x;\n"
-"    emIndex = Rand_integer() % NumEmissive;\n"
+/////光源サイズ合計
+"    float sumSize = 0.0f;\n"
+"    for(uint i = 0; i < NumEmissive; i++){\n"
+"       sumSize += emissiveNo[i].y;\n"
+"    }\n"
+
+/////乱数を生成
+"    uint rnd = Rand_integer() % 101;\n"
+
+/////光源毎のサイズから全光源の割合を計算,そこからインデックスを選択
+"    uint sum_min = 0;\n"
+"    uint sum_max = 0;\n"
+"    for(uint i = 0; i < NumEmissive; i++){\n"
+"       sum_min = sum_max;\n"
+"       sum_max += (uint)(emissiveNo[i].y / sumSize * 100.0f);\n"//サイズの割合を累積
+"       if(sum_min <= rnd && rnd < sum_max){emIndex = i; break;}\n"//乱数が累積値の範囲に入ったらそのインデックス値を選択
+"    }\n"
+
 "    float3 ePos = emissivePosition[emIndex].xyz;\n"
 
 "    RayDesc ray;\n"
@@ -71,10 +88,10 @@ char* ShaderTraceRay_NEE =
 
 "       float g = G(hitPosition, normal, neeP, emIndex);\n"
 
-"       float3 brdf = sumBRDF(neeP.hitPosition, hitPosition, difTexColor, speTexColor, normal);\n"
+"       float3 brdf_nee = sumBRDF(neeP.hitPosition, hitPosition, difTexColor, speTexColor, normal);\n"
 
-"       float neePDF = LightPDF() + radiusPDF();\n"
-"       float3 neeCol = (brdf * g / neePDF) * neeP.color;\n"
+"       float neePDF = LightPDF(emIndex) + radiusPDF();\n"
+"       float3 neeCol = (brdf_nee * g / neePDF) * neeP.color;\n"
 
 ////////PathTracing
 "       RayPayload payload;\n"
@@ -87,8 +104,10 @@ char* ShaderTraceRay_NEE =
 
 "       float paPDF = CosinePDF(normal, ray.Direction);\n"
 "       if(paPDF <= 0)paPDF = 1.0f;\n"
+
+"       float3 brdf_pa = sumBRDF(ray.Direction, hitPosition, difTexColor, speTexColor, normal);\n"
 "       float cosine = abs(dot(normal, ray.Direction));\n"
-"       payload.throughput = throughput * brdf * cosine / paPDF;\n"
+"       payload.throughput = throughput * brdf_pa * cosine / paPDF;\n"
 
 "       payload.hitPosition = hitPosition;\n"
 "       payload.EmissiveIndex = 0;\n"

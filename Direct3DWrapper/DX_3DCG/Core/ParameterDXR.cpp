@@ -15,6 +15,7 @@ void UpdateDXR::create(int numMaterial, int numMaxInstance) {
 	plightOn = std::make_unique<float[]>(numMaxInstance * numMaterial * numVertex);
 	for (UINT i = 0; i < numMaxInstance * numMaterial * numVertex; i++)plightOn[i] = 0.0f;
 	Lightst = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance * numMaterial * numVertex);
+	OutlineSize = std::make_unique<float[]>(numMaxInstance);
 	InstanceID = std::make_unique<UINT[]>(numMaxInstance * numMaterial);
 	Transform = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 	WVP = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
@@ -109,4 +110,28 @@ CoordTf::VECTOR4 ParameterDXR::getLightst(int SwapNo,
 		InstanceIndex;
 
 	return ud.Lightst[index];
+}
+
+void ParameterDXR::setvSize(CoordTf::VECTOR3 v) {
+	if (!setvSize_first) {
+		LmaxX = LminX = v.x;
+		LmaxY = LminY = v.y;
+		LmaxZ = LminZ = v.z;
+		setvSize_first = true;
+	}
+	if (LmaxX < v.x)LmaxX = v.x;
+	if (LminX > v.x)LminX = v.x;
+	if (LmaxY < v.y)LmaxY = v.y;
+	if (LminY > v.y)LminY = v.y;
+	if (LmaxZ < v.z)LmaxZ = v.z;
+	if (LminZ > v.z)LminZ = v.z;
+}
+
+void ParameterDXR::createOutlineSize(int SwapNo, CoordTf::VECTOR3 scale, int InstanceIndex) {
+	float x = (LmaxX - LminX) * scale.x;
+	float y = (LmaxY - LminY) * scale.y;
+	float z = (LmaxZ - LminZ) * scale.z;
+
+	UpdateDXR& ud = updateDXR[SwapNo];
+	ud.OutlineSize[InstanceIndex] = 2 * (x * y + y * z + x * z);
 }

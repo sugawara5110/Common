@@ -27,7 +27,7 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 numEmissive;//x:Em, y:numInstance
 	CoordTf::VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	CoordTf::VECTOR4 GlobalAmbientColor;
-	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//x:emissiveNo
+	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//x:emissiveNo, y:OutlineSize
 	CoordTf::VECTOR4 dDirection;
 	CoordTf::VECTOR4 dLightColor;
 	CoordTf::VECTOR4 dLightst;//x:オンオフ

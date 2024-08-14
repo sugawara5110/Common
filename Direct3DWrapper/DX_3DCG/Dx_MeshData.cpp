@@ -324,6 +324,7 @@ bool MeshData::SetVertex() {
 				piFaceBuffer[i][dwPartFCount * 3 + 2] = FCount * 3 + 2;
 				//í∏ì_ç\ë¢ëÃÇ…ë„ì¸
 				pvVertexBuffer[FCount * 3].Pos = pvCoord[v1 - 1];
+				mObj.dxrPara.setvSize(pvVertexBuffer[FCount * 3].Pos);
 				pvVertexBuffer[FCount * 3].normal = pvNormal[vn1 - 1];
 				pvVertexBuffer[FCount * 3].geoNormal = pvNormal[vn1 - 1];
 				pvVertexBuffer[FCount * 3].tex = pvTexture[vt1 - 1];

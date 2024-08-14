@@ -566,6 +566,7 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 
 void BasicPolygon::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
 	Dx_Device* dev = Dx_Device::GetInstance();
+	dxrPara.createOutlineSize(dev->cBuffSwapUpdateIndex(), size, ins_no);
 	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
 }
 
@@ -584,11 +585,8 @@ void BasicPolygon::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
 	float disp, float SmoothRange, float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
-	Dx_Device* dev = Dx_Device::GetInstance();
-	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color);
-	InstancingUpdate_Internal(&cb[dev->cBuffSwapUpdateIndex()], &cb3[dev->cBuffSwapUpdateIndex()],
-		disp, px, py, mx, my, divArr, numDiv, shininess, SmoothRange, SmoothRatio);
-	CbSwap();
+	Instancing(pos, angle, size, Color);
+	InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
 }
 
 void BasicPolygon::Draw(int comIndex) {

@@ -31,6 +31,7 @@ struct UpdateDXR {
 	//ポイントライト
 	std::unique_ptr<float[]> plightOn = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> Lightst = nullptr;
+	std::unique_ptr<float[]> OutlineSize = nullptr;//直方体の表面積で計算
 
 	void InstanceMaskChange(bool DrawOn);
 
@@ -61,14 +62,25 @@ struct ParameterDXR {
 	UpdateDXR updateDXR[2] = {};
 	bool updateF = true;//AS構築後のupdateの有無
 	bool tessellationF = false;//テセレーション有無
+	bool alphaTest = false;
+
+	float LmaxX = 0.0f;
+	float LminX = 0.0f;
+	float LmaxY = 0.0f;
+	float LminY = 0.0f;
+	float LmaxZ = 0.0f;
+	float LminZ = 0.0f;
+	bool setvSize_first = false;
+
+	void setvSize(CoordTf::VECTOR3 v);
+
+	void createOutlineSize(int SwapNo, CoordTf::VECTOR3 scale, int InstanceIndex);
 
 	void create(int numMaterial, int numMaxInstance);
 
 	void setAllMaterialType(MaterialType type);
 
 	void resetCreateAS();
-
-	bool alphaTest = false;
 
 	void setPointLight(
 		int SwapNo,

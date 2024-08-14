@@ -54,19 +54,20 @@ public:
 			Vertex* v = (Vertex*)vertexArr;
 			for (int i = 0; i < numVer; i++) {
 				verM[i].Pos.as(v[i].Pos.x, v[i].Pos.y, v[i].Pos.z);
+				dxrPara.setvSize(verM[i].Pos);
 				verM[i].normal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
 				verM[i].geoNormal.as(v[i].normal.x, v[i].normal.y, v[i].normal.z);
 				verM[i].tex.as(v[i].tex.x, v[i].tex.y);
 			}
 			getVertexBuffer(sizeof(VertexM), numVer);
 		}
-		if (typeid(VertexBC) == typeid(T)) {
+		else if (typeid(VertexBC) == typeid(T)) {
 			ver = NEW VertexBC[numVer];
 			VertexBC* v = (VertexBC*)vertexArr;
 			memcpy(ver, v, sizeof(VertexBC) * numVer);
 			getVertexBuffer(sizeof(VertexBC), numVer);
 		}
-		if (typeid(VertexBC) != typeid(T) && typeid(Vertex) != typeid(T)) {
+		else {
 			Dx_Util::ErrorMessage("PolygonData::setVertex Error!!");
 			return;
 		}

@@ -256,16 +256,17 @@ char* ShaderCommon =
 "}\n"
 
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
-"float LightPDF()\n"
+"float LightPDF(uint emIndex)\n"
 "{\n"
 "    float NumEmissive = (float)numEmissive.x;\n"
-"    return 1.0f / NumEmissive;\n"//å„Ç≈ï\ñ êœÇ‡í«â¡ÅH
+"    float emSize = emissiveNo[emIndex].y;\n"
+"    return 1.0f / (NumEmissive * emSize);\n"
 "}\n"
 
 ///////////////////////////////////////////radiusPDF///////////////////////////////////////////////
 "float radiusPDF()\n"
 "{\n"
-"    return 1.0f / 2 * PI;\n"
+"    return 1.0f / (2 * PI);\n"
 "}\n"
 
 ///////////////////////////////////////////sumBRDF/////////////////////////////////////////////////

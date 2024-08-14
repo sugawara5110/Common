@@ -1178,6 +1178,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 						cb.Lightst[cntEm].z = Lightst.z;
 						cb.Lightst[cntEm].w = Lightst.w;
 						cb.emissiveNo[cntEm].x = (float)ud.InstanceID[udInstanceIDCnt + k];
+						cb.emissiveNo[cntEm].y = ud.OutlineSize[k];
 						cntEm++;
 						if (cntEm >= LIGHT_PCS) {
 							breakF = true;

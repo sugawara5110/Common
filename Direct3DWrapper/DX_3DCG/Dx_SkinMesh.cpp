@@ -108,6 +108,7 @@ void SkinMesh::SetVertex(bool lclOn, bool axisOn, bool VerCentering) {
 			VertexM* v = &vbm[i];
 			Vertex_M* vv = &vb_m[i];
 			v->Pos = vv->Pos;
+			mObj[m].dxrPara.setvSize(v->Pos);
 			v->normal = vv->normal;
 			v->tangent = vv->tangent;
 			v->geoNormal = vv->geoNormal;
