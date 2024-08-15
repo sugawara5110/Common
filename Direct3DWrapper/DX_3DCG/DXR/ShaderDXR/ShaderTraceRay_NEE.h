@@ -14,17 +14,12 @@ char* ShaderTraceRay_NEE =
 "    float cosine1 = dot(-Lvec, light_normal);\n"
 "    float cosine2 = dot(Lvec, hitnormal);\n"
 "    float distance = length(lightVec);\n"
-
-"    float distAtten = lightst[emIndex].y + \n"
-"                      lightst[emIndex].z * distance + \n"
-"                      lightst[emIndex].w * distance * distance;\n"
-
-//"    float distAtten = (distance * distance);\n"
+"    float distAtten = distance * distance * lightst[emIndex].w;\n"
 "    return cosine1 * cosine2 / distAtten;\n"
 "}\n"
 
-///////////////////////NEE/////////////////////////////////////////////////////////////////////
-"RayPayload Nee(in uint RecursionCnt, in float3 hitPosition, in float3 normal, inout uint emIndex)\n"
+///////////////////////NeeGetLight///////////////////////////////////////////////////////////////
+"RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 normal, inout uint emIndex)\n"
 "{\n"
 "    uint NumEmissive = numEmissive.x;\n"
 /////光源サイズ合計
@@ -69,6 +64,51 @@ char* ShaderTraceRay_NEE =
 "    return payload;\n"
 "}\n"
 
+///////////////////////NextEventEstimation////////////////////////////////////////////////////
+"float3 NextEventEstimation(in uint RecursionCnt, in float3 hitPosition, \n"
+"                           in float3 difTexColor, in float3 speTexColor, in float3 normal)\n"
+"{\n"
+"    uint emIndex = 0;\n"
+"    RayPayload neeP = NeeGetLight(RecursionCnt, hitPosition, normal, emIndex);\n"
+
+"    float g = G(hitPosition, normal, neeP, emIndex);\n"
+
+"    float3 brdf = sumBRDF(neeP.hitPosition, hitPosition, difTexColor, speTexColor, normal);\n"
+
+"    float PDF = LightPDF(emIndex);\n"
+"    return (brdf * g / PDF) * neeP.color;\n"
+"}\n"
+
+///////////////////////PathTracing////////////////////////////////////////////////////////////
+"float3 PathTracing(in uint RecursionCnt, in float3 hitPosition, \n"
+"                   in float3 difTexColor, in float3 speTexColor, in float3 normal, inout float3 throughput)\n"
+"{\n"
+"    RayPayload payload;\n"
+"    payload.hitPosition = hitPosition;\n"
+"    payload.hit = false;\n"
+
+"    RayDesc ray;\n"
+"    float LightArea = LightArea_RandNum.x;\n"
+"    ray.Direction = RandomVector(normal, LightArea);\n"
+
+"    float PDF = CosinePDF(normal, ray.Direction);\n"
+"    if(PDF <= 0)PDF = 1.0f;\n"
+
+"    float3 brdf = sumBRDF(ray.Direction, hitPosition, difTexColor, speTexColor, normal);\n"
+"    float cosine = abs(dot(normal, ray.Direction));\n"
+"    payload.throughput = throughput * brdf * cosine / PDF;\n"
+
+"    payload.hitPosition = hitPosition;\n"
+"    payload.EmissiveIndex = 0;\n"
+"    payload.mNo = EMISSIVE | NEE_PATHTRACER;\n"//処理分岐用
+
+"    traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+
+"    throughput = payload.throughput;\n"
+
+"    return payload.color;\n"
+"}\n"
+
 ///////////////////////光源へ光線を飛ばす, ヒットした場合明るさが加算//////////////////////////
 "float3 EmissivePayloadCalculate_NEE(in uint RecursionCnt, in float3 hitPosition, \n"
 "                                    in float3 difTexColor, in float3 speTexColor, in float3 normal, inout float3 throughput)\n"
@@ -82,42 +122,13 @@ char* ShaderTraceRay_NEE =
 "    bool mf = materialIdent(mNo, EMISSIVE);\n"
 "    if(!mf) {\n"//emissive以外
 
-////////Nee
-"       uint emIndex = 0;\n"
-"       RayPayload neeP = Nee(RecursionCnt, hitPosition, normal, emIndex);\n"
-
-"       float g = G(hitPosition, normal, neeP, emIndex);\n"
-
-"       float3 brdf_nee = sumBRDF(neeP.hitPosition, hitPosition, difTexColor, speTexColor, normal);\n"
-
-"       float neePDF = LightPDF(emIndex) + radiusPDF();\n"
-"       float3 neeCol = (brdf_nee * g / neePDF) * neeP.color;\n"
+////////NextEventEstimation
+"       float3 neeCol = NextEventEstimation(RecursionCnt, hitPosition, difTexColor, speTexColor, normal);\n"
 
 ////////PathTracing
-"       RayPayload payload;\n"
-"       payload.hitPosition = hitPosition;\n"
-"       payload.hit = false;\n"
+"       float3 pathCol = PathTracing(RecursionCnt, hitPosition, difTexColor, speTexColor, normal, throughput);\n"
 
-"       RayDesc ray;\n"
-"       float LightArea = LightArea_RandNum.x;\n"
-"       ray.Direction = RandomVector(normal, LightArea);\n"
-
-"       float paPDF = CosinePDF(normal, ray.Direction);\n"
-"       if(paPDF <= 0)paPDF = 1.0f;\n"
-
-"       float3 brdf_pa = sumBRDF(ray.Direction, hitPosition, difTexColor, speTexColor, normal);\n"
-"       float cosine = abs(dot(normal, ray.Direction));\n"
-"       payload.throughput = throughput * brdf_pa * cosine / paPDF;\n"
-
-"       payload.hitPosition = hitPosition;\n"
-"       payload.EmissiveIndex = 0;\n"
-"       payload.mNo = EMISSIVE | NEE_PATHTRACER;\n"//処理分岐用
-
-"       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
-
-"       throughput = payload.throughput;\n"
-
-"       ret = neeCol * throughput;\n"
+"       ret = neeCol * throughput + pathCol;\n"
 "    }\n"
 "    return ret;\n"
 "}\n";
