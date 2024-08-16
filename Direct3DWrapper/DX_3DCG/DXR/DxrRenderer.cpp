@@ -18,7 +18,6 @@
 #include "./ShaderDXR/ShaderLocalParameters.h"
 #include "./ShaderDXR/ShaderRayGen.h"
 #include "./ShaderDXR/ShaderTraceRay.h"
-#include "./ShaderDXR/ShaderTraceRay_NEE.h"
 #include "./ShaderDXR/ShaderTraceRay_PathTracing.h"
 #include "../Core/Dx_Light.h"
 
@@ -719,11 +718,8 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	addChar com = {};
 	com.addStr(para.str, com_t.str);
 
-	addChar nee = {};
-	nee.addStr(ShaderTraceRay_NEE, ShaderTraceRay_PathTracing);
-
 	addChar pt = {};
-	pt.addStr(nee.str, ShaderTraceRay);
+	pt.addStr(ShaderTraceRay_PathTracing, ShaderTraceRay);
 
 	addChar tRay = {};
 	tRay.addStr(com.str, pt.str);

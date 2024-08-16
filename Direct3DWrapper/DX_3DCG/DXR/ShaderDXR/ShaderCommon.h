@@ -17,6 +17,7 @@ char* ShaderCommon =
 "    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 "    RecursionCnt++;\n"
 "    payload.RecursionCnt = RecursionCnt;\n"
+"    payload.EmissiveIndex = 0;\n"
 
 "    if(RecursionCnt <= maxRecursion) {\n"
 "       bool loop = true;\n"

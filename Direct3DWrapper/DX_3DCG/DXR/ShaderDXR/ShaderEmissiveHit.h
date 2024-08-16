@@ -54,14 +54,8 @@ char* ShaderEmissiveHit =
 "       }\n"
 "    }\n"
 //////ŒõŒ¹ˆÈŠO
-"    if(!materialIdent(payload.mNo, NEE)){\n"
-
-"       if(traceMode == 1){\n"
-"          payload.color = EmissivePayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                               difTex.xyz, speTex, normalMap);\n"
-"       }else if(traceMode == 2){\n"
-"          payload.color = EmissivePayloadCalculate_NEE(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                       difTex.xyz, speTex, normalMap, payload.throughput);\n"
-"       }\n"
+"    if(!materialIdent(payload.mNo, NEE) && traceMode != 0){\n"
+"       payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                    difTex.xyz, speTex, normalMap, payload.throughput);\n"
 "    }\n"
 "}\n";
