@@ -85,6 +85,9 @@ public:
 	void setRefractiveIndex(float index) {
 		mObj.setRefractiveIndex(index);
 	}
+	void setRoughness(float roug) {
+		mObj.setRoughness(roug);
+	}
 
 	void SetName(char* name) { mObj.SetName(name); }
 };

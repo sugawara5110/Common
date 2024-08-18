@@ -94,7 +94,7 @@ char* ShaderCommon =
 ///////////////////////////////////////ヒット位置取得/////////////////////////////////////////////
 "float3 HitWorldPosition()\n"
 "{\n"
-//     原点           現在のヒットまでの距離      方向
+//     原点           現在のヒットまでの距離      レイを飛ばした方向
 "    return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();\n"
 "}\n"
 
@@ -245,7 +245,7 @@ char* ShaderCommon =
 "{\n"
 "    float norm = (shininess + 2.0f) / (2 * PI);\n"
 "    float3 halfDir = normalize(viewDir + lightDir);\n"
-"    float dotNH = abs(dot(normal, halfDir));\n"
+"    float dotNH = saturate(dot(normal, halfDir));\n"
 "    return Specular * pow(dotNH, shininess) * norm;\n"
 "}\n"
 
@@ -271,7 +271,7 @@ char* ShaderCommon =
 "}\n"
 
 ///////////////////////////////////////////sumBRDF/////////////////////////////////////////////////
-"float3 sumBRDF(float3 LightHitPosition, float3 hitPosition, float3 difTexColor, float3 speTexColor, float3 normal)\n"
+"float3 sumBRDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    MaterialCB mcb = material[materialID];\n"
@@ -280,10 +280,8 @@ char* ShaderCommon =
 //"    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "    float shininess = mcb.shininess;\n"
 
-"    float3 Lvec = normalize(LightHitPosition - hitPosition);\n"
 "    float3 difBRDF = DiffuseBRDF(Diffuse);\n"
-"    float3 eyeVec = normalize(cameraPosition.xyz - hitPosition);\n"
-"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, eyeVec, Lvec, shininess);\n"
+"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, outDir, inDir, shininess);\n"
 
 "    return difBRDF + speBRDF;\n"
 "}\n";

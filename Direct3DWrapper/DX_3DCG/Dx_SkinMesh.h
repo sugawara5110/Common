@@ -105,6 +105,13 @@ public:
 		for (int i = 0; i < getNumMesh(); i++)
 			mObj[i].SetName(name);
 	}
+	void setRoughness(int meshIndex, float roug) {
+		mObj[meshIndex].setRoughness(roug);
+	}
+	void setAllRoughness(float roug) {
+		for (int i = 0; i < getNumMesh(); i++)
+			mObj[i].setRoughness(roug);
+	}
 };
 
 #endif

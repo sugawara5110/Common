@@ -37,7 +37,6 @@ char* ShaderGlobalParameters =
 "    float4 dLightColor;\n"
 "    float4 dLightst;\n"//.x:オンオフ
 "    float4 TMin_TMax;\n"//.x, .y
-"    float4 LightArea_RandNum;\n"//x:乱数範囲area(2.0で全方向), y:乱数個数
 "    float4 frameReset_DepthRange_NorRange;\n"//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 "    uint maxRecursion;\n"
 "    uint traceMode;\n"

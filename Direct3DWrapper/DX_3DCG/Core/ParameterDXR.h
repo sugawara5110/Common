@@ -22,6 +22,7 @@ struct UpdateDXR {
 	bool createAS = false;//ASの最初の構築完了フラグ
 	UINT InstanceMask = 0xFF;
 	float RefractiveIndex = 0.0f;//屈折率
+	float roughness = 0.0f;//粗さ
 
 	//ParticleData, SkinMesh用
 	bool useVertex = false;

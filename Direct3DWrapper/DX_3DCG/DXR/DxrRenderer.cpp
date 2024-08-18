@@ -418,8 +418,6 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	TMin = 0.001f;
 	TMax = 10000.0f;
 
-	LightArea = 1.0f;
-	RandNum = 1;
 	frameInd = 0;
 	frameReset = 0.0f;
 	depthRange = 0.0001f;
@@ -1111,6 +1109,7 @@ void DxrRenderer::updateMaterial(CBobj* cbObj) {
 				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;
+				mcb.roughness = ud.roughness;
 				MaterialCnt++;
 			}
 		}
@@ -1133,7 +1132,6 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	cb.traceMode = traceMode;
 	cb.TMin_TMax.x = TMin;
 	cb.TMin_TMax.y = TMax;
-	cb.LightArea_RandNum.as(LightArea, (float)RandNum, 0.0f, 0.0f);
 	cb.frameReset_DepthRange_NorRange.as(frameReset, depthRange, norRange, 1.0f);
 	frameReset = 0.0f;
 	updateMaterial(cbObj);
@@ -1296,9 +1294,7 @@ Dx_Resource* DxrRenderer::getInstanceIdMap() {
 	return &mpInstanceIdMapResource;
 }
 
-void DxrRenderer::setGIparameter(float lightArea, int randNum, TraceMode mode) {
-	LightArea = lightArea;
-	RandNum = randNum;
+void DxrRenderer::setGIparameter(TraceMode mode) {
 	traceMode = mode;
 }
 

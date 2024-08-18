@@ -32,7 +32,6 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 dLightColor;
 	CoordTf::VECTOR4 dLightst;//x:オンオフ
 	CoordTf::VECTOR4 TMin_TMax;//x, y
-	CoordTf::VECTOR4 LightArea_RandNum;//x:乱数範囲area(2.0で全方向), y:乱数個数
 	CoordTf::VECTOR4 frameReset_DepthRange_NorRange;//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 	UINT maxRecursion;
 	UINT traceMode;
@@ -44,6 +43,7 @@ struct DxrMaterialCB {
 	CoordTf::VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
 	float shininess = 4.0f;//スペキュラ強さ
 	float RefractiveIndex = 0.0f;//屈折率
+	float roughness;//粗さ
 	UINT materialNo = 0;
 };
 
@@ -85,8 +85,6 @@ private:
 	CBobj cbObj[numSwapIndex] = {};
 	int buffSwap[numSwapIndex] = { 0,0 };
 
-	float LightArea;
-	int RandNum;
 	UINT frameInd;
 	float frameReset;
 	float depthRange;
@@ -166,7 +164,7 @@ public:
 		setRaytraceSwapIndex(1 - sync);
 	}
 
-	void setGIparameter(float LightArea, int RandNum, TraceMode mode = ONE_RAY);
+	void setGIparameter(TraceMode mode = ONE_RAY);
 	void resetFrameIndex();
 	void set_DepthRange_NorRange(float DepthRange, float NorRange);
 };

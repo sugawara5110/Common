@@ -41,16 +41,9 @@ char* ShaderBasicHit =
 "    }\n"
 "    else{\n"
 ////////PathTracing
-"       uint loop = 1;\n"
-"       uint RandNum = LightArea_RandNum.y;\n"
-"       if(payload.RecursionCnt == 1)loop = RandNum;\n"
-"       float3 col = float3(0.0f, 0.0f, 0.0f);\n"
-"       for(uint i = 0; i < loop; i++){\n"
-"          float3 throughput = float3(1.0f, 1.0f, 1.0f);\n"
-"          col += PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
-"                                              difTex.xyz, speTex, normalMap, throughput);\n"
-"       }\n"
-"       difTex.xyz = col / (float)loop;\n"
+"       float3 throughput = float3(1.0f, 1.0f, 1.0f);\n"
+"       difTex.xyz = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                 difTex.xyz, speTex, normalMap, throughput);\n"
 "    }\n"
 
 /////[“xŽæ“¾
