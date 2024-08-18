@@ -106,13 +106,13 @@ char* ShaderTraceRay_PathTracing =
 
 "    float3 rDir = float3(0.0f, 0.0f, 0.0f);\n"
 
-"    if(diff_threshold < rnd && materialIdent(mNo, METALLIC)){\n"/////Speculer
+"    if(diff_threshold < rnd && materialIdent(mNo, METALLIC)){\n"//Speculer
 "       float3 eyeVec = -outDir;\n"
 "       float3 reflectVec = reflect(eyeVec, normal);\n"
 "       float Area = roughness * roughness;\n"
 "       rDir = RandomVector(reflectVec, Area);\n"
 "    }\n"
-"    else{\n"/////Diffuse
+"    else{\n"//Diffuse
 "       rDir = RandomVector(normal, 1.0f);\n"//1.0f半球
 "    }\n"
 
@@ -165,7 +165,12 @@ char* ShaderTraceRay_PathTracing =
 "          ret = pathPay.color + neeCol * throughput;\n"
 "       }\n"
 "       else{\n"
-"          ret = pathPay.color * throughput;\n"
+"          if(pathPay.hit){\n"
+"             ret = pathPay.color * throughput;\n"//光源ヒット時のみthroughputを乗算し値を返す
+"          }\n"
+"          else{\n"
+"             ret = pathPay.color;\n"//光源ヒットがない場合はそのまま値を返す
+"          }\n"
 "       }\n"
 
 "       throughput = pathPay.throughput;\n"//throughputの更新
