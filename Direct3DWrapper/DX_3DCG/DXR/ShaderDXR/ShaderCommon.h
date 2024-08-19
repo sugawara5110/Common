@@ -65,10 +65,7 @@ char* ShaderCommon =
 "    float y = sq * sin(phi);\n"
 "    float3 randV = float3(x, y, z);\n"
 
-//入力ベクトルに垂直なベクトルの生成
-"    float3 vVec = getVerticalVector(v);\n"
-//ランダムベクトルを入力ベクトルの方向に合せる, (マイナスにしておく)
-"    return normalize(-normalTexConvert(randV, v, vVec));\n"
+"    return -localToWorld(v, randV);\n"
 "}\n"
 
 ///////////////////////////////////////////Material識別////////////////////////////////////////////
@@ -245,7 +242,7 @@ char* ShaderCommon =
 "{\n"
 "    float norm = (shininess + 2.0f) / (2 * PI);\n"
 "    float3 halfDir = normalize(viewDir + lightDir);\n"
-"    float dotNH = saturate(dot(normal, halfDir));\n"
+"    float dotNH = abs(dot(normal, halfDir));\n"
 "    return Specular * pow(dotNH, shininess) * norm;\n"
 "}\n"
 
@@ -280,8 +277,11 @@ char* ShaderCommon =
 //"    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "    float shininess = mcb.shininess;\n"
 
+"    float3 local_inDir = worldToLocal(normal, inDir);\n"
+"    float3 local_outDir = worldToLocal(normal, outDir);\n"
+
 "    float3 difBRDF = DiffuseBRDF(Diffuse);\n"
-"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, outDir, inDir, shininess);\n"
+"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, local_outDir, local_inDir, shininess);\n"
 
 "    return difBRDF + speBRDF;\n"
 "}\n";

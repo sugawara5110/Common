@@ -124,6 +124,7 @@ char* ShaderTraceRay_PathTracing =
 
 "    float3 brdf = sumBRDF(ray.Direction, outDir, difTexColor, speTexColor, normal);\n"
 "    float cosine = saturate(dot(normal, ray.Direction));\n"
+
 "    throughput *= (brdf * cosine / PDF);\n"
 
 "    float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);\n"
