@@ -75,7 +75,15 @@ char* ShaderTraceRay_PathTracing =
 
 "    float3 inDir = normalize(neeP.hitPosition - hitPosition);\n"
 
-"    float3 brdf = sumBRDF(inDir, outDir, difTexColor, speTexColor, normal);\n"
+"    float3 local_inDir = worldToLocal(normal, inDir);\n"
+"    float3 local_outDir = worldToLocal(normal, outDir);\n"
+"    if(local_outDir.z < 0){\n"
+"       local_outDir = worldToLocal(normal * -1.0f, outDir);\n"
+"    }\n"
+
+"    const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
+
+"    float3 brdf = sumBRDF(local_inDir, local_outDir, difTexColor, speTexColor, local_normal);\n"
 
 "    float PDF = LightPDF(emIndex);\n"
 "    return (brdf * g / PDF) * neeP.color;\n"
@@ -119,11 +127,20 @@ char* ShaderTraceRay_PathTracing =
 "    RayDesc ray;\n"
 "    ray.Direction = rDir;\n"
 
-"    float PDF = CosinePDF(normal, ray.Direction);\n"
-"    if(PDF <= 0)PDF = 1.0f;\n"
+"    float3 local_inDir = worldToLocal(normal, ray.Direction);\n"
+"    float3 local_outDir = worldToLocal(normal, outDir);\n"
 
-"    float3 brdf = sumBRDF(ray.Direction, outDir, difTexColor, speTexColor, normal);\n"
-"    float cosine = saturate(dot(normal, ray.Direction));\n"
+"    const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
+
+"    float3 brdf = sumBRDF(local_inDir, local_outDir, difTexColor, speTexColor, local_normal);\n"
+"    float cosine = saturate(dot(local_normal, local_inDir));\n"
+
+"    float PDF = CosinePDF(local_normal, local_inDir);\n"
+"    float dotNL = dot(local_normal, local_inDir);\n"
+"    if(PDF <= 0 || dotNL <= 0){\n"
+"       PDF = 1.0f;\n"
+"       brdf = float3(0.0f, 0.0f, 0.0f);\n"
+"    }\n"
 
 "    throughput *= (brdf * cosine / PDF);\n"
 

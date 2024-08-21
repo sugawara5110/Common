@@ -277,11 +277,8 @@ char* ShaderCommon =
 //"    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "    float shininess = mcb.shininess;\n"
 
-"    float3 local_inDir = worldToLocal(normal, inDir);\n"
-"    float3 local_outDir = worldToLocal(normal, outDir);\n"
-
 "    float3 difBRDF = DiffuseBRDF(Diffuse);\n"
-"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, local_outDir, local_inDir, shininess);\n"
+"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, outDir, inDir, shininess);\n"
 
 "    return difBRDF + speBRDF;\n"
 "}\n";
