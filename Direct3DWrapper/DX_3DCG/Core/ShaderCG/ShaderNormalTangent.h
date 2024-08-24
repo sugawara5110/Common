@@ -29,7 +29,7 @@ char* ShaderNormalTangent =
 "   uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;\n"
 "   uint zm = 1 ^ (xm | ym);\n"
 "   B = cross(N, float3(xm, ym, zm));\n"
-"   T = cross(N, B);\n"
+"   T = cross(B, N);\n"
 "}\n"
 
 "float3 worldToLocal(float3 N, float3 localVec)\n"

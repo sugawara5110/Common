@@ -423,6 +423,7 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	depthRange = 0.0001f;
 	norRange = 0.999f;
 	traceMode = 0;
+	SeedFrame = 0;
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
@@ -1130,6 +1131,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
 	cb.traceMode = traceMode;
+	cb.SeedFrame = SeedFrame;
 	cb.TMin_TMax.x = TMin;
 	cb.TMin_TMax.y = TMax;
 	cb.frameReset_DepthRange_NorRange.as(frameReset, depthRange, norRange, 1.0f);
@@ -1246,6 +1248,10 @@ void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 	if (INT_MAX <= frameInd++) {
 		frameInd = 0;
 		resetFrameIndex();
+	}
+
+	if (INT_MAX <= SeedFrame++) {
+		SeedFrame = 0;
 	}
 }
 

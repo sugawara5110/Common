@@ -40,6 +40,7 @@ char* ShaderGlobalParameters =
 "    float4 frameReset_DepthRange_NorRange;\n"//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 "    uint maxRecursion;\n"
 "    uint traceMode;\n"
+"    uint SeedFrame;\n"
 "};\n"
 
 "RWTexture2D<uint> gFrameIndexMap : register(u6, space0);\n"

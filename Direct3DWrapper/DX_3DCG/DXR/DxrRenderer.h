@@ -35,6 +35,7 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 frameReset_DepthRange_NorRange;//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 	UINT maxRecursion;
 	UINT traceMode;
+	UINT SeedFrame;
 };
 
 struct DxrMaterialCB {
@@ -90,6 +91,7 @@ private:
 	float depthRange;
 	float norRange;
 	UINT traceMode = 0;
+	UINT SeedFrame = 0;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;

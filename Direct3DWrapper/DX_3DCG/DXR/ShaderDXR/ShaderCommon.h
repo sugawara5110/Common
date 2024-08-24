@@ -33,8 +33,7 @@ char* ShaderCommon =
 "float Rand_float(float2 v2)\n"
 "{\n"
 "    Seed++;\n"
-"    uint frameIndex = gFrameIndexMap[DispatchRaysIndex().xy];\n"
-"    return sin(dot(v2, float2(12.9898, 78.233)) * (frameIndex % 100 + 1) * 0.001 + Seed + frameIndex) * 43758.5453;\n"
+"    return sin(dot(v2, float2(12.9898, 78.233)) * (SeedFrame % 100 + 1) * 0.001 + Seed + SeedFrame) * 43758.5453;\n"
 "}\n"
 
 ///////////////////////////////////////////ÉâÉìÉ_ÉÄêÆêî////////////////////////////////////////////
@@ -231,28 +230,6 @@ char* ShaderCommon =
 "    return spe.xyz;\n"
 "}\n"
 
-///////////////////////////////////////////DiffuseBRDF/////////////////////////////////////////////
-"float3 DiffuseBRDF(float3 diffuse)\n"
-"{\n"
-"    return diffuse / PI;\n"
-"}\n"
-
-///////////////////////////////////////////SpecularBRDF////////////////////////////////////////////
-"float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
-"{\n"
-"    float norm = (shininess + 2.0f) / (2 * PI);\n"
-"    float3 halfDir = normalize(viewDir + lightDir);\n"
-"    float dotNH = abs(dot(normal, halfDir));\n"
-"    return Specular * pow(dotNH, shininess) * norm;\n"
-"}\n"
-
-///////////////////////////////////////////CosinePDF///////////////////////////////////////////////
-"float CosinePDF(float3 normal, float3 dir)\n"
-"{\n"
-"    const float dotNL = abs(dot(normal, dir));\n"
-"    return dotNL / PI;\n"
-"}\n"
-
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
 "float LightPDF(uint emIndex)\n"
 "{\n"
@@ -267,8 +244,132 @@ char* ShaderCommon =
 "    return 1.0f / (2 * PI);\n"
 "}\n"
 
-///////////////////////////////////////////sumBRDF/////////////////////////////////////////////////
-"float3 sumBRDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal)\n"
+///////////////////////////////////////////DiffuseBRDF/////////////////////////////////////////////
+"float3 DiffuseBRDF(float3 diffuse)\n"
+"{\n"
+"    return diffuse / PI;\n"
+"}\n"
+
+///////////////////////////////////////////CosinePDF///////////////////////////////////////////////
+"float CosinePDF(float dotNL)\n"
+"{\n"
+"    return dotNL / PI;\n"
+"}\n"
+
+///////////////////////////////////////////GGX_PDF/////////////////////////////////////////////////
+"float GGX_PDF(float NDF, float dotNH, float dotVH)\n"
+"{\n"
+"    return NDF * dotNH / (4 * dotVH);\n"
+"}\n"
+
+///////////////////////////////////////////GGX_GeometrySchlick/////////////////////////////////////
+"float GGX_GeometrySchlick(float dotNX, float roughness)\n"
+"{\n"
+"    float a = roughness * roughness;\n"
+"    float k = a / 2.0f;\n"
+"    return dotNX / (dotNX * (1 - k) + k);\n"
+"}\n"
+
+///////////////////////////////////////////GGX_Distribution////////////////////////////////////////
+"float GGX_Distribution(float3 N, float3 H, float roughness)\n"
+"{\n"
+"    float a = roughness * roughness;\n"
+"    float a2 = a * a;\n"
+"    float dotNH = max(0.0, dot(N, H));\n"
+"    float dotNH2 = dotNH * dotNH;\n"
+
+"    float d = (dotNH2 * (a2 - 1.0f) + 1.0f);\n"
+"    d *= PI * d;\n"
+
+"    return a2 / d;\n"
+"}\n"
+
+///////////////////////////////////////////GGX_GeometrySmith///////////////////////////////////////
+"float GGX_GeometrySmith(float3 N, float3 V, float3 L, float roughness)\n"
+"{\n"
+"    float dotNV = abs(dot(N, V));\n"
+"    float dotNL = abs(dot(N, L));\n"
+"    return GGX_GeometrySchlick(dotNV, roughness) * GGX_GeometrySchlick(dotNL, roughness);\n"
+"}\n"
+
+///////////////////////////////////////////FresnelSchlick/////////////////////////////////////////
+"float3 FresnelSchlick(float dotVH, float3 F0)\n"
+"{\n"
+"    return F0 + (1 - F0) * pow(1 - dotVH, 5.0);\n"
+"}\n"
+
+///////////////////////////////////////////SpecularBRDF///////////////////////////////////////////
+"float3 SpecularBRDF(float D, float G, float3 F, float3 V, float3 L, float3 N)\n"
+"{\n"
+"    float dotNL = abs(dot(N, L));\n"
+"    float dotNV = abs(dot(N, V));\n"
+"    return (D * G * F) / (4 * dotNV * dotNL + 0.001f);\n"
+"}\n"
+
+///////////////////////////////////////////SumBSDF/////////////////////////////////////////////////
+"float3 SumBSDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal, out float PDF)\n"
+"{\n"
+"    const uint materialID = getMaterialID();\n"
+"    const MaterialCB mcb = material[materialID];\n"
+"    const float3 Diffuse = mcb.Diffuse.xyz;\n"
+"    const float3 Speculer = mcb.Speculer.xyz;\n"
+"    const float roughness = mcb.roughness;\n"
+
+"    if (dot(normal, inDir) <= 0)\n"
+"    {\n"
+"        PDF = 1.0f;\n"
+"        return float3(0, 0, 0);\n"
+"    }\n"
+
+"    const float sum_diff = Diffuse.x + Diffuse.y + Diffuse.z;\n"
+"    const float sum_spe = Speculer.x + Speculer.y + Speculer.z;\n"
+"    const float sum = sum_diff + sum_spe;\n"
+"    const uint diff_threshold = (uint)(sum_diff / sum * 100.0f);\n"
+"    const uint spe_threshold = (uint)(sum_spe / sum * 100.0f);\n"
+
+"    const float3 H = normalize(inDir + outDir);\n"
+
+"    const float dotNL = abs(dot(normal, inDir));\n"
+"    const float dotNH = abs(dot(normal, H));\n"
+"    const float dotVH = abs(dot(outDir, H));\n"
+
+"    float3 F0 = 0.08.xxx;\n"
+"    F0 = lerp(F0 * speTexColor, difTexColor, (spe_threshold).xxx);\n"
+
+"    const float NDF = GGX_Distribution(normal, H, roughness);\n"
+"    const float G = GGX_GeometrySmith(normal, outDir, inDir, roughness);\n"
+"    const float3 F = FresnelSchlick(max(dot(outDir, H), 0), F0);\n"
+
+"    const float3 kD = (1 - F) * (1 - spe_threshold);\n"
+
+"    const float3 speBRDF = SpecularBRDF(NDF, G, F, outDir, inDir, normal);\n"
+"    const float spePDF = GGX_PDF(NDF, dotNH, dotVH);\n"
+"    const float3 diffBRDF = DiffuseBRDF(difTexColor);\n"
+"    const float diffPDF = CosinePDF(dotNL);\n"
+"    const float3 sumBSDF = (diffBRDF * kD + speBRDF) * dotNL;\n"
+"    const float sumPDF = diff_threshold * diffPDF + spe_threshold * spePDF;\n"
+
+"    if (sumPDF <= 0){\n"
+"        PDF = 1.0f;\n"
+"        return float3(0, 0, 0);\n"
+"    }\n"
+
+"    PDF = sumPDF;\n"
+
+"    return sumBSDF;\n"
+"}\n"
+
+///////////////////////////////////////////SpecularPhongBRDF///////////////////////////////////////
+"float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
+"{\n"
+"    float norm = (shininess + 2.0f) / (2 * PI);\n"
+"    float3 halfDir = normalize(viewDir + lightDir);\n"
+"    float dotNH = abs(dot(normal, halfDir));\n"
+"    return Specular * pow(dotNH, shininess) * norm;\n"
+"}\n"
+
+///////////////////////////////////////////SumBSDF2////////////////////////////////////////////////
+"float3 SumBSDF2(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal, out float PDF)\n"
 "{\n"
 "    uint materialID = getMaterialID();\n"
 "    MaterialCB mcb = material[materialID];\n"
@@ -277,8 +378,22 @@ char* ShaderCommon =
 //"    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "    float shininess = mcb.shininess;\n"
 
-"    float3 difBRDF = DiffuseBRDF(Diffuse);\n"
-"    float3 speBRDF = SpecularPhongBRDF(Speculer, normal, outDir, inDir, shininess);\n"
+"    if (dot(normal, inDir) <= 0)\n"
+"    {\n"
+"        PDF = 1.0f;\n"
+"        return float3(0, 0, 0);\n"
+"    }\n"
+
+"    const float dotNL = abs(dot(normal, inDir));\n"
+
+"    const float3 difBRDF = DiffuseBRDF(Diffuse);\n"
+"    const float3 speBRDF = SpecularPhongBRDF(Speculer, normal, outDir, inDir, shininess);\n"
+"    PDF = CosinePDF(dotNL);\n"
+
+"    if (PDF <= 0){\n"
+"        PDF = 1.0f;\n"
+"        return float3(0, 0, 0);\n"
+"    }\n"
 
 "    return difBRDF + speBRDF;\n"
 "}\n";

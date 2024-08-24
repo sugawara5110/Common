@@ -83,10 +83,11 @@ char* ShaderTraceRay_PathTracing =
 
 "    const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
 
-"    float3 brdf = sumBRDF(local_inDir, local_outDir, difTexColor, speTexColor, local_normal);\n"
+"    float pdf;\n"
+"    float3 bsdf = SumBSDF2(local_inDir, local_outDir, difTexColor, speTexColor, local_normal, pdf);\n"
 
 "    float PDF = LightPDF(emIndex);\n"
-"    return (brdf * g / PDF) * neeP.color;\n"
+"    return (bsdf * g / PDF) * neeP.color;\n"
 "}\n"
 
 ///////////////////////PathTracing////////////////////////////////////////////////////////////
@@ -97,6 +98,15 @@ char* ShaderTraceRay_PathTracing =
 "    RayPayload payload;\n"
 "    payload.hitPosition = hitPosition;\n"
 "    payload.hit = false;\n"
+
+"    float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);\n"
+/////Šm—¦“I‚Éˆ—‚ð‘Å‚¿Ø‚è ‚±‚ê‚â‚ç‚È‚¢‚Æ”’‚Á‚Û‚­‚È‚é
+"    uint rnd = Rand_integer() % 101;\n"
+"    if(rnd > (uint)(rouPDF * 100.0f)){\n"
+"       payload.throughput = float3(0.0f, 0.0f, 0.0f);\n"
+"       payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+"       return payload;\n"
+"    }\n"
 
 "    uint materialID = getMaterialID();\n"
 "    MaterialCB mcb = material[materialID];\n"
@@ -109,8 +119,6 @@ char* ShaderTraceRay_PathTracing =
 "    float sum_spe = Speculer.x + Speculer.y + Speculer.z;\n"
 "    float sum = sum_diff + sum_spe;\n"
 "    uint diff_threshold = (uint)(sum_diff / sum * 100.0f);\n"
-
-"    uint rnd = Rand_integer() % 101;\n"
 
 "    float3 rDir = float3(0.0f, 0.0f, 0.0f);\n"
 
@@ -132,19 +140,12 @@ char* ShaderTraceRay_PathTracing =
 
 "    const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
 
-"    float3 brdf = sumBRDF(local_inDir, local_outDir, difTexColor, speTexColor, local_normal);\n"
+"    float PDF;\n"
+"    float3 bsdf = SumBSDF2(local_inDir, local_outDir, difTexColor, speTexColor, local_normal, PDF);\n"
 "    float cosine = saturate(dot(local_normal, local_inDir));\n"
 
-"    float PDF = CosinePDF(local_normal, local_inDir);\n"
-"    float dotNL = dot(local_normal, local_inDir);\n"
-"    if(PDF <= 0 || dotNL <= 0){\n"
-"       PDF = 1.0f;\n"
-"       brdf = float3(0.0f, 0.0f, 0.0f);\n"
-"    }\n"
+"    throughput *= (bsdf * cosine / PDF);\n"
 
-"    throughput *= (brdf * cosine / PDF);\n"
-
-"    float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);\n"
 "    payload.throughput = throughput / rouPDF;\n"
 
 "    payload.hitPosition = hitPosition;\n"
