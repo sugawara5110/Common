@@ -324,8 +324,8 @@ char* ShaderCommon =
 "    const float sum_diff = Diffuse.x + Diffuse.y + Diffuse.z;\n"
 "    const float sum_spe = Speculer.x + Speculer.y + Speculer.z;\n"
 "    const float sum = sum_diff + sum_spe;\n"
-"    const uint diff_threshold = (uint)(sum_diff / sum * 100.0f);\n"
-"    const uint spe_threshold = (uint)(sum_spe / sum * 100.0f);\n"
+"    const float diff_threshold = sum_diff / sum;\n"
+"    const float spe_threshold = sum_spe / sum;\n"
 
 "    const float3 H = normalize(inDir + outDir);\n"
 

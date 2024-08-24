@@ -84,7 +84,7 @@ char* ShaderTraceRay_PathTracing =
 "    const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
 
 "    float pdf;\n"
-"    float3 bsdf = SumBSDF2(local_inDir, local_outDir, difTexColor, speTexColor, local_normal, pdf);\n"
+"    float3 bsdf = SumBSDF(local_inDir, local_outDir, difTexColor, speTexColor, local_normal, pdf);\n"
 
 "    float PDF = LightPDF(emIndex);\n"
 "    return (bsdf * g / PDF) * neeP.color;\n"
@@ -141,7 +141,7 @@ char* ShaderTraceRay_PathTracing =
 "    const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
 
 "    float PDF;\n"
-"    float3 bsdf = SumBSDF2(local_inDir, local_outDir, difTexColor, speTexColor, local_normal, PDF);\n"
+"    float3 bsdf = SumBSDF(local_inDir, local_outDir, difTexColor, speTexColor, local_normal, PDF);\n"
 "    float cosine = saturate(dot(local_normal, local_inDir));\n"
 
 "    throughput *= (bsdf * cosine / PDF);\n"

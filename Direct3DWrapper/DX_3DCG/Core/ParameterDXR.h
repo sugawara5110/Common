@@ -22,7 +22,7 @@ struct UpdateDXR {
 	bool createAS = false;//AS‚ÌÅ‰‚Ì\’zŠ®—¹ƒtƒ‰ƒO
 	UINT InstanceMask = 0xFF;
 	float RefractiveIndex = 0.0f;//‹üÜ—¦
-	float roughness = 0.001f;//‘e‚³
+	float roughness = 0.005f;//‘e‚³
 
 	//ParticleData, SkinMesh—p
 	bool useVertex = false;
