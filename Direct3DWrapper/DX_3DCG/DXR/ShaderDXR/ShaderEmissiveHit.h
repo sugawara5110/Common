@@ -39,7 +39,8 @@ char* ShaderEmissiveHit =
 "    if(materialIdent(payload.mNo, EMISSIVE) && materialIdent(mNo, EMISSIVE)){\n"
 "       payload.EmissiveIndex = getEmissiveIndex();\n"
 "       payload.hit = true;\n"
-"       if(!materialIdent(payload.mNo, NEE_PATHTRACER))payload.color = difTex.xyz;\n"
+////////NEE‚Å”½Ëæ‚ÌŒõŒ¹‚ÌF‚ğ‚Â‚¯‚éˆ×(payload.RecursionCnt == 2)’Ç‰Á 1‰ñ–Ú‚Ì”½Ë‚Ü‚Å
+"       if(!materialIdent(payload.mNo, NEE_PATHTRACER) || payload.RecursionCnt == 2)payload.color = difTex.xyz;\n"
 "       return;\n"
 "    }\n"
 //////•½sŒõŒ¹

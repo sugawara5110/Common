@@ -185,7 +185,7 @@ char* ShaderTraceRay_PathTracing =
 "       }\n"
 "       else{\n"
 "          if(pathPay.hit){\n"
-"             ret = pathPay.color * throughput;\n"//光源ヒット時のみthroughputを乗算し値を返す
+"             ret = pathPay.color * pathPay.throughput;\n"//光源ヒット時のみthroughputを乗算し値を返す
 "          }\n"
 "          else{\n"
 "             ret = pathPay.color;\n"//光源ヒットがない場合はそのまま値を返す
