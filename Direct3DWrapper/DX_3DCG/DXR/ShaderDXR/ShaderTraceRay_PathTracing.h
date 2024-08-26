@@ -152,6 +152,9 @@ char* ShaderTraceRay_PathTracing =
 "    payload.mNo = matNo;\n"//処理分岐用
 
 "    traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+ 
+/////NEEはパストレでの光源は寄与しないが、反射マテリアルから光源へのRayは光源表示の為、ゼロにしない
+"    if(payload.hit && matNo == (EMISSIVE | NEE_PATHTRACER) && !materialIdent(mNo, METALLIC))payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 
 "    return payload;\n"
 "}\n"
