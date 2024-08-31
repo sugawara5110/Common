@@ -1,11 +1,11 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                           ShaderEmissiveMiss.hlsl                                     //
+//                                           Shader2ndMiss.hlsl                                          //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char* ShaderEmissiveMiss =
+char* Shader2ndMiss =
 
 "[shader(\"miss\")]\n"
-"void EmissiveMiss(inout RayPayload payload)\n"
+"void s2ndMiss(inout RayPayload payload)\n"
 "{\n"
 "    payload.color = float3(0.0, 0.0, 0.0);\n"
 "    payload.hit = false;\n"

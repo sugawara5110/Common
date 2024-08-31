@@ -16,14 +16,11 @@ char* ShaderEmissiveHit =
 "}\n"
 
 "[shader(\"closesthit\")]\n"
-"void emissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
+"void EmissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)\n"
 "{\n"
-"    uint materialID = getMaterialID();\n"
-"    uint mNo = material[materialID].materialNo;\n"
 "    Vertex3 v3 = getVertex();\n"
 "    float4 difTex = getDifPixel(attr, v3);\n"
 "    float3 normalMap = getNorPixel(attr, v3);\n"
-"    float3 speTex = getSpePixel(attr, v3);\n"
 "    payload.normal = normalMap;\n"
 "    payload.hitPosition = HitWorldPosition();\n"
 "    payload.hit = false;\n"
@@ -34,28 +31,9 @@ char* ShaderEmissiveHit =
 "       payload.reTry = true;\n"
 "       return;\n"
 "    }\n"
-//ヒットした位置のテクスチャの色をpayload.color格納する
-//////点光源
-"    if(materialIdent(payload.mNo, EMISSIVE) && materialIdent(mNo, EMISSIVE)){\n"
-"       payload.EmissiveIndex = getEmissiveIndex();\n"
-"       payload.hit = true;\n"
-"       payload.color = difTex.xyz;\n"
-"       return;\n"
-"    }\n"
-//////平行光源
-"    if(materialIdent(payload.mNo, DIRECTIONLIGHT)){\n"
-"       if(materialIdent(mNo, DIRECTIONLIGHT)){\n"//平行光源発生マテリアルか?
-"          payload.color = dLightColor.xyz;\n"
-"          return;\n"
-"       }\n"
-"       if(materialIdent(mNo, EMISSIVE)){\n"//点光源の場合素通り
-"          payload.reTry = true;\n"
-"          return;\n"
-"       }\n"
-"    }\n"
-//////光源以外
-"    if(!materialIdent(payload.mNo, NEE) && traceMode != 0){\n"
-"       payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                    difTex.xyz, speTex, normalMap, payload.throughput);\n"
-"    }\n"
+
+"    payload.hitInstanceId = (int)getInstancingID(); \n"
+"    payload.EmissiveIndex = getEmissiveIndex();\n"
+"    payload.hit = true;\n"
+"    payload.color = difTex.xyz;\n"
 "}\n";

@@ -48,7 +48,7 @@ char* ShaderTraceRay_PathTracing =
 "    RayPayload payload;\n"
 "    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 "    payload.hitPosition = ePos;\n"
-"    payload.mNo = EMISSIVE | NEE;\n"//処理分岐用
+"    payload.mNo = NEE;\n"//処理分岐用
 
 /////光源から点をランダムで取得
 "    traceRay(RecursionCnt, RAY_FLAG_CULL_FRONT_FACING_TRIANGLES, 1, 1, ray, payload);\n"
@@ -57,7 +57,7 @@ char* ShaderTraceRay_PathTracing =
 "       float3 lightVec = payload.hitPosition - hitPosition;\n"
 "       ray.Direction = normalize(lightVec);\n"
 "       payload.hitPosition = hitPosition;\n"
-"       payload.mNo = EMISSIVE | NEE;\n"//処理分岐用
+"       payload.mNo = NEE;\n"//処理分岐用
 ////////今の位置から取得した光源位置へ飛ばす
 "       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
 "    }\n"
@@ -154,7 +154,7 @@ char* ShaderTraceRay_PathTracing =
 "    traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
  
 /////NEEはパストレでの光源は寄与しないが、反射マテリアルから光源へのRayは光源表示の為、ゼロにしない
-"    if(payload.hit && matNo == (EMISSIVE | NEE_PATHTRACER) && !materialIdent(mNo, METALLIC))payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+"    if(payload.hit && matNo == NEE_PATHTRACER && !materialIdent(mNo, METALLIC))payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 
 "    return payload;\n"
 "}\n"
@@ -162,40 +162,38 @@ char* ShaderTraceRay_PathTracing =
 ///////////////////////PayloadCalculate_PathTracing///////////////////////////////////////////
 "float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition, \n"
 "                                    in float3 difTexColor, in float3 speTexColor, in float3 normal, \n"
-"                                    inout float3 throughput)\n"
+"                                    inout float3 throughput, inout int hitInstanceId)\n"
 "{\n"
-"    float3 ret = difTexColor;\n"//光源だった場合、映り込みがそのまま出る・・・あとで変更する
+"    float3 ret = difTexColor;\n"
+
+"    hitInstanceId = (int)getInstancingID(); \n"
 
 "    uint materialID = getMaterialID();\n"
 "    MaterialCB mcb = material[materialID];\n"
 "    uint mNo = mcb.materialNo;\n"
 
-"    bool mf = materialIdent(mNo, EMISSIVE);\n"
-"    if(!mf) {\n"//emissive以外
+"    float3 outDir = -WorldRayDirection();\n"
 
-"       float3 outDir = -WorldRayDirection();\n"
+/////PathTracing
+"    uint matNo = NEE_PATHTRACER;\n"
+"    if(traceMode == 1)matNo = EMISSIVE;\n"
 
-////////PathTracing
-"       uint matNo = EMISSIVE | NEE_PATHTRACER;\n"
-"       if(traceMode == 1)matNo = EMISSIVE;\n"
+"    RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal, throughput, matNo);\n"
 
-"       RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal, throughput, matNo);\n"
-
-////////NextEventEstimation
-"       if(traceMode == 2){\n"
-"          float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal);\n"
-"          ret = pathPay.color + neeCol * throughput;\n"
+/////NextEventEstimation
+"    if(traceMode == 2){\n"
+"       float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal);\n"
+"       ret = pathPay.color + neeCol * throughput;\n"
+"    }\n"
+"    else{\n"
+"       if(pathPay.hit){\n"
+"          ret = pathPay.color * pathPay.throughput;\n"//光源ヒット時のみthroughputを乗算し値を返す
 "       }\n"
 "       else{\n"
-"          if(pathPay.hit){\n"
-"             ret = pathPay.color * pathPay.throughput;\n"//光源ヒット時のみthroughputを乗算し値を返す
-"          }\n"
-"          else{\n"
-"             ret = pathPay.color;\n"//光源ヒットがない場合はそのまま値を返す
-"          }\n"
+"          ret = pathPay.color;\n"//光源ヒットがない場合はそのまま値を返す
 "       }\n"
-
-"       throughput = pathPay.throughput;\n"//throughputの更新
 "    }\n"
+"    throughput = pathPay.throughput;\n"//throughputの更新
+"    hitInstanceId = pathPay.hitInstanceId;\n"
 "    return ret;\n"
 "}\n";

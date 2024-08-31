@@ -339,7 +339,6 @@ char* ShaderCommon =
 "    const float NDF = GGX_Distribution(normal, H, roughness);\n"
 "    const float G = GGX_GeometrySmith(normal, outDir, inDir, roughness);\n"
 "    const float3 F = FresnelSchlick(max(dot(outDir, H), 0), F0);\n"
-
 "    const float3 kD = (1 - F) * (1 - spe_threshold);\n"
 
 "    const float3 speBRDF = SpecularBRDF(NDF, G, F, outDir, inDir, normal);\n"
@@ -357,43 +356,4 @@ char* ShaderCommon =
 "    PDF = sumPDF;\n"
 
 "    return sumBSDF;\n"
-"}\n"
-
-///////////////////////////////////////////SpecularPhongBRDF///////////////////////////////////////
-"float3 SpecularPhongBRDF(float3 Specular, float3 normal, float3 viewDir, float3 lightDir, float shininess)\n"
-"{\n"
-"    float norm = (shininess + 2.0f) / (2 * PI);\n"
-"    float3 halfDir = normalize(viewDir + lightDir);\n"
-"    float dotNH = abs(dot(normal, halfDir));\n"
-"    return Specular * pow(dotNH, shininess) * norm;\n"
-"}\n"
-
-///////////////////////////////////////////SumBSDF2////////////////////////////////////////////////
-"float3 SumBSDF2(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal, out float PDF)\n"
-"{\n"
-"    uint materialID = getMaterialID();\n"
-"    MaterialCB mcb = material[materialID];\n"
-"    float3 Diffuse = mcb.Diffuse.xyz * difTexColor;\n"
-"    float3 Speculer = mcb.Speculer.xyz * speTexColor;\n"
-//"    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
-"    float shininess = mcb.shininess;\n"
-
-"    if (dot(normal, inDir) <= 0)\n"
-"    {\n"
-"        PDF = 1.0f;\n"
-"        return float3(0, 0, 0);\n"
-"    }\n"
-
-"    const float dotNL = abs(dot(normal, inDir));\n"
-
-"    const float3 difBRDF = DiffuseBRDF(Diffuse);\n"
-"    const float3 speBRDF = SpecularPhongBRDF(Speculer, normal, outDir, inDir, shininess);\n"
-"    PDF = CosinePDF(dotNL);\n"
-
-"    if (PDF <= 0){\n"
-"        PDF = 1.0f;\n"
-"        return float3(0, 0, 0);\n"
-"    }\n"
-
-"    return difBRDF + speBRDF;\n"
 "}\n";

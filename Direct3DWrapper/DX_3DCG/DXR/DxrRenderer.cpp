@@ -12,6 +12,8 @@
 #include "./ShaderDXR/ShaderBasicHit.h"
 #include "./ShaderDXR/ShaderBasicMiss.h"
 #include "./ShaderDXR/ShaderCommon.h"
+#include "./ShaderDXR/Shader2ndHit.h"
+#include "./ShaderDXR/Shader2ndMiss.h"
 #include "./ShaderDXR/ShaderEmissiveHit.h"
 #include "./ShaderDXR/ShaderEmissiveMiss.h"
 #include "./ShaderDXR/ShaderGlobalParameters.h"
@@ -42,9 +44,13 @@ namespace {
 	const WCHAR* kBasicMissShader = L"basicMiss";
 	const WCHAR* kBasicHitGroup = L"basicHitGroup";
 
-	const WCHAR* kEmissiveMiss = L"emissiveMiss";
-	const WCHAR* kEmissiveHitShader = L"emissiveHit";
-	const WCHAR* kEmissiveHitGroup = L"emissiveHitGroup";
+	const WCHAR* k2ndMiss = L"s2ndMiss";
+	const WCHAR* k2ndHitShader = L"s2ndHit";
+	const WCHAR* k2ndHitGroup = L"s2ndHitGroup";
+
+	const WCHAR* kEmissiveMiss = L"EmissiveMiss";
+	const WCHAR* kEmissiveHitShader = L"EmissiveHit";
+	const WCHAR* kEmissiveHitGroup = L"EmissiveHitGroup";
 
 	ComPtr<ID3DBlob> CompileLibrary(char* shaderByte, const WCHAR* filename, const WCHAR* targetString) {
 
@@ -647,6 +653,9 @@ void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 					ud.InstanceID[udInstanceIDCnt + k] = InstanceID;
 					pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
 					pID.InstanceContributionToHitGroupIndex = 0;//使用するhitShaderインデックス
+					if (PD[i]->mType[j] == EMISSIVE) {
+						pID.InstanceContributionToHitGroupIndex = 2;
+					}
 					pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 					if (PD[i]->mType[j] == TRANSLUCENCE) {
 						pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
@@ -735,6 +744,12 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	addChar bMis = {};
 	bMis.addStr(ShaderGlobalParameters, ShaderBasicMiss);
 
+	addChar s2Hit = {};
+	s2Hit.addStr(tRay.str, Shader2ndHit);
+
+	addChar s2Mis = {};
+	s2Mis.addStr(ShaderGlobalParameters, Shader2ndMiss);
+
 	addChar eHit = {};
 	eHit.addStr(tRay.str, ShaderEmissiveHit);
 
@@ -746,6 +761,8 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	DxilLibrary Any(CompileLibrary(any.str, L"any", L"lib_6_3"), kBasicAnyHitShader);
 	DxilLibrary Bhit(CompileLibrary(bHit.str, L"bHit", L"lib_6_3"), kBasicClosestHitShader);
 	DxilLibrary Bmis(CompileLibrary(bMis.str, L"bMis", L"lib_6_3"), kBasicMissShader);
+	DxilLibrary s2hit(CompileLibrary(s2Hit.str, L"s2Hit", L"lib_6_3"), k2ndHitShader);
+	DxilLibrary s2mis(CompileLibrary(s2Mis.str, L"s2Mis", L"lib_6_3"), k2ndMiss);
 	DxilLibrary Ehit(CompileLibrary(eHit.str, L"eHit", L"lib_6_3"), kEmissiveHitShader);
 	DxilLibrary Emis(CompileLibrary(eMis.str, L"eMis", L"lib_6_3"), kEmissiveMiss);
 
@@ -753,6 +770,8 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	subobjects.push_back(Any.stateSubobject);
 	subobjects.push_back(Bhit.stateSubobject);
 	subobjects.push_back(Bmis.stateSubobject);
+	subobjects.push_back(s2hit.stateSubobject);
+	subobjects.push_back(s2mis.stateSubobject);
 	subobjects.push_back(Ehit.stateSubobject);
 	subobjects.push_back(Emis.stateSubobject);
 
@@ -760,9 +779,13 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	HitProgram basicHitProgram(kBasicAnyHitShader, kBasicClosestHitShader, kBasicHitGroup);
 	subobjects.push_back(basicHitProgram.subObject);
 
+	//2ndHitShader SUBOBJECT作成
+	HitProgram s2ndHitProgram(nullptr, k2ndHitShader, k2ndHitGroup);
+	subobjects.push_back(s2ndHitProgram.subObject);
+
 	//EmissiveHitShader SUBOBJECT作成
-	HitProgram emissiveHitProgram(nullptr, kEmissiveHitShader, kEmissiveHitGroup);
-	subobjects.push_back(emissiveHitProgram.subObject);
+	HitProgram EmissiveHitProgram(nullptr, kEmissiveHitShader, kEmissiveHitGroup);
+	subobjects.push_back(EmissiveHitProgram.subObject);
 
 	//RayGen: ローカルルートシグネチャ作成, SUBOBJECT作成
 	LocalRootSignature loRootSignatureRay(createRootSignature(createLocalRootDescRayGen().desc));
@@ -784,7 +807,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	const WCHAR* ExportNameHit[] =
 	{
 	 kBasicAnyHitShader, kBasicClosestHitShader,
-	 kEmissiveHitShader
+	 k2ndHitShader, kEmissiveHitShader
 	};
 	ExportAssociation loRootAssociationHit(ExportNameHit, ARRAY_SIZE(ExportNameHit), p_rsigHit);
 	subobjects.push_back(loRootAssociationHit.subobject);
@@ -800,6 +823,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	const WCHAR* shaderExports[] = {
 		kRayGenShader,
 		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
+		k2ndHitShader, k2ndMiss,
 		kEmissiveHitShader, kEmissiveMiss
 	};
 	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), p_conf);
@@ -1007,7 +1031,7 @@ void DxrRenderer::createShaderTable() {
 		UINT RecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 		RecordSize += addRecordSize;
 		return ALIGNMENT_TO(shaderRecordAlignment, RecordSize);
-	};
+		};
 
 	UINT raygenRecordSize = RecordSize(sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
 	UINT missRecordSize = RecordSize(sizeof(D3D12_GPU_DESCRIPTOR_HANDLE));
@@ -1015,8 +1039,8 @@ void DxrRenderer::createShaderTable() {
 
 	//シェーダーテーブルサイズ
 	UINT raygenSize = raygenRecordSize;
-	UINT missSize = missRecordSize * 2;
-	UINT hitGroupSize = hitgroupRecordSize * 2;
+	UINT missSize = missRecordSize * 4;
+	UINT hitGroupSize = hitgroupRecordSize * 4;
 
 	auto tableAlign = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	auto raygenRegion = ALIGNMENT_TO(tableAlign, raygenSize);
@@ -1033,7 +1057,7 @@ void DxrRenderer::createShaderTable() {
 		if (Handle) {
 			*(uint64_t*)(dst + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = *Handle;
 		}
-	};
+		};
 
 	for (int i = 0; i < numSwapIndex; i++) {
 
@@ -1052,7 +1076,13 @@ void DxrRenderer::createShaderTable() {
 		writeTable(miss, kBasicMissShader);
 		miss += missRecordSize;
 
-		//emissive miss
+		//2nd miss
+		writeTable(miss, k2ndMiss);
+		miss += missRecordSize;
+
+		//em miss
+		writeTable(miss, kEmissiveMiss);
+		miss += missRecordSize;
 		writeTable(miss, kEmissiveMiss);
 		pData += missRegion;
 
@@ -1061,7 +1091,13 @@ void DxrRenderer::createShaderTable() {
 		writeTable(hit, kBasicHitGroup, &LocalHandleHit[i].ptr);
 		hit += hitgroupRecordSize;
 
-		//emissive hit
+		//2nd hit
+		writeTable(hit, k2ndHitGroup, &LocalHandleHit[i].ptr);
+		hit += hitgroupRecordSize;
+
+		//em hit
+		writeTable(hit, kEmissiveHitGroup, &LocalHandleHit[i].ptr);
+		hit += hitgroupRecordSize;
 		writeTable(hit, kEmissiveHitGroup, &LocalHandleHit[i].ptr);
 
 		mpShaderTable[i].Get()->Unmap(0, nullptr);
