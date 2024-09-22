@@ -43,7 +43,7 @@ char* ShaderBasicHit =
 ////////PathTracing
 "       float3 throughput = float3(1.0f, 1.0f, 1.0f);\n"
 "       difTex.xyz = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                 difTex.xyz, speTex, normalMap, \n"
+"                                                 difTex, speTex, normalMap, \n"
 "                                                 throughput, payload.hitInstanceId);\n"
 "    }\n"
 

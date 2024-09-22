@@ -20,10 +20,6 @@ char* Shader2ndHit =
 "    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 "    payload.hitInstanceId = (int)getInstancingID(); \n"
 
-"    if(difTex.w < 1.0f){\n"
-"       payload.reTry = true;\n"
-"       return;\n"
-"    }\n"
 //////平行光源
 "    if(materialIdent(payload.mNo, DIRECTIONLIGHT)){\n"
 "       if(materialIdent(mNo, DIRECTIONLIGHT)){\n"//平行光源発生マテリアルか?
@@ -34,7 +30,7 @@ char* Shader2ndHit =
 //////光源以外
 "    if(!materialIdent(payload.mNo, NEE) && traceMode != 0){\n"
 "       payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                    difTex.xyz, speTex, normalMap, \n"
+"                                                    difTex, speTex, normalMap, \n"
 "                                                    payload.throughput, payload.hitInstanceId);\n"
 "    }\n"
 "}\n";

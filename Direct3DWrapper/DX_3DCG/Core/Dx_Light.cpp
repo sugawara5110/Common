@@ -6,15 +6,13 @@
 
 #include "Dx_Light.h"
 
-namespace {
-	Dx_Light::Update upd[2] = {};//cBuffSwap
-	CoordTf::VECTOR4 GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
-	bool initialized = false;
+bool Dx_Light::initialized = false;
+Dx_Light::Update Dx_Light::upd[2] = {};//cBuffSwap
+CoordTf::VECTOR4 Dx_Light::GlobalAmbientLight = { 0.1f,0.1f,0.1f,0.0f };
 
-	void initCheck() {
-		if (!initialized) {
-			Dx_Util::ErrorMessage("Dx_Light: not initialized !!");
-		}
+void Dx_Light::initCheck() {
+	if (!initialized) {
+		Dx_Util::ErrorMessage("Dx_Light: not initialized !!");
 	}
 }
 

@@ -306,8 +306,8 @@ char* ShaderCommon =
 "    return (D * G * F) / (4 * dotNV * dotNL + 0.001f);\n"
 "}\n"
 
-///////////////////////////////////////////SumBSDF/////////////////////////////////////////////////
-"float3 SumBSDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal, out float PDF)\n"
+///////////////////////////////////////////DiffSpeBSDF/////////////////////////////////////////////
+"float3 DiffSpeBSDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal, out float PDF)\n"
 "{\n"
 "    const uint materialID = getMaterialID();\n"
 "    const MaterialCB mcb = material[materialID];\n"
@@ -354,6 +354,61 @@ char* ShaderCommon =
 "    }\n"
 
 "    PDF = sumPDF;\n"
+"    return sumBSDF;\n"
+"}\n"
 
+///////////////////////////////////////////RefractionBTDF///////////////////////////////////////////
+"float3 RefractionBTDF(float D, float G, float3 F, float3 V, float3 L, float3 N, float3 H, float RefractiveIndex)\n"
+"{\n"
+"	 const float dotNL = abs(dot(N, L));\n"
+"	 const float dotNV = abs(dot(N, V));\n"
+"	 const float dotHLnotAbs = dot(H, L);\n"
+"	 const float dotHL = abs(dotHLnotAbs);\n"
+"	 const float dotHVnotAbs = dot(H, V);\n"
+"	 const float dotHV = abs(dotHVnotAbs);\n"
+
+"	 const float a = dotHL * dotHV / (dotNL * dotNV);\n"
+"	 const float r = RefractiveIndex;\n"
+"	 const float3 b = r * r * (1 - F) * G * D / pow((r * dotHLnotAbs + r * dotHVnotAbs), 2);\n"
+"	 return a * b;\n"
+"}\n"
+
+///////////////////////////////////////////RefSpeBSDF//////////////////////////////////////////////
+"float3 RefSpeBSDF(float3 inDir, float3 outDir, float4 difTexColor, float3 N, float3 H, out float PDF)\n"
+"{\n"
+"    const float Alpha = difTexColor.w;\n"
+"    const float speRatio = Alpha;\n" 
+
+"    const float dotNL = abs(dot(N, inDir));\n"
+"    const float dotNV = abs(dot(N, outDir));\n"
+"    const float dotNH = abs(dot(N, H));\n"
+"    const float dotVH = abs(dot(outDir, H));\n"
+"    const float dotLH = abs(dot(inDir, H));\n"
+
+"    const uint materialID = getMaterialID();\n"
+"    const MaterialCB mcb = material[materialID];\n"
+"    const float3 Speculer = mcb.Speculer.xyz;\n"
+"    const float roughness = mcb.roughness;\n"
+"    const float RefractiveIndex = mcb.RefractiveIndex;\n"
+
+"    float3 F0 = 0.08.xxx * Speculer;\n"
+"    float3 F = FresnelSchlick(max(dot(H, outDir), 0), F0);\n"
+
+"    float NDF = GGX_Distribution(N, H, roughness);\n"
+"    float G = GGX_GeometrySmith(N, outDir, inDir, roughness);\n"
+
+"    float3 speBRDF = SpecularBRDF(NDF, G, F, outDir, inDir, N);\n"
+"    float spePDF = GGX_PDF(NDF, dotNH, dotVH);\n"
+"    float3 refrBTDF = RefractionBTDF(NDF, G, F, outDir, inDir, N, H, RefractiveIndex);\n"
+"    float refrPDF = GGX_PDF(NDF, dotNH, dotVH);\n"
+"    const float3 sumBSDF = (speBRDF + refrBTDF * difTexColor.xyz) * dotNL;\n"
+"    const float sumPDF = speRatio * spePDF + (1 - speRatio) * refrPDF;\n"
+
+"    if (sumPDF <= 0){\n"
+"        PDF = 1.0f;\n"
+"        return float3(0, 0, 0);\n"
+"    }\n"
+
+"    PDF = sumPDF;\n"
 "    return sumBSDF;\n"
 "}\n";

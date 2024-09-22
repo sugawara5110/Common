@@ -21,8 +21,8 @@ struct UpdateDXR {
 	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ
 	bool createAS = false;//ASの最初の構築完了フラグ
 	UINT InstanceMask = 0xFF;
-	float RefractiveIndex = 0.0f;//屈折率
-	float roughness = 0.005f;//粗さ
+	float RefractiveIndex = 0.99f;//屈折率:1.0f(MAX)で屈折無し
+	float roughness = 0.05f;//粗さ
 
 	//ParticleData, SkinMesh用
 	bool useVertex = false;

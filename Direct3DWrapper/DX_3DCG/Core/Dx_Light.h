@@ -34,10 +34,6 @@ struct Fog {
 
 class Dx_Light {
 
-private:
-	Dx_Light() {};
-	~Dx_Light() {};
-
 public:
 	struct Update {
 		PointLight plight = {};//ラスタライズ用
@@ -62,6 +58,15 @@ public:
 	static void DirectionLight(float x, float y, float z, float r, float g, float b);
 	static void SetDirectionLight(bool onoff);
 	static void Fog(float r, float g, float b, float amount, float density, bool onoff);
+
+private:
+	static bool initialized;
+	static Update upd[2];//cBuffSwap
+	static CoordTf::VECTOR4 GlobalAmbientLight;
+
+	Dx_Light() {};
+	~Dx_Light() {};
+	static void initCheck();
 };
 
 #endif
