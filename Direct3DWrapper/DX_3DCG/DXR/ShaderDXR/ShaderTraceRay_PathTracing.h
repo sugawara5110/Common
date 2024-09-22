@@ -121,15 +121,27 @@ char* ShaderTraceRay_PathTracing =
 
 "    float3 rDir = float3(0.0f, 0.0f, 0.0f);\n"
 
+"    const float AIR_RefractiveIndex = 1.0f;\n"
+
+"    float in_eta = AIR_RefractiveIndex;\n"
+"    float out_eta = mcb.RefractiveIndex;\n"
+
+"    float norDir = dot(outDir, normal);\n"
+"    if(norDir < 0.0f){\n"//法線が反対側の場合, 物質内部と判断
+"       normal *= -1.0f;\n"
+"       in_eta = mcb.RefractiveIndex;\n"
+"       out_eta = AIR_RefractiveIndex;\n"
+"    }\n"
+
 "    bool bsdf_f = true;\n"
 "    rnd = Rand_integer() % 101;\n"
 "    if((uint)(Alpha * 100.0f) < rnd && materialIdent(mNo, TRANSLUCENCE)){\n"//透過
 
-"       float norDir = dot(outDir, normal);\n"
-"       if(norDir < 0.0f)normal *= -1.0f;\n"
+//////////////eta = 入射前物質の屈折率 / 入射後物質の屈折率
+"       float eta = in_eta / out_eta;\n"
 
 "       float3 eyeVec = -outDir;\n"
-"       float3 refractVec = refract(eyeVec, normal, mcb.RefractiveIndex);\n"
+"       float3 refractVec = refract(eyeVec, normal, eta);\n"
 "       float Area = roughness * roughness;\n"
 "       rDir = RandomVector(refractVec, Area);\n"
 "    }\n"
@@ -161,7 +173,7 @@ char* ShaderTraceRay_PathTracing =
 
 "    if(bsdf_f){\n"
 "       const float3 H = normalize(local_inDir + local_outDir);\n"
-"       bsdf = RefSpeBSDF(local_inDir, local_outDir, difTexColor, local_normal, H, PDF);\n"
+"       bsdf = RefSpeBSDF(local_inDir, local_outDir, difTexColor, local_normal, H, in_eta, out_eta, PDF);\n"
 "    }\n"
 "    else{\n"
 "       bsdf = DiffSpeBSDF(local_inDir, local_outDir, difTexColor.xyz, speTexColor, local_normal, PDF);\n"
@@ -176,8 +188,13 @@ char* ShaderTraceRay_PathTracing =
 
 "    traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
  
-/////NEEはパストレでの光源は寄与しないが、反射マテリアルから光源へのRayは光源表示の為、ゼロにしない
-"    if(payload.hit && matNo == NEE_PATHTRACER && !materialIdent(mNo, METALLIC))payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+/////NEEはパストレでの光源は寄与しないが、反射,透過マテリアルから光源へのRayは光源表示の為、ゼロにしない
+"    if(payload.hit && matNo == NEE_PATHTRACER && \n"
+"       !materialIdent(mNo, METALLIC) && \n"
+"       !materialIdent(mNo, TRANSLUCENCE))\n"
+"    {\n"
+"       payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+"    }\n"
 
 "    return payload;\n"
 "}\n"
@@ -218,5 +235,6 @@ char* ShaderTraceRay_PathTracing =
 "    }\n"
 "    throughput = pathPay.throughput;\n"//throughputの更新
 "    hitInstanceId = pathPay.hitInstanceId;\n"
+
 "    return ret;\n"
 "}\n";

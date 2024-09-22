@@ -132,7 +132,8 @@ char* ShaderTraceRay =
 "       RayDesc ray; \n"
 //éãê¸ÉxÉNÉgÉã 
 "       float3 eyeVec = WorldRayDirection();\n"
-"       ray.Direction = refract(eyeVec, normalize(normal), mcb.RefractiveIndex);\n"
+"       float eta = 1.0f / mcb.RefractiveIndex;\n"
+"       ray.Direction = refract(eyeVec, normalize(normal), eta);\n"
 "       payload.hitPosition = hitPosition;\n"
 
 "       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);\n"

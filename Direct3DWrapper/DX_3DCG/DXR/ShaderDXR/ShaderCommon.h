@@ -358,7 +358,7 @@ char* ShaderCommon =
 "}\n"
 
 ///////////////////////////////////////////RefractionBTDF///////////////////////////////////////////
-"float3 RefractionBTDF(float D, float G, float3 F, float3 V, float3 L, float3 N, float3 H, float RefractiveIndex)\n"
+"float3 RefractionBTDF(float D, float G, float3 F, float3 V, float3 L, float3 N, float3 H, float in_eta, float out_eta)\n"
 "{\n"
 "	 const float dotNL = abs(dot(N, L));\n"
 "	 const float dotNV = abs(dot(N, V));\n"
@@ -368,13 +368,12 @@ char* ShaderCommon =
 "	 const float dotHV = abs(dotHVnotAbs);\n"
 
 "	 const float a = dotHL * dotHV / (dotNL * dotNV);\n"
-"	 const float r = RefractiveIndex;\n"
-"	 const float3 b = r * r * (1 - F) * G * D / pow((r * dotHLnotAbs + r * dotHVnotAbs), 2);\n"
+"	 const float3 b = out_eta * out_eta * (1 - F) * G * D / pow((in_eta * dotHLnotAbs + out_eta * dotHVnotAbs), 2);\n"
 "	 return a * b;\n"
 "}\n"
 
 ///////////////////////////////////////////RefSpeBSDF//////////////////////////////////////////////
-"float3 RefSpeBSDF(float3 inDir, float3 outDir, float4 difTexColor, float3 N, float3 H, out float PDF)\n"
+"float3 RefSpeBSDF(float3 inDir, float3 outDir, float4 difTexColor, float3 N, float3 H, float in_eta, float out_eta, out float PDF)\n"
 "{\n"
 "    const float Alpha = difTexColor.w;\n"
 "    const float speRatio = Alpha;\n" 
@@ -389,7 +388,6 @@ char* ShaderCommon =
 "    const MaterialCB mcb = material[materialID];\n"
 "    const float3 Speculer = mcb.Speculer.xyz;\n"
 "    const float roughness = mcb.roughness;\n"
-"    const float RefractiveIndex = mcb.RefractiveIndex;\n"
 
 "    float3 F0 = 0.08.xxx * Speculer;\n"
 "    float3 F = FresnelSchlick(max(dot(H, outDir), 0), F0);\n"
@@ -399,7 +397,7 @@ char* ShaderCommon =
 
 "    float3 speBRDF = SpecularBRDF(NDF, G, F, outDir, inDir, N);\n"
 "    float spePDF = GGX_PDF(NDF, dotNH, dotVH);\n"
-"    float3 refrBTDF = RefractionBTDF(NDF, G, F, outDir, inDir, N, H, RefractiveIndex);\n"
+"    float3 refrBTDF = RefractionBTDF(NDF, G, F, outDir, inDir, N, H, in_eta, out_eta);\n"
 "    float refrPDF = GGX_PDF(NDF, dotNH, dotVH);\n"
 "    const float3 sumBSDF = (speBRDF + refrBTDF * difTexColor.xyz) * dotNL;\n"
 "    const float sumPDF = speRatio * spePDF + (1 - speRatio) * refrPDF;\n"
