@@ -28,7 +28,7 @@ char* ShaderTraceRay =
 "       float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;\n"
 "       float shininess = mcb.shininess;\n"
 
-//点光源計算
+////////光源計算
 "       uint NumEmissive = numEmissive.x;\n"
 "       for(uint i = 0; i < NumEmissive; i++) {\n"
 "           if(emissivePosition[i].w == 1.0f) {\n"
@@ -39,7 +39,7 @@ char* ShaderTraceRay =
 
 "              payload.hitPosition = hitPosition;\n"
 
-"              traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"              traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 1, ray, payload);\n"
 
 "              float4 emissiveHitPos = emissivePosition[i];\n"
 "              emissiveHitPos.xyz = payload.hitPosition;\n"
@@ -51,21 +51,7 @@ char* ShaderTraceRay =
 "              emissiveColor.Speculer += Out.Speculer;\n"
 "           }\n"
 "       }\n"
-//平行光源計算
-"       if(dLightst.x == 1.0f){\n"
-"          payload.hitPosition = hitPosition;\n"
-"          ray.Direction = -dDirection.xyz;\n"
-"          payload.mNo = DIRECTIONLIGHT;\n"//処理分岐用
-
-"          traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
-
-"          Out = DirectionalLightCom(SpeculerCol, Diffuse, Ambient, normal, dLightst, dDirection.xyz, \n"//ShaderCG内関数
-"                                    payload.color, hitPosition, cameraPosition.xyz, shininess);\n"
-
-"          emissiveColor.Diffuse += Out.Diffuse;\n"
-"          emissiveColor.Speculer += Out.Speculer;\n"
-"       }\n"
-//最後にテクスチャの色に掛け合わせ
+////////最後にテクスチャの色に掛け合わせ
 "       difTexColor *= emissiveColor.Diffuse;\n"
 "       speTexColor *= emissiveColor.Speculer;\n"
 "       ret = difTexColor + speTexColor;\n"

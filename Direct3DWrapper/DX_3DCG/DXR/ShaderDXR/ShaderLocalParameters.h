@@ -7,7 +7,6 @@ char* ShaderLocalParameters =
 "#define NONREFLECTION  0b000000 \n"
 "#define METALLIC       0b100000 \n"
 "#define EMISSIVE       0b010000 \n"
-"#define DIRECTIONLIGHT 0b001000 \n"
 "#define TRANSLUCENCE   0b000100 \n"
 "#define NEE            0b000010 \n"
 "#define NEE_PATHTRACER 0b000001 \n"

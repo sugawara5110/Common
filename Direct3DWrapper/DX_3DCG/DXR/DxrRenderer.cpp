@@ -12,8 +12,6 @@
 #include "./ShaderDXR/ShaderBasicHit.h"
 #include "./ShaderDXR/ShaderBasicMiss.h"
 #include "./ShaderDXR/ShaderCommon.h"
-#include "./ShaderDXR/Shader2ndHit.h"
-#include "./ShaderDXR/Shader2ndMiss.h"
 #include "./ShaderDXR/ShaderEmissiveHit.h"
 #include "./ShaderDXR/ShaderEmissiveMiss.h"
 #include "./ShaderDXR/ShaderGlobalParameters.h"
@@ -43,10 +41,6 @@ namespace {
 	const WCHAR* kBasicAnyHitShader = L"anyBasicHit";
 	const WCHAR* kBasicMissShader = L"basicMiss";
 	const WCHAR* kBasicHitGroup = L"basicHitGroup";
-
-	const WCHAR* k2ndMiss = L"s2ndMiss";
-	const WCHAR* k2ndHitShader = L"s2ndHit";
-	const WCHAR* k2ndHitGroup = L"s2ndHitGroup";
 
 	const WCHAR* kEmissiveMiss = L"EmissiveMiss";
 	const WCHAR* kEmissiveHitShader = L"EmissiveHit";
@@ -654,7 +648,7 @@ void DxrRenderer::createTopLevelAS(Dx_CommandListObj* com) {
 					pID.InstanceID = InstanceID;//この値は、InstanceID()を介してシェーダーに公開されます
 					pID.InstanceContributionToHitGroupIndex = 0;//使用するhitShaderインデックス
 					if (PD[i]->mType[j] == EMISSIVE) {
-						pID.InstanceContributionToHitGroupIndex = 2;
+						pID.InstanceContributionToHitGroupIndex = 1;
 					}
 					pID.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 					if (PD[i]->mType[j] == TRANSLUCENCE) {
@@ -744,12 +738,6 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	addChar bMis = {};
 	bMis.addStr(ShaderGlobalParameters, ShaderBasicMiss);
 
-	addChar s2Hit = {};
-	s2Hit.addStr(tRay.str, Shader2ndHit);
-
-	addChar s2Mis = {};
-	s2Mis.addStr(ShaderGlobalParameters, Shader2ndMiss);
-
 	addChar eHit = {};
 	eHit.addStr(tRay.str, ShaderEmissiveHit);
 
@@ -761,8 +749,6 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	DxilLibrary Any(CompileLibrary(any.str, L"any", L"lib_6_3"), kBasicAnyHitShader);
 	DxilLibrary Bhit(CompileLibrary(bHit.str, L"bHit", L"lib_6_3"), kBasicClosestHitShader);
 	DxilLibrary Bmis(CompileLibrary(bMis.str, L"bMis", L"lib_6_3"), kBasicMissShader);
-	DxilLibrary s2hit(CompileLibrary(s2Hit.str, L"s2Hit", L"lib_6_3"), k2ndHitShader);
-	DxilLibrary s2mis(CompileLibrary(s2Mis.str, L"s2Mis", L"lib_6_3"), k2ndMiss);
 	DxilLibrary Ehit(CompileLibrary(eHit.str, L"eHit", L"lib_6_3"), kEmissiveHitShader);
 	DxilLibrary Emis(CompileLibrary(eMis.str, L"eMis", L"lib_6_3"), kEmissiveMiss);
 
@@ -770,18 +756,12 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	subobjects.push_back(Any.stateSubobject);
 	subobjects.push_back(Bhit.stateSubobject);
 	subobjects.push_back(Bmis.stateSubobject);
-	subobjects.push_back(s2hit.stateSubobject);
-	subobjects.push_back(s2mis.stateSubobject);
 	subobjects.push_back(Ehit.stateSubobject);
 	subobjects.push_back(Emis.stateSubobject);
 
 	//BasicHitShader SUBOBJECT作成
 	HitProgram basicHitProgram(kBasicAnyHitShader, kBasicClosestHitShader, kBasicHitGroup);
 	subobjects.push_back(basicHitProgram.subObject);
-
-	//2ndHitShader SUBOBJECT作成
-	HitProgram s2ndHitProgram(nullptr, k2ndHitShader, k2ndHitGroup);
-	subobjects.push_back(s2ndHitProgram.subObject);
 
 	//EmissiveHitShader SUBOBJECT作成
 	HitProgram EmissiveHitProgram(nullptr, kEmissiveHitShader, kEmissiveHitGroup);
@@ -807,7 +787,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	const WCHAR* ExportNameHit[] =
 	{
 	 kBasicAnyHitShader, kBasicClosestHitShader,
-	 k2ndHitShader, kEmissiveHitShader
+	 kEmissiveHitShader
 	};
 	ExportAssociation loRootAssociationHit(ExportNameHit, ARRAY_SIZE(ExportNameHit), p_rsigHit);
 	subobjects.push_back(loRootAssociationHit.subobject);
@@ -823,7 +803,6 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	const WCHAR* shaderExports[] = {
 		kRayGenShader,
 		kBasicAnyHitShader, kBasicMissShader, kBasicClosestHitShader,
-		k2ndHitShader, k2ndMiss,
 		kEmissiveHitShader, kEmissiveMiss
 	};
 	ExportAssociation configAssociation(shaderExports, ARRAY_SIZE(shaderExports), p_conf);
@@ -1039,8 +1018,8 @@ void DxrRenderer::createShaderTable() {
 
 	//シェーダーテーブルサイズ
 	UINT raygenSize = raygenRecordSize;
-	UINT missSize = missRecordSize * 4;
-	UINT hitGroupSize = hitgroupRecordSize * 4;
+	UINT missSize = missRecordSize * 2;
+	UINT hitGroupSize = hitgroupRecordSize * 2;
 
 	auto tableAlign = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 	auto raygenRegion = ALIGNMENT_TO(tableAlign, raygenSize);
@@ -1076,13 +1055,7 @@ void DxrRenderer::createShaderTable() {
 		writeTable(miss, kBasicMissShader);
 		miss += missRecordSize;
 
-		//2nd miss
-		writeTable(miss, k2ndMiss);
-		miss += missRecordSize;
-
 		//em miss
-		writeTable(miss, kEmissiveMiss);
-		miss += missRecordSize;
 		writeTable(miss, kEmissiveMiss);
 		pData += missRegion;
 
@@ -1091,13 +1064,7 @@ void DxrRenderer::createShaderTable() {
 		writeTable(hit, kBasicHitGroup, &LocalHandleHit[i].ptr);
 		hit += hitgroupRecordSize;
 
-		//2nd hit
-		writeTable(hit, k2ndHitGroup, &LocalHandleHit[i].ptr);
-		hit += hitgroupRecordSize;
-
 		//em hit
-		writeTable(hit, kEmissiveHitGroup, &LocalHandleHit[i].ptr);
-		hit += hitgroupRecordSize;
 		writeTable(hit, kEmissiveHitGroup, &LocalHandleHit[i].ptr);
 
 		mpShaderTable[i].Get()->Unmap(0, nullptr);
@@ -1232,9 +1199,6 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 
 	cb.numEmissive.x = (float)cntEm;
 	memcpy(&cb.GlobalAmbientColor, &Dx_Light::getGlobalAmbientLight(), sizeof(VECTOR4));
-	memcpy(&cb.dDirection, &dl.Direction, sizeof(VECTOR4));
-	memcpy(&cb.dLightColor, &dl.LightColor, sizeof(VECTOR4));
-	cb.dLightst.as(dl.onoff, 0.0f, 0.0f, 0.0f);
 
 	UINT InstancingCnt = 0;
 	for (auto i = 0; i < PD.size(); i++) {

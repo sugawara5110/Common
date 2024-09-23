@@ -10,15 +10,14 @@ char* ShaderBasicHit =
 "{\n"
 "    payload.hitPosition = HitWorldPosition();\n"
 "    Vertex3 v3 = getVertex();\n"
-/////テクスチャ取得
 "    float4 difTex = getDifPixel(attr, v3);\n"
 "    float3 normalMap = getNorPixel(attr, v3);\n"
 "    float3 speTex = getSpePixel(attr, v3);\n"
-
 "    payload.reTry = false;\n"
 "    payload.hit = false;\n"
 
 "    if(traceMode == 0){\n"
+"       if(materialIdent(payload.mNo, EMISSIVE))return;\n"
 ////////光源への光線
 "       difTex.xyz = EmissivePayloadCalculate(payload.RecursionCnt, payload.hitPosition, \n"
 "                                             difTex.xyz, speTex, normalMap);\n"
@@ -38,23 +37,27 @@ char* ShaderBasicHit =
 ////////半透明
 "       difTex.xyz = Translucent(payload.RecursionCnt, payload.hitPosition, \n"
 "                                difTex, normalMap, fresnel);\n"
+
+"       payload.depth = getDepth(attr, v3);\n"
+"       payload.normal = normalMap;\n"
+
+"       payload.color = difTex.xyz;\n"
+"       payload.hit = true;\n"
+"       payload.Alpha = difTex.w;\n"
 "    }\n"
 "    else{\n"
 ////////PathTracing
-"       float3 throughput = float3(1.0f, 1.0f, 1.0f);\n"
-"       difTex.xyz = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
-"                                                 difTex, speTex, normalMap, \n"
-"                                                 throughput, payload.hitInstanceId);\n"
+"       payload.normal = normalMap;\n"
+"       payload.depth = getDepth(attr, v3);\n"
+"       payload.color = float3(0.0f, 0.0f, 0.0f);\n"
+"       payload.hitInstanceId = (int)getInstancingID();\n"
+
+"       if(!materialIdent(payload.mNo, NEE)){\n"
+"          payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition, \n"
+"                                                       difTex, speTex, normalMap, \n"
+"                                                       payload.throughput, payload.hitInstanceId);\n"
+"       }\n"
 "    }\n"
-
-/////深度取得
-"    payload.depth = getDepth(attr, v3);\n"
-/////法線取得
-"    payload.normal = normalMap;\n"
-
-"    payload.color = difTex.xyz;\n"
-"    payload.hit = true;\n"
-"    payload.Alpha = difTex.w;\n"
 "}\n"
 
 //法線マップテスト用

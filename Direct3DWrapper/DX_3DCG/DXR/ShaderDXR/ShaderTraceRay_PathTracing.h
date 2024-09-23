@@ -51,7 +51,7 @@ char* ShaderTraceRay_PathTracing =
 "    payload.mNo = NEE;\n"//処理分岐用
 
 /////光源から点をランダムで取得
-"    traceRay(RecursionCnt, RAY_FLAG_CULL_FRONT_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"    traceRay(RecursionCnt, RAY_FLAG_CULL_FRONT_FACING_TRIANGLES, 0, 1, ray, payload);\n"
 
 "    if(payload.hit){\n"
 "       float3 lightVec = payload.hitPosition - hitPosition;\n"
@@ -59,7 +59,7 @@ char* ShaderTraceRay_PathTracing =
 "       payload.hitPosition = hitPosition;\n"
 "       payload.mNo = NEE;\n"//処理分岐用
 ////////今の位置から取得した光源位置へ飛ばす
-"       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"       traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 1, ray, payload);\n"
 "    }\n"
 "    return payload;\n"
 "}\n"
@@ -186,7 +186,7 @@ char* ShaderTraceRay_PathTracing =
 "    payload.hitPosition = hitPosition;\n"
 "    payload.mNo = matNo;\n"//処理分岐用
 
-"    traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 1, 1, ray, payload);\n"
+"    traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);\n"
  
 /////NEEはパストレでの光源は寄与しないが、反射,透過マテリアルから光源へのRayは光源表示の為、ゼロにしない
 "    if(payload.hit && matNo == NEE_PATHTRACER && \n"

@@ -33,9 +33,6 @@ char* ShaderGlobalParameters =
 "    float4 lightst[256];\n"//レンジ, 減衰1, 減衰2, 減衰3
 "    float4 GlobalAmbientColor;\n"
 "    float4 emissiveNo[256];\n"//x:emissiveNo, y:OutlineSize
-"    float4 dDirection;\n"
-"    float4 dLightColor;\n"
-"    float4 dLightst;\n"//.x:オンオフ
 "    float4 TMin_TMax;\n"//.x, .y
 "    float4 frameReset_DepthRange_NorRange;\n"//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 "    uint maxRecursion;\n"
