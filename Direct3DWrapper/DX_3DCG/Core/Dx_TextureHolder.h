@@ -87,6 +87,7 @@ public:
 	HRESULT createTextureResourceArr(int com_no);
 
 	InternalTexture* getInternalTexture(int index) { return &texture[index + 2]; }
+	InternalTexture* getInternalTexture1(CHAR* fileName) { return &texture[GetTexNumber(fileName)]; }
 };
 
 #endif

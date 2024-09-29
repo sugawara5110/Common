@@ -23,9 +23,6 @@ char* ShaderEmissiveHit =
 "    float3 normalMap = getNorPixel(attr, v3);\n"
 "    payload.normal = normalMap;\n"
 "    payload.hitPosition = HitWorldPosition();\n"
-"    payload.hit = false;\n"
-"    payload.reTry = false;\n"
-"    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 
 "    if(difTex.w < 1.0f){\n"
 "       payload.reTry = true;\n"

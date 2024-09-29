@@ -213,7 +213,7 @@ namespace {
 
 	RootSignatureDesc createGlobalRootDesc() {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 3;
+		int numDescriptorRanges = 4;
 		desc.range.resize(numDescriptorRanges);
 
 		//cbuffer global(b0)
@@ -230,22 +230,29 @@ namespace {
 		desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		desc.range[1].OffsetInDescriptorsFromTableStart = 1;
 
-		//g_samLinear(s0)
-		desc.range[2].BaseShaderRegister = 0;
+		//g_texImageBasedLighting(t5)
+		desc.range[2].BaseShaderRegister = 5;
 		desc.range[2].NumDescriptors = 1;
-		desc.range[2].RegisterSpace = 14;
-		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-		desc.range[2].OffsetInDescriptorsFromTableStart = 0;
+		desc.range[2].RegisterSpace = 16;
+		desc.range[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		desc.range[2].OffsetInDescriptorsFromTableStart = 2;
+
+		//g_samLinear(s0)
+		desc.range[3].BaseShaderRegister = 0;
+		desc.range[3].NumDescriptors = 1;
+		desc.range[3].RegisterSpace = 14;
+		desc.range[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+		desc.range[3].OffsetInDescriptorsFromTableStart = 0;
 
 		desc.rootParams.resize(3);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
+		desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 3;
 		desc.rootParams[0].DescriptorTable.pDescriptorRanges = &desc.range[0];
 		desc.rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-		desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[2];
+		desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[3];
 		desc.rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		//gRtScene(t4)
@@ -412,7 +419,7 @@ namespace {
 	}
 }
 
-void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, ShaderTestMode Mode) {
+void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, char* IBL_FileName, ShaderTestMode Mode) {
 
 	PD = pd;
 	TMin = 0.001f;
@@ -424,6 +431,8 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	norRange = 0.999f;
 	traceMode = 0;
 	SeedFrame = 0;
+	IBL_size = 50000.0f;
+	useImageBasedLighting = false;
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
@@ -461,6 +470,7 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, Sha
 	cbObj[1].cb.numEmissive.y = (float)maxNumInstancing;
 
 	createRtPipelineState(Mode);
+	createImageBasedLightingTexture(0, IBL_FileName);
 	createShaderResources();
 	createShaderTable();
 	cObj->End();
@@ -887,7 +897,8 @@ void DxrRenderer::createShaderResources() {
 	//Global
 	int num_b0 = 1;
 	int num_u6 = 1;
-	numGlobalHeap = num_b0 + num_u6;
+	int num_t05 = 1;
+	numGlobalHeap = num_b0 + num_u6 + num_t05;
 
 	for (int heapInd = 0; heapInd < numSwapIndex; heapInd++) {
 
@@ -984,6 +995,9 @@ void DxrRenderer::createShaderResources() {
 
 		//UAV‚ðì¬ gFrameIndexMap(u6)
 		frameIndexMap.CreateUavTexture(srvHandle);
+
+		//SRV‚ðì¬g_texImageBasedLighting(t4)
+		ImageBasedLighting.CreateSrvTexture(srvHandle);
 	}
 
 	//g_samLinear(s0)
@@ -1135,6 +1149,8 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	cb.maxRecursion = numRecursion;
 	cb.traceMode = traceMode;
 	cb.SeedFrame = SeedFrame;
+	cb.IBL_size = IBL_size;
+	cb.useImageBasedLighting = useImageBasedLighting;
 	cb.TMin_TMax.x = TMin;
 	cb.TMin_TMax.y = TMax;
 	cb.frameReset_DepthRange_NorRange.as(frameReset, depthRange, norRange, 1.0f);
@@ -1311,4 +1327,20 @@ void DxrRenderer::resetFrameIndex() {
 void DxrRenderer::set_DepthRange_NorRange(float DepthRange, float NorRange) {
 	depthRange = DepthRange;
 	norRange = NorRange;
+}
+
+void DxrRenderer::createImageBasedLightingTexture(int comIndex, char* FileName) {
+	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
+	InternalTexture* tex = dx->getInternalTexture1("dummyDifSpe.");
+	if (FileName)tex = dx->getInternalTexture1(FileName);
+	ImageBasedLighting.createTexture(comIndex, tex->byteArr, tex->format,
+		tex->width, tex->RowPitch, tex->height, false);
+}
+
+void DxrRenderer::useImageBasedLightingTexture(bool on) {
+	useImageBasedLighting = on;
+}
+
+void DxrRenderer::setImageBasedLighting_size(float size) {
+	IBL_size = size;
 }

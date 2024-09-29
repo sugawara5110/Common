@@ -33,6 +33,8 @@ struct DxrConstantBuffer
 	UINT maxRecursion;
 	UINT traceMode;
 	UINT SeedFrame;
+	float IBL_size;
+	bool useImageBasedLighting;
 };
 
 struct DxrMaterialCB {
@@ -89,6 +91,8 @@ private:
 	float norRange;
 	UINT traceMode = 0;
 	UINT SeedFrame = 0;
+	float IBL_size;
+	bool useImageBasedLighting = false;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -104,6 +108,7 @@ private:
 	Dx_Resource normalMap = {};
 	Dx_Resource mpPrevDepthResource = {};
 	Dx_Resource prev_normalMap = {};
+	Dx_Resource ImageBasedLighting = {};
 
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[numSwapIndex];
 
@@ -134,6 +139,7 @@ private:
 	void createRtPipelineState(ShaderTestMode Mode);
 	void createShaderResources();
 	void createShaderTable();
+	void createImageBasedLightingTexture(int comIndex, char* FileName);
 
 	void updateMaterial(CBobj* cbObj);
 	void updateCB(CBobj* cbObj, UINT numRecursion);
@@ -143,7 +149,10 @@ private:
 
 public:
 	~DxrRenderer();
-	void initDXR(std::vector<ParameterDXR*>& pd, UINT maxRecursion, ShaderTestMode Mode = Standard);
+
+	void initDXR(std::vector<ParameterDXR*>& pd, UINT maxRecursion,
+		char* ImageBasedLightingTextureFileName = nullptr, ShaderTestMode Mode = Standard);
+
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
 	void update_c(int comNo, UINT numRecursion);
@@ -166,6 +175,8 @@ public:
 	void setGIparameter(TraceMode mode = ONE_RAY);
 	void resetFrameIndex();
 	void set_DepthRange_NorRange(float DepthRange, float NorRange);
+	void useImageBasedLightingTexture(bool on);
+	void setImageBasedLighting_size(float size);
 };
 
 #endif

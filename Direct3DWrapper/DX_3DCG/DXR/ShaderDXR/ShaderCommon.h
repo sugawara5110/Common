@@ -15,9 +15,10 @@ char* ShaderCommon =
 "    ray.TMin = TMin_TMax.x;\n"
 "    ray.TMax = TMin_TMax.y;\n"
 "    payload.color = float3(0.0f, 0.0f, 0.0f);\n"
-"    RecursionCnt++;\n"
-"    payload.RecursionCnt = RecursionCnt;\n"
+"    payload.RecursionCnt = RecursionCnt + 1;\n"
 "    payload.EmissiveIndex = 0;\n"
+"    payload.reTry = false;\n"
+"    payload.hit = false;\n"
 
 "    if(RecursionCnt <= maxRecursion) {\n"
 "       bool loop = true;\n"
@@ -236,6 +237,12 @@ char* ShaderCommon =
 "    float NumEmissive = (float)numEmissive.x;\n"
 "    float emSize = emissiveNo[emIndex].y;\n"
 "    return 1.0f / (NumEmissive * emSize);\n"
+"}\n"
+
+///////////////////////////////////////////IBL_PDF////////////////////////////////////////////////
+"float IBL_PDF()\n"
+"{\n"
+"    return 1.0f / (4 * PI);\n"
 "}\n"
 
 ///////////////////////////////////////////radiusPDF///////////////////////////////////////////////

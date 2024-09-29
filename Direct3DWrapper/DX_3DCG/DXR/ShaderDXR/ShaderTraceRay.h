@@ -21,7 +21,6 @@ char* ShaderTraceRay =
 "       LightOut emissiveColor = (LightOut)0;\n"
 "       LightOut Out;\n"
 "       RayDesc ray;\n"
-"       payload.hitPosition = hitPosition;\n"
 
 "       float3 SpeculerCol = mcb.Speculer.xyz;\n"
 "       float3 Diffuse = mcb.Diffuse.xyz;\n"
@@ -72,7 +71,6 @@ char* ShaderTraceRay =
 "    if(materialIdent(mNo, METALLIC)) {\n"//METALLIC
 
 "       RayPayload payload;\n"
-"       payload.hit = false;\n"
 "       RayDesc ray;\n"
 //éãê¸ÉxÉNÉgÉã 
 "       float3 eyeVec = WorldRayDirection();\n"

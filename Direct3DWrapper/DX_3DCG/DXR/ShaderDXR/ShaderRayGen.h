@@ -37,7 +37,6 @@ char* ShaderRayGen =
 "    gDepthOut[index] = 1.0f;\n"
 "    payload.depth = 1.0f;\n"
 "    payload.normal = float3(0.0f, 0.0f, 0.0f);\n"
-"    payload.reTry = false;\n"
 "    payload.hitInstanceId = -1;\n"
 "    payload.throughput = float3(1.0f, 1.0f, 1.0f);\n"
 "    payload.mNo = NONREFLECTION;\n"

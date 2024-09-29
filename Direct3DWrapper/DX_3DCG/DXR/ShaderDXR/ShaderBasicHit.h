@@ -13,8 +13,6 @@ char* ShaderBasicHit =
 "    float4 difTex = getDifPixel(attr, v3);\n"
 "    float3 normalMap = getNorPixel(attr, v3);\n"
 "    float3 speTex = getSpePixel(attr, v3);\n"
-"    payload.reTry = false;\n"
-"    payload.hit = false;\n"
 
 "    if(traceMode == 0){\n"
 "       if(materialIdent(payload.mNo, EMISSIVE))return;\n"
@@ -49,7 +47,6 @@ char* ShaderBasicHit =
 ////////PathTracing
 "       payload.normal = normalMap;\n"
 "       payload.depth = getDepth(attr, v3);\n"
-"       payload.color = float3(0.0f, 0.0f, 0.0f);\n"
 "       payload.hitInstanceId = (int)getInstancingID();\n"
 
 "       if(!materialIdent(payload.mNo, NEE)){\n"
@@ -70,7 +67,6 @@ char* ShaderBasicHit =
 "    float4 difTex = getDifPixel(attr, v3);\n"
 "    float3 normalMap = getNorPixel(attr, v3);\n"
 
-"    payload.reTry = false;\n"
 //ê[ìxéÊìæ
 "    payload.depth = getDepth(attr, v3);\n"
 //ñ@ê¸éÊìæ

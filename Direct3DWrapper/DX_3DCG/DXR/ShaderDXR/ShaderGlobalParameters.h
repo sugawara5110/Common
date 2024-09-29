@@ -6,6 +6,8 @@ char* ShaderGlobalParameters =
 
 "static uint Seed = 0;\n"
 "static const float PI = 3.1415926;\n"
+"static const float3 local_normal = float3(0.0f, 0.0f, 1.0f);\n"
+"static const float AIR_RefractiveIndex = 1.0f;\n"
 
 "struct RayPayload\n"
 "{\n"
@@ -38,9 +40,13 @@ char* ShaderGlobalParameters =
 "    uint maxRecursion;\n"
 "    uint traceMode;\n"
 "    uint SeedFrame;\n"
+"    float IBL_size;\n"
+"    bool useImageBasedLighting;\n"
 "};\n"
 
 "RWTexture2D<uint> gFrameIndexMap : register(u6, space0);\n"
+
+"Texture2D g_texImageBasedLighting : register(t5, space16);\n"
 
 "SamplerState g_samLinear : register(s0, space14);\n"
 "RaytracingAccelerationStructure gRtScene : register(t4, space15);\n";
