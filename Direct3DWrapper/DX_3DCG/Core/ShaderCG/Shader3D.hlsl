@@ -2,27 +2,26 @@
 //                                           Shader3D.hlsl                                               //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char *Shader3D =
-"struct PS_INPUT_BC\n"
-"{\n"
-"    float4 Pos        : SV_POSITION;\n"
-"    float4 Col        : COLOR;\n"
-"};\n"
+struct PS_INPUT_BC
+{
+	float4 Pos : SV_POSITION;
+	float4 Col : COLOR;
+};
 //****************************************基本色頂点******************************************************************//
-"PS_INPUT_BC VSBaseColor(float4 Pos : POSITION, float4 Col : COLOR, uint instanceID : SV_InstanceID)\n"
-"{\n"
-"    PS_INPUT_BC output = (PS_INPUT_BC)0;\n"
-"    output.Pos = mul(Pos, wvpCb[instanceID].wvp);\n"
+PS_INPUT_BC VSBaseColor(float4 Pos : POSITION, float4 Col : COLOR, uint instanceID : SV_InstanceID)
+{
+	PS_INPUT_BC output = (PS_INPUT_BC) 0;
+	output.Pos = mul(Pos, wvpCb[instanceID].wvp);
 
-"    output.Col = Col + wvpCb[instanceID].ObjCol;\n"
+	output.Col = Col + wvpCb[instanceID].ObjCol;
 
-"    return output;\n"
-"}\n"
+	return output;
+}
 //****************************************基本色頂点******************************************************************//
 
 //****************************************基本色ピクセル**************************************************************//
-"float4 PSBaseColor(PS_INPUT_BC input) : SV_Target\n"
-"{\n"
-"   return input.Col;\n"
-"}\n";
+float4 PSBaseColor(PS_INPUT_BC input) : SV_Target
+{
+	return input.Col;
+}
 //****************************************基本色ピクセル**************************************************************//

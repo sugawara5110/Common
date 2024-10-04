@@ -8,6 +8,9 @@
 #define Class_Dx_Util_Header
 
 #include "DxStruct.h"
+#include <iostream>
+#include <fstream>
+#include <memory>
 
 namespace Dx_Util {
 
@@ -28,6 +31,8 @@ namespace Dx_Util {
 	LPCWSTR charToLPCWSTR(char* s1, char* s2);
 
 	void memory_leak_test();
+
+	std::unique_ptr<char[]> ConvertFileToChar(char* file_pass);
 }
 
 #endif

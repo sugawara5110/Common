@@ -2,21 +2,20 @@
 //                                           ShaderMESH_D.hlsl                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char *ShaderMesh_D =
 //****************************************メッシュ頂点**************************************************************//
-"VS_OUTPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float3 Tan : TANGENT, \n"
-"                 float3 GNor : GEO_NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)\n"
-"{\n"
-"    VS_OUTPUT output = (VS_OUTPUT)0;\n"
+VS_OUTPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float3 Tan : TANGENT, 
+                 float3 GNor : GEO_NORMAL, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)
+{
+	VS_OUTPUT output = (VS_OUTPUT) 0;
 
-"    output.Pos = float4(Pos, 1);\n"
-"    output.Nor = Nor;\n"
-"    output.Tan = Tan;\n"
-"    output.GNor = GNor;\n"
-"    output.Tex0 = Tex;\n"
-"    output.Tex1 = Tex;\n"
-"    output.instanceID = instanceID;\n"
+	output.Pos = float4(Pos, 1);
+	output.Nor = Nor;
+	output.Tan = Tan;
+	output.GNor = GNor;
+	output.Tex0 = Tex;
+	output.Tex1 = Tex;
+	output.instanceID = instanceID;
 
-"    return output;\n"
-"}\n";
+	return output;
+}
 //****************************************メッシュ頂点**************************************************************//

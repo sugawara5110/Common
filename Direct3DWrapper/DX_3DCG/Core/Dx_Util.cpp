@@ -121,3 +121,18 @@ void Dx_Util::memory_leak_test() {
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 }
+
+std::unique_ptr<char[]> Dx_Util::ConvertFileToChar(char* file_pass) {
+
+	std::ifstream fin(file_pass);
+	fin.seekg(0, std::ios_base::end);
+	std::ifstream::pos_type size = (int)fin.tellg();
+	fin.seekg(0, std::ios_base::beg);
+
+	std::unique_ptr<char[]> ret = std::make_unique<char[]>(size);
+
+	fin.read((char*)ret.get(), size);
+	fin.close();
+
+	return ret;
+}

@@ -8,17 +8,6 @@
 #include "DxrRenderer.h"
 #include <fstream>
 #include <sstream>
-#include "./ShaderDXR/ShaderBasicAnyHit.h"
-#include "./ShaderDXR/ShaderBasicHit.h"
-#include "./ShaderDXR/ShaderBasicMiss.h"
-#include "./ShaderDXR/ShaderCommon.h"
-#include "./ShaderDXR/ShaderEmissiveHit.h"
-#include "./ShaderDXR/ShaderEmissiveMiss.h"
-#include "./ShaderDXR/ShaderGlobalParameters.h"
-#include "./ShaderDXR/ShaderLocalParameters.h"
-#include "./ShaderDXR/ShaderRayGen.h"
-#include "./ShaderDXR/ShaderTraceRay.h"
-#include "./ShaderDXR/ShaderTraceRay_PathTracing.h"
 #include "../Core/Dx_Light.h"
 
 namespace {
@@ -45,6 +34,11 @@ namespace {
 	const WCHAR* kEmissiveMiss = L"EmissiveMiss";
 	const WCHAR* kEmissiveHitShader = L"EmissiveHit";
 	const WCHAR* kEmissiveHitGroup = L"EmissiveHitGroup";
+
+	std::unique_ptr<char[]> getShaderRead_ShaderDXR(char* file_name) {
+		char* middle_pass = "Common/Direct3DWrapper/DX_3DCG/DXR/ShaderDXR/";
+		return Dx_ShaderHolder::getShaderRead(file_name, middle_pass);
+	}
 
 	ComPtr<ID3DBlob> CompileLibrary(char* shaderByte, const WCHAR* filename, const WCHAR* targetString) {
 
@@ -712,47 +706,54 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	wcscpy(kRayGenShader, kRayGenShaderArr[Mode]);
 	wcscpy(kBasicClosestHitShader, kBasicClosestHitShaderArr[Mode]);
 
-	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
-	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
-	//↓配列内に同じ配列内のアドレスを保持してる要素有りの場合事前にreserveをしておく(arrayの方が良かったかも・・)
-	subobjects.reserve(30);//後々増やした場合の為に多めに
+	auto ShaderGlobalParameters = getShaderRead_ShaderDXR("ShaderGlobalParameters.hlsl");
+	auto ShaderLocalParameters = getShaderRead_ShaderDXR("ShaderLocalParameters.hlsl");
+	auto ShaderCommon = getShaderRead_ShaderDXR("ShaderCommon.hlsl");
+	auto ShaderTraceRay_PathTracing = getShaderRead_ShaderDXR("ShaderTraceRay_PathTracing.hlsl");
+	auto ShaderTraceRay = getShaderRead_ShaderDXR("ShaderTraceRay.hlsl");
+	auto ShaderRayGen = getShaderRead_ShaderDXR("ShaderRayGen.hlsl");
+	auto ShaderBasicAnyHit = getShaderRead_ShaderDXR("ShaderBasicAnyHit.hlsl");
+	auto ShaderBasicHit = getShaderRead_ShaderDXR("ShaderBasicHit.hlsl");
+	auto ShaderBasicMiss = getShaderRead_ShaderDXR("ShaderBasicMiss.hlsl");
+	auto ShaderEmissiveHit = getShaderRead_ShaderDXR("ShaderEmissiveHit.hlsl");
+	auto ShaderEmissiveMiss = getShaderRead_ShaderDXR("ShaderEmissiveMiss.hlsl");
 
 	//Shader文字列組み合わせ
 	addChar calcLight = {};
 	calcLight.addStr(Dx_ShaderHolder::ShaderNormalTangentCopy.get(), Dx_ShaderHolder::ShaderCalculateLightingCopy.get());
 
 	addChar para = {};
-	para.addStr(ShaderGlobalParameters, ShaderLocalParameters);
+	para.addStr(ShaderGlobalParameters.get(), ShaderLocalParameters.get());
 
 	addChar com_t = {};
-	com_t.addStr(calcLight.str, ShaderCommon);
+	com_t.addStr(calcLight.str, ShaderCommon.get());
 
 	addChar com = {};
 	com.addStr(para.str, com_t.str);
 
 	addChar pt = {};
-	pt.addStr(ShaderTraceRay_PathTracing, ShaderTraceRay);
+	pt.addStr(ShaderTraceRay_PathTracing.get(), ShaderTraceRay.get());
 
 	addChar tRay = {};
 	tRay.addStr(com.str, pt.str);
 
 	addChar rayGen = {};
-	rayGen.addStr(com.str, ShaderRayGen);
+	rayGen.addStr(com.str, ShaderRayGen.get());
 
 	addChar any = {};
-	any.addStr(com.str, ShaderBasicAnyHit);
+	any.addStr(com.str, ShaderBasicAnyHit.get());
 
 	addChar bHit = {};
-	bHit.addStr(tRay.str, ShaderBasicHit);
+	bHit.addStr(tRay.str, ShaderBasicHit.get());
 
 	addChar bMis = {};
-	bMis.addStr(ShaderGlobalParameters, ShaderBasicMiss);
+	bMis.addStr(ShaderGlobalParameters.get(), ShaderBasicMiss.get());
 
 	addChar eHit = {};
-	eHit.addStr(tRay.str, ShaderEmissiveHit);
+	eHit.addStr(tRay.str, ShaderEmissiveHit.get());
 
 	addChar eMis = {};
-	eMis.addStr(ShaderGlobalParameters, ShaderEmissiveMiss);
+	eMis.addStr(ShaderGlobalParameters.get(), ShaderEmissiveMiss.get());
 
 	//DXIL library 初期化, SUBOBJECT作成
 	DxilLibrary Ray(CompileLibrary(rayGen.str, L"rayGen", L"lib_6_3"), kRayGenShader);
@@ -761,6 +762,11 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	DxilLibrary Bmis(CompileLibrary(bMis.str, L"bMis", L"lib_6_3"), kBasicMissShader);
 	DxilLibrary Ehit(CompileLibrary(eHit.str, L"eHit", L"lib_6_3"), kEmissiveHitShader);
 	DxilLibrary Emis(CompileLibrary(eMis.str, L"eMis", L"lib_6_3"), kEmissiveMiss);
+
+	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
+	std::vector<D3D12_STATE_SUBOBJECT> subobjects;
+	//↓配列内に同じ配列内のアドレスを保持してる要素有りの場合事前にreserveをしておく(arrayの方が良かったかも・・)
+	subobjects.reserve(30);//後々増やした場合の為に多めに
 
 	subobjects.push_back(Ray.stateSubobject);
 	subobjects.push_back(Any.stateSubobject);

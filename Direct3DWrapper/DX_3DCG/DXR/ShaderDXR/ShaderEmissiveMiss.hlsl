@@ -2,12 +2,10 @@
 //                                           ShaderEmissiveMiss.hlsl                                     //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char* ShaderEmissiveMiss =
-
-"[shader(\"miss\")]\n"
-"void EmissiveMiss(inout RayPayload payload)\n"
-"{\n"
-"    payload.color = float3(0.0, 0.0, 0.0);\n"
-"    payload.hit = false;\n"
-"    payload.reTry = false;\n"
-"}\n";
+[shader("miss")]
+void EmissiveMiss(inout RayPayload payload)
+{
+	payload.color = float3(0.0, 0.0, 0.0);
+	payload.hit = false;
+	payload.reTry = false;
+}

@@ -6,20 +6,6 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include "Dx_ShaderHolder.h"
-#include "./ShaderCG/ShaderCommonParameters.h"
-#include "./ShaderCG/ShaderNormalTangent.h"
-#include "./ShaderCG/Shader2D.h"
-#include "./ShaderCG/Shader3D.h"
-#include "./ShaderCG/ShaderMesh.h"
-#include "./ShaderCG/ShaderMesh_D.h"
-#include "./ShaderCG/ShaderSkinMesh.h"
-#include "./ShaderCG/ShaderSkinMesh_D.h"
-#include "./ShaderCG/ShaderCommonPS.h"
-#include "./ShaderCG/ShaderCommonTriangleGS.h"
-#include "./ShaderCG/ShaderCommonTriangleHSDS.h"
-#include "./ShaderCG/ShaderCalculateLighting.h"
-#include "./ShaderCG/ShaderGsOutput.h"
-#include "./ShaderCG/ShaderSkinMeshCom.h"
 
 void addChar::addStr(char* str1, char* str2) {
 	size_t size1 = strlen(str1);
@@ -50,12 +36,33 @@ ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPSTR szFileName, size_t size, L
 	return byteCode;
 }
 
+std::unique_ptr<char[]> Dx_ShaderHolder::getShaderPass(char* file_name, char* middle_pass) {
+
+	addChar p1, p2;
+	p1.addStr(CommonPass.get(), middle_pass);
+	p2.addStr(p1.str, file_name);
+
+	size_t size = strlen(p2.str) + 1;
+	std::unique_ptr<char[]> ret = std::make_unique<char[]>(size);
+	memcpy(ret.get(), p2.str, size);
+	return ret;
+}
+
+std::unique_ptr<char[]> Dx_ShaderHolder::getShaderRead(char* file_name, char* middle_pass) {
+	auto pass = getShaderPass(file_name, middle_pass);
+	return Dx_Util::ConvertFileToChar(pass.get());
+}
+
+std::unique_ptr<char[]> Dx_ShaderHolder::getShaderRead_ShaderCG(char* file_name) {
+	char* middle_pass = "Common/Direct3DWrapper/DX_3DCG/Core/ShaderCG/";
+	return getShaderRead(file_name, middle_pass);
+}
+
 void Dx_ShaderHolder::setNorTestPS() {
 	addChar ComPS, Lighting, ParaNor;
-	char* com = ShaderCommonParameters;
-	ParaNor.addStr(com, ShaderNormalTangent);
-	Lighting.addStr(ParaNor.str, ShaderCalculateLighting);
-	ComPS.addStr(Lighting.str, ShaderCommonPS);
+	ParaNor.addStr(ShaderCommonParametersCopy.get(), ShaderNormalTangentCopy.get());
+	Lighting.addStr(ParaNor.str, ShaderCalculateLightingCopy.get());
+	ComPS.addStr(Lighting.str, ShaderCommonPS.get());
 
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L_NorTest", "ps_5_1");
 	pPixelShader_3D_NoNormalMap = CompileShader(ComPS.str, ComPS.size, "PS_L_NoNormalMap_NorTest", "ps_5_1");
@@ -65,30 +72,35 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	if (CreateFin)return true;
 
-	size_t norS_size = strlen(ShaderNormalTangent) + 1;
-	size_t norL_size = strlen(ShaderCalculateLighting) + 1;
-	size_t com_size = strlen(ShaderCommonParameters) + 1;
-	ShaderNormalTangentCopy = std::make_unique<char[]>(norS_size);
-	ShaderCalculateLightingCopy = std::make_unique<char[]>(norL_size);
-	ShaderCommonParametersCopy = std::make_unique<char[]>(com_size);
-	memcpy(ShaderNormalTangentCopy.get(), ShaderNormalTangent, norS_size);
-	memcpy(ShaderCalculateLightingCopy.get(), ShaderCalculateLighting, norL_size);
-	memcpy(ShaderCommonParametersCopy.get(), ShaderCommonParameters, com_size);
+	ShaderCommonParametersCopy = getShaderRead_ShaderCG("ShaderCommonParameters.hlsl");
+	ShaderNormalTangentCopy = getShaderRead_ShaderCG("ShaderNormalTangent.hlsl");
+	ShaderCalculateLightingCopy = getShaderRead_ShaderCG("ShaderCalculateLighting.hlsl");
+
+	ShaderCommonPS = getShaderRead_ShaderCG("ShaderCommonPS.hlsl");
+
+	std::unique_ptr<char[]> Shader3D = getShaderRead_ShaderCG("Shader3D.hlsl");
+	std::unique_ptr<char[]> ShaderMesh = getShaderRead_ShaderCG("ShaderMesh.hlsl");
+	std::unique_ptr<char[]> ShaderMesh_D = getShaderRead_ShaderCG("ShaderMesh_D.hlsl");
+	std::unique_ptr<char[]> ShaderSkinMesh = getShaderRead_ShaderCG("ShaderSkinMesh.hlsl");
+	std::unique_ptr<char[]> ShaderSkinMesh_D = getShaderRead_ShaderCG("ShaderSkinMesh_D.hlsl");
+	std::unique_ptr<char[]> ShaderCommonTriangleHSDS = getShaderRead_ShaderCG("ShaderCommonTriangleHSDS.hlsl");
+	std::unique_ptr<char[]> ShaderCommonTriangleGS = getShaderRead_ShaderCG("ShaderCommonTriangleGS.hlsl");
+	std::unique_ptr<char[]> ShaderGsOutput = getShaderRead_ShaderCG("ShaderGsOutput.hlsl");
 
 	//各Shader結合
 	addChar D3, Mesh, MeshD, Skin, SkinD, ComPS, ComHSDS, ComGS, ParaNor, Lighting, GsOut;
-	char* com = ShaderCommonParameters;
-	ParaNor.addStr(com, ShaderNormalTangent);
-	Lighting.addStr(ParaNor.str, ShaderCalculateLighting);
-	D3.addStr(com, Shader3D);
-	Mesh.addStr(com, ShaderMesh);
-	MeshD.addStr(com, ShaderMesh_D);
-	Skin.addStr(com, ShaderSkinMesh);
-	SkinD.addStr(com, ShaderSkinMesh_D);
-	ComPS.addStr(Lighting.str, ShaderCommonPS);
-	ComHSDS.addStr(ParaNor.str, ShaderCommonTriangleHSDS);
-	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS);
-	GsOut.addStr(ParaNor.str, ShaderGsOutput);
+	char* com = ShaderCommonParametersCopy.get();
+	ParaNor.addStr(com, ShaderNormalTangentCopy.get());
+	Lighting.addStr(ParaNor.str, ShaderCalculateLightingCopy.get());
+	D3.addStr(com, Shader3D.get());
+	Mesh.addStr(com, ShaderMesh.get());
+	MeshD.addStr(com, ShaderMesh_D.get());
+	Skin.addStr(com, ShaderSkinMesh.get());
+	SkinD.addStr(com, ShaderSkinMesh_D.get());
+	ComPS.addStr(Lighting.str, ShaderCommonPS.get());
+	ComHSDS.addStr(ParaNor.str, ShaderCommonTriangleHSDS.get());
+	ComGS.addStr(ParaNor.str, ShaderCommonTriangleGS.get());
+	GsOut.addStr(ParaNor.str, ShaderGsOutput.get());
 
 	//CommonPS
 	pPixelShader_3D = CompileShader(ComPS.str, ComPS.size, "PS_L", "ps_5_1");
@@ -153,11 +165,12 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 4 * 3 + 4 * 4, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 	//テクスチャ2D
-	pVertexShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "VSTextureColor", "vs_5_1");
-	pPixelShader_2DTC = CompileShader(Shader2D, strlen(Shader2D), "PSTextureColor", "ps_5_1");
+	std::unique_ptr<char[]> Shader2D = getShaderRead_ShaderCG("Shader2D.hlsl");
+	pVertexShader_2DTC = CompileShader(Shader2D.get(), strlen(Shader2D.get()), "VSTextureColor", "vs_5_1");
+	pPixelShader_2DTC = CompileShader(Shader2D.get(), strlen(Shader2D.get()), "PSTextureColor", "ps_5_1");
 	//2D
-	pVertexShader_2D = CompileShader(Shader2D, strlen(Shader2D), "VSBaseColor", "vs_5_1");
-	pPixelShader_2D = CompileShader(Shader2D, strlen(Shader2D), "PSBaseColor", "ps_5_1");
+	pVertexShader_2D = CompileShader(Shader2D.get(), strlen(Shader2D.get()), "VSBaseColor", "vs_5_1");
+	pPixelShader_2D = CompileShader(Shader2D.get(), strlen(Shader2D.get()), "PSBaseColor", "ps_5_1");
 
 	//DXRへのOutput
 	pGeometryShader_Before_vs_Output = CompileShader(GsOut.str, GsOut.size, "GS_Before_vs", "gs_5_1");
@@ -172,7 +185,8 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ 0, "TEXCOORD", 1, 0, 2, 0 }
 	};
 
-	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom, strlen(ShaderSkinMeshCom), "VSSkinCS", "cs_5_1");
+	std::unique_ptr<char[]> ShaderSkinMeshCom = getShaderRead_ShaderCG("ShaderSkinMeshCom.hlsl");
+	pVertexShader_SKIN_Com = CompileShader(ShaderSkinMeshCom.get(), strlen(ShaderSkinMeshCom.get()), "VSSkinCS", "cs_5_1");
 
 	CreateFin = true;
 
@@ -219,3 +233,12 @@ ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN_Com = nullptr;
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderNormalTangentCopy = nullptr;
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCalculateLightingCopy = nullptr;
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCommonParametersCopy = nullptr;
+
+std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCommonPS = nullptr;
+std::unique_ptr<char[]> Dx_ShaderHolder::CommonPass = nullptr;
+
+void Dx_ShaderHolder::setCommonPass(char* pass) {
+	size_t size = strlen(pass) + 1;
+	CommonPass = std::make_unique<char[]>(size);
+	memcpy(CommonPass.get(), pass, size);
+}
