@@ -37,8 +37,6 @@ private:
 	static char* middle_pass;
 
 	static std::unique_ptr<char[]> CommonPass;
-	static std::unique_ptr<char[]> getShaderPass(char* file_name, char* middle_pass);
-
 	static std::unique_ptr<char[]> getShaderRead_ShaderCG(char* file_name);
 
 public:
@@ -88,6 +86,7 @@ public:
 	static std::unique_ptr<char[]> ShaderCommonParametersCopy;
 
 	static std::unique_ptr<char[]> getShaderRead(char* file_name, char* middle_pass);
+	static std::unique_ptr<char[]> getShaderPass(char* file_name, char* middle_pass);
 	static ComPtr<ID3DBlob> CompileShader(LPCVOID pSrcData, size_t size, LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName, ID3DInclude* pInclude);
 	static ComPtr<ID3DBlob> CompileShader(LPCVOID pSrcData, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 	static ComPtr<ID3DBlob> CompileShader(LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName);

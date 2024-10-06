@@ -35,12 +35,26 @@ namespace {
 	const WCHAR* kEmissiveHitShader = L"EmissiveHit";
 	const WCHAR* kEmissiveHitGroup = L"EmissiveHitGroup";
 
+	char* middle_pass = "Common/Direct3DWrapper/DX_3DCG/DXR/ShaderDXR/";
+
 	std::unique_ptr<char[]> getShaderRead_ShaderDXR(char* file_name) {
-		char* middle_pass = "Common/Direct3DWrapper/DX_3DCG/DXR/ShaderDXR/";
 		return Dx_ShaderHolder::getShaderRead(file_name, middle_pass);
 	}
 
-	ComPtr<ID3DBlob> CompileLibrary(char* shaderByte, const WCHAR* filename, const WCHAR* targetString) {
+	ComPtr<ID3DBlob> CompileLibrary(const char* filename, const WCHAR* targetString) {
+
+		//char配列でフルパス生成
+		auto full_pass = Dx_ShaderHolder::getShaderPass((char*)filename, middle_pass);
+		//charのフルパスサイズ
+		size_t full_pass_size = strlen(full_pass.get()) + 1;
+		//charでファイル読み込み
+		auto byte = Dx_Util::ConvertFileToChar(full_pass.get());
+
+		//フルパスをwchar ← char 
+		std::unique_ptr<WCHAR[]> full_passW = std::make_unique<WCHAR[]>(full_pass_size);
+		//ロケール指定
+		setlocale(LC_ALL, "japanese");
+		mbstowcs(full_passW.get(), full_pass.get(), full_pass_size);
 
 		//コンパイルライブラリ初期化
 		HRESULT hr_Hel = gDxcDllHelper.Initialize();
@@ -52,18 +66,25 @@ namespace {
 		gDxcDllHelper.CreateInstance(CLSID_DxcCompiler, pCompiler.GetAddressOf());
 		gDxcDllHelper.CreateInstance(CLSID_DxcLibrary, pLibrary.GetAddressOf());
 
-		uint32_t size = (uint32_t)strlen(shaderByte) + 1;
+		uint32_t byte_size = (uint32_t)strlen(byte.get()) + 1;
 		//string → IDxcBlob変換
 		ComPtr<IDxcBlobEncoding> pTextBlob;
-		HRESULT hr_Li = pLibrary->CreateBlobWithEncodingFromPinned((LPBYTE)shaderByte,
-			size, 0, pTextBlob.GetAddressOf());
+		HRESULT hr_Li = pLibrary->CreateBlobWithEncodingFromPinned((LPBYTE)byte.get(),
+			byte_size, 0, pTextBlob.GetAddressOf());
 		if (FAILED(hr_Li)) {
 			Dx_Util::ErrorMessage("DXR CompileLibrary CreateBlobWithEncodingFromPinned Error");
 		}
+
+		ComPtr<IDxcIncludeHandler> includeHandler;
+		HRESULT hr_Inc = pLibrary->CreateIncludeHandler(&includeHandler);
+		if (FAILED(hr_Inc)) {
+			Dx_Util::ErrorMessage("DXR CompileLibrary CreateIncludeHandler Error");
+		}
+
 		//Compile
 		ComPtr<IDxcOperationResult> pResult;
-		HRESULT hr_Com = pCompiler->Compile(pTextBlob.Get(), filename, L"", targetString,
-			nullptr, 0, nullptr, 0, nullptr, pResult.GetAddressOf());
+		HRESULT hr_Com = pCompiler->Compile(pTextBlob.Get(), full_passW.get(), L"", targetString,
+			nullptr, 0, nullptr, 0, includeHandler.Get(), pResult.GetAddressOf());
 		if (FAILED(hr_Com)) {
 			Dx_Util::ErrorMessage("DXR CompileLibrary Compile Error");
 		}
@@ -706,62 +727,13 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	wcscpy(kRayGenShader, kRayGenShaderArr[Mode]);
 	wcscpy(kBasicClosestHitShader, kBasicClosestHitShaderArr[Mode]);
 
-	auto ShaderGlobalParameters = getShaderRead_ShaderDXR("ShaderGlobalParameters.hlsl");
-	auto ShaderLocalParameters = getShaderRead_ShaderDXR("ShaderLocalParameters.hlsl");
-	auto ShaderCommon = getShaderRead_ShaderDXR("ShaderCommon.hlsl");
-	auto ShaderTraceRay_PathTracing = getShaderRead_ShaderDXR("ShaderTraceRay_PathTracing.hlsl");
-	auto ShaderTraceRay = getShaderRead_ShaderDXR("ShaderTraceRay.hlsl");
-	auto ShaderRayGen = getShaderRead_ShaderDXR("ShaderRayGen.hlsl");
-	auto ShaderBasicAnyHit = getShaderRead_ShaderDXR("ShaderBasicAnyHit.hlsl");
-	auto ShaderBasicHit = getShaderRead_ShaderDXR("ShaderBasicHit.hlsl");
-	auto ShaderBasicMiss = getShaderRead_ShaderDXR("ShaderBasicMiss.hlsl");
-	auto ShaderEmissiveHit = getShaderRead_ShaderDXR("ShaderEmissiveHit.hlsl");
-	auto ShaderEmissiveMiss = getShaderRead_ShaderDXR("ShaderEmissiveMiss.hlsl");
-
-	//Shader文字列組み合わせ
-	addChar calcLight = {};
-	calcLight.addStr(Dx_ShaderHolder::ShaderNormalTangentCopy.get(), Dx_ShaderHolder::ShaderCalculateLightingCopy.get());
-
-	addChar para = {};
-	para.addStr(ShaderGlobalParameters.get(), ShaderLocalParameters.get());
-
-	addChar com_t = {};
-	com_t.addStr(calcLight.str, ShaderCommon.get());
-
-	addChar com = {};
-	com.addStr(para.str, com_t.str);
-
-	addChar pt = {};
-	pt.addStr(ShaderTraceRay_PathTracing.get(), ShaderTraceRay.get());
-
-	addChar tRay = {};
-	tRay.addStr(com.str, pt.str);
-
-	addChar rayGen = {};
-	rayGen.addStr(com.str, ShaderRayGen.get());
-
-	addChar any = {};
-	any.addStr(com.str, ShaderBasicAnyHit.get());
-
-	addChar bHit = {};
-	bHit.addStr(tRay.str, ShaderBasicHit.get());
-
-	addChar bMis = {};
-	bMis.addStr(ShaderGlobalParameters.get(), ShaderBasicMiss.get());
-
-	addChar eHit = {};
-	eHit.addStr(tRay.str, ShaderEmissiveHit.get());
-
-	addChar eMis = {};
-	eMis.addStr(ShaderGlobalParameters.get(), ShaderEmissiveMiss.get());
-
 	//DXIL library 初期化, SUBOBJECT作成
-	DxilLibrary Ray(CompileLibrary(rayGen.str, L"rayGen", L"lib_6_3"), kRayGenShader);
-	DxilLibrary Any(CompileLibrary(any.str, L"any", L"lib_6_3"), kBasicAnyHitShader);
-	DxilLibrary Bhit(CompileLibrary(bHit.str, L"bHit", L"lib_6_3"), kBasicClosestHitShader);
-	DxilLibrary Bmis(CompileLibrary(bMis.str, L"bMis", L"lib_6_3"), kBasicMissShader);
-	DxilLibrary Ehit(CompileLibrary(eHit.str, L"eHit", L"lib_6_3"), kEmissiveHitShader);
-	DxilLibrary Emis(CompileLibrary(eMis.str, L"eMis", L"lib_6_3"), kEmissiveMiss);
+	DxilLibrary Ray(CompileLibrary("ShaderRayGen.hlsl", L"lib_6_3"), kRayGenShader);
+	DxilLibrary Any(CompileLibrary("ShaderBasicAnyHit.hlsl", L"lib_6_3"), kBasicAnyHitShader);
+	DxilLibrary Bhit(CompileLibrary("ShaderBasicHit.hlsl", L"lib_6_3"), kBasicClosestHitShader);
+	DxilLibrary Bmis(CompileLibrary("ShaderBasicMiss.hlsl", L"lib_6_3"), kBasicMissShader);
+	DxilLibrary Ehit(CompileLibrary("ShaderEmissiveHit.hlsl", L"lib_6_3"), kEmissiveHitShader);
+	DxilLibrary Emis(CompileLibrary("ShaderEmissiveMiss.hlsl", L"lib_6_3"), kEmissiveMiss);
 
 	//CreateStateObject作成に必要な各D3D12_STATE_SUBOBJECTを作成
 	std::vector<D3D12_STATE_SUBOBJECT> subobjects;

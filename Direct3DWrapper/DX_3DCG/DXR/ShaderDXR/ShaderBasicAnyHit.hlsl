@@ -2,6 +2,8 @@
 //                                           ShaderBasicAnyHit.hlsl                                      //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommon.hlsl"
+
 [shader("anyhit")]
 void anyBasicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {

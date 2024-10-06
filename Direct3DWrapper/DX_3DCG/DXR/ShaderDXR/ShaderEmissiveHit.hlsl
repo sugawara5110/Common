@@ -2,6 +2,8 @@
 //                                           ShaderEmissiveHit.hlsl                                      //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommon.hlsl"
+
 uint getEmissiveIndex()
 {
 	uint ret = 0;

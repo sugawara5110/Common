@@ -2,6 +2,8 @@
 //                                           ShaderBasicHit.hlsl                                         //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderTraceRay.hlsl"
+
 //í èÌ
 [shader("closesthit")]
 void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)

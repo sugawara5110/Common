@@ -3,6 +3,8 @@
 //                                           ShaderBasicMiss.hlsl                                        //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderGlobalParameters.hlsl"
+
 float3 getSkyLight(float3 dir)
 {
 	float2 uv = float2(atan2(dir.z, dir.x) / 2.0f / PI + 0.5f, acos(dir.y) / PI);

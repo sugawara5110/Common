@@ -2,6 +2,9 @@
 //                                      ShaderTraceRay.hlsl                                              //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderTraceRay_PathTracing.hlsl"
+#include "../../Core/ShaderCG/ShaderCalculateLighting.hlsl"
+
 ///////////////////////ŒõŒ¹‚ÖŒõü‚ğ”ò‚Î‚·, ƒqƒbƒg‚µ‚½ê‡–¾‚é‚³‚ª‰ÁZ//////////////////////////
 float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition, 
                                 in float3 difTexColor, in float3 speTexColor, in float3 normal)

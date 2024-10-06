@@ -2,6 +2,10 @@
 //                                      ShaderCommon.hlsl                                                //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderGlobalParameters.hlsl"
+#include "ShaderLocalParameters.hlsl"
+#include "../../Core/ShaderCG/ShaderNormalTangent.hlsl"
+
 ///////////////////////////////////////////traceRay////////////////////////////////////////////////
 void traceRay(in uint RecursionCnt, 
               in uint RayFlags, 

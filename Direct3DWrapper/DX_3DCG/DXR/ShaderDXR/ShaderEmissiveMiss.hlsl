@@ -2,6 +2,8 @@
 //                                           ShaderEmissiveMiss.hlsl                                     //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderGlobalParameters.hlsl"
+
 [shader("miss")]
 void EmissiveMiss(inout RayPayload payload)
 {
