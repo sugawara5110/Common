@@ -2,6 +2,8 @@
 //                                           Shader3D.hlsl                                               //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+
 struct PS_INPUT_BC
 {
 	float4 Pos : SV_POSITION;

@@ -2,6 +2,8 @@
 //                                           ShaderMESH.hlsl                                             //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+
 //****************************************ÉÅÉbÉVÉÖí∏ì_**************************************************************//
 GS_Mesh_INPUT VSMesh(float3 Pos : POSITION, float3 Nor : NORMAL, float3 Tan : TANGENT, 
                      float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)

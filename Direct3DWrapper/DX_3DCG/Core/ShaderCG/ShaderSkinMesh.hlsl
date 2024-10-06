@@ -2,6 +2,8 @@
 //                                          ShaderSkinMesh.hlsl                                          //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+
 cbuffer global_bones : register(b1, space0) //ボーンのポーズ行列が入る
 {
 	matrix g_mConstBoneWorld[256];

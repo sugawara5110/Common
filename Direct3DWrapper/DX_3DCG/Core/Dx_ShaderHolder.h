@@ -31,7 +31,11 @@ private:
 	Dx_ShaderHolder() {};
 	~Dx_ShaderHolder() {};
 
-	static std::unique_ptr<char[]> ShaderCommonPS;
+	static bool CreateShaderByteCodeBool;
+	static bool CreateFin;
+	static bool setCommonPass_fin;
+	static char* middle_pass;
+
 	static std::unique_ptr<char[]> CommonPass;
 	static std::unique_ptr<char[]> getShaderPass(char* file_name, char* middle_pass);
 
@@ -83,8 +87,10 @@ public:
 	static std::unique_ptr<char[]> ShaderCalculateLightingCopy;
 	static std::unique_ptr<char[]> ShaderCommonParametersCopy;
 
-	static ComPtr<ID3DBlob> CompileShader(LPSTR szFileName, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 	static std::unique_ptr<char[]> getShaderRead(char* file_name, char* middle_pass);
+	static ComPtr<ID3DBlob> CompileShader(LPCVOID pSrcData, size_t size, LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName, ID3DInclude* pInclude);
+	static ComPtr<ID3DBlob> CompileShader(LPCVOID pSrcData, size_t size, LPSTR szFuncName, LPSTR szProfileName);
+	static ComPtr<ID3DBlob> CompileShader(LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName);
 };
 
 #endif

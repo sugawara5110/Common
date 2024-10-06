@@ -2,6 +2,10 @@
 //                                       ShaderCommonPS.hlsl                                             //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+#include "ShaderCalculateLighting.hlsl"
+#include "ShaderNormalTangent.hlsl"
+
 //マテリアル毎の色
 cbuffer global_2 : register(b2, space0)
 {

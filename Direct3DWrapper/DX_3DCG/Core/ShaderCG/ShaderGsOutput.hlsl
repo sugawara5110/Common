@@ -2,6 +2,8 @@
 //                                     ShaderGsOutput.hlsl                                               //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+
 struct DXR_INPUT
 {
 	float3 Pos : POSITION;

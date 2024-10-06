@@ -2,6 +2,9 @@
 //                                 ShaderCommonTriangleHSDS.hlsl                                         //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+#include "ShaderNormalTangent.hlsl"
+
 //***************************************ハルシェーダーコンスタント*************************************************//
 HS_CONSTANT_OUTPUT HSConstant(InputPatch<VS_OUTPUT, 3> ip, uint pid : SV_PrimitiveID)
 {

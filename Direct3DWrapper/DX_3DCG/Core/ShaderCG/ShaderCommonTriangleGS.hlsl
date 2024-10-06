@@ -2,6 +2,9 @@
 //                                 ShaderCommonTriangleGS.hlsl                                           //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "ShaderCommonParameters.hlsl"
+#include "ShaderNormalTangent.hlsl"
+
 PS_INPUT PsInput(GS_Mesh_INPUT input)
 {
 	PS_INPUT output = (PS_INPUT) 0;
