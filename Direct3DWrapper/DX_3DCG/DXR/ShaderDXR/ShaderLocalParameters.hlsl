@@ -2,12 +2,12 @@
 //                                      ShaderLocalParameters.hlsl                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define NONREFLECTION  0b000000
-#define METALLIC       0b100000
-#define EMISSIVE       0b010000 
-#define TRANSLUCENCE   0b000100 
-#define NEE            0b000010 
-#define NEE_PATHTRACER 0b000001 
+#define NONREFLECTION  32 //0b100000
+#define METALLIC       16 //0b010000
+#define EMISSIVE       8  //0b001000
+#define TRANSLUCENCE   4  //0b000100
+#define NEE            2  //0b000010 
+#define NEE_PATHTRACER 1  //0b000001 
 
 RWTexture2D<float4> gOutput : register(u0, space0);
 RWTexture2D<float> gDepthOut : register(u1, space0);

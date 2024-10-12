@@ -377,54 +377,73 @@ float3 DiffSpeBSDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTe
 ///////////////////////////////////////////RefractionBTDF///////////////////////////////////////////
 float3 RefractionBTDF(float D, float G, float3 F, float3 V, float3 L, float3 N, float3 H, float in_eta, float out_eta)
 {
-	const float dotNL = abs(dot(N, L));
-	const float dotNV = abs(dot(N, V));
-	const float dotHLnotAbs = dot(H, L);
-	const float dotHL = abs(dotHLnotAbs);
-	const float dotHVnotAbs = dot(H, V);
-	const float dotHV = abs(dotHVnotAbs);
+    const float dotNL = abs(dot(N, L));
+    const float dotNV = abs(dot(N, V));
+    const float dotHL = abs(dot(H, L));
+    const float dotHV = abs(dot(H, V));
 
-	const float a = dotHL * dotHV / (dotNL * dotNV);
-	const float3 b = out_eta * out_eta * (1 - F) * G * D / pow((in_eta * dotHLnotAbs + out_eta * dotHVnotAbs), 2);
-	return a * b;
+    const float a = dotHL * dotHV / (dotNL * dotNV);
+    const float3 b = out_eta * out_eta * (1 - F) * G * D;
+    const float c = pow((in_eta * dotHL + out_eta * dotHV), 2) + 0.001f;
+    return a * b / c;
 }
 
 ///////////////////////////////////////////RefSpeBSDF//////////////////////////////////////////////
-float3 RefSpeBSDF(float3 inDir, float3 outDir, float4 difTexColor, float3 N, float3 H, float in_eta, float out_eta, out float PDF)
+float3 RefSpeBSDF(float3 inDir, float3 outDir, float4 difTexColor, float3 speTexColor, float3 N, float3 H, 
+                  float in_eta, float out_eta, out float PDF)
 {
-	const float Alpha = difTexColor.w;
-	const float speRatio = Alpha;
+    const float Alpha = difTexColor.w;
+    const float speRatio = Alpha;
 
-	const float dotNL = abs(dot(N, inDir));
-	const float dotNV = abs(dot(N, outDir));
-	const float dotNH = abs(dot(N, H));
-	const float dotVH = abs(dot(outDir, H));
-	const float dotLH = abs(dot(inDir, H));
+    const float dotNL = abs(dot(N, inDir));
+    const float dotNV = abs(dot(N, outDir));
+    const float dotNH = abs(dot(N, H));
+    const float dotVH = abs(dot(outDir, H));
+    const float dotLH = abs(dot(inDir, H));
 
-	const uint materialID = getMaterialID();
-	const MaterialCB mcb = material[materialID];
-	const float3 Speculer = mcb.Speculer.xyz;
-	const float roughness = mcb.roughness;
+    const uint materialID = getMaterialID();
+    const MaterialCB mcb = material[materialID];
+    const float3 Diffuse = mcb.Diffuse.xyz * difTexColor.xyz;
+    const float3 Speculer = mcb.Speculer.xyz * speTexColor;
+    const float roughness = mcb.roughness;
 
-	float3 F0 = 0.08.xxx * Speculer;
-	float3 F = FresnelSchlick(max(dot(H, outDir), 0), F0);
+    float3 F0 = 0.08.xxx * Speculer;
+    float3 F = FresnelSchlick(max(dot(H, outDir), 0), F0);
 
-	float NDF = GGX_Distribution(N, H, roughness);
-	float G = GGX_GeometrySmith(N, outDir, inDir, roughness);
+    float NDF = GGX_Distribution(N, H, roughness);
+    float G = GGX_GeometrySmith(N, outDir, inDir, roughness);
 
-	float3 speBRDF = SpecularBRDF(NDF, G, F, outDir, inDir, N);
-	float spePDF = GGX_PDF(NDF, dotNH, dotVH);
-	float3 refrBTDF = RefractionBTDF(NDF, G, F, outDir, inDir, N, H, in_eta, out_eta);
-	float refrPDF = GGX_PDF(NDF, dotNH, dotVH);
-	const float3 sumBSDF = (speBRDF + refrBTDF * difTexColor.xyz) * dotNL;
-	const float sumPDF = speRatio * spePDF + (1 - speRatio) * refrPDF;
+    float3 speBRDF = SpecularBRDF(NDF, G, F, outDir, inDir, N);
+    float spePDF = GGX_PDF(NDF, dotNH, dotVH);
+    float3 refrBTDF = RefractionBTDF(NDF, G, F, outDir, inDir, N, H, in_eta, out_eta);
+    float refrPDF = GGX_PDF(NDF, dotNH, dotVH);
+    const float3 sumBSDF = (speBRDF + refrBTDF * Diffuse) * dotNL;
+    const float sumPDF = speRatio * spePDF + (1 - speRatio) * refrPDF;
 
-	if (sumPDF <= 0)
-	{
-		PDF = 1.0f;
-		return float3(0, 0, 0);
-	}
+    if (sumPDF <= 0)
+    {
+        PDF = 1.0f;
+        return float3(0, 0, 0);
+    }
 
-	PDF = sumPDF;
-	return sumBSDF;
+    PDF = sumPDF;
+    return sumBSDF;
+}
+
+///////////////////////////////////////////BSDF////////////////////////////////////////////////////
+float3 BSDF(bool bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3 speTexColor, float3 N,
+            float in_eta, float out_eta, out float PDF)
+{
+    float3 bsdf;
+
+    if (bsdf_f)
+    {
+        const float3 H = normalize(inDir + outDir);
+        bsdf = RefSpeBSDF(inDir, outDir, difTexColor, speTexColor, N, H, in_eta, out_eta, PDF);
+    }
+    else
+    {
+        bsdf = DiffSpeBSDF(inDir, outDir, difTexColor.xyz, speTexColor, N, PDF);
+    }
+    return bsdf;
 }

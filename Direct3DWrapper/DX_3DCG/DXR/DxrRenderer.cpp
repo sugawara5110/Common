@@ -446,7 +446,7 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 	norRange = 0.999f;
 	traceMode = 0;
 	SeedFrame = 0;
-	IBL_size = 50000.0f;
+	IBL_size = 5000.0f;
 	useImageBasedLighting = false;
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
