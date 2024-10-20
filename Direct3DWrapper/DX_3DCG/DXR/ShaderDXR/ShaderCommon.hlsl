@@ -438,8 +438,8 @@ float3 BSDF(bool bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3
 
     if (bsdf_f)
     {
-        const float3 H = normalize(inDir + outDir);
-        bsdf = RefSpeBSDF(inDir, outDir, difTexColor, speTexColor, N, H, in_eta, out_eta, PDF);
+        const float3 H = normalize(-inDir + outDir);
+        bsdf = RefSpeBSDF(-inDir, outDir, difTexColor, speTexColor, N, H, in_eta, out_eta, PDF);
     }
     else
     {
