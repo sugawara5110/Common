@@ -179,7 +179,15 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         float3 eyeVec = -outDir;
         float3 refractVec = refract(eyeVec, normal, eta);
         float Area = roughness * roughness;
-        rDir = RandomVector(refractVec, Area);
+        
+        if (roughness <= 0.0f)
+        {
+            rDir = refractVec;
+        }
+        else
+        {
+            rDir = RandomVector(refractVec, Area);
+        }
     }
     else
     {
@@ -190,7 +198,14 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
             float3 eyeVec = -outDir;
             float3 reflectVec = reflect(eyeVec, normal);
             float Area = roughness * roughness;
-            rDir = RandomVector(reflectVec, Area);
+            if (roughness <= 0.0f)
+            {
+                rDir = reflectVec;
+            }
+            else
+            {
+                rDir = RandomVector(reflectVec, Area);
+            }
         }
         else
         { //Diffuse
