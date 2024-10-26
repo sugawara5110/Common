@@ -43,24 +43,25 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
                                                          payload.throughput, payload.hitInstanceId);
         }
     }
+    payload.mNo = getMaterialCB().materialNo;
 }
 
 //法線マップテスト用
 [shader("closesthit")]
 void basicHit_normalMapTest(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
-	payload.hitPosition = HitWorldPosition();
-	Vertex3 v3 = getVertex();
+    payload.hitPosition = HitWorldPosition();
+    Vertex3 v3 = getVertex();
 //テクスチャ取得
-	float4 difTex = getDifPixel(attr, v3);
-	float3 normalMap = getNorPixel(attr, v3);
+    float4 difTex = getDifPixel(attr, v3);
+    float3 normalMap = getNorPixel(attr, v3);
 
 //深度取得
-	payload.depth = getDepth(attr, v3);
+    payload.depth = getDepth(attr, v3);
 //法線取得
-	payload.normal = normalMap;
+    payload.normal = normalMap;
 
-	payload.color = normalMap;
-	payload.hit = true;
-	payload.Alpha = difTex.w;
+    payload.color = normalMap;
+    payload.hit = true;
+    payload.Alpha = difTex.w;
 }

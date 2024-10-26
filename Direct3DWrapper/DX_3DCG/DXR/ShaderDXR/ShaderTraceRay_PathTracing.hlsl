@@ -21,67 +21,67 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload)
 ///////////////////////NeeGetLight///////////////////////////////////////////////////////////////
 RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 normal, inout int emIndex)
 {
-	uint NumEmissive = numEmissive.x;
+    uint NumEmissive = numEmissive.x;
 /////光源サイズ合計
-	float sumSize = 0.0f;
-	for (uint i = 0; i < NumEmissive; i++)
-	{
-		sumSize += emissiveNo[i].y;
-	}
-	if (useImageBasedLighting)
-		sumSize += IBL_size;
+    float sumSize = 0.0f;
+    for (uint i = 0; i < NumEmissive; i++)
+    {
+        sumSize += emissiveNo[i].y;
+    }
+    if (useImageBasedLighting)
+        sumSize += IBL_size;
 
 /////乱数を生成
-	uint rnd = Rand_integer() % 101;
+    uint rnd = Rand_integer() % 101;
 
 /////光源毎のサイズから全光源の割合を計算,そこからインデックスを選択
-	uint sum_min = 0;
-	uint sum_max = 0;
-	for (uint i = 0; i < NumEmissive; i++)
-	{
-		sum_min = sum_max;
-		sum_max += (uint) (emissiveNo[i].y / sumSize * 100.0f); //サイズの割合を累積
-		if (sum_min <= rnd && rnd < sum_max)
-		{
-			emIndex = i;
-			break;
-		} //乱数が累積値の範囲に入ったらそのインデックス値を選択
-	}
+    uint sum_min = 0;
+    uint sum_max = 0;
+    for (uint i = 0; i < NumEmissive; i++)
+    {
+        sum_min = sum_max;
+        sum_max += (uint) (emissiveNo[i].y / sumSize * 100.0f); //サイズの割合を累積
+        if (sum_min <= rnd && rnd < sum_max)
+        {
+            emIndex = i;
+            break;
+        } //乱数が累積値の範囲に入ったらそのインデックス値を選択
+    }
 
-	float3 ePos;
-	uint ray_flag;
+    float3 ePos;
+    uint ray_flag;
 
-	if (emIndex >= 0)
-	{
-		ePos = emissivePosition[emIndex].xyz;
-		ray_flag = RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
-	}
-	else
-	{
-		ePos = hitPosition;
-		ray_flag = RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
-	}
+    if (emIndex >= 0)
+    {
+        ePos = emissivePosition[emIndex].xyz;
+        ray_flag = RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
+    }
+    else
+    {
+        ePos = hitPosition;
+        ray_flag = RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+    }
 
-	RayDesc ray;
-	ray.Direction = RandomVector(float3(1.0f, 0.0f, 0.0f), 2.0f); //2.0f全方向
+    RayDesc ray;
+    ray.Direction = RandomVector(float3(1.0f, 0.0f, 0.0f), 2.0f); //2.0f全方向
 
-	RayPayload payload;
-	payload.hitPosition = ePos;
-	payload.mNo = NEE; //処理分岐用
+    RayPayload payload;
+    payload.hitPosition = ePos;
+    payload.mNo = NEE; //処理分岐用
 
 /////光源から点をランダムで取得
-	traceRay(RecursionCnt, ray_flag, 0, 0, ray, payload);
+    traceRay(RecursionCnt, ray_flag, 0, 0, ray, payload);
 
-	if (payload.hit)
-	{
-		float3 lightVec = payload.hitPosition - hitPosition;
-		ray.Direction = normalize(lightVec);
-		payload.hitPosition = hitPosition;
-		payload.mNo = NEE; //処理分岐用
+    if (payload.hit)
+    {
+        float3 lightVec = payload.hitPosition - hitPosition;
+        ray.Direction = normalize(lightVec);
+        payload.hitPosition = hitPosition;
+        payload.mNo = NEE; //処理分岐用
 ////////今の位置から取得した光源位置へ飛ばす
-		traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
-	}
-	return payload;
+        traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+    }
+    return payload;
 }
 
 ///////////////////////NextEventEstimation////////////////////////////////////////////////////
@@ -141,8 +141,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         return payload;
     }
 
-    uint materialID = getMaterialID();
-    MaterialCB mcb = material[materialID];
+    MaterialCB mcb = getMaterialCB();
     float3 Diffuse = mcb.Diffuse.xyz;
     float3 Speculer = mcb.Speculer.xyz;
     uint mNo = mcb.materialNo;
@@ -254,8 +253,7 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
 
     hitInstanceId = (int) getInstancingID();
 
-    uint materialID = getMaterialID();
-    MaterialCB mcb = material[materialID];
+    MaterialCB mcb = getMaterialCB();
     uint mNo = mcb.materialNo;
 
     float3 outDir = -WorldRayDirection();

@@ -99,6 +99,12 @@ float3 HitWorldPosition()
 	return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
 }
 
+///////////////////////////////////////マテリアルCB取得////////////////////////////////////////////
+MaterialCB getMaterialCB()
+{
+    return material[getMaterialID()];
+}
+
 ///////////////////////////////////////頂点取得////////////////////////////////////////////////////
 Vertex3 getVertex()
 {
@@ -488,4 +494,11 @@ float3 BSDF(bool bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3
         bsdf = DiffSpeBSDF(inDir, outDir, difTexColor.xyz, speTexColor, N, PDF);
     }
     return bsdf;
+}
+
+////////////////////////////////////////////SkyLight////////////////////////////////////////////////
+float3 getSkyLight(float3 dir)
+{
+    float2 uv = float2(atan2(dir.z, dir.x) / 2.0f / PI + 0.5f, acos(dir.y) / PI);
+    return g_texImageBasedLighting.SampleLevel(g_samLinear, uv, 0.0);
 }

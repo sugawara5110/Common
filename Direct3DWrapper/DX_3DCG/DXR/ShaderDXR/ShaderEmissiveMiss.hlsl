@@ -7,7 +7,7 @@
 [shader("miss")]
 void EmissiveMiss(inout RayPayload payload)
 {
-	payload.color = float3(0.0, 0.0, 0.0);
-	payload.hit = false;
-	payload.reTry = false;
+    payload.color = float3(0.0, 0.0, 0.0);
+    payload.hit = false;
+    payload.reTry = false;
 }

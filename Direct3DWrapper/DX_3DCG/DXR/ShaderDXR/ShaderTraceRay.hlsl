@@ -9,65 +9,60 @@
 float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition, 
                                 in float3 difTexColor, in float3 speTexColor, in float3 normal)
 {
-	uint materialID = getMaterialID();
-	MaterialCB mcb = material[materialID];
-	uint mNo = mcb.materialNo;
-	float3 ret = difTexColor; //光源だった場合、映り込みがそのまま出る・・・あとで変更する
+    MaterialCB mcb = getMaterialCB();
+    uint mNo = mcb.materialNo;
 
-	bool mf = materialIdent(mNo, EMISSIVE);
-	if (!mf)
-	{ //emissive以外
+    RayPayload payload;
+    payload.hit = false;
+    LightOut emissiveColor = (LightOut) 0;
+    LightOut Out;
+    RayDesc ray;
 
-		RayPayload payload;
-		payload.hit = false;
-		LightOut emissiveColor = (LightOut) 0;
-		LightOut Out;
-		RayDesc ray;
-
-		float3 SpeculerCol = mcb.Speculer.xyz;
-		float3 Diffuse = mcb.Diffuse.xyz;
-		float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;
-		float shininess = mcb.shininess;
+    float3 SpeculerCol = mcb.Speculer.xyz;
+    float3 Diffuse = mcb.Diffuse.xyz;
+    float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;
+    float shininess = mcb.shininess;
 
 ////////光源計算
-		uint NumEmissive = numEmissive.x;
-		for (uint i = 0; i < NumEmissive; i++)
-		{
-			if (emissivePosition[i].w == 1.0f)
-			{
-				float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);
+    uint NumEmissive = numEmissive.x;
+    for (uint i = 0; i < NumEmissive; i++)
+    {
+        if (emissivePosition[i].w == 1.0f)
+        {
+            float3 lightVec = normalize(emissivePosition[i].xyz - hitPosition);
 
-				ray.Direction = lightVec;
-				payload.mNo = EMISSIVE; //処理分岐用
+            ray.Direction = lightVec;
 
-				payload.hitPosition = hitPosition;
+            payload.hitPosition = hitPosition;
+            payload.mNo = EMISSIVE; //処理分岐用
 
-				traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 1, ray, payload);
+            traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+            
+            if (!materialIdent(payload.mNo, EMISSIVE))
+            {
+                payload.color = float3(0, 0, 0);
+            }
+            float4 emissiveHitPos = emissivePosition[i];
+            emissiveHitPos.xyz = payload.hitPosition;
 
-				float4 emissiveHitPos = emissivePosition[i];
-				emissiveHitPos.xyz = payload.hitPosition;
-
-				Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCG内関数
+            Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCG内関数
                                   hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);
 
-				emissiveColor.Diffuse += Out.Diffuse;
-				emissiveColor.Speculer += Out.Speculer;
-			}
-		}
+            emissiveColor.Diffuse += Out.Diffuse;
+            emissiveColor.Speculer += Out.Speculer;
+        }
+    }
 ////////最後にテクスチャの色に掛け合わせ
-		difTexColor *= emissiveColor.Diffuse;
-		speTexColor *= emissiveColor.Speculer;
-		ret = difTexColor + speTexColor;
-	}
-	return ret;
+    difTexColor *= emissiveColor.Diffuse;
+    speTexColor *= emissiveColor.Speculer;
+    return difTexColor + speTexColor;
 }
 
 ///////////////////////反射方向へ光線を飛ばす, ヒットした場合ピクセル値乗算///////////////////////
 float3 MetallicPayloadCalculate(in uint RecursionCnt, in float3 hitPosition, 
-                                in float3 difTexColor, in float3 normal, inout int hitInstanceId, in float fresnel)
+                                in float3 difTexColor, in float3 normal, inout int hitInstanceId)
 {
-    uint materialID = getMaterialID();
-    uint mNo = material[materialID].materialNo;
+    uint mNo = getMaterialCB().materialNo;
     float3 ret = difTexColor;
 
     hitInstanceId = (int) getInstancingID(); //自身のID書き込み
@@ -84,12 +79,12 @@ float3 MetallicPayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
         ray.Direction = reflectVec; //反射方向にRayを飛ばす
         payload.hitPosition = hitPosition;
 
-        traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 1, ray, payload);
+        traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
 
         float3 outCol = float3(0.0f, 0.0f, 0.0f);
         if (payload.hit)
         {
-            float3 refCol = payload.color * (1.0f - fresnel);
+            float3 refCol = payload.color;
 
             outCol = difTexColor * refCol; //ヒットした場合映り込みとして乗算
             hitInstanceId = payload.hitInstanceId; //ヒットしたID書き込み
@@ -109,10 +104,9 @@ float3 MetallicPayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
 }
 
 ////////////////////////////////////////半透明//////////////////////////////////////////
-float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor, in float3 normal, in float fresnel)
+float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTexColor, in float3 normal)
 {
-    uint materialID = getMaterialID();
-    MaterialCB mcb = material[materialID];
+    MaterialCB mcb = getMaterialCB();
     uint mNo = mcb.materialNo;
     float3 ret = difTexColor.xyz;
     float Alpha = difTexColor.w;
@@ -123,16 +117,29 @@ float3 Translucent(in uint RecursionCnt, in float3 hitPosition, in float4 difTex
         float Alpha = difTexColor.w;
         RayPayload payload;
         RayDesc ray;
+        
+        float in_eta = AIR_RefractiveIndex;
+        float out_eta = mcb.RefractiveIndex;
+        
 //視線ベクトル 
+        float3 r_eyeVec = -WorldRayDirection(); //視線へのベクトル
+        float norDir = dot(r_eyeVec, normal);
+        if (norDir < 0.0f)
+        {
+            normal *= -1.0f;
+            in_eta = mcb.RefractiveIndex;
+            out_eta = AIR_RefractiveIndex;
+        }
+        
         float3 eyeVec = WorldRayDirection();
-        float eta = 1.0f / mcb.RefractiveIndex;
+        float eta = in_eta / out_eta;
         ray.Direction = refract(eyeVec, normalize(normal), eta);
         payload.hitPosition = hitPosition;
 
-        traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 1, ray, payload);
+        traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
 
 //アルファ値の比率で元の色と光線衝突先の色を配合
-        ret = payload.color * fresnel * (1.0f - Alpha) + difTexColor * Alpha;
+        ret = payload.color * (1.0f - Alpha) + difTexColor * Alpha;
     }
     return ret;
 }
@@ -145,20 +152,11 @@ float3 PayloadCalculate_OneRay(in uint RecursionCnt, in float3 hitPosition,
 ////////光源への光線
     difTex.xyz = EmissivePayloadCalculate(RecursionCnt, hitPosition, difTex.xyz, speTex, normalMap);
 
-////////法線切り替え
-    float3 r_eyeVec = -WorldRayDirection(); //視線へのベクトル
-    float norDir = dot(r_eyeVec, normalMap);
-    if (norDir < 0.0f)
-        normalMap *= -1.0f;
-
-////////フレネル計算
-    float fresnel = saturate(dot(r_eyeVec, normalMap));
-
 ////////反射方向への光線
-    difTex.xyz = MetallicPayloadCalculate(RecursionCnt, hitPosition, difTex.xyz, normalMap, hitInstanceId, fresnel);
+    difTex.xyz = MetallicPayloadCalculate(RecursionCnt, hitPosition, difTex.xyz, normalMap, hitInstanceId);
 
 ////////半透明
-    difTex.xyz = Translucent(RecursionCnt, hitPosition, difTex, normalMap, fresnel);
+    difTex.xyz = Translucent(RecursionCnt, hitPosition, difTex, normalMap);
 
     return difTex.xyz;
 }

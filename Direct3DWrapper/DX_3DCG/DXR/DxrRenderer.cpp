@@ -448,6 +448,7 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 	SeedFrame = 0;
 	IBL_size = 5000.0f;
 	useImageBasedLighting = false;
+	CoordTf::MatrixIdentity(&ImageBasedLighting_Matrix);
 
 	Dx_CommandManager* cMa = Dx_CommandManager::GetInstance();
 	Dx_CommandListObj* cObj = cMa->getGraphicsComListObj(0);
@@ -1123,6 +1124,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	DxrConstantBuffer& cb = cbObj->cb;
 	MatrixInverse(&cb.prevViewProjection, &cb.projectionToWorld);
 	MatrixInverse(&cb.projectionToWorld, &VP);
+	cb.ImageBasedLighting_Matrix = ImageBasedLighting_Matrix;
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
 	cb.traceMode = traceMode;
@@ -1321,4 +1323,13 @@ void DxrRenderer::useImageBasedLightingTexture(bool on) {
 
 void DxrRenderer::setImageBasedLighting_size(float size) {
 	IBL_size = size;
+}
+
+void DxrRenderer::setImageBasedLighting_Direction(CoordTf::VECTOR3 dir) {
+	using namespace CoordTf;
+	MATRIX rotZ, rotY, rotX;
+	MatrixRotationZ(&rotZ, dir.z);
+	MatrixRotationY(&rotY, dir.y);
+	MatrixRotationX(&rotX, dir.x);
+	ImageBasedLighting_Matrix = rotZ * rotY * rotX;
 }

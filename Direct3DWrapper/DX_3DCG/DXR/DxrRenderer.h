@@ -22,6 +22,7 @@ struct DxrConstantBuffer
 {
 	CoordTf::MATRIX prevViewProjection;
 	CoordTf::MATRIX projectionToWorld;
+	CoordTf::MATRIX ImageBasedLighting_Matrix;
 	CoordTf::VECTOR4 cameraPosition;
 	CoordTf::VECTOR4 emissivePosition[LIGHT_PCS];//xyz:Pos, w:ƒIƒ“ƒIƒt
 	CoordTf::VECTOR4 numEmissive;//x:Em, y:numInstance
@@ -93,6 +94,7 @@ private:
 	UINT SeedFrame = 0;
 	float IBL_size;
 	bool useImageBasedLighting = false;
+	CoordTf::MATRIX ImageBasedLighting_Matrix;
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
@@ -177,6 +179,7 @@ public:
 	void set_DepthRange_NorRange(float DepthRange, float NorRange);
 	void useImageBasedLightingTexture(bool on);
 	void setImageBasedLighting_size(float size);
+	void setImageBasedLighting_Direction(CoordTf::VECTOR3 dir);
 };
 
 #endif

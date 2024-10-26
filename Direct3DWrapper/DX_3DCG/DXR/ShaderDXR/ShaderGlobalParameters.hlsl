@@ -25,21 +25,22 @@ struct RayPayload
 
 cbuffer global : register(b0, space0)
 {
-	matrix prevViewProjection;
-	matrix projectionToWorld;
-	float4 cameraPosition;
-	float4 emissivePosition[256]; //.w:onoff
-	float4 numEmissive; //x:Em, y:numInstance
-	float4 lightst[256]; //レンジ, 減衰1, 減衰2, 減衰3
-	float4 GlobalAmbientColor;
-	float4 emissiveNo[256]; //x:emissiveNo, y:OutlineSize
-	float4 TMin_TMax; //.x, .y
-	float4 frameReset_DepthRange_NorRange; //.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
-	uint maxRecursion;
-	uint traceMode;
-	uint SeedFrame;
-	float IBL_size;
-	bool useImageBasedLighting;
+    matrix prevViewProjection;
+    matrix projectionToWorld;
+    matrix ImageBasedLighting_Matrix;
+    float4 cameraPosition;
+    float4 emissivePosition[256]; //.w:onoff
+    float4 numEmissive; //x:Em, y:numInstance
+    float4 lightst[256]; //レンジ, 減衰1, 減衰2, 減衰3
+    float4 GlobalAmbientColor;
+    float4 emissiveNo[256]; //x:emissiveNo, y:OutlineSize
+    float4 TMin_TMax; //.x, .y
+    float4 frameReset_DepthRange_NorRange; //.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
+    uint maxRecursion;
+    uint traceMode;
+    uint SeedFrame;
+    float IBL_size;
+    bool useImageBasedLighting;
 };
 
 RWTexture2D<uint> gFrameIndexMap : register(u6, space0);
