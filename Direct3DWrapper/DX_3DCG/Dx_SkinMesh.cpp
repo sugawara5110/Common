@@ -38,7 +38,7 @@ SkinMesh::~SkinMesh() {
 	S_DELETE(mObject_BONES);
 }
 
-void SkinMesh::SetState(bool al, bool bl, float diffuse, float specu, float ambi) {
+void SkinMesh::SetState(bool al, bool bl, CoordTf::VECTOR3 diffuse, CoordTf::VECTOR3 specu, CoordTf::VECTOR3 ambi) {
 	alpha = al;
 	blend = bl;
 	addDiffuse = diffuse;
@@ -240,23 +240,23 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		//拡散反射光
 		CoordTf::VECTOR4* diffuse = &mObj[m].dpara.material[i].diffuse;
 		float DiffuseFactor = (float)mesh->getDiffuseFactor(i);
-		diffuse->x = (float)mesh->getDiffuseColor(i, 0) * DiffuseFactor + addDiffuse;
-		diffuse->y = (float)mesh->getDiffuseColor(i, 1) * DiffuseFactor + addDiffuse;
-		diffuse->z = (float)mesh->getDiffuseColor(i, 2) * DiffuseFactor + addDiffuse;
+		diffuse->x = (float)mesh->getDiffuseColor(i, 0) * DiffuseFactor + addDiffuse.x;
+		diffuse->y = (float)mesh->getDiffuseColor(i, 1) * DiffuseFactor + addDiffuse.y;
+		diffuse->z = (float)mesh->getDiffuseColor(i, 2) * DiffuseFactor + addDiffuse.z;
 		diffuse->w = 0.0f;//使用してない
 		//スペキュラー
 		CoordTf::VECTOR4* specular = &mObj[m].dpara.material[i].specular;
 		float SpecularFactor = (float)mesh->getSpecularFactor(i);
-		specular->x = (float)mesh->getSpecularColor(i, 0) * SpecularFactor + addSpecular;
-		specular->y = (float)mesh->getSpecularColor(i, 1) * SpecularFactor + addSpecular;
-		specular->z = (float)mesh->getSpecularColor(i, 2) * SpecularFactor + addSpecular;
+		specular->x = (float)mesh->getSpecularColor(i, 0) * SpecularFactor + addSpecular.x;
+		specular->y = (float)mesh->getSpecularColor(i, 1) * SpecularFactor + addSpecular.y;
+		specular->z = (float)mesh->getSpecularColor(i, 2) * SpecularFactor + addSpecular.z;
 		specular->w = 0.0f;//使用してない
 		//アンビエント
 		CoordTf::VECTOR4* ambient = &mObj[m].dpara.material[i].ambient;
 		float AmbientFactor = (float)mesh->getAmbientFactor(i);
-		ambient->x = (float)mesh->getAmbientColor(i, 0) * AmbientFactor + addAmbient;
-		ambient->y = (float)mesh->getAmbientColor(i, 1) * AmbientFactor + addAmbient;
-		ambient->z = (float)mesh->getAmbientColor(i, 2) * AmbientFactor + addAmbient;
+		ambient->x = (float)mesh->getAmbientColor(i, 0) * AmbientFactor + addAmbient.x;
+		ambient->y = (float)mesh->getAmbientColor(i, 1) * AmbientFactor + addAmbient.y;
+		ambient->z = (float)mesh->getAmbientColor(i, 2) * AmbientFactor + addAmbient.z;
 		ambient->w = 0.0f;//使用してない
 
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す

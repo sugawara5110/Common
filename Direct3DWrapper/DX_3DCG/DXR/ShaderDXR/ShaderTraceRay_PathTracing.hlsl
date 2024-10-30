@@ -118,6 +118,12 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
         PDF = IBL_PDF();
         g = 1.0f;
     }
+    
+    if (getMaterialCB().roughness <= 0.0f)
+    {
+        PDF = 1.0f;
+    }
+    
     return saturate(bsdf * g) * neeP.color / PDF;
 }
 

@@ -14,9 +14,9 @@ class SkinMesh :public SkinMeshHelper {
 protected:
 	bool alpha = false;
 	bool blend = false;
-	float addDiffuse = 0.0f;
-	float addSpecular = 0.0f;
-	float addAmbient = 0.0f;
+	CoordTf::VECTOR3 addDiffuse = { 0.0f,0.0f,0.0f };
+	CoordTf::VECTOR3 addSpecular = { 0.0f,0.0f,0.0f };
+	CoordTf::VECTOR3 addAmbient = { 0.0f,0.0f,0.0f };
 
 	DivideArr divArr[16] = {};
 	int numDiv = 0;
@@ -42,7 +42,11 @@ public:
 	SkinMesh();
 	~SkinMesh();
 
-	void SetState(bool alpha, bool blend, float diffuse = 0.0f, float specu = 0.0f, float ambi = 0.0f);
+	void SetState(bool alpha, bool blend,
+		CoordTf::VECTOR3 diffuse = { 0.0f,0.0f,0.0f },
+		CoordTf::VECTOR3 specu = { 0.0f,0.0f,0.0f },
+		CoordTf::VECTOR3 ambi = { 0.0f,0.0f,0.0f });
+
 	void GetBuffer(int numMaxInstance, int num_end_frame, float* end_frame, bool singleMesh = false, bool deformer = true);
 	void GetBuffer(int numMaxInstance, float end_frame, bool singleMesh = false, bool deformer = true);
 	void SetVertex(bool lclOn = false, bool axisOn = false, bool VerCentering = false);
