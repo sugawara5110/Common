@@ -196,7 +196,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		//スペキュラテクスチャId取得
 		for (int tNo = 0; tNo < mesh->getNumDiffuseTexture(i); tNo++) {
 			textureType type = mesh->getDiffuseTextureType(i, tNo);
-			if (type.SpecularColor) {
+			if (type.SpecularColor || type.ReflectionFactor) {
 				auto speName = mesh->getDiffuseTextureName(i, tNo);
 				mObj[m].dpara.material[i].spetex_no = dx->GetTexNumber(speName);
 				auto str = mesh->getDiffuseTextureUVName(i, tNo);
@@ -258,6 +258,10 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		ambient->y = (float)mesh->getAmbientColor(i, 1) * AmbientFactor + addAmbient.y;
 		ambient->z = (float)mesh->getAmbientColor(i, 2) * AmbientFactor + addAmbient.z;
 		ambient->w = 0.0f;//使用してない
+
+		float SpecularIntensity = specular->x * 0.2125f + specular->y * 0.7154f + specular->z * 0.0721f;
+		float Roughness = sqrt(2 / ((float)mesh->getShininessExponent(i) * SpecularIntensity + 2));
+		mObj[m].setRoughness(Roughness);
 
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
 		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
