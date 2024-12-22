@@ -38,18 +38,17 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
 
             traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
             
-            if (!materialIdent(payload.mNo, EMISSIVE))
+            if (materialIdent(payload.mNo, EMISSIVE))
             {
-                payload.color = float3(0, 0, 0);
-            }
-            float4 emissiveHitPos = emissivePosition[i];
-            emissiveHitPos.xyz = payload.hitPosition;
+                float4 emissiveHitPos = emissivePosition[i];
+                emissiveHitPos.xyz = payload.hitPosition;
 
-            Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCG内関数
+                Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCG内関数
                                   hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);
 
-            emissiveColor.Diffuse += Out.Diffuse;
-            emissiveColor.Speculer += Out.Speculer;
+                emissiveColor.Diffuse += Out.Diffuse;
+                emissiveColor.Speculer += Out.Speculer;
+            }
         }
     }
 ////////最後にテクスチャの色に掛け合わせ

@@ -414,7 +414,7 @@ float3 FullyRefractionBTDF(float3 F, float3 L, float3 N, float in_eta, float out
 {
     const float dotNL = abs(dot(N, L));
    
-    const float3 a = out_eta * out_eta / (in_eta * in_eta);
+    const float a = out_eta * out_eta / (in_eta * in_eta);
     const float3 b = 1 - F;
     const float c = 1.0f / dotNL;
     return a * b * c;
