@@ -40,11 +40,12 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
             
             if (materialIdent(payload.mNo, EMISSIVE))
             {
-                float4 emissiveHitPos = emissivePosition[i];
+                uint emInd = payload.EmissiveIndex;
+                float4 emissiveHitPos = emissivePosition[emInd];
                 emissiveHitPos.xyz = payload.hitPosition;
 
                 Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCGì‡ä÷êî
-                                  hitPosition, lightst[i], payload.color, cameraPosition.xyz, shininess);
+                                  hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);
 
                 emissiveColor.Diffuse += Out.Diffuse;
                 emissiveColor.Speculer += Out.Speculer;

@@ -35,41 +35,41 @@ void traceRay(in uint RecursionCnt,
 }
 
 ///////////////////////////////////////////ランダムfloat///////////////////////////////////////////
-float Rand_float(float2 v2)
+float Rand_float(in float2 v2, inout uint Seed)
 {
-	Seed++;
-	return sin(dot(v2, float2(12.9898, 78.233)) * (SeedFrame % 100 + 1) * 0.001 + Seed + SeedFrame) * 43758.5453;
+    Seed++;
+    return sin(dot(v2, float2(12.9898, 78.233)) * (SeedFrame % 100 + 1) * 0.001 + Seed + SeedFrame) * 43758.5453;
 }
 
 ///////////////////////////////////////////ランダム整数////////////////////////////////////////////
-uint Rand_integer()
+uint Rand_integer(inout uint Seed)
 {
-	float2 index = (float2) DispatchRaysIndex().xy;
-	return (uint) (abs(Rand_float(index)));
+    float2 index = (float2) DispatchRaysIndex().xy;
+    return (uint) (abs(Rand_float(index, Seed)));
 }
 
 ///////////////////////////////////////////ランダム少数////////////////////////////////////////////
-float Rand_frac(float2 v2)
+float Rand_frac(in float2 v2, inout uint Seed)
 {
-	return frac(Rand_float(v2));
+    return frac(Rand_float(v2, Seed));
 }
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
-float3 RandomVector(float3 v, float area)
+float3 RandomVector(in float3 v, in float area, inout uint Seed)
 {
-	float2 index = (float2) DispatchRaysIndex().xy;
-	float rand1 = Rand_frac(index);
-	float rand2 = Rand_frac(index + 0.5f);
+    float2 index = (float2) DispatchRaysIndex().xy;
+    float rand1 = Rand_frac(index, Seed);
+    float rand2 = Rand_frac(index + 0.5f, Seed);
 
 //ランダムなベクトルを生成
-	float z = area * rand1 - 1.0f;
-	float phi = PI * (2.0f * rand2 - 1.0f);
-	float sq = sqrt(1.0f - z * z);
-	float x = sq * cos(phi);
-	float y = sq * sin(phi);
-	float3 randV = float3(x, y, z);
+    float z = area * rand1 - 1.0f;
+    float phi = PI * (2.0f * rand2 - 1.0f);
+    float sq = sqrt(1.0f - z * z);
+    float x = sq * cos(phi);
+    float y = sq * sin(phi);
+    float3 randV = float3(x, y, z);
 
-	return -localToWorld(v, randV);
+    return -localToWorld(v, randV);
 }
 
 ///////////////////////////////////////////Material識別////////////////////////////////////////////
@@ -500,5 +500,6 @@ float3 BSDF(bool bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3
 float3 getSkyLight(float3 dir)
 {
     float2 uv = float2(atan2(dir.z, dir.x) / 2.0f / PI + 0.5f, acos(dir.y) / PI);
-    return g_texImageBasedLighting.SampleLevel(g_samLinear, uv, 0.0);
+    float4 ret = g_texImageBasedLighting.SampleLevel(g_samLinear, uv, 0.0);
+    return ret.xyz;
 }

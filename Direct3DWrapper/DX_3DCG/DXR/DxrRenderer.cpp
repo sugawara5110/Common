@@ -783,7 +783,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 20;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 21;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects.push_back(shaderConfig.subobject);
 	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];
@@ -987,7 +987,7 @@ void DxrRenderer::createShaderResources() {
 	samLinear.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	samLinear.MipLODBias = 0;
 	samLinear.MaxAnisotropy = 16;
-	samLinear.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	samLinear.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 	samLinear.MinLOD = 0.0f;
 	samLinear.MaxLOD = D3D12_FLOAT32_MAX;
 

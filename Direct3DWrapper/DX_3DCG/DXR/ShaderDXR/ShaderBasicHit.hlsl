@@ -40,7 +40,7 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
         {
             payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition,
                                                          difTex, speTex, normalMap,
-                                                         payload.throughput, payload.hitInstanceId);
+                                                         payload.throughput, payload.hitInstanceId, payload.Seed);
         }
     }
     payload.mNo = getMaterialCB().materialNo;

@@ -2,25 +2,25 @@
 //                                      ShaderGlobalParameters.hlsl                                      //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static uint Seed = 0;
 static const float PI = 3.1415926;
 static const float3 local_normal = float3(0.0f, 0.0f, 1.0f);
 static const float AIR_RefractiveIndex = 1.0f;
 
 struct RayPayload
 {
-	float3 color;
-	float3 hitPosition;
-	float3 normal;
-	float3 throughput;
-	bool reTry;
-	bool hit;
-	float Alpha;
-	uint RecursionCnt;
-	uint EmissiveIndex;
-	uint mNo;
-	float depth;
-	int hitInstanceId;
+    float3 color;
+    float3 hitPosition;
+    float3 normal;
+    float3 throughput;
+    bool reTry;
+    bool hit;
+    float Alpha;
+    uint RecursionCnt;
+    uint EmissiveIndex;
+    uint mNo;
+    float depth;
+    int hitInstanceId;
+    uint Seed;
 };
 
 cbuffer global : register(b0, space0)
@@ -29,7 +29,7 @@ cbuffer global : register(b0, space0)
     matrix projectionToWorld;
     matrix ImageBasedLighting_Matrix;
     float4 cameraPosition;
-    float4 emissivePosition[256]; //.w:onoff
+    float4 emissivePosition[256]; //xyz:Pos, w:オンオフ
     float4 numEmissive; //x:Em, y:numInstance
     float4 lightst[256]; //レンジ, 減衰1, 減衰2, 減衰3
     float4 GlobalAmbientColor;

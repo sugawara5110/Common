@@ -7,21 +7,22 @@
 //共通
 void rayGenIn()
 {
-	uint2 index = DispatchRaysIndex().xy; //この関数を実行しているピクセル座標を取得
-	uint2 dim = DispatchRaysDimensions(); //画面全体の幅と高さを取得
-	float2 screenPos = (index + 0.5f) / dim * 2.0f - 1.0f;
+    uint2 index = DispatchRaysIndex().xy; //この関数を実行しているピクセル座標を取得
+    uint2 dim = DispatchRaysDimensions(); //画面全体の幅と高さを取得
+    float2 screenPos = (index + 0.5f) / dim * 2.0f - 1.0f;
 
-	Seed = SeedFrame;
+    RayPayload payload;
+	
+    payload.Seed = SeedFrame;
 
-	RayDesc ray;
+    RayDesc ray;
 //光線の原点, ここが光線スタート, 視線から始まる
-	ray.Origin = cameraPosition.xyz;
+    ray.Origin = cameraPosition.xyz;
 //光線の方向
-	float4 world = mul(float4(screenPos.x, -screenPos.y, 0, 1), projectionToWorld);
-	world.xyz /= world.w;
-	ray.Direction = normalize(world.xyz - ray.Origin);
+    float4 world = mul(float4(screenPos.x, -screenPos.y, 0, 1), projectionToWorld);
+    world.xyz /= world.w;
+    ray.Direction = normalize(world.xyz - ray.Origin);
 
-	RayPayload payload;
 //TraceRay(AccelerationStructure, 
 //         RAY_FLAG, 
 //         InstanceInclusionMask, 
@@ -32,65 +33,65 @@ void rayGenIn()
 //         Payload);
 //この関数からRayがスタートする
 //payloadに各hit, miss シェーダーで計算された値が格納される
-	payload.RecursionCnt = 0;
-	payload.hitPosition = ray.Origin;
-	gDepthOut[index] = 1.0f;
-	payload.depth = 1.0f;
-	payload.normal = float3(0.0f, 0.0f, 0.0f);
-	payload.hitInstanceId = -1;
-	payload.throughput = float3(1.0f, 1.0f, 1.0f);
-	payload.mNo = NONREFLECTION;
+    payload.RecursionCnt = 0;
+    payload.hitPosition = ray.Origin;
+    gDepthOut[index] = 1.0f;
+    payload.depth = 1.0f;
+    payload.normal = float3(0.0f, 0.0f, 0.0f);
+    payload.hitInstanceId = -1;
+    payload.throughput = float3(1.0f, 1.0f, 1.0f);
+    payload.mNo = NONREFLECTION;
 
-	traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+    traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
 
-	gDepthOut[index] = payload.depth;
+    gDepthOut[index] = payload.depth;
 
-	gNormalMap[index] = float4(payload.normal, 1.0f);
+    gNormalMap[index] = float4(payload.normal, 1.0f);
 
-	gInstanceIdMap[index] = payload.hitInstanceId;
+    gInstanceIdMap[index] = payload.hitInstanceId;
 
-	float3 col = payload.color;
-	float3 colsatu;
-	colsatu.x = saturate(col.x);
-	colsatu.y = saturate(col.y);
-	colsatu.z = saturate(col.z);
+    float3 col = payload.color;
+    float3 colsatu;
+    colsatu.x = saturate(col.x);
+    colsatu.y = saturate(col.y);
+    colsatu.z = saturate(col.z);
 
-	if (traceMode != 0)
-	{
-		float4 prev_screenPos4 = mul(float4(payload.hitPosition, 1.0f), prevViewProjection);
-		float2 prev_screenPos = (prev_screenPos4.xy / prev_screenPos4.z * payload.depth);
-		prev_screenPos.y *= -1.0f;
-		uint2 prevInd = (prev_screenPos + 1.0f) * dim * 0.5f;
-		float prevDepth = gPrevDepthOut[prevInd];
-		float3 prevNor = gPrevNormalMap[prevInd].xyz;
-		float crruentDepth = gDepthOut[index];
-		float3 crruentNor = gNormalMap[index].xyz;
+    if (traceMode != 0)
+    {
+        float4 prev_screenPos4 = mul(float4(payload.hitPosition, 1.0f), prevViewProjection);
+        float2 prev_screenPos = (prev_screenPos4.xy / prev_screenPos4.z * payload.depth);
+        prev_screenPos.y *= -1.0f;
+        uint2 prevInd = (prev_screenPos + 1.0f) * dim * 0.5f;
+        float prevDepth = gPrevDepthOut[prevInd];
+        float3 prevNor = gPrevNormalMap[prevInd].xyz;
+        float crruentDepth = gDepthOut[index];
+        float3 crruentNor = gNormalMap[index].xyz;
 
-		float frameReset = frameReset_DepthRange_NorRange.x;
-		float DepthRange = frameReset_DepthRange_NorRange.y;
-		float NorRange = frameReset_DepthRange_NorRange.z;
+        float frameReset = frameReset_DepthRange_NorRange.x;
+        float DepthRange = frameReset_DepthRange_NorRange.y;
+        float NorRange = frameReset_DepthRange_NorRange.z;
 
-		if (abs(prevDepth - crruentDepth) <= DepthRange && dot(prevNor, crruentNor) >= NorRange)
-		{
-			gFrameIndexMap[index]++;
-		}
-		else
-		{
-			gFrameIndexMap[index] = 0;
-		}
+        if (abs(prevDepth - crruentDepth) <= DepthRange && dot(prevNor, crruentNor) >= NorRange)
+        {
+            gFrameIndexMap[index]++;
+        }
+        else
+        {
+            gFrameIndexMap[index] = 0;
+        }
 
-		if (frameReset == 1.0f)
-			gFrameIndexMap[index] = 0;
+        if (frameReset == 1.0f)
+            gFrameIndexMap[index] = 0;
 
-		const float CMA_Ratio = 1.0f / ((float) gFrameIndexMap[index] + 1.0f);
-		float3 prev = gOutput[index];
-		float3 le = lerp(prev, colsatu, CMA_Ratio);
-		gOutput[index] = float4(le, 1.0f);
-	}
-	else
-	{
-		gOutput[index] = float4(colsatu, 1.0f);
-	}
+        const float CMA_Ratio = 1.0f / ((float) gFrameIndexMap[index] + 1.0f);
+        float3 prev = gOutput[index];
+        float3 le = lerp(prev, colsatu, CMA_Ratio);
+        gOutput[index] = float4(le, 1.0f);
+    }
+    else
+    {
+        gOutput[index] = float4(colsatu, 1.0f);
+    }
 }
 
 //通常
