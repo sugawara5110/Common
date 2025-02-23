@@ -23,19 +23,18 @@ void PolygonData::GetVBarray(PrimitiveType type, int numMaxInstance) {
 	getBuffer(1, numMaxInstance);
 }
 
-void PolygonData::SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
-	float amR, float amG, float amB) {
-	sg.vDiffuse.x = difR;
-	sg.vDiffuse.y = difG;
-	sg.vDiffuse.z = difB;
+void PolygonData::SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VECTOR3 am) {
+	sg.vDiffuse.x = dif.x;
+	sg.vDiffuse.y = dif.y;
+	sg.vDiffuse.z = dif.z;
 
-	sg.vSpeculer.x = speR;
-	sg.vSpeculer.y = speG;
-	sg.vSpeculer.z = speB;
+	sg.vSpeculer.x = spe.x;
+	sg.vSpeculer.y = spe.y;
+	sg.vSpeculer.z = spe.z;
 
-	sg.vAmbient.x = amR;
-	sg.vAmbient.y = amG;
-	sg.vAmbient.z = amB;
+	sg.vAmbient.x = am.x;
+	sg.vAmbient.y = am.y;
+	sg.vAmbient.z = am.z;
 }
 
 bool PolygonData::Create(int comIndex, bool light, int tNo, bool blend, bool alpha) {
@@ -108,17 +107,4 @@ bool PolygonData::Create(int comIndex, bool light, int tNo, int nortNo, int spet
 	}
 
 	return setDescHeap(numSrvTex, 0, nullptr, nullptr, numCbv, 0, 0);
-}
-
-void PolygonData::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess,
-	float px, float py, float mx, float my) {
-
-	BasicPolygon::InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
-}
-
-void PolygonData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-	float disp, float SmoothRange, float SmoothRatio, float shininess,
-	float px, float py, float mx, float my) {
-
-	BasicPolygon::Update(pos, Color, angle, size, disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
 }

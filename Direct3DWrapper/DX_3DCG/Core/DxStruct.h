@@ -29,11 +29,11 @@
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 #define ALIGNMENT_TO(alignment, val) ((val + alignment - 1) & ~(alignment - 1))
 
-//シェーダー受け渡し用バッファ3D用
 struct WVP_CB {
 	CoordTf::MATRIX wvp;
 	CoordTf::MATRIX world;
 	CoordTf::VECTOR4 AddObjColor;//オブジェクトの色変化用
+	CoordTf::VECTOR4 pXpYmXmY;
 };
 
 struct CONSTANT_BUFFER {
@@ -51,9 +51,6 @@ struct CONSTANT_BUFFER {
 
 	//divide配列 x:distance, y:divide
 	CoordTf::VECTOR4 Divide[16];
-
-	//UV座標移動用
-	CoordTf::VECTOR4 pXpYmXmY;
 };
 
 struct CONSTANT_BUFFER2 {

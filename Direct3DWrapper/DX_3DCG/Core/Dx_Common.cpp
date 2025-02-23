@@ -248,13 +248,13 @@ ComPtr <ID3D12RootSignature> DxCommon::CreateRootSignature(UINT numSrv, UINT num
 static D3D12_STATIC_SAMPLER_DESC getSampler() {
 	D3D12_STATIC_SAMPLER_DESC linearWrap = {};
 	linearWrap.ShaderRegister = 0;
-	linearWrap.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	linearWrap.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;//ê¸å`ï‚ä‘
 	linearWrap.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	linearWrap.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	linearWrap.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	linearWrap.MipLODBias = 0;
 	linearWrap.MaxAnisotropy = 16;
-	linearWrap.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	linearWrap.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//î‰ärñ≥Çµ
 	linearWrap.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 	linearWrap.MinLOD = 0.0f;
 	linearWrap.MaxLOD = D3D12_FLOAT32_MAX;

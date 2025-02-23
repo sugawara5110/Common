@@ -18,7 +18,7 @@ namespace Dx_Util {
 
 	bool getErrorState();//事前にErrorMessageが一回でも呼ばれればtrue
 
-	char* GetNameFromPass(char* pass);//パスからファイル名を抽出
+	char* GetNameFromPath(char* path);//パスからファイル名を抽出
 
 	void createTangent(int numMaterial, unsigned int* indexCntArr,
 		void* vertexArr, unsigned int** indexArr, int structByteStride,
@@ -33,6 +33,8 @@ namespace Dx_Util {
 	void memory_leak_test();
 
 	std::unique_ptr<char[]> ConvertFileToChar(char* file_pass);
+
+	CoordTf::MATRIX calculationMatrixWorld(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 theta, CoordTf::VECTOR3 scale);
 }
 
 #endif

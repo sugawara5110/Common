@@ -36,7 +36,7 @@ Dx_TextureHolder::~Dx_TextureHolder() {
 
 int Dx_TextureHolder::GetTexNumber(CHAR* fileName) {
 
-	fileName = Dx_Util::GetNameFromPass(fileName);
+	fileName = Dx_Util::GetNameFromPath(fileName);
 
 	for (int i = 0; i < texNum; i++) {
 		if (texture[i].texName == '\0')continue;

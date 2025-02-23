@@ -33,14 +33,14 @@ private:
 
 	static bool CreateShaderByteCodeBool;
 	static bool CreateFin;
-	static bool setCommonPass_fin;
-	static char* middle_pass;
+	static bool setCommonPath_fin;
+	static char* middle_path;
 
-	static std::unique_ptr<char[]> CommonPass;
+	static std::unique_ptr<char[]> CommonPath;
 	static std::unique_ptr<char[]> getShaderRead_ShaderCG(char* file_name);
 
 public:
-	static void setCommonPass(char* pass);
+	static void setCommonPath(char* path);
 	static bool CreateShaderByteCode();
 	static void setNorTestPS();
 	//シェーダーバイトコード
@@ -67,7 +67,7 @@ public:
 	static ComPtr<ID3DBlob> pVertexShader_SKIN;
 	static ComPtr<ID3DBlob> pVertexShader_SKIN_D;
 	static ComPtr<ID3DBlob> pVertexShader_MESH_D;
-	static ComPtr<ID3DBlob> pVertexShader_MESH;
+	static ComPtr<ID3DBlob> pVertexShader_MESH[2];
 	static ComPtr<ID3DBlob> pVertexShader_BC;
 	static ComPtr<ID3DBlob> pVertexShader_2D;
 	static ComPtr<ID3DBlob> pVertexShader_2DTC;
@@ -85,8 +85,8 @@ public:
 	static std::unique_ptr<char[]> ShaderCalculateLightingCopy;
 	static std::unique_ptr<char[]> ShaderCommonParametersCopy;
 
-	static std::unique_ptr<char[]> getShaderRead(char* file_name, char* middle_pass);
-	static std::unique_ptr<char[]> getShaderPass(char* file_name, char* middle_pass);
+	static std::unique_ptr<char[]> getShaderRead(char* file_name, char* middle_path);
+	static std::unique_ptr<char[]> getShaderPath(char* file_name, char* middle_path);
 	static ComPtr<ID3DBlob> CompileShader(LPCVOID pSrcData, size_t size, LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName, ID3DInclude* pInclude);
 	static ComPtr<ID3DBlob> CompileShader(LPCVOID pSrcData, size_t size, LPSTR szFuncName, LPSTR szProfileName);
 	static ComPtr<ID3DBlob> CompileShader(LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName);

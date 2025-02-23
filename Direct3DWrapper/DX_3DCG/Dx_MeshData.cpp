@@ -444,11 +444,10 @@ void MeshData::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio
 	mObj.InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess);
 }
 
-void MeshData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+void MeshData::Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 	float disp, float SmoothRange, float SmoothRatio, float shininess) {
 
-	mObj.Update(pos, Color, angle, size, disp, SmoothRange, SmoothRatio, shininess);
+	mObj.Update(pos, angle, size, Color, disp, SmoothRange, SmoothRatio, shininess);
 }
 
 void MeshData::DrawOff() {

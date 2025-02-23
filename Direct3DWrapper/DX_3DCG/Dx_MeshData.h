@@ -62,11 +62,10 @@ public:
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
-	void InstancingUpdate(float disp, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
+	void InstancingUpdate(float disp = 1.0f, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
-	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-		float disp, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
+	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
+		float disp = 1.0f, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	void DrawOff();
 	void Draw(int comIndex);

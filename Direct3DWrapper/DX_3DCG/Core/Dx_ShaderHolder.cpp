@@ -18,8 +18,8 @@ void addChar::addStr(char* str1, char* str2) {
 
 bool Dx_ShaderHolder::CreateShaderByteCodeBool = true;
 bool Dx_ShaderHolder::CreateFin = false;
-bool Dx_ShaderHolder::setCommonPass_fin = false;
-char* Dx_ShaderHolder::middle_pass = "Common/Direct3DWrapper/DX_3DCG/Core/ShaderCG/";
+bool Dx_ShaderHolder::setCommonPath_fin = false;
+char* Dx_ShaderHolder::middle_path = "Common/Direct3DWrapper/DX_3DCG/Core/ShaderCG/";
 
 ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPCVOID pSrcData, size_t size, LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName, ID3DInclude* pInclude) {
 
@@ -42,10 +42,10 @@ ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPCVOID pSrcData, size_t size, L
 	return CompileShader(pSrcData, size, nullptr, szFuncName, szProfileName, nullptr);
 }
 
-std::unique_ptr<char[]> Dx_ShaderHolder::getShaderPass(char* file_name, char* middle_pass) {
+std::unique_ptr<char[]> Dx_ShaderHolder::getShaderPath(char* file_name, char* middle_path) {
 
 	addChar p1, p2;
-	p1.addStr(CommonPass.get(), middle_pass);
+	p1.addStr(CommonPath.get(), middle_path);
 	p2.addStr(p1.str, file_name);
 
 	size_t size = strlen(p2.str) + 1;
@@ -55,19 +55,19 @@ std::unique_ptr<char[]> Dx_ShaderHolder::getShaderPass(char* file_name, char* mi
 }
 
 ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName) {
-	auto pass = getShaderPass((char*)pSourceName, middle_pass);
+	auto pass = getShaderPath((char*)pSourceName, middle_path);
 	auto pSrcData = Dx_Util::ConvertFileToChar(pass.get());
 	return CompileShader(pSrcData.get(), strlen(pSrcData.get()) + 1, pass.get(),
 		szFuncName, szProfileName, D3D_COMPILE_STANDARD_FILE_INCLUDE);
 }
 
-std::unique_ptr<char[]> Dx_ShaderHolder::getShaderRead(char* file_name, char* middle_pass) {
-	auto pass = getShaderPass(file_name, middle_pass);
-	return Dx_Util::ConvertFileToChar(pass.get());
+std::unique_ptr<char[]> Dx_ShaderHolder::getShaderRead(char* file_name, char* middle_path) {
+	auto path = getShaderPath(file_name, middle_path);
+	return Dx_Util::ConvertFileToChar(path.get());
 }
 
 std::unique_ptr<char[]> Dx_ShaderHolder::getShaderRead_ShaderCG(char* file_name) {
-	return getShaderRead(file_name, middle_pass);
+	return getShaderRead(file_name, middle_path);
 }
 
 void Dx_ShaderHolder::setNorTestPS() {
@@ -79,7 +79,7 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	if (CreateFin)return true;
 
-	if (!setCommonPass_fin) {
+	if (!setCommonPath_fin) {
 		Dx_Util::ErrorMessage("Run CreateShaderByteCode after running setCommonPass.");
 	}
 
@@ -128,7 +128,8 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 	//メッシュ
-	pVertexShader_MESH = CompileShader("ShaderMesh.hlsl", "VSMesh", "vs_5_1");
+	pVertexShader_MESH[0] = CompileShader("ShaderMesh.hlsl", "VSMesh", "vs_5_1");
+	pVertexShader_MESH[1] = CompileShader("ShaderMesh.hlsl", "VSMeshDxr", "vs_5_1");
 	//テセレーター有メッシュ
 	pVertexShader_MESH_D = CompileShader("ShaderMesh_D.hlsl", "VSMesh", "vs_5_1");
 
@@ -199,7 +200,7 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> Dx_ShaderHolder::pVertexLayout_2D;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN_D = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH_D = nullptr;
-ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH[2] = {};
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_BC = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_2D = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_2DTC = nullptr;
@@ -217,11 +218,11 @@ std::unique_ptr<char[]> Dx_ShaderHolder::ShaderNormalTangentCopy = nullptr;
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCalculateLightingCopy = nullptr;
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCommonParametersCopy = nullptr;
 
-std::unique_ptr<char[]> Dx_ShaderHolder::CommonPass = nullptr;
+std::unique_ptr<char[]> Dx_ShaderHolder::CommonPath = nullptr;
 
-void Dx_ShaderHolder::setCommonPass(char* pass) {
-	size_t size = strlen(pass) + 1;
-	CommonPass = std::make_unique<char[]>(size);
-	memcpy(CommonPass.get(), pass, size);
-	setCommonPass_fin = true;
+void Dx_ShaderHolder::setCommonPath(char* path) {
+	size_t size = strlen(path) + 1;
+	CommonPath = std::make_unique<char[]>(size);
+	memcpy(CommonPath.get(), path, size);
+	setCommonPath_fin = true;
 }

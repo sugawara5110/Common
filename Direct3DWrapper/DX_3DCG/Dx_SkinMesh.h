@@ -65,16 +65,14 @@ public:
 
 	bool CreateFromFBX(int comIndex, bool disp = false, bool smooth = false, float divideBufferMagnification = 1.0f);
 
-	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size);
+	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
 	bool InstancingUpdate(int ind, float time, int InternalAnimationIndex = 0,
 		float disp = 1.0f,
 		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	bool Update(int ind, float time,
-		CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-		CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 		int InternalAnimationIndex = 0,
 		float disp = 1.0f,
 		float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f);

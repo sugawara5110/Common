@@ -341,7 +341,7 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 			if (getNumBone(i) > 0)
 				o.GetShaderByteCode(SQUARE, true, smooth, false, Dx_ShaderHolder::pVertexShader_SKIN.Get(), nullptr);
 			else
-				o.GetShaderByteCode(SQUARE, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH.Get(), nullptr);
+				o.GetShaderByteCode(SQUARE, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH[0].Get(), nullptr);
 		}
 	}
 }
@@ -471,8 +471,7 @@ void SkinMesh::GetMeshCenterPos() {
 	}
 }
 
-void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size) {
+void SkinMesh::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
 
 	for (int i = 0; i < getNumMesh(); i++) {
 		if (!isNoUseMesh(i))
@@ -500,13 +499,12 @@ bool SkinMesh::InstancingUpdate(int ind, float ti, int InternalAnimationIndex,
 }
 
 bool SkinMesh::Update(int ind, float ti,
-	CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color,
-	CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+	CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 	int InternalAnimationIndex,
 	float disp,
 	float SmoothRange, float SmoothRatio, float shininess) {
 
-	Instancing(pos, Color, angle, size);
+	Instancing(pos, angle, size, Color);
 	return InstancingUpdate(ind, ti, InternalAnimationIndex, disp, SmoothRange, SmoothRatio, shininess);
 }
 

@@ -35,26 +35,26 @@ namespace {
 	const WCHAR* kEmissiveHitShader = L"EmissiveHit";
 	const WCHAR* kEmissiveHitGroup = L"EmissiveHitGroup";
 
-	char* middle_pass = "Common/Direct3DWrapper/DX_3DCG/DXR/ShaderDXR/";
+	char* middle_path = "Common/Direct3DWrapper/DX_3DCG/DXR/ShaderDXR/";
 
 	std::unique_ptr<char[]> getShaderRead_ShaderDXR(char* file_name) {
-		return Dx_ShaderHolder::getShaderRead(file_name, middle_pass);
+		return Dx_ShaderHolder::getShaderRead(file_name, middle_path);
 	}
 
 	ComPtr<ID3DBlob> CompileLibrary(const char* filename, const WCHAR* targetString) {
 
 		//char配列でフルパス生成
-		auto full_pass = Dx_ShaderHolder::getShaderPass((char*)filename, middle_pass);
+		auto full_path = Dx_ShaderHolder::getShaderPath((char*)filename, middle_path);
 		//charのフルパスサイズ
-		size_t full_pass_size = strlen(full_pass.get()) + 1;
+		size_t full_path_size = strlen(full_path.get()) + 1;
 		//charでファイル読み込み
-		auto byte = Dx_Util::ConvertFileToChar(full_pass.get());
+		auto byte = Dx_Util::ConvertFileToChar(full_path.get());
 
 		//フルパスをwchar ← char 
-		std::unique_ptr<WCHAR[]> full_passW = std::make_unique<WCHAR[]>(full_pass_size);
+		std::unique_ptr<WCHAR[]> full_pathW = std::make_unique<WCHAR[]>(full_path_size);
 		//ロケール指定
 		setlocale(LC_ALL, "japanese");
-		mbstowcs(full_passW.get(), full_pass.get(), full_pass_size);
+		mbstowcs(full_pathW.get(), full_path.get(), full_path_size);
 
 		//コンパイルライブラリ初期化
 		HRESULT hr_Hel = gDxcDllHelper.Initialize();
@@ -83,7 +83,7 @@ namespace {
 
 		//Compile
 		ComPtr<IDxcOperationResult> pResult;
-		HRESULT hr_Com = pCompiler->Compile(pTextBlob.Get(), full_passW.get(), L"", targetString,
+		HRESULT hr_Com = pCompiler->Compile(pTextBlob.Get(), full_pathW.get(), L"", targetString,
 			nullptr, 0, nullptr, 0, includeHandler.Get(), pResult.GetAddressOf());
 		if (FAILED(hr_Com)) {
 			Dx_Util::ErrorMessage("DXR CompileLibrary Compile Error");
@@ -1204,6 +1204,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].world, &ud.Transform[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].AddObjColor, &ud.AddObjColor[k], sizeof(VECTOR4));
+			memcpy(&cbObj->wvpCb[index].pXpYmXmY, &ud.pXpYmXmY[k], sizeof(VECTOR4));
 			wvp->CopyData(index, cbObj->wvpCb[index]);
 		}
 		InstancingCnt += PD[i]->NumMaxInstance;

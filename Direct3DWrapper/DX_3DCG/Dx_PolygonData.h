@@ -22,8 +22,7 @@ public:
 	ID3D12PipelineState* GetPipelineState();
 	void GetVBarray(PrimitiveType type, int numMaxInstance);
 
-	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
-		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
+	void SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VECTOR3 am = {});
 
 	void setMaterialType(MaterialType type);
 
@@ -38,13 +37,6 @@ public:
 	bool Create(int comIndex, bool light, int tNo, int nortNo, int spetNo, bool blend, bool alpha,
 		bool smooth = false,
 		float divideBufferMagnification = 1.0f);
-
-	void InstancingUpdate(float disp, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f,
-		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
-
-	void Update(CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
-		float disp, float SmoothRange = 0.1f, float SmoothRatio = 0.999f, float shininess = 4.0f,
-		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
 
 	template<typename T>
 	void setVertex(T* vertexArr, int numVer, UINT* ind, int numInd) {

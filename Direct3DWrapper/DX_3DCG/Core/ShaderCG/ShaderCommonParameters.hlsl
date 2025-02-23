@@ -10,10 +10,10 @@ SamplerState g_samLinear : register(s0, space0);
 
 struct WVPCB
 {
-	matrix wvp;
-	matrix world;
-//オブジェクト追加カラー
-	float4 ObjCol;
+    matrix wvp;
+    matrix world;
+    float4 ObjCol;
+    float4 pXpYmXmY;
 };
 
 ConstantBuffer<WVPCB> wvpCb[] : register(b0, space1);
@@ -21,15 +21,13 @@ ConstantBuffer<WVPCB> wvpCb[] : register(b0, space1);
 cbuffer global : register(b0, space0)
 {
 //視点
-	float4 g_C_Pos;
+    float4 g_C_Pos;
 //x:ディスプ起伏量, y:divide配列数, z:shininess, w:Smooth範囲
-	float4 g_DispAmount;
+    float4 g_DispAmount;
 //x:Smooth比率(初期値0.999f)
-	float4 g_SmoothRatio;
+    float4 g_SmoothRatio;
 //divide配列 x:distance, y:divide
-	float4 g_divide[16];
-//UV座標移動用
-	float4 g_pXpYmXmY;
+    float4 g_divide[16];
 }
 
 cbuffer global_3 : register(b3, space0)

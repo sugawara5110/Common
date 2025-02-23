@@ -22,14 +22,14 @@ bool Dx_Util::getErrorState() {
 	return Dx_UtilErrorF;
 }
 
-char* Dx_Util::GetNameFromPass(char* pass) {
+char* Dx_Util::GetNameFromPath(char* path) {
 
-	if (strlen(pass) > 255) {
+	if (strlen(path) > 255) {
 		ErrorMessage("GetNameFromPass  文字数が255を超えてます");
 		return nullptr;
 	}
 	CHAR temp[256];
-	strcpy(temp, pass);
+	strcpy(temp, path);
 
 	bool f = false;
 
@@ -39,12 +39,12 @@ char* Dx_Util::GetNameFromPass(char* pass) {
 
 	if (f) {
 		//ファイル名のみでは無い場合の処理
-		while (*pass != '\0') pass++;//終端文字までポインタを進める
-		while (*pass != '\\' && *pass != '/')pass--;//ファイル名先頭の'\'か'/'までポインタを進める
-		pass++;//'\'または'/'の次(ファイル名先頭文字)までポインタを進める
+		while (*path != '\0') path++;//終端文字までポインタを進める
+		while (*path != '\\' && *path != '/')path--;//ファイル名先頭の'\'か'/'までポインタを進める
+		path++;//'\'または'/'の次(ファイル名先頭文字)までポインタを進める
 	}
 
-	return pass;//ポインタ操作してるので返り値を使用させる
+	return path;//ポインタ操作してるので返り値を使用させる
 }
 
 void Dx_Util::createTangent(int numMaterial, unsigned int* indexCntArr,
@@ -135,4 +135,18 @@ std::unique_ptr<char[]> Dx_Util::ConvertFileToChar(char* file_pass) {
 	fin.close();
 
 	return ret;
+}
+
+CoordTf::MATRIX Dx_Util::calculationMatrixWorld(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 theta, CoordTf::VECTOR3 scale) {
+	using namespace CoordTf;
+	MATRIX mov;
+	MATRIX rotZ, rotY, rotX;
+	MATRIX sca;
+	MatrixScaling(&sca, scale.x, scale.y, scale.z);
+	MatrixRotationZ(&rotZ, theta.z);
+	MatrixRotationY(&rotY, theta.y);
+	MatrixRotationX(&rotX, theta.x);
+	MATRIX rotZYX = rotZ * rotY * rotX;
+	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
+	return sca * rotZYX * mov;
 }

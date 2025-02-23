@@ -33,9 +33,10 @@ ConstantBuffer<MaterialCB> material[] : register(b1, space3);
 
 struct WVPCB
 {
-	matrix wvp;
-	matrix world;
-	float4 AddObjColor;
+    matrix wvp;
+    matrix world;
+    float4 AddObjColor;
+    float4 pXpYmXmY;
 };
 
 ConstantBuffer<WVPCB> wvp[] : register(b2, space4);
