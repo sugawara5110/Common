@@ -47,7 +47,7 @@ namespace {
 		samLinear.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		samLinear.MipLODBias = 0;
 		samLinear.MaxAnisotropy = 16;
-		samLinear.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		samLinear.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 		samLinear.MinLOD = 0.0f;
 		samLinear.MaxLOD = D3D12_FLOAT32_MAX;
 

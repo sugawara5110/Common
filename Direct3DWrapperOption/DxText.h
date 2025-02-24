@@ -55,9 +55,12 @@ private:
 		float r, g, b, a;
 		float sizeX, sizeY;
 	};
+
+	InsDataSub sizeChange(InsDataSub s);
+
 	struct InstanceData {
 		int pcs = 0;
-		InsDataSub s[INSTANCE_PCS_2D];
+		InsDataSub s[256];
 	};
 	InstanceData textInsData[STRTEX_MAX_PCS];
 	InstanceData valueInsData[VAL_PCS];

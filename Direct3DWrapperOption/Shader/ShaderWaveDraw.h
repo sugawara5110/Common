@@ -2,7 +2,8 @@
 //                                           ShaderWaveDraw.hlsl                                         //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char *ShaderWaveDraw =
+char* ShaderWaveDraw =
+
 "Texture2D<float> gInput : register(t3, space0);\n"
 
 "float3 NormalRecalculationSmoothPreparationWave(float2 tex)\n"

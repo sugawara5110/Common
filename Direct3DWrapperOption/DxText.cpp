@@ -71,8 +71,14 @@ void TextObj::SetText(int comIndex) {
 		&textureUp[0], &texture[0],
 		Twidth, Twidth * 4, Theight, false);
 
+	auto dev = Dx_Device::GetInstance();
+	UINT dSize = dev->getCbvSrvUavDescriptorSize();
+
 	D3D12_CPU_DESCRIPTOR_HANDLE hDescriptor = mDescHeap->GetCPUDescriptorHandleForHeapStart();
-	Dx_Device::GetInstance()->CreateSrvTexture(hDescriptor, &texture[0], 1);
+
+	hDescriptor.ptr += dSize * NumMaxInstance;
+
+	dev->CreateSrvTexture(hDescriptor, &texture[0], 1);
 
 	ARR_DELETE(pBits);
 	ARR_DELETE(Tm);
@@ -89,18 +95,34 @@ void DxText::InstanceCreate() {
 	if (textobj == nullptr)textobj = new DxText();
 }
 
-DxText *DxText::GetInstance(){
+DxText* DxText::GetInstance() {
 
 	if (textobj != nullptr)return textobj;
 	return nullptr;
 }
 
-void DxText::DeleteInstance(){
+void DxText::DeleteInstance() {
 
-	if (textobj != nullptr){
+	if (textobj != nullptr) {
 		delete textobj;
 		textobj = nullptr;
 	}
+}
+
+namespace {
+	VERTEX2 v2[] =
+	{
+		{ {-1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f} ,{0.0f,1.0f}},
+		{ {1.0f, -1.0f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f} ,{1.0f,1.0f}},
+		{ {1.0f, 1.0f, 0.0f},   {1.0f, 1.0f, 1.0f, 1.0f} ,{1.0f,0.0f}},
+		{ {-1.0f, 1.0f, 0.0f},  {1.0f, 1.0f, 1.0f, 1.0f} ,{0.0f,0.0f}}
+	};
+
+	UINT index[] =
+	{
+		0,2,1,
+		0,3,2
+	};
 }
 
 DxText::DxText(const DxText &obj) {}      // コピーコンストラクタ禁止
@@ -116,9 +138,10 @@ DxText::DxText() {
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		Using[i] = false;
 		text[i].SetName("DxText_text");
-		text[i].GetVBarray2D(1);
+		text[i].GetVBarray2D(256);
 		text[i].TexOn();
-		text[i].CreateBox(0, 0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
+		text[i].Create(0, true, true, -1, v2, 4, index, 6);
+
 		_tcscpy_s(str[i], sizeof(TCHAR), _T(""));
 		f_size[i] = 0;
 	}
@@ -126,9 +149,9 @@ DxText::DxText() {
 	//可変用
 	for (int i = 0; i < VAL_PCS; i++) {
 		value[i].SetName("DxText_value");
-		value[i].GetVBarray2D(1);
+		value[i].GetVBarray2D(256);
 		value[i].TexOn();
-		value[i].CreateBox(0, 0.0f, 0.0f, 0.0f, 0.1f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, true, true);
+		value[i].Create(0, true, true, -1, v2, 4, index, 6);
 		TCHAR* va = CreateTextValue(i);
 		CreateText(value, va, i, 15.0f);
 		value[i].SetText(0);
@@ -138,7 +161,7 @@ DxText::DxText() {
 	cMa->WaitFence();
 }
 
-DxText::~DxText(){
+DxText::~DxText() {
 
 }
 
@@ -534,36 +557,22 @@ void DxText::UpDate() {
 		if (textInsData[i].pcs == 0) { text[i].DrawOff(); continue; }
 		int i1;
 		for (i1 = 0; i1 < textInsData[i].pcs; i1++) {
-			text[i].InstancedSetConstBf(
-				textInsData[i].s[i1].x,
-				textInsData[i].s[i1].y,
-				textInsData[i].s[i1].r,
-				textInsData[i].s[i1].g,
-				textInsData[i].s[i1].b,
-				textInsData[i].s[i1].a,
-				textInsData[i].s[i1].sizeX,
-				textInsData[i].s[i1].sizeY
-			);
+			DxText::InsDataSub& ss = textInsData[i].s[i1];
+			DxText::InsDataSub s = sizeChange(ss);
+			text[i].Instancing({ s.x,s.y,0 }, 0, { s.sizeX,s.sizeY }, { s.r,s.g,s.b,s.a });
 		}
-		text[i].InstanceUpdate();
+		text[i].InstancingUpdate();
 	}
 
 	for (int i = 0; i < VAL_PCS; i++) {
 		if (valueInsData[i].pcs == 0) { value[i].DrawOff(); continue; }
 		int i1;
 		for (i1 = 0; i1 < valueInsData[i].pcs; i1++) {
-			value[i].InstancedSetConstBf(
-				valueInsData[i].s[i1].x,
-				valueInsData[i].s[i1].y,
-				valueInsData[i].s[i1].r,
-				valueInsData[i].s[i1].g,
-				valueInsData[i].s[i1].b,
-				valueInsData[i].s[i1].a,
-				valueInsData[i].s[i1].sizeX,
-				valueInsData[i].s[i1].sizeY
-			);
+			DxText::InsDataSub& ss = valueInsData[i].s[i1];
+			DxText::InsDataSub s = sizeChange(ss);
+			value[i].Instancing({ s.x,s.y,0 }, 0, { s.sizeX,s.sizeY }, { s.r,s.g,s.b,s.a });
 		}
-		value[i].InstanceUpdate();
+		value[i].InstancingUpdate();
 	}
 	//描画終了したら描画個数リセット
 	for (int i = 0; i < STRTEX_MAX_PCS; i++)textInsData[i].pcs = 0;
@@ -578,5 +587,27 @@ void DxText::Draw(int com) {
 	for (int i = 0; i < VAL_PCS; i++) {
 		value[i].Draw(com);
 	}
+}
+
+DxText::InsDataSub DxText::sizeChange(InsDataSub s) {
+
+	auto sw = Dx_SwapChain::GetInstance();
+	auto w = sw->getClientWidth();
+	auto h = sw->getClientHeight();
+	float x = s.x;
+	float y = s.y;
+	float sx = s.sizeX;
+	float sy = s.sizeY;
+	//左 -1, 下 -1
+	float magX = 2.0f / w;
+	float magY = 2.0f / h;
+
+	InsDataSub ret = s;
+	ret.x = x * magX - 1.0f;
+	ret.y = (y * magY - 1.0f) * -1.0f;
+	ret.sizeX = sx * magX;
+	ret.sizeY = sy * magY;
+
+	return ret;
 }
 

@@ -30,6 +30,7 @@ void Wave::createShader() {
 	pComputeShader_Wave[2] = Dx_ShaderHolder::CompileShader(ShaderWaveCom, strlen(ShaderWaveCom), "UpdateWavesCS", "cs_5_1");
 
 	pDomainShader_Wave = Dx_ShaderHolder::CompileShader(Wave.str, Wave.size, "DSWave", "ds_5_1");
+	
 	//メッシュレイアウト
 	pVertexLayout_MESH =
 	{
@@ -277,19 +278,18 @@ bool Wave::ComCreate(int comIndex) {
 	return true;
 }
 
-void Wave::SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
-	float amR, float amG, float amB) {
-	sg.vDiffuse.x = difR;
-	sg.vDiffuse.y = difG;
-	sg.vDiffuse.z = difB;
+void Wave::SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VECTOR3 am) {
+	sg.vDiffuse.x = dif.x;
+	sg.vDiffuse.y = dif.y;
+	sg.vDiffuse.z = dif.z;
 
-	sg.vSpeculer.x = speR;
-	sg.vSpeculer.y = speG;
-	sg.vSpeculer.z = speB;
+	sg.vSpeculer.x = spe.x;
+	sg.vSpeculer.y = spe.y;
+	sg.vSpeculer.z = spe.z;
 
-	sg.vAmbient.x = amR;
-	sg.vAmbient.y = amG;
-	sg.vAmbient.z = amB;
+	sg.vAmbient.x = am.x;
+	sg.vAmbient.y = am.y;
+	sg.vAmbient.z = am.z;
 }
 
 bool Wave::setDescHeap(const int numSrvTex, const int numSrvTex2, const int numCbv) {
@@ -399,15 +399,10 @@ bool Wave::Create(int comIndex, int texNo, int nortNo, bool blend, bool alpha, f
 	return DrawCreate(comIndex, texNo, nortNo, blend, alpha, smooth, divideBufferMagnification);
 }
 
-void Wave::Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color) {
-	BasicPolygon::Instancing(pos, angle, size, Color);
-}
-
 void Wave::InstancingUpdate(int waveNo, float speed, float disp, float SmoothRange,
 	int DisturbX, int DisturbY,
 	float gDisturbMag, float disturbStep, float updateStep, float damping,
-	float SmoothRatio, float shininess,
-	float px, float py, float mx, float my) {
+	float SmoothRatio, float shininess) {
 
 	static float SpatialStep = 0.25f;
 	float d = damping * TimeStep + 2.0f;
@@ -429,26 +424,22 @@ void Wave::InstancingUpdate(int waveNo, float speed, float disp, float SmoothRan
 	cb.gDisturbMag = gDisturbMag;
 	cb.gDisturbIndex.as((float)DisturbX, (float)DisturbY);
 
-	BasicPolygon::InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess, px, py, mx, my);
+	BasicPolygon::InstancingUpdate(disp, SmoothRange, SmoothRatio, shininess);
 }
 
 void Wave::Update(int waveNo, float speed,
-	CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+	CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 	float disp, float SmoothRange,
 	int DisturbX, int DisturbY,
 	float gDisturbMag, float disturbStep, float updateStep, float damping,
 	float SmoothRatio, float shininess,
 	float px, float py, float mx, float my) {
 
-	Instancing(pos, angle, size, Color);
+	Instancing(pos, angle, size, Color, px, py, mx, my);
 	InstancingUpdate(waveNo, speed, disp, SmoothRange,
 		DisturbX, DisturbY,
 		gDisturbMag, disturbStep, updateStep, damping,
-		SmoothRatio, shininess, px, py, mx, my);
-}
-
-void Wave::DrawOff() {
-	BasicPolygon::DrawOff();
+		SmoothRatio, shininess);
 }
 
 void Wave::Compute(int comIndex) {
@@ -515,7 +506,7 @@ void Wave::Compute(int comIndex) {
 void Wave::Draw(int comIndex) {
 
 	Dx_Device* dev = Dx_Device::GetInstance();
-	if (!BasicPolygon::firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()] | !BasicPolygon::DrawOn)return;
+	if (!BasicPolygon::firstCbSet[dev->cBuffSwapDrawOrStreamoutputIndex()] || !BasicPolygon::DrawOn)return;
 	Compute(comIndex);
 	BasicPolygon::Draw(comIndex);
 }

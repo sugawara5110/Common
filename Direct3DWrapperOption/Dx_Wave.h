@@ -74,8 +74,7 @@ public:
 	~Wave();
 	void GetVBarray(int numMaxInstance);
 
-	void SetCol(float difR, float difG, float difB, float speR, float speG, float speB,
-		float amR = 0.0f, float amG = 0.0f, float amB = 0.0f);
+	void SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VECTOR3 am = {});
 
 	void setMaterialType(MaterialType type);
 
@@ -93,23 +92,19 @@ public:
 
 	void SetVertex(Vertex* vertexArr, int numVer, UINT* ind, int numInd);
 
-	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
-
 	void InstancingUpdate(int waveNo, float speed, float disp, float SmoothRange,
 		int DisturbX, int DisturbY,
 		float gDisturbMag = 1.5f, float disturbStep = 0.00005f, float updateStep = 0.1f, float damping = 0.2f,
-		float SmoothRatio = 0.999f, float shininess = 4.0f,
-		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+		float SmoothRatio = 0.999f, float shininess = 4.0f);
 
 	void Update(int waveNo, float speed,
-		CoordTf::VECTOR3 pos, CoordTf::VECTOR4 Color, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size,
+		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 		float disp, float SmoothRange,
 		int DisturbX, int DisturbY,
 		float gDisturbMag = 1.5f, float disturbStep = 0.00005f, float updateStep = 0.1f, float damping = 0.2f,
 		float SmoothRatio = 0.999f, float shininess = 4.0f,
-		float px = 1.0f, float py = 1.0f, float mx = 1.0f, float my = 1.0f);
+		float px = 1.0f, float py = 1.0f, float mx = 0.0f, float my = 0.0f);
 
-	void DrawOff();
 	void Draw(int comIndex);
 	void StreamOutput(int comIndex);
 	void CopyResource(int comIndex, ID3D12Resource* texture, D3D12_RESOURCE_STATES res, int index = 0);
