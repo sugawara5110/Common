@@ -24,10 +24,6 @@ MeshData::~MeshData() {
 
 }
 
-ID3D12PipelineState* MeshData::GetPipelineState(int index) {
-	return mObj.dpara.PSO[index].Get();
-}
-
 bool MeshData::LoadMaterialFromFile(char* FileName, int numMaxInstance) {
 	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	//マテリアルファイルを開いて内容を読み込む

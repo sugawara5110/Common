@@ -89,13 +89,6 @@ struct VertexBC {
 	CoordTf::VECTOR4 color;   //色
 };
 
-//頂点2D
-struct MY_VERTEX2 {
-	CoordTf::VECTOR3 Pos;
-	CoordTf::VECTOR4 color;
-	CoordTf::VECTOR2 tex;
-};
-
 //頂点3DTexture有り
 struct Vertex {
 	CoordTf::VECTOR3 Pos;    //位置

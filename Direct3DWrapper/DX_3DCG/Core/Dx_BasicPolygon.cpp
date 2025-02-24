@@ -10,16 +10,12 @@
 namespace {
 
 	void Instancing_Internal(int& insNum, int numMaxIns, WVP_CB* cbArr,
-		CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
+		CoordTf::MATRIX world, CoordTf::VECTOR4 Color,
 		float px, float py, float mx, float my) {
 
 		if (insNum >= numMaxIns) {
 			Dx_Util::ErrorMessage("Error: insNum is greater than numMaxIns.");
 		}
-
-		using namespace CoordTf;
-
-		MATRIX world = Dx_Util::calculationMatrixWorld(pos, angle, size);
 
 		Dx_Device* dev = Dx_Device::GetInstance();
 		Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
@@ -555,13 +551,22 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 	return true;
 }
 
+void BasicPolygon::Instancing(CoordTf::MATRIX world, CoordTf::VECTOR4 Color,
+	float px, float py, float mx, float my) {
+
+	CoordTf::VECTOR3 size = { world._11,world._22,world._33 };
+	Dx_Device* dev = Dx_Device::GetInstance();
+	dxrPara.createOutlineSize(dev->cBuffSwapUpdateIndex(), size, ins_no);
+	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), world, Color, px, py, mx, my);
+}
+
 void BasicPolygon::Instancing(
 	CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 	float px, float py, float mx, float my) {
 
-	Dx_Device* dev = Dx_Device::GetInstance();
-	dxrPara.createOutlineSize(dev->cBuffSwapUpdateIndex(), size, ins_no);
-	Instancing_Internal(ins_no, dpara.NumMaxInstance, cbWVP[dev->cBuffSwapUpdateIndex()].get(), pos, angle, size, Color, px, py, mx, my);
+	CoordTf::MATRIX world = Dx_Util::calculationMatrixWorld(pos, angle, size);
+
+	Instancing(world, Color, px, py, mx, my);
 }
 
 void BasicPolygon::InstancingUpdate(float disp, float SmoothRange, float SmoothRatio, float shininess) {

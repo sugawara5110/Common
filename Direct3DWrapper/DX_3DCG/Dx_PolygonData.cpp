@@ -12,10 +12,6 @@ PolygonData::PolygonData() {
 PolygonData::~PolygonData() {
 }
 
-ID3D12PipelineState* PolygonData::GetPipelineState() {
-	return dpara.PSO[0].Get();
-}
-
 void PolygonData::GetVBarray(PrimitiveType type, int numMaxInstance) {
 
 	primType_create = type;

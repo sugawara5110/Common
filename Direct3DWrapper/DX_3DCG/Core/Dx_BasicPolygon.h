@@ -121,6 +121,9 @@ public:
 	BasicPolygon();
 	~BasicPolygon();
 
+	void Instancing(CoordTf::MATRIX world, CoordTf::VECTOR4 Color,
+		float px = 1.0f, float py = 1.0f, float mx = 0.0f, float my = 0.0f);
+
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color,
 		float px = 1.0f, float py = 1.0f, float mx = 0.0f, float my = 0.0f);
 

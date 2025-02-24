@@ -5,13 +5,14 @@
 Texture2D g_texColor : register(t0, space0);
 SamplerState g_samLinear : register(s0, space0);
 
-cbuffer global : register(b0, space0)
+struct WVPCB_2d
 {
-	float4 g_pos[256];
-	float4 g_ObjCol[256];
-	float4 g_sizeXY[256];
-	float4 g_WidHei;
-}
+    matrix world;
+    float4 AddObjColor;
+    float4 pXpYmXmY;
+};
+
+ConstantBuffer<WVPCB_2d> wvpCb[] : register(b0, space1);
 
 struct VS_OUTPUT
 {
@@ -23,56 +24,46 @@ struct VS_OUTPUT
 //**************************基本色頂点**********************************//
 VS_OUTPUT VSBaseColor(float4 Pos : POSITION, float4 Col : COLOR, uint instanceID : SV_InstanceID)
 {
-	VS_OUTPUT output = (VS_OUTPUT) 0;
-
-	output.Pos = Pos;
-
-	if (output.Pos.x > 0)
-		output.Pos.x += g_sizeXY[instanceID].x;
-	if (output.Pos.y > 0)
-		output.Pos.y += g_sizeXY[instanceID].y;
-	output.Pos.x = -1.0f + (output.Pos.x + g_pos[instanceID].x) * 2.0f / g_WidHei.x;
-	output.Pos.y = 1.0f - (output.Pos.y + g_pos[instanceID].y) * 2.0f / g_WidHei.y;
-	output.Pos.z = output.Pos.z + g_pos[instanceID].z;
-
-	output.Col = Col + g_ObjCol[instanceID];
-
-	return output;
+    VS_OUTPUT output = (VS_OUTPUT) 0;
+	
+    matrix world = wvpCb[instanceID].world;
+    float4 addCol = wvpCb[instanceID].AddObjColor;
+	
+    output.Pos = mul(Pos, world);
+    output.Col = Col + addCol;
+    
+    return output;
 }
 //**************************基本色頂点**********************************//
 
 //**************************基本色ピクセル******************************//
 float4 PSBaseColor(VS_OUTPUT input) : SV_Target
 {
-	return input.Col;
+    return input.Col;
 }
 //**************************基本色ピクセル******************************//
 
 //**************************テクスチャ頂点******************************//
 VS_OUTPUT VSTextureColor(float4 Pos : POSITION, float4 Col : COLOR, float2 Tex : TEXCOORD, uint instanceID : SV_InstanceID)
 {
-	VS_OUTPUT output = (VS_OUTPUT) 0;
-
-	output.Pos = Pos;
-
-	if (output.Pos.x > 0)
-		output.Pos.x += g_sizeXY[instanceID].x;
-	if (output.Pos.y > 0)
-		output.Pos.y += g_sizeXY[instanceID].y;
-	output.Pos.x = -1.0f + (output.Pos.x + g_pos[instanceID].x) * 2.0f / g_WidHei.x;
-	output.Pos.y = 1.0f - (output.Pos.y + g_pos[instanceID].y) * 2.0f / g_WidHei.y;
-	output.Pos.z = output.Pos.z + g_pos[instanceID].z;
-
-	output.Col = Col + g_ObjCol[instanceID];
-	output.Tex = Tex;
-
-	return output;
+    VS_OUTPUT output = (VS_OUTPUT) 0;
+	
+    matrix world = wvpCb[instanceID].world;
+    float4 addCol = wvpCb[instanceID].AddObjColor;
+    float4 pXpYmXmY = wvpCb[instanceID].pXpYmXmY;
+	
+    output.Pos = mul(Pos, world);
+    output.Col = Col + addCol;
+    output.Tex.x = Tex.x * pXpYmXmY.x + pXpYmXmY.x * pXpYmXmY.z;
+    output.Tex.y = Tex.y * pXpYmXmY.y + pXpYmXmY.y * pXpYmXmY.w;
+    
+    return output;
 }
 //**************************テクスチャ頂点******************************//
 
 //**************************テクスチャピクセル**************************//
 float4 PSTextureColor(VS_OUTPUT input) : SV_Target
 {
-	return input.Col * g_texColor.Sample(g_samLinear, input.Tex);
+    return input.Col * g_texColor.Sample(g_samLinear, input.Tex);
 }
 //**************************テクスチャピクセル**************************//

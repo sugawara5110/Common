@@ -19,7 +19,7 @@ protected:
 public:
 	PolygonData();
 	~PolygonData();
-	ID3D12PipelineState* GetPipelineState();
+
 	void GetVBarray(PrimitiveType type, int numMaxInstance);
 
 	void SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VECTOR3 am = {});

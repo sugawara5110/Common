@@ -9,29 +9,32 @@
 
 #include "Dx_Common.h"
 
-#define INSTANCE_PCS_2D 256
-
-struct CONSTANT_BUFFER2D {
-	CoordTf::VECTOR4 Pos[INSTANCE_PCS_2D];
-	CoordTf::VECTOR4 Color[INSTANCE_PCS_2D];
-	CoordTf::VECTOR4 sizeXY[INSTANCE_PCS_2D];
-	CoordTf::VECTOR4 WidHei;//ウインドウwh
+struct VERTEX2 {
+	CoordTf::VECTOR3 Pos;
+	CoordTf::VECTOR4 color;
+	CoordTf::VECTOR2 tex;
 };
 
 class PolygonData2D :public DxCommon {
 
 protected:
+	struct WVP_CB2D {
+		CoordTf::MATRIX world;
+		CoordTf::VECTOR4 AddObjColor;
+		CoordTf::VECTOR4 pXpYmXmY;
+	};
+
+	UINT NumMaxInstance = 1;
+
 	ID3DBlob* vs = nullptr;
 	ID3DBlob* ps = nullptr;
-
-	int      ver;//頂点数
 
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mDescHeap = nullptr;
 
 	//コンスタントバッファOBJ
-	ConstantBuffer<CONSTANT_BUFFER2D>* mObjectCB = nullptr;
-	CONSTANT_BUFFER2D cb2[2];
+	ConstantBuffer<WVP_CB2D>* mObjectCB = nullptr;
+	std::unique_ptr<WVP_CB2D[]> cb2[2];
 	bool firstCbSet[2];
 	//DrawOn
 	bool DrawOn = false;
@@ -47,39 +50,28 @@ protected:
 	int  ins_no = 0;
 	int  insNum[2] = {};//Drawで読み込み用
 
-	static float magnificationX;//倍率
-	static float magnificationY;
-	float magX = 1.0f;
-	float magY = 1.0f;
-
 	void GetShaderByteCode();
-	void SetConstBf(CONSTANT_BUFFER2D* cb2, float x, float y, float z,
-		float r, float g, float b, float a, float sizeX, float sizeY);
-	void CbSwap();
 
 public:
-	MY_VERTEX2* d2varray;  //頂点配列
-	std::uint16_t* d2varrayI;//頂点インデックス
-
-	static void Pos2DCompute(CoordTf::VECTOR3* p);//3D座標→2D座標変換(magnificationX, magnificationYは無視される)
-	static void SetMagnification(float x, float y);//表示倍率
+	static void Pos2DCompute(CoordTf::VECTOR3* p);//3D座標→2D座標変換
 
 	PolygonData2D();
 	~PolygonData2D();
-	void DisabledMagnification();
-	ID3D12PipelineState* GetPipelineState();
-	void GetVBarray2D(int pcs);
+	void GetVBarray2D(UINT numMaxInstance);
+
 	void TexOn();
-	bool CreateBox(int comIndex, float x, float y, float z,
-		float sizex, float sizey,
-		float r, float g, float b, float a,
-		bool blend, bool alpha, int noTex = -1);
-	bool Create(int comIndex, bool blend, bool alpha, int noTex = -1);
-	void InstancedSetConstBf(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
-	void InstancedSetConstBf(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
-	void InstanceUpdate();
-	void Update(float x, float y, float r, float g, float b, float a, float sizeX, float sizeY);
-	void Update(float x, float y, float z, float r, float g, float b, float a, float sizeX, float sizeY);
+	bool Create(int comIndex, bool blend, bool alpha, int Tex, VERTEX2* v2, int num_v2, UINT* index, int num_index);
+
+	void Instancing(CoordTf::MATRIX world, CoordTf::VECTOR4 Color,
+		float px = 1.0f, float py = 1.0f, float mx = 0.0f, float my = 0.0f);
+
+	void Instancing(CoordTf::VECTOR3 pos, float angle, CoordTf::VECTOR2 size, CoordTf::VECTOR4 Color,
+		float px = 1.0f, float py = 1.0f, float mx = 0.0f, float my = 0.0f);
+
+	void InstancingUpdate();
+	void Update(CoordTf::VECTOR3 pos, float angle, CoordTf::VECTOR2 size, CoordTf::VECTOR4 Color,
+		float px = 1.0f, float py = 1.0f, float mx = 0.0f, float my = 0.0f);
+
 	void DrawOff();
 	void Draw(int comIndex);
 };

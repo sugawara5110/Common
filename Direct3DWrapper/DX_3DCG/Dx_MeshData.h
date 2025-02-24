@@ -58,7 +58,6 @@ public:
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 
 	bool CreateMesh(int comIndex, bool smooth = false, float divideBufferMagnification = 1.0f);
-	ID3D12PipelineState* GetPipelineState(int index);
 
 	void Instancing(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 angle, CoordTf::VECTOR3 size, CoordTf::VECTOR4 Color);
 
