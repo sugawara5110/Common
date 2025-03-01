@@ -24,8 +24,8 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
     float shininess = mcb.shininess;
 
 ////////ŒõŒ¹ŒvZ
-    uint NumEmissive = numEmissive.x;
-    for (uint i = 0; i < NumEmissive; i++)
+    int NumEmissive = numEmissive.x;
+    for (int i = 0; i < NumEmissive; i++)
     {
         if (emissivePosition[i].w == 1.0f)
         {
@@ -36,11 +36,18 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
             payload.hitPosition = hitPosition;
             payload.mNo = EMISSIVE; //ˆ—•ªŠò—p
 
-            traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+            while (true)
+            {
+                traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+                if (payload.EmissiveIndex == i || !materialIdent(payload.mNo, EMISSIVE))
+                {
+                    break;
+                }
+            }
             
             if (materialIdent(payload.mNo, EMISSIVE))
             {
-                uint emInd = payload.EmissiveIndex;
+                int emInd = payload.EmissiveIndex;
                 float4 emissiveHitPos = emissivePosition[emInd];
                 emissiveHitPos.xyz = payload.hitPosition;
 

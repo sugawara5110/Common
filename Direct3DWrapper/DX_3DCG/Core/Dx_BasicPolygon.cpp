@@ -133,7 +133,7 @@ void BasicPolygon::GetShaderByteCode(PrimitiveType type, bool light, bool smooth
 	}
 
 	if (disp) {
-		vs = Dx_ShaderHolder::pVertexShader_MESH_D.Get();
+		vs = Dx_ShaderHolder::pVertexShader_MESH_D[0].Get();
 		hs = Dx_ShaderHolder::pHullShaderTriangle.Get();
 		ds = Dx_ShaderHolder::pDomainShaderTriangle.Get();
 		if (smooth) {
@@ -530,6 +530,9 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 	ID3DBlob* vs_dxr = vs;
 	if (vs == Dx_ShaderHolder::pVertexShader_MESH[0].Get()) {
 		vs_dxr = Dx_ShaderHolder::pVertexShader_MESH[1].Get();
+	}
+	if (vs == Dx_ShaderHolder::pVertexShader_MESH_D[0].Get()) {
+		vs_dxr = Dx_ShaderHolder::pVertexShader_MESH_D[1].Get();
 	}
 
 	for (int i = 0; i < dpara.NumMaterial; i++) {

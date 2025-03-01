@@ -335,7 +335,7 @@ void SkinMesh::GetShaderByteCode(bool disp, bool smooth) {
 			if (getNumBone(i) > 0)
 				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, Dx_ShaderHolder::pVertexShader_SKIN_D.Get(), nullptr);
 			else
-				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH_D.Get(), nullptr);
+				o.GetShaderByteCode(CONTROL_POINT, true, smooth, false, o.vs = Dx_ShaderHolder::pVertexShader_MESH_D[0].Get(), nullptr);
 		}
 		else {
 			if (getNumBone(i) > 0)

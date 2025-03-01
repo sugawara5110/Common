@@ -16,18 +16,18 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
 
     if (traceMode == 0)
     {
-        if (materialIdent(payload.mNo, EMISSIVE))
-            return;
-
-        difTex.xyz = PayloadCalculate_OneRay(payload.RecursionCnt, payload.hitPosition, difTex, speTex,
+        if (!materialIdent(payload.mNo, EMISSIVE))
+        {
+            difTex.xyz = PayloadCalculate_OneRay(payload.RecursionCnt, payload.hitPosition, difTex, speTex,
                                              normalMap, payload.hitInstanceId);
 
-        payload.depth = getDepth(attr, v3);
-        payload.normal = normalMap;
+            payload.depth = getDepth(attr, v3);
+            payload.normal = normalMap;
 
-        payload.color = difTex.xyz;
-        payload.hit = true;
-        payload.Alpha = difTex.w;
+            payload.color = difTex.xyz;
+            payload.hit = true;
+            payload.Alpha = difTex.w;
+        }
     }
     else
     {

@@ -4,18 +4,18 @@
 
 #include "ShaderCommon.hlsl"
 
-uint getEmissiveIndex()
+int getEmissiveIndex()
 {
-	uint ret = 0;
-	for (uint i = 0; i < 256; i++)
-	{
-		if (emissiveNo[i].x == InstanceID())
-		{
-			ret = i;
-			break;
-		}
-	}
-	return ret;
+    int ret = -1;
+    for (int i = 0; i < 256; i++)
+    {
+        if (emissiveNo[i].x == InstanceID())
+        {
+            ret = i;
+            break;
+        }
+    }
+    return ret;
 }
 
 [shader("closesthit")]

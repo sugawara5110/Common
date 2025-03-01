@@ -66,7 +66,7 @@ public:
 
 	static ComPtr<ID3DBlob> pVertexShader_SKIN;
 	static ComPtr<ID3DBlob> pVertexShader_SKIN_D;
-	static ComPtr<ID3DBlob> pVertexShader_MESH_D;
+	static ComPtr<ID3DBlob> pVertexShader_MESH_D[2];
 	static ComPtr<ID3DBlob> pVertexShader_MESH[2];
 	static ComPtr<ID3DBlob> pVertexShader_BC;
 	static ComPtr<ID3DBlob> pVertexShader_2D;

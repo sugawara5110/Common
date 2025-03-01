@@ -16,7 +16,7 @@ struct RayPayload
     bool hit;
     float Alpha;
     uint RecursionCnt;
-    uint EmissiveIndex;
+    int EmissiveIndex;
     uint mNo;
     float depth;
     int hitInstanceId;

@@ -14,24 +14,28 @@ void traceRay(in uint RecursionCnt,
               in RayDesc ray, 
               inout RayPayload payload)
 {
-	ray.TMin = TMin_TMax.x;
-	ray.TMax = TMin_TMax.y;
-	payload.color = float3(0.0f, 0.0f, 0.0f);
-	payload.RecursionCnt = RecursionCnt + 1;
-	payload.EmissiveIndex = 0;
-	payload.reTry = false;
-	payload.hit = false;
+    ray.TMin = TMin_TMax.x;
+    ray.TMax = TMin_TMax.y;
+    payload.color = float3(0.0f, 0.0f, 0.0f);
+    payload.RecursionCnt = RecursionCnt + 1;
+    payload.EmissiveIndex = -1;
+    payload.reTry = false;
+    payload.hit = false;
 
-	if (RecursionCnt <= maxRecursion)
-	{
-		bool loop = true;
-		while (loop)
-		{
-			ray.Origin = payload.hitPosition;
-			TraceRay(gRtScene, RayFlags, 0xFF, HitGroupIndex, 0, MissShaderIndex, ray, payload);
-			loop = payload.reTry;
-		}
-	}
+    if (RecursionCnt <= maxRecursion)
+    {
+        bool loop = true;
+        while (loop)
+        {
+            ray.Origin = payload.hitPosition;
+            TraceRay(gRtScene, RayFlags, 0xFF, HitGroupIndex, 0, MissShaderIndex, ray, payload);
+            loop = payload.reTry;
+        }
+    }
+    else
+    {
+        payload.mNo = NONE;
+    }
 }
 
 ///////////////////////////////////////////ƒ‰ƒ“ƒ_ƒ€float///////////////////////////////////////////
