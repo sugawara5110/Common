@@ -55,9 +55,9 @@ std::unique_ptr<char[]> Dx_ShaderHolder::getShaderPath(char* file_name, char* mi
 }
 
 ComPtr<ID3DBlob> Dx_ShaderHolder::CompileShader(LPCSTR pSourceName, LPSTR szFuncName, LPSTR szProfileName) {
-	auto pass = getShaderPath((char*)pSourceName, middle_path);
-	auto pSrcData = Dx_Util::ConvertFileToChar(pass.get());
-	return CompileShader(pSrcData.get(), strlen(pSrcData.get()) + 1, pass.get(),
+	auto path = getShaderPath((char*)pSourceName, middle_path);
+	auto pSrcData = Dx_Util::ConvertFileToChar(path.get());
+	return CompileShader(pSrcData.get(), strlen(pSrcData.get()) + 1, path.get(),
 		szFuncName, szProfileName, D3D_COMPILE_STANDARD_FILE_INCLUDE);
 }
 
@@ -80,7 +80,7 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 	if (CreateFin)return true;
 
 	if (!setCommonPath_fin) {
-		Dx_Util::ErrorMessage("Run CreateShaderByteCode after running setCommonPass.");
+		Dx_Util::ErrorMessage("Run CreateShaderByteCode after running setCommonPath.");
 	}
 
 	ShaderCommonParametersCopy = getShaderRead_ShaderCG("ShaderCommonParameters.hlsl");

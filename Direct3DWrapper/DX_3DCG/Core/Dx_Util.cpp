@@ -25,7 +25,7 @@ bool Dx_Util::getErrorState() {
 char* Dx_Util::GetNameFromPath(char* path) {
 
 	if (strlen(path) > 255) {
-		ErrorMessage("GetNameFromPass  •¶š”‚ª255‚ğ’´‚¦‚Ä‚Ü‚·");
+		ErrorMessage("GetNameFromPath  •¶š”‚ª255‚ğ’´‚¦‚Ä‚Ü‚·");
 		return nullptr;
 	}
 	CHAR temp[256];
@@ -122,9 +122,9 @@ void Dx_Util::memory_leak_test() {
 #endif
 }
 
-std::unique_ptr<char[]> Dx_Util::ConvertFileToChar(char* file_pass) {
+std::unique_ptr<char[]> Dx_Util::ConvertFileToChar(char* file_path) {
 
-	std::ifstream fin(file_pass);
+	std::ifstream fin(file_path);
 	fin.seekg(0, std::ios_base::end);
 	std::ifstream::pos_type size = (int)fin.tellg();
 	fin.seekg(0, std::ios_base::beg);

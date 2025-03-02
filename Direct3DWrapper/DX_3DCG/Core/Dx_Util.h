@@ -32,7 +32,7 @@ namespace Dx_Util {
 
 	void memory_leak_test();
 
-	std::unique_ptr<char[]> ConvertFileToChar(char* file_pass);
+	std::unique_ptr<char[]> ConvertFileToChar(char* file_path);
 
 	CoordTf::MATRIX calculationMatrixWorld(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 theta, CoordTf::VECTOR3 scale);
 }
