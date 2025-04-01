@@ -37,7 +37,6 @@ struct WVPCB
     matrix wvp;
     matrix world;
     float4 AddObjColor;
-    float4 pXpYmXmY;
 };
 
 ConstantBuffer<WVPCB> wvp[] : register(b2, space4);

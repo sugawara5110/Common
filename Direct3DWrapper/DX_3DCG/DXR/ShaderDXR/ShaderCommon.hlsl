@@ -179,16 +179,9 @@ float3 get_tangent(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 ////////////////Hitの重心を使用して、頂点属性から補間されたhit位置の属性を取得(UV)////////////////
 float2 getCenterUV(in float2 vertexUV[3], in BuiltInTriangleIntersectionAttributes attr)
 {
-    float2 uv = vertexUV[0] +
+    return vertexUV[0] +
         attr.barycentrics.x * (vertexUV[1] - vertexUV[0]) +
         attr.barycentrics.y * (vertexUV[2] - vertexUV[0]);
-    
-    float4 pXpYmXmY = wvp[getInstancingID()].pXpYmXmY;
-    float2 ret;
-    ret.x = uv.x * pXpYmXmY.x + pXpYmXmY.x * pXpYmXmY.z;
-    ret.y = uv.y * pXpYmXmY.y + pXpYmXmY.y * pXpYmXmY.w;
-    
-    return ret;
 }
 
 ////////////////////////////////UV取得//////////////////////////////////////////////////////////

@@ -48,6 +48,12 @@ struct DxrMaterialCB {
 	UINT materialNo = 0;
 };
 
+struct DxrWVP_CB {
+	CoordTf::MATRIX wvp;
+	CoordTf::MATRIX world;
+	CoordTf::VECTOR4 AddObjColor;
+};
+
 struct ASobj {
 	ComPtr<ID3D12Resource> mpTopLevelAS;
 	std::unique_ptr<AccelerationStructureBuffers[]> bottomLevelBuffers;
@@ -57,7 +63,7 @@ struct ASobj {
 struct CBobj {
 	DxrConstantBuffer cb = {};
 	std::unique_ptr<DxrMaterialCB[]> matCb = nullptr;
-	std::unique_ptr<WVP_CB[]> wvpCb = nullptr;
+	std::unique_ptr<DxrWVP_CB[]> wvpCb = nullptr;
 
 	CBobj() {
 		CoordTf::MatrixIdentity(&cb.prevViewProjection);
@@ -98,7 +104,7 @@ private:
 
 	ConstantBuffer<DxrConstantBuffer>* sCB;
 	ConstantBuffer<DxrMaterialCB>* material;
-	ConstantBuffer<WVP_CB>* wvp;
+	ConstantBuffer<DxrWVP_CB>* wvp;
 
 	ComPtr<ID3D12StateObject> mpPipelineState;
 	ComPtr<ID3D12RootSignature> mpGlobalRootSig;

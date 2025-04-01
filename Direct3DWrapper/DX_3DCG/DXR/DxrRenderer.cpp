@@ -462,9 +462,9 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 		maxNumInstancing += PD[i]->NumMaxInstance;
 	}
 
-	wvp = NEW ConstantBuffer<WVP_CB>(maxNumInstancing);
-	cbObj[0].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
-	cbObj[1].wvpCb = std::make_unique<WVP_CB[]>(maxNumInstancing);
+	wvp = NEW ConstantBuffer<DxrWVP_CB>(maxNumInstancing);
+	cbObj[0].wvpCb = std::make_unique<DxrWVP_CB[]>(maxNumInstancing);
+	cbObj[1].wvpCb = std::make_unique<DxrWVP_CB[]>(maxNumInstancing);
 	material = NEW ConstantBuffer<DxrMaterialCB>(numMaterial);
 	cbObj[0].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
 	cbObj[1].matCb = std::make_unique<DxrMaterialCB[]>(numMaterial);
@@ -1204,7 +1204,6 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].world, &ud.Transform[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].AddObjColor, &ud.AddObjColor[k], sizeof(VECTOR4));
-			memcpy(&cbObj->wvpCb[index].pXpYmXmY, &ud.pXpYmXmY[k], sizeof(VECTOR4));
 			wvp->CopyData(index, cbObj->wvpCb[index]);
 		}
 		InstancingCnt += PD[i]->NumMaxInstance;

@@ -16,7 +16,6 @@ struct UpdateDXR {
 	std::unique_ptr<CoordTf::MATRIX[]> Transform = nullptr;
 	std::unique_ptr<CoordTf::MATRIX[]> WVP = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> AddObjColor = nullptr;//オブジェクトの色変化用
-	std::unique_ptr<CoordTf::VECTOR4[]> pXpYmXmY;
 	float shininess = 0.0f;
 	std::unique_ptr<UINT[]> InstanceID = nullptr;
 	bool firstSet = false;//VviewDXRの最初のデータ更新完了フラグ

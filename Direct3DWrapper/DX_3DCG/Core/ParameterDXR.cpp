@@ -20,7 +20,6 @@ void UpdateDXR::create(int numMaterial, int numMaxInstance) {
 	Transform = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 	WVP = std::make_unique<CoordTf::MATRIX[]>(numMaxInstance);
 	AddObjColor = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance);
-	pXpYmXmY = std::make_unique<CoordTf::VECTOR4[]>(numMaxInstance);
 	VviewDXR = std::make_unique<std::unique_ptr<VertexView[]>[]>(numMaterial);
 	currentIndexCount = std::make_unique<std::unique_ptr<UINT[]>[]>(numMaterial);
 	for (int i = 0; i < numMaterial; i++) {

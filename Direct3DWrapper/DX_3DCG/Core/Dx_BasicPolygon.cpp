@@ -133,7 +133,7 @@ void BasicPolygon::GetShaderByteCode(PrimitiveType type, bool light, bool smooth
 	}
 
 	if (disp) {
-		vs = Dx_ShaderHolder::pVertexShader_MESH_D[0].Get();
+		vs = Dx_ShaderHolder::pVertexShader_MESH_D.Get();
 		hs = Dx_ShaderHolder::pHullShaderTriangle.Get();
 		ds = Dx_ShaderHolder::pDomainShaderTriangle.Get();
 		if (smooth) {
@@ -146,7 +146,7 @@ void BasicPolygon::GetShaderByteCode(PrimitiveType type, bool light, bool smooth
 		}
 	}
 	else {
-		vs = Dx_ShaderHolder::pVertexShader_MESH[0].Get();
+		vs = Dx_ShaderHolder::pVertexShader_MESH.Get();
 		gs = Dx_ShaderHolder::pGeometryShader_Before_vs.Get();
 		gs_NoMap = Dx_ShaderHolder::pGeometryShader_Before_vs_NoNormalMap.Get();
 	}
@@ -229,7 +229,6 @@ void BasicPolygon::ParameterDXR_Update() {
 		ud.Transform[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].world;
 		ud.WVP[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].wvp;
 		ud.AddObjColor[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].AddObjColor;
-		ud.pXpYmXmY[i] = cbWVP[dev->cBuffSwapDrawOrStreamoutputIndex()][i].pXpYmXmY;
 	}
 }
 
@@ -527,17 +526,9 @@ bool BasicPolygon::createPSO_DXR(std::vector<D3D12_INPUT_ELEMENT_DESC>& vertexLa
 		return false;
 	}
 
-	ID3DBlob* vs_dxr = vs;
-	if (vs == Dx_ShaderHolder::pVertexShader_MESH[0].Get()) {
-		vs_dxr = Dx_ShaderHolder::pVertexShader_MESH[1].Get();
-	}
-	if (vs == Dx_ShaderHolder::pVertexShader_MESH_D[0].Get()) {
-		vs_dxr = Dx_ShaderHolder::pVertexShader_MESH_D[1].Get();
-	}
-
 	for (int i = 0; i < dpara.NumMaterial; i++) {
 		if (dpara.Iview[i].IndexCount <= 0)continue;
-		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs_dxr, hs, ds, gs, dpara.rootSignatureDXR.Get(),
+		dpara.PSO_DXR[i] = CreatePsoStreamOutput(vs, hs, ds, gs, dpara.rootSignatureDXR.Get(),
 			vertexLayout,
 			&Dx_ShaderHolder::pDeclaration_Output,
 			(UINT)Dx_ShaderHolder::pDeclaration_Output.size(),
@@ -651,4 +642,8 @@ void BasicPolygon::UpdateDxrDivideBuffer() {
 			}
 		}
 	}
+}
+
+void BasicPolygon::readyUvDrivenInstancing() {
+	dxrPara.hs = true;
 }

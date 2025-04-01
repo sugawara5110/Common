@@ -8,36 +8,34 @@
 //***************************************ハルシェーダーコンスタント*************************************************//
 HS_CONSTANT_OUTPUT HSConstant(InputPatch<VS_OUTPUT, 3> ip, uint pid : SV_PrimitiveID)
 {
-	HS_CONSTANT_OUTPUT output = (HS_CONSTANT_OUTPUT) 0;
+    HS_CONSTANT_OUTPUT output = (HS_CONSTANT_OUTPUT) 0;
 
-//instanceID切り替え, DXR テセレーション時のみ
-	uint instanceID = ip[0].instanceID;
-	if (g_instanceID.y == 1.0f)
-		instanceID = g_instanceID.x;
+    uint instanceID = ip[0].instanceID;
+
 //ワールド変換
-	float4 wPos = mul(ip[0].Pos, wvpCb[instanceID].world);
+    float4 wPos = mul(ip[0].Pos, wvpCb[instanceID].world);
 //頂点から現在地までの距離を計算
-	float distance = length(g_C_Pos.xyz - wPos.xyz);
+    float distance = length(g_C_Pos.xyz - wPos.xyz);
 
 //距離でポリゴン数決定
-	float divide = 2.0f;
-	for (int i = 0; i < g_DispAmount.y; i++)
-	{
-		if (distance < g_divide[i].x)
-		{
-			divide = g_divide[i].y;
-		}
-	}
+    float divide = 2.0f;
+    for (int i = 0; i < g_DispAmount.y; i++)
+    {
+        if (distance < g_divide[i].x)
+        {
+            divide = g_divide[i].y;
+        }
+    }
 
-	output.factor[0] = divide;
-	output.factor[1] = divide;
-	output.factor[2] = divide;
+    output.factor[0] = divide;
+    output.factor[1] = divide;
+    output.factor[2] = divide;
 //u 縦の分割数（横のラインを何本ひくか）
-	output.inner_factor = divide;
+    output.inner_factor = divide;
 //divideが2  →   3 *  6頂点
 //divideが4  →   3 * 24
 //divideが8  →   3 * 96
-	return output;
+    return output;
 }
 //***************************************ハルシェーダーコンスタント*************************************************//
 

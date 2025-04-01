@@ -128,11 +128,9 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 	//メッシュ
-	pVertexShader_MESH[0] = CompileShader("ShaderMesh.hlsl", "VSMesh", "vs_5_1");
-	pVertexShader_MESH[1] = CompileShader("ShaderMesh.hlsl", "VSMeshDxr", "vs_5_1");
+	pVertexShader_MESH = CompileShader("ShaderMesh.hlsl", "VSMesh", "vs_5_1");
 	//テセレーター有メッシュ
-	pVertexShader_MESH_D[0] = CompileShader("ShaderMesh_D.hlsl", "VSMesh", "vs_5_1");
-	pVertexShader_MESH_D[1] = CompileShader("ShaderMesh_D.hlsl", "VSMeshDxr", "vs_5_1");
+	pVertexShader_MESH_D = CompileShader("ShaderMesh_D.hlsl", "VSMesh", "vs_5_1");
 
 	//3Dレイアウト基本色
 	pVertexLayout_3DBC =
@@ -200,8 +198,8 @@ std::vector<D3D12_INPUT_ELEMENT_DESC> Dx_ShaderHolder::pVertexLayout_2D;
 
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN_D = nullptr;
-ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH_D[2] = {};
-ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH[2] = {};
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH_D = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_MESH = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_BC = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_2D = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_2DTC = nullptr;

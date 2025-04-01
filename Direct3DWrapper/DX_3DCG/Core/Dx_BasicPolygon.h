@@ -154,6 +154,8 @@ public:
 		Dx_Device* dev = Dx_Device::GetInstance();
 		dxrPara.updateDXR[dev->dxrBuffSwapIndex()].roughness = roug;
 	}
+
+	void readyUvDrivenInstancing();
 };
 
 #endif
