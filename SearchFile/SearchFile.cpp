@@ -11,7 +11,7 @@
 
 SearchFile::SearchFile(UINT directorynum) {
 	directoryNum = directorynum;
-	filePass = new char**[directoryNum];
+	filePath = new char**[directoryNum];
 	fileNum = new UINT[directoryNum];
 }
 
@@ -30,18 +30,18 @@ bool SearchFile::FileCopy(char *file, char **searchExtension, UINT searchExtensi
 	return true;
 }
 
-void SearchFile::FileNumCount(wchar_t *pass, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
+void SearchFile::FileNumCount(wchar_t *Path, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
 	char file[MAX_PATH] = { '\0' };
 	WIN32_FIND_DATA fd;
-	HANDLE hFile = FindFirstFile(pass, &fd);//探索場所
-	char fullpass[MAX_PATH] = { '\0' };
+	HANDLE hFile = FindFirstFile(Path, &fd);//探索場所
+	char fullPath[MAX_PATH] = { '\0' };
 	setlocale(LC_CTYPE, "jpn");
-	size_t fullsize = wcstombs(fullpass, pass, MAX_PATH);
-	size_t passLen = 0;
-	for (size_t t = fullsize - 1; t > 0 && fullpass[t] != '/'; t--) {
-		passLen = t;
+	size_t fullsize = wcstombs(fullPath, Path, MAX_PATH);
+	size_t PathLen = 0;
+	for (size_t t = fullsize - 1; t > 0 && fullPath[t] != '/'; t--) {
+		PathLen = t;
 	}
-	fullpass[passLen] = '\0';
+	fullPath[PathLen] = '\0';
 
 	//ファイル数カウント
 	do {
@@ -53,7 +53,7 @@ void SearchFile::FileNumCount(wchar_t *pass, UINT directoryInd, char **searchExt
 			//ディレクトリの場合
 			wchar_t ws[MAX_PATH];
 			//マルチバイト配列→ワイド文字
-			mbstowcs(ws, fullpass, MAX_PATH);
+			mbstowcs(ws, fullPath, MAX_PATH);
 			//ワイド文字連結
 			wcsncat(ws, fd.cFileName, MAX_PATH);
 			wcsncat(ws, L"/*", 2);
@@ -70,18 +70,18 @@ void SearchFile::FileNumCount(wchar_t *pass, UINT directoryInd, char **searchExt
 	FindClose(hFile);
 }
 
-void SearchFile::FileLoad(wchar_t *pass, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
+void SearchFile::FileLoad(wchar_t *Path, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
 	char file[MAX_PATH] = { '\0' };
 	WIN32_FIND_DATA fd;
-	HANDLE hFile = FindFirstFile(pass, &fd);//探索場所
-	char fullpass[MAX_PATH] = { '\0' };
+	HANDLE hFile = FindFirstFile(Path, &fd);//探索場所
+	char fullPath[MAX_PATH] = { '\0' };
 	setlocale(LC_CTYPE, "jpn");
-	size_t fullsize = wcstombs(fullpass, pass, MAX_PATH);
-	size_t passLen = 0;
-	for (size_t t = fullsize - 1; t > 0 && fullpass[t] != '/'; t--) {
-		passLen = t;
+	size_t fullsize = wcstombs(fullPath, Path, MAX_PATH);
+	size_t PathLen = 0;
+	for (size_t t = fullsize - 1; t > 0 && fullPath[t] != '/'; t--) {
+		PathLen = t;
 	}
-	fullpass[passLen] = '\0';
+	fullPath[PathLen] = '\0';
 
 	//ファイル読み込み
 	do {
@@ -93,7 +93,7 @@ void SearchFile::FileLoad(wchar_t *pass, UINT directoryInd, char **searchExtensi
 			//ディレクトリの場合
 			wchar_t ws[MAX_PATH];
 			//マルチバイト配列→ワイド文字
-			mbstowcs(ws, fullpass, MAX_PATH);
+			mbstowcs(ws, fullPath, MAX_PATH);
 			//ワイド文字連結
 			wcsncat(ws, fd.cFileName, MAX_PATH);
 			wcsncat(ws, L"/*", 2);
@@ -103,8 +103,8 @@ void SearchFile::FileLoad(wchar_t *pass, UINT directoryInd, char **searchExtensi
 			UINT exNum = 0;
 			if (!FileCopy(file, searchExtension, searchExtensionNum, &exNum))continue;
 			if (exNum > 0) {
-				strcpy(filePass[directoryInd][fileNum[directoryInd]], fullpass);
-				strcat(filePass[directoryInd][fileNum[directoryInd]++], file);
+				strcpy(filePath[directoryInd][fileNum[directoryInd]], fullPath);
+				strcat(filePath[directoryInd][fileNum[directoryInd]++], file);
 			}
 		}
 	} while (FindNextFile(hFile, &fd));
@@ -112,29 +112,29 @@ void SearchFile::FileLoad(wchar_t *pass, UINT directoryInd, char **searchExtensi
 	FindClose(hFile);
 }
 
-void SearchFile::Search(wchar_t *pass, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
+void SearchFile::Search(wchar_t *Path, UINT directoryInd, char **searchExtension, UINT searchExtensionNum) {
 	fileNum[directoryInd] = 0;
-	FileNumCount(pass, directoryInd, searchExtension, searchExtensionNum);
-	filePass[directoryInd] = new char*[fileNum[directoryInd]];
-	for (UINT i = 0; i < fileNum[directoryInd]; i++)filePass[directoryInd][i] = new char[101];
+	FileNumCount(Path, directoryInd, searchExtension, searchExtensionNum);
+	filePath[directoryInd] = new char*[fileNum[directoryInd]];
+	for (UINT i = 0; i < fileNum[directoryInd]; i++)filePath[directoryInd][i] = new char[101];
 	fileNum[directoryInd] = 0;
-	FileLoad(pass, directoryInd, searchExtension, searchExtensionNum);
+	FileLoad(Path, directoryInd, searchExtension, searchExtensionNum);
 }
 
 SearchFile::~SearchFile() {
 	for (UINT k = 0; k < directoryNum; k++) {
 		for (UINT i = 0; i < fileNum[k]; i++) {
-			if (filePass[k][i] == nullptr)continue;
-			delete[] filePass[k][i];
-			filePass[k][i] = nullptr;
+			if (filePath[k][i] == nullptr)continue;
+			delete[] filePath[k][i];
+			filePath[k][i] = nullptr;
 		}
-		if (filePass[k] == nullptr)continue;
-		delete[] filePass[k];
-		filePass[k] = nullptr;
+		if (filePath[k] == nullptr)continue;
+		delete[] filePath[k];
+		filePath[k] = nullptr;
 	}
-	if (filePass == nullptr)return;
-	delete[] filePass;
-	filePass = nullptr;
+	if (filePath == nullptr)return;
+	delete[] filePath;
+	filePath = nullptr;
 	delete[] fileNum;
 	fileNum = nullptr;
 }
@@ -144,5 +144,5 @@ UINT SearchFile::GetFileNum(UINT directoryInd) {
 }
 
 char *SearchFile::GetFileName(UINT directoryInd, UINT fileNum) {
-	return filePass[directoryInd][fileNum];
+	return filePath[directoryInd][fileNum];
 }
