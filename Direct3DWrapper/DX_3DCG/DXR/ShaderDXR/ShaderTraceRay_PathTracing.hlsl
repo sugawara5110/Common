@@ -51,19 +51,23 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     float3 ePos;
     uint ray_flag;
 
+    float3 RandomVector_Dir = float3(1.0f, 0.0f, 0.0f);
+								
     if (emIndex >= 0)
     {
         ePos = emissivePosition[emIndex].xyz;
         ray_flag = RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
+        RandomVector_Dir = normalize(hitPosition - ePos);
     }
     else
     {
         ePos = hitPosition;
         ray_flag = RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+        RandomVector_Dir = normalize(normal);
     }
-
+								
     RayDesc ray;
-    ray.Direction = RandomVector(float3(1.0f, 0.0f, 0.0f), 2.0f, Seed); //2.0f‘S•ûŒü
+    ray.Direction = RandomVector(RandomVector_Dir, 1.0f, Seed); //2.0f‘S•ûŒü, 1.0f”¼‹…								
 
     RayPayload payload;
     payload.Seed = Seed;

@@ -253,9 +253,9 @@ float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
 float LightPDF(uint emIndex)
 {
-	float NumEmissive = (float) numEmissive.x;
-	float emSize = emissiveNo[emIndex].y;
-	return 1.0f / (NumEmissive * emSize);
+    float NumEmissive = (float) numEmissive.x;
+    float emSize = emissiveNo[emIndex].y;
+    return 1.0f / (NumEmissive * emSize * 0.5f);
 }
 
 ///////////////////////////////////////////IBL_PDF////////////////////////////////////////////////
