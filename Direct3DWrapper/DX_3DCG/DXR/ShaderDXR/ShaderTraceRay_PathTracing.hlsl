@@ -19,7 +19,8 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload)
 }
 
 ///////////////////////NeeGetLight///////////////////////////////////////////////////////////////
-RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 normal, inout int emIndex, inout uint Seed)
+RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 normal, 
+                       inout int emIndex, inout uint Seed)
 {
     uint NumEmissive = (uint) numEmissive.x;
 /////光源サイズ合計
@@ -86,13 +87,15 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
 ////////今の位置から取得した光源位置へ飛ばす
         traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
     }
+    
     return payload;
 }
 
 ///////////////////////NextEventEstimation////////////////////////////////////////////////////
 float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
                            in float4 difTexColor, in float3 speTexColor, in float3 normal,
-                           in bool bsdf_f, in float in_eta, in float out_eta, inout uint Seed)
+                           in int bsdf_f, in float in_eta, in float out_eta, 
+                           inout uint Seed, out bool hit)
 {
     float norDir = dot(outDir, normal);
     if (norDir < 0.0f)
@@ -129,6 +132,7 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
         PDF = 1.0f;
     }
     
+    hit = neeP.hit;
     return saturate(bsdf * g) * neeP.color / PDF;
 }
 
@@ -136,7 +140,7 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
 RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
                        in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                        in float3 throughput, in uint matNo,
-                       out bool bsdf_f, out float in_eta, out float out_eta, inout uint Seed)
+                       out int bsdf_f, out float in_eta, out float out_eta, inout uint Seed)
 {
     RayPayload payload;
     payload.Seed = Seed;
@@ -154,17 +158,8 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     }
 
     MaterialCB mcb = getMaterialCB();
-    float3 Diffuse = mcb.Diffuse.xyz;
-    float3 Speculer = mcb.Speculer.xyz;
     uint mNo = mcb.materialNo;
     float roughness = mcb.roughness;
-
-    float sum_diff = Diffuse.x + Diffuse.y + Diffuse.z;
-    float sum_spe = Speculer.x + Speculer.y + Speculer.z;
-    float sum = sum_diff + sum_spe;
-    uint diff_threshold = (uint) (sum_diff / sum * 100.0f);
-
-    float Alpha = difTexColor.w;
 
     float3 rDir = float3(0.0f, 0.0f, 0.0f);
 
@@ -179,11 +174,13 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         out_eta = AIR_RefractiveIndex;
     }
 
-    bsdf_f = true;
+    bsdf_f = 2;
     rnd = Rand_integer(Seed) % 101;
-    if ((uint) (Alpha * 100.0f) < rnd && materialIdent(mNo, TRANSLUCENCE))
+    const float ft = 1.0f - FresnelSchlick3(outDir, speTexColor, normal, TRANSLUCENCE);
+    
+    if ((uint) (ft * 100.0f) > rnd && materialIdent(mNo, TRANSLUCENCE))
     { //透過
-
+        bsdf_f = 0;
 //////////////eta = 入射前物質の屈折率 / 入射後物質の屈折率
         float eta = in_eta / out_eta;
 
@@ -202,10 +199,9 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     }
     else
     {
-        bsdf_f = false;
-        rnd = Rand_integer(Seed) % 101;
-        if (diff_threshold < rnd && materialIdent(mNo, METALLIC))
-        { //Speculer
+        float f = 0.0f;
+        if (materialIdent(mNo, METALLIC))
+        {
             float3 eyeVec = -outDir;
             float3 reflectVec = reflect(eyeVec, normal);
             float Area = roughness * roughness;
@@ -217,9 +213,18 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
             {
                 rDir = RandomVector(reflectVec, Area, Seed);
             }
+           
+            f = FresnelSchlick3(outDir, speTexColor, normalize(rDir + outDir), METALLIC);
+        }
+        
+        rnd = Rand_integer(Seed) % 101;
+        if ((uint) (f * 100.0f) > rnd && materialIdent(mNo, METALLIC))
+        { //Speculer
+            bsdf_f = 1;
         }
         else
         { //Diffuse
+            bsdf_f = 2;
             rDir = RandomVector(normal, 1.0f, Seed); //1.0f半球
         }
     }
@@ -245,13 +250,6 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload); //透過マテリアルはcpp側でフラグ処理済み
     
     payload.throughput = throughput;
- 
-/////NEE実行時かつ『NONREFLECTION』はパストレでの光源衝突は寄与しない
-
-    if (payload.hit && matNo == NEE_PATHTRACER && materialIdent(mNo, NONREFLECTION))
-    {
-        payload.color = float3(0.0f, 0.0f, 0.0f);
-    }
     
     return payload;
 }
@@ -261,44 +259,61 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
                                     in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                                     in float3 throughput, inout int hitInstanceId, inout uint Seed)
 {
-    float3 ret = difTexColor.xyz;
+    float3 ret = float3(0.0f, 0.0f, 0.0f);
 
     hitInstanceId = (int) getInstancingID();
 
     MaterialCB mcb = getMaterialCB();
     uint mNo = mcb.materialNo;
-
+    float roughness = mcb.roughness;
+    
     float3 outDir = -WorldRayDirection();
 
-/////PathTracing
     uint matNo = NEE_PATHTRACER;
     if (traceMode == 1)
         matNo = EMISSIVE;
 
-    bool bsdf_f;
+    int bsdf_f;
     float in_eta;
     float out_eta;
     
     RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal, throughput, matNo,
                                      bsdf_f, in_eta, out_eta, Seed);
 
-/////NextEventEstimation
     if (traceMode == 2)
     {
+        /////NextEventEstimation
+        bool neeHit;
         float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal,
-                                            bsdf_f, in_eta, out_eta, Seed);
+                                            bsdf_f, in_eta, out_eta, Seed, neeHit);
         
-        if (pathPay.hit && !materialIdent(mNo, NONREFLECTION))
+        bool f = roughness <= 0.0f && materialIdent(mNo, METALLIC) || //完全鏡面
+             materialIdent(mNo, TRANSLUCENCE); //透過
+        
+        if (pathPay.hit)
         {
-            ret = pathPay.color * pathPay.throughput; //光源ヒットかつ反射透過の場合, 通常パストレと同じ寄与
+            if (f)
+            {
+                ret = pathPay.color * pathPay.throughput; //完全反射と透過は通常パストレと同じ寄与
+            }
+            else
+            {
+                ret = float3(0.0f, 0.0f, 0.0f);
+            }
         }
         else
         {
-            ret = pathPay.color + neeCol * pathPay.throughput; //通常NEE処理
+            ret = pathPay.color; //光源ヒットがない場合はそのまま値を返す
+        }
+        
+        if (neeHit && !f)
+        {
+            ret += neeCol * pathPay.throughput; //通常NEE処理
         }
     }
     else
     {
+        /////PathTracing
         if (pathPay.hit)
         {
             ret = pathPay.color * pathPay.throughput; //光源ヒット時のみthroughputを乗算し値を返す
