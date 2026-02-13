@@ -140,15 +140,15 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
 RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
                        in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                        in float3 throughput, in uint matNo,
-                       out int bsdf_f, out float in_eta, out float out_eta, inout uint Seed)
+                       out int bsdf_f, out float in_eta, out float out_eta, inout uint seed)
 {
     RayPayload payload;
-    payload.Seed = Seed;
+    payload.Seed = seed;
     payload.hitPosition = hitPosition;
 
     float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);
 /////Šm—¦“I‚Éˆ—‚ð‘Å‚¿Ø‚è ‚±‚ê‚â‚ç‚È‚¢‚Æ”’‚Á‚Û‚­‚È‚é
-    uint rnd = Rand_integer(Seed) % 101;
+    uint rnd = Rand_integer(payload.Seed) % 101;
     if (rnd > (uint) (rouPDF * 100.0f))
     {
         payload.throughput = float3(0.0f, 0.0f, 0.0f);
@@ -175,7 +175,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     }
 
     bsdf_f = 2;
-    rnd = Rand_integer(Seed) % 101;
+    rnd = Rand_integer(payload.Seed) % 101;
     const float ft = 1.0f - FresnelSchlick3(outDir, speTexColor, normal, TRANSLUCENCE);
     
     if ((uint) (ft * 100.0f) > rnd && materialIdent(mNo, TRANSLUCENCE))
@@ -194,7 +194,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         }
         else
         {
-            rDir = RandomVector(refractVec, Area, Seed);
+            rDir = RandomVector(refractVec, Area, payload.Seed);
         }
     }
     else
@@ -211,13 +211,13 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
             }
             else
             {
-                rDir = RandomVector(reflectVec, Area, Seed);
+                rDir = RandomVector(reflectVec, Area, payload.Seed);
             }
            
             f = FresnelSchlick3(outDir, speTexColor, normalize(rDir + outDir), METALLIC);
         }
         
-        rnd = Rand_integer(Seed) % 101;
+        rnd = Rand_integer(payload.Seed) % 101;
         if ((uint) (f * 100.0f) > rnd && materialIdent(mNo, METALLIC))
         { //Speculer
             bsdf_f = 1;
@@ -225,7 +225,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         else
         { //Diffuse
             bsdf_f = 2;
-            rDir = RandomVector(normal, 1.0f, Seed); //1.0f”¼‹…
+            rDir = RandomVector(normal, 1.0f, payload.Seed); //1.0f”¼‹…
         }
     }
 
