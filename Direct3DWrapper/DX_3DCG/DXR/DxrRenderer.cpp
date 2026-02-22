@@ -478,6 +478,8 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
 				cbObj[0].matCb[numIns].materialNo = PD[i]->mType[j];
 				cbObj[1].matCb[numIns].materialNo = PD[i]->mType[j];
+				cbObj[0].matCb[numIns].NeeLightType = PD[i]->nlType[j];
+				cbObj[1].matCb[numIns].NeeLightType = PD[i]->nlType[j];
 				numIns++;
 			}
 		}

@@ -39,31 +39,30 @@ void traceRay(in uint RecursionCnt,
 }
 
 ///////////////////////////////////////////ランダムfloat///////////////////////////////////////////
-float Rand_float(in float2 v2, inout uint Seed)
+float Rand_float(inout uint Seed)
 {
     Seed++;
+    float2 v2 = (float2) DispatchRaysIndex().xy;
     return sin(dot(v2, float2(12.9898, 78.233)) * (SeedFrame % 100 + 1) * 0.001 + Seed + SeedFrame) * 43758.5453;
 }
 
 ///////////////////////////////////////////ランダム整数////////////////////////////////////////////
 uint Rand_integer(inout uint Seed)
 {
-    float2 index = (float2) DispatchRaysIndex().xy;
-    return (uint) (abs(Rand_float(index, Seed)));
+    return (uint) (abs(Rand_float(Seed)));
 }
 
 ///////////////////////////////////////////ランダム少数////////////////////////////////////////////
-float Rand_frac(in float2 v2, inout uint Seed)
+float Rand_frac(inout uint Seed)
 {
-    return frac(Rand_float(v2, Seed));
+    return frac(Rand_float(Seed));
 }
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
 float3 RandomVector(in float3 v, in float area, inout uint Seed)
 {
-    float2 index = (float2) DispatchRaysIndex().xy;
-    float rand1 = Rand_frac(index, Seed);
-    float rand2 = Rand_frac(index + 0.5f, Seed);
+    float rand1 = Rand_frac(Seed);
+    float rand2 = Rand_frac(Seed);
 
 //ランダムなベクトルを生成
     float z = area * rand1 - 1.0f;
@@ -89,11 +88,23 @@ uint getMaterialID()
 	return (instanceID >> 16) & 0x0000ffff;
 }
 
+///////////////////////////////////////////MaterialID取得2/////////////////////////////////////////
+uint getMaterialID2(uint InstanceID)
+{
+    return (InstanceID >> 16) & 0x0000ffff;
+}
+
 ////////////////////////////////////////InstancingID取得///////////////////////////////////////////
 uint getInstancingID()
 {
 	uint instanceID = InstanceID();
 	return instanceID & 0x0000ffff;
+}
+
+////////////////////////////////////////InstancingID取得2//////////////////////////////////////////
+uint getInstancingID2(uint InstanceID)
+{
+    return InstanceID & 0x0000ffff;
 }
 
 ///////////////////////////////////////ヒット位置取得/////////////////////////////////////////////
@@ -107,6 +118,12 @@ float3 HitWorldPosition()
 MaterialCB getMaterialCB()
 {
     return material[getMaterialID()];
+}
+
+///////////////////////////////////////マテリアルCB取得2///////////////////////////////////////////
+MaterialCB getMaterialCB2(uint InstanceID)
+{
+    return material[getMaterialID2(InstanceID)];
 }
 
 ///////////////////////////////////////頂点取得////////////////////////////////////////////////////
@@ -123,6 +140,22 @@ Vertex3 getVertex()
         Vertices[materialID][Indices[materialID][baseIndex + 2]]
 	};
 	return ver;
+}
+
+///////////////////////////////////////頂点取得2///////////////////////////////////////////////////
+Vertex3 getVertex2(uint InstanceID, uint PrimitiveIndex)
+{
+    uint indicesPerTriangle = 3;
+    uint baseIndex = PrimitiveIndex * indicesPerTriangle;
+    uint materialID = getMaterialID2(InstanceID);
+
+    Vertex3 ver =
+    {
+        Vertices[materialID][Indices[materialID][baseIndex + 0]],
+        Vertices[materialID][Indices[materialID][baseIndex + 1]],
+        Vertices[materialID][Indices[materialID][baseIndex + 2]]
+    };
+    return ver;
 }
 
 ///////////////////////////////////////深度値取得//////////////////////////////////////////////////
@@ -521,4 +554,32 @@ float3 getSkyLight(float3 dir)
     float2 uv = float2(atan2(dir.z, dir.x) / 2.0f / PI + 0.5f, acos(dir.y) / PI);
     float4 ret = g_texImageBasedLighting.SampleLevel(g_samLinear, uv, 0.0);
     return ret.xyz;
+}
+
+////////////////////////////////////短形ライトサンプリング/////////////////////////////////////////
+float3 sampleRectLight(in float3 ePos, uint InstanceID, uint InstancingID, inout uint Seed)
+{
+    Vertex3 v3 = getVertex2(InstanceID, 0);
+    
+    float3x3 w = wvp[InstancingID].world;
+    float3 p0 = v3.v[0].Pos;
+    float3 p1 = v3.v[1].Pos;
+    float3 p2 = v3.v[2].Pos;
+    
+    float3 up = p1 - p0;
+    float3 vp = p2 - p1;
+    
+    float rand1 = Rand_frac(Seed);
+    float rand2 = Rand_frac(Seed);
+    
+    return mul(ePos + (rand1 - 0.5f) * up + (rand2 - 0.5f) * vp, w);
+}
+
+///////////////////////////////////球体ライトPDF//////////////////////////////////////////////////
+float SphereLight_PDF(uint emIndex)
+{
+    const float CubeAreaToSphereAreaMultiplication = 0.5233f;
+    float emCubeSize = emissiveNo[emIndex].y;
+    float emSphereSize = emCubeSize * CubeAreaToSphereAreaMultiplication;
+    return 1.0f / (emSphereSize * 0.5f);
 }

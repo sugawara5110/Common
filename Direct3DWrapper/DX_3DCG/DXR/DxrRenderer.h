@@ -46,6 +46,7 @@ struct DxrMaterialCB {
 	float RefractiveIndex = 0.0f;//‹üÜ—¦
 	float roughness;//‘e‚³
 	UINT materialNo = 0;
+	UINT NeeLightType = 0;
 };
 
 struct DxrWVP_CB {

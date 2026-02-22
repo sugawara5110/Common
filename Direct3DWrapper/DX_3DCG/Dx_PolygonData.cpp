@@ -41,6 +41,10 @@ void PolygonData::setMaterialType(MaterialType type) {
 	dxrPara.mType[0] = type;
 }
 
+void PolygonData::setNeeLightType(NeeLightType type) {
+	dxrPara.nlType[0] = type;
+}
+
 void PolygonData::setPointLight(int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 

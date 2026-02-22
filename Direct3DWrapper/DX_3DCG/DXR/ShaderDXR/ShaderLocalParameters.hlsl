@@ -10,6 +10,10 @@
 #define NEE_PATHTRACER 2  //0b0000010
 #define NONE           1  //0b0000001
 
+#define OTHERS    0
+#define	RECTANGLE 1
+#define	SPHERE    2
+
 RWTexture2D<float4> gOutput : register(u0, space0);
 RWTexture2D<float> gDepthOut : register(u1, space0);
 RWTexture2D<float> gInstanceIdMap : register(u2, space0);
@@ -21,13 +25,14 @@ StructuredBuffer<uint> Indices[] : register(t0, space1);//–³§ŒÀ”z—ñ‚Ìê‡,•Ê‚Èƒ
 
 struct MaterialCB
 {
-	float4 Diffuse;
-	float4 Speculer;
-	float4 Ambient;
-	float shininess;
-	float RefractiveIndex; //‹üÜ—¦
-	float roughness; //‘e‚³
-	uint materialNo;
+    float4 Diffuse;
+    float4 Speculer;
+    float4 Ambient;
+    float shininess;
+    float RefractiveIndex; //‹üÜ—¦
+    float roughness; //‘e‚³
+    uint materialNo;
+    uint NeeLightType;
 };
 
 ConstantBuffer<MaterialCB> material[] : register(b1, space3);

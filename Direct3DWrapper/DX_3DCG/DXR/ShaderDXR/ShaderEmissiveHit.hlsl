@@ -36,6 +36,9 @@ void EmissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttribu
     payload.hitInstanceId = (int) getInstancingID();
     payload.EmissiveIndex = getEmissiveIndex();
     payload.hit = true;
-    payload.color = difTex.xyz;
     payload.mNo = getMaterialCB().materialNo;
+    
+    const uint materialID = getMaterialID();
+    const MaterialCB mcb = material[materialID];
+    payload.color = mcb.Diffuse.xyz * difTex.xyz;
 }

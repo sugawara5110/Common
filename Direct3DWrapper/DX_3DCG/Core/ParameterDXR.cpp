@@ -32,10 +32,11 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 	NumMaterial = numMaterial;
 	NumMaxInstance = numMaxInstance;
 	mType = std::make_unique<MaterialType[]>(numMaterial);
+	nlType = std::make_unique<NeeLightType[]>(numMaterial);
 	IviewDXR = std::make_unique<IndexView[]>(numMaterial);
-	difTex = std::make_unique<ID3D12Resource* []>(numMaterial);
-	norTex = std::make_unique<ID3D12Resource* []>(numMaterial);
-	speTex = std::make_unique<ID3D12Resource* []>(numMaterial);
+	difTex = std::make_unique<ID3D12Resource * []>(numMaterial);
+	norTex = std::make_unique<ID3D12Resource * []>(numMaterial);
+	speTex = std::make_unique<ID3D12Resource * []>(numMaterial);
 	diffuse = std::make_unique<CoordTf::VECTOR4[]>(numMaterial);
 	specular = std::make_unique<CoordTf::VECTOR4[]>(numMaterial);
 	ambient = std::make_unique<CoordTf::VECTOR4[]>(numMaterial);
@@ -43,6 +44,7 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 	for (int i = 0; i < numMaterial; i++) {
 		SviewDXR[i] = std::make_unique<StreamView[]>(numMaxInstance);
 		mType[i] = NONREFLECTION;
+		nlType[i] = OTHERS;
 	}
 	updateDXR[0].create(numMaterial, numMaxInstance);
 	updateDXR[1].create(numMaterial, numMaxInstance);

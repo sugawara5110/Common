@@ -49,34 +49,54 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
         } //乱数が累積値の範囲に入ったらそのインデックス値を選択
     }
 
+    RayPayload payload;
+    RayDesc ray;
+    
     float3 ePos;
     uint ray_flag;
-
     float3 RandomVector_Dir = float3(1.0f, 0.0f, 0.0f);
+    bool emRay = false;
 								
     if (emIndex >= 0)
     {
-        ePos = emissivePosition[emIndex].xyz;
-        ray_flag = RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
-        RandomVector_Dir = normalize(hitPosition - ePos);
+        uint emInstanceID = (uint) emissiveNo[emIndex].x;
+        uint emInstancingID = getInstancingID2(emInstanceID);
+        MaterialCB emMcb = getMaterialCB2(emInstanceID);
+        uint NeeLightType = emMcb.NeeLightType;
+    
+        if (NeeLightType == RECTANGLE)
+        {
+            payload.hitPosition = sampleRectLight(emissivePosition[emIndex].xyz, emInstanceID, emInstancingID, Seed);
+            payload.hit = true;
+            payload.Seed = Seed;
+        }
+        else
+        {
+            ePos = emissivePosition[emIndex].xyz;
+            ray_flag = RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
+            RandomVector_Dir = normalize(hitPosition - ePos);
+            emRay = true;
+        }
     }
     else
     {
         ePos = hitPosition;
         ray_flag = RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
         RandomVector_Dir = normalize(normal);
+        emRay = true;
     }
 								
-    RayDesc ray;
-    ray.Direction = RandomVector(RandomVector_Dir, 1.0f, Seed); //2.0f全方向, 1.0f半球								
-
-    RayPayload payload;
-    payload.Seed = Seed;
-    payload.hitPosition = ePos;
-    payload.mNo = NEE; //処理分岐用
+    if (emRay)
+    {
+        ray.Direction = RandomVector(RandomVector_Dir, 1.0f, Seed); //2.0f全方向, 1.0f半球								
+        payload.Seed = Seed;
+        payload.hitPosition = ePos;
+        payload.mNo = NEE; //処理分岐用
 
 /////光源から点をランダムで取得
-    traceRay(RecursionCnt, ray_flag, 0, 0, ray, payload);
+        traceRay(RecursionCnt, ray_flag, 0, 0, ray, payload);
+        Seed = payload.Seed;
+    }
 
     if (payload.hit)
     {
@@ -86,6 +106,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
         payload.mNo = NEE; //処理分岐用
 ////////今の位置から取得した光源位置へ飛ばす
         traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+        Seed = payload.Seed;
     }
     
     return payload;
@@ -117,9 +138,21 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor, speTexColor, local_normal, in_eta, out_eta, pdf);
 
     float PDF;
+    
     if (emIndex >= 0)
     {
-        PDF = LightPDF(emIndex);
+        uint emInstanceID = (uint) emissiveNo[emIndex].x;
+        MaterialCB emMcb = getMaterialCB2(emInstanceID);
+        uint NeeLightType = emMcb.NeeLightType;
+    
+        if (NeeLightType == SPHERE)
+        {
+            PDF = SphereLight_PDF(emIndex);
+        }
+        else
+        {
+            PDF = LightPDF(emIndex);
+        }
     }
     else
     {
@@ -154,6 +187,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         payload.throughput = float3(0.0f, 0.0f, 0.0f);
         payload.color = float3(0.0f, 0.0f, 0.0f);
         payload.hit = false;
+        seed = payload.Seed;
         return payload;
     }
 
@@ -250,6 +284,8 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload); //透過マテリアルはcpp側でフラグ処理済み
     
     payload.throughput = throughput;
+    
+    seed = payload.Seed;
     
     return payload;
 }
