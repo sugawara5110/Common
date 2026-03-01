@@ -27,7 +27,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     float sumSize = 0.0f;
     for (uint j = 0; j < NumEmissive; j++)
     {
-        sumSize += emissiveNo[j].y;
+        sumSize += LightArea(j);
     }
     if (useImageBasedLighting)
         sumSize += IBL_size;
@@ -41,7 +41,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     for (uint i = 0; i < NumEmissive; i++)
     {
         sum_min = sum_max;
-        sum_max += (uint) (emissiveNo[i].y / sumSize * 100.0f); //サイズの割合を累積
+        sum_max += (uint) (LightArea(i) / sumSize * 100.0f); //サイズの割合を累積
         if (sum_min <= rnd && rnd < sum_max)
         {
             emIndex = i;
@@ -67,6 +67,12 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
         if (NeeLightType == RECTANGLE)
         {
             payload.hitPosition = sampleRectLight(emissivePosition[emIndex].xyz, emInstanceID, emInstancingID, Seed);
+            payload.hit = true;
+            payload.Seed = Seed;
+        }
+        else if (NeeLightType == SPHERE)
+        {
+            payload.hitPosition = sampleSphereLight(emIndex, emissivePosition[emIndex].xyz, Seed);
             payload.hit = true;
             payload.Seed = Seed;
         }
@@ -101,12 +107,23 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     if (payload.hit)
     {
         float3 lightVec = payload.hitPosition - hitPosition;
+        float targetDist = length(lightVec);
+        float e = max(0.0001f, 0.0001f * targetDist);
         ray.Direction = normalize(lightVec);
         payload.hitPosition = hitPosition;
         payload.mNo = NEE; //処理分岐用
 ////////今の位置から取得した光源位置へ飛ばす
         traceRay(RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
         Seed = payload.Seed;
+        if (payload.hit)
+        {
+            float hitDist = length(payload.hitPosition - hitPosition);
+            if (hitDist < targetDist - e)
+            {
+                payload.hit = false;
+                payload.color = float3(0, 0, 0);
+            }
+        }
     }
     
     return payload;
@@ -143,9 +160,14 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     {
         uint emInstanceID = (uint) emissiveNo[emIndex].x;
         MaterialCB emMcb = getMaterialCB2(emInstanceID);
+        uint emInstancingID = getInstancingID2(emInstanceID);
         uint NeeLightType = emMcb.NeeLightType;
     
-        if (NeeLightType == SPHERE)
+        if (NeeLightType == RECTANGLE)
+        {
+            PDF = RectLight_PDF(emInstanceID, emInstancingID);
+        }
+        else if (NeeLightType == SPHERE)
         {
             PDF = SphereLight_PDF(emIndex);
         }
@@ -166,7 +188,7 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     }
     
     hit = neeP.hit;
-    return saturate(bsdf * g) * neeP.color / PDF;
+    return bsdf * g * neeP.color / PDF;
 }
 
 ///////////////////////PathTracing////////////////////////////////////////////////////////////

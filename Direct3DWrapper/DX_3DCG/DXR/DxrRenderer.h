@@ -28,7 +28,7 @@ struct DxrConstantBuffer
 	CoordTf::VECTOR4 numEmissive;//x:Em, y:numInstance
 	CoordTf::VECTOR4 Lightst[LIGHT_PCS];//レンジ, 減衰1, 減衰2, 減衰3
 	CoordTf::VECTOR4 GlobalAmbientColor;
-	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//x:emissiveNo, y:OutlineSize
+	CoordTf::VECTOR4 emissiveNo[LIGHT_PCS];//x:emissiveNo, y:SizeX, z:SizeY, w:SizeZ
 	CoordTf::VECTOR4 TMin_TMax;//x, y
 	CoordTf::VECTOR4 frameReset_DepthRange_NorRange;//.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
 	UINT maxRecursion;

@@ -283,11 +283,20 @@ float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 	return spe.xyz;
 }
 
+///////////////////////////////////////////LightArea///////////////////////////////////////////////
+float LightArea(uint emIndex)
+{
+    float x = emissiveNo[emIndex].y;
+    float y = emissiveNo[emIndex].z;
+    float z = emissiveNo[emIndex].w;
+    
+    return 2 * (x * y + y * z + x * z);
+}
+
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
 float LightPDF(uint emIndex)
 {
-    float emSize = emissiveNo[emIndex].y;
-    return 1.0f / (emSize * 0.5f);
+    return 1.0f / LightArea(emIndex);
 }
 
 ///////////////////////////////////////////IBL_PDF////////////////////////////////////////////////
@@ -557,7 +566,7 @@ float3 getSkyLight(float3 dir)
 }
 
 ////////////////////////////////////短形ライトサンプリング/////////////////////////////////////////
-float3 sampleRectLight(in float3 ePos, uint InstanceID, uint InstancingID, inout uint Seed)
+float3 sampleRectLight(in float3 wePos, uint InstanceID, uint InstancingID, inout uint Seed)
 {
     Vertex3 v3 = getVertex2(InstanceID, 0);
     
@@ -572,14 +581,50 @@ float3 sampleRectLight(in float3 ePos, uint InstanceID, uint InstancingID, inout
     float rand1 = Rand_frac(Seed);
     float rand2 = Rand_frac(Seed);
     
-    return mul(ePos + (rand1 - 0.5f) * up + (rand2 - 0.5f) * vp, w);
+    float3 local_v = (rand1 - 0.5f) * up + (rand2 - 0.5f) * vp;
+    float3 global_v = mul(local_v, w);
+    return global_v + wePos;
+}
+
+////////////////////////////////////短形ライトサンプリングPDF//////////////////////////////////////
+float RectLight_PDF(uint InstanceID, uint InstancingID)
+{
+    Vertex3 v3 = getVertex2(InstanceID, 0);
+    
+    float3x3 w = wvp[InstancingID].world;
+    float3 p0 = v3.v[0].Pos;
+    float3 p1 = v3.v[1].Pos;
+    float3 p2 = v3.v[2].Pos;
+    
+    float3 up = p1 - p0;
+    float3 vp = p2 - p1;
+    
+    float3 global_u = mul(up, w);
+    float3 global_v = mul(vp, w);
+    
+    float area = length(cross(global_u, global_v));
+    return 1.0f / area;
+}
+
+////////////////////////////////////球体ライトサンプリング/////////////////////////////////////////
+float3 sampleSphereLight(uint emIndex, float3 wePos, inout uint Seed)
+{
+    float u = Rand_frac(Seed);
+    float v = Rand_frac(Seed);
+    
+    float z = -2.0f * u + 1.0f;
+    float y = sqrt(max(1.0f - z * z, 0.0f)) * sin(2.0f * PI * v);
+    float x = sqrt(max(1.0f - z * z, 0.0f)) * cos(2.0f * PI * v);
+    
+    float global_r = emissiveNo[emIndex].y * 0.5f;
+    
+    return global_r * float3(x, y, z) + wePos;
 }
 
 ///////////////////////////////////球体ライトPDF//////////////////////////////////////////////////
 float SphereLight_PDF(uint emIndex)
 {
-    const float CubeAreaToSphereAreaMultiplication = 0.5233f;
-    float emCubeSize = emissiveNo[emIndex].y;
-    float emSphereSize = emCubeSize * CubeAreaToSphereAreaMultiplication;
-    return 1.0f / (emSphereSize * 0.5f);
+    float global_r = emissiveNo[emIndex].y * 0.5f;
+    float area = 4 * PI * global_r * global_r;
+    return 1.0f / area;
 }

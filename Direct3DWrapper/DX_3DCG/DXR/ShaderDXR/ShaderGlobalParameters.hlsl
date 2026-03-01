@@ -33,7 +33,7 @@ cbuffer global : register(b0, space0)
     float4 numEmissive; //x:Em, y:numInstance
     float4 lightst[256]; //レンジ, 減衰1, 減衰2, 減衰3
     float4 GlobalAmbientColor;
-    float4 emissiveNo[256]; //x:emissiveNo, y:OutlineSize
+    float4 emissiveNo[256]; //x:emissiveNo, y:SizeX, z:SizeY, w:SizeZ
     float4 TMin_TMax; //.x, .y
     float4 frameReset_DepthRange_NorRange; //.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
     uint maxRecursion;

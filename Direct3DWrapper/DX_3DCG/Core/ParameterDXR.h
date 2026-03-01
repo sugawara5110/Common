@@ -32,7 +32,7 @@ struct UpdateDXR {
 	//ポイントライト
 	std::unique_ptr<float[]> plightOn = nullptr;
 	std::unique_ptr<CoordTf::VECTOR4[]> Lightst = nullptr;
-	std::unique_ptr<float[]> OutlineSize = nullptr;//パストレのライトのPDF計算に使用 (直方体の表面積で計算)
+	std::unique_ptr<CoordTf::VECTOR3[]> Size3 = nullptr;//パストレのライトのPDF計算に使用
 
 	void InstanceMaskChange(bool DrawOn);
 
