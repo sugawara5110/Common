@@ -5,6 +5,7 @@
 static const float PI = 3.1415926;
 static const float3 local_normal = float3(0.0f, 0.0f, 1.0f);
 static const float AIR_RefractiveIndex = 1.0f;
+#define LIGHT_PCS 256
 
 struct RayPayload
 {
@@ -29,11 +30,11 @@ cbuffer global : register(b0, space0)
     matrix projectionToWorld;
     matrix ImageBasedLighting_Matrix;
     float4 cameraPosition;
-    float4 emissivePosition[256]; //xyz:Pos, w:オンオフ
+    float4 emissivePosition[LIGHT_PCS]; //xyz:Pos, w:オンオフ
     float4 numEmissive; //x:Em, y:numInstance
-    float4 lightst[256]; //レンジ, 減衰1, 減衰2, 減衰3
+    float4 lightst[LIGHT_PCS]; //レンジ, 減衰1, 減衰2, 減衰3
     float4 GlobalAmbientColor;
-    float4 emissiveNo[256]; //x:emissiveNo, y:SizeX, z:SizeY, w:SizeZ
+    float4 emissiveNo[LIGHT_PCS]; //x:emissiveNo, y:SizeX, z:SizeY, w:SizeZ
     float4 TMin_TMax; //.x, .y
     float4 frameReset_DepthRange_NorRange; //.x:フレームインデックスリセット(1.0でリセット), .y:深度レンジ, .z:法線レンジ
     uint maxRecursion;

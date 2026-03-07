@@ -51,10 +51,6 @@ void rayGenIn()
     gInstanceIdMap[index] = payload.hitInstanceId;
 
     float3 col = payload.color;
-    float3 colsatu;
-    colsatu.x = saturate(col.x);
-    colsatu.y = saturate(col.y);
-    colsatu.z = saturate(col.z);
 
     if (traceMode != 0)
     {
@@ -85,12 +81,12 @@ void rayGenIn()
 
         const float CMA_Ratio = 1.0f / ((float) gFrameIndexMap[index] + 1.0f);
         float3 prev = gOutput[index];
-        float3 le = lerp(prev, colsatu, CMA_Ratio);
+        float3 le = lerp(prev, col, CMA_Ratio);
         gOutput[index] = float4(le, 1.0f);
     }
     else
     {
-        gOutput[index] = float4(colsatu, 1.0f);
+        gOutput[index] = float4(col, 1.0f);
     }
 }
 

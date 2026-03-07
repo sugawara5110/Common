@@ -22,26 +22,23 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload)
 RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 normal, 
                        inout int emIndex, inout uint Seed)
 {
-    uint NumEmissive = (uint) numEmissive.x;
+    int NumEmissive = (int) numEmissive.x;
 /////光源サイズ合計
-    float sumSize = 0.0f;
-    for (uint j = 0; j < NumEmissive; j++)
-    {
-        sumSize += LightArea(j);
-    }
+    float sumSize = AllLightArea(emIndex);
+    
     if (useImageBasedLighting)
         sumSize += IBL_size;
 
 /////乱数を生成
-    uint rnd = Rand_integer(Seed) % 101;
+    float rnd = Rand_frac(Seed);
 
 /////光源毎のサイズから全光源の割合を計算,そこからインデックスを選択
-    uint sum_min = 0;
-    uint sum_max = 0;
-    for (uint i = 0; i < NumEmissive; i++)
+    float sum_min = 0;
+    float sum_max = 0;
+    for (int i = 0; i < NumEmissive; i++)
     {
         sum_min = sum_max;
-        sum_max += (uint) (LightArea(i) / sumSize * 100.0f); //サイズの割合を累積
+        sum_max += LightArea(i) / sumSize; //サイズの割合を累積
         if (sum_min <= rnd && rnd < sum_max)
         {
             emIndex = i;
@@ -158,35 +155,14 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     
     if (emIndex >= 0)
     {
-        uint emInstanceID = (uint) emissiveNo[emIndex].x;
-        MaterialCB emMcb = getMaterialCB2(emInstanceID);
-        uint emInstancingID = getInstancingID2(emInstanceID);
-        uint NeeLightType = emMcb.NeeLightType;
-    
-        if (NeeLightType == RECTANGLE)
-        {
-            PDF = RectLight_PDF(emInstanceID, emInstancingID);
-        }
-        else if (NeeLightType == SPHERE)
-        {
-            PDF = SphereLight_PDF(emIndex);
-        }
-        else
-        {
-            PDF = LightPDF(emIndex);
-        }
+        PDF = LightPDF(emIndex);
     }
     else
     {
         PDF = IBL_PDF();
         g = 1.0f;
     }
-    
-    if (getMaterialCB().roughness <= 0.0f)
-    {
-        PDF = 1.0f;
-    }
-    
+     
     hit = neeP.hit;
     return bsdf * g * neeP.color / PDF;
 }
@@ -203,8 +179,8 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
 
     float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);
 /////確率的に処理を打ち切り これやらないと白っぽくなる
-    uint rnd = Rand_integer(payload.Seed) % 101;
-    if (rnd > (uint) (rouPDF * 100.0f))
+    float rnd = Rand_frac(payload.Seed);
+    if (rnd > rouPDF)
     {
         payload.throughput = float3(0.0f, 0.0f, 0.0f);
         payload.color = float3(0.0f, 0.0f, 0.0f);
@@ -231,10 +207,10 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     }
 
     bsdf_f = 2;
-    rnd = Rand_integer(payload.Seed) % 101;
+    rnd = Rand_frac(payload.Seed);
     const float ft = 1.0f - FresnelSchlick3(outDir, speTexColor, normal, TRANSLUCENCE);
     
-    if ((uint) (ft * 100.0f) > rnd && materialIdent(mNo, TRANSLUCENCE))
+    if (ft > rnd && materialIdent(mNo, TRANSLUCENCE))
     { //透過
         bsdf_f = 0;
 //////////////eta = 入射前物質の屈折率 / 入射後物質の屈折率
@@ -273,8 +249,8 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
             f = FresnelSchlick3(outDir, speTexColor, normalize(rDir + outDir), METALLIC);
         }
         
-        rnd = Rand_integer(payload.Seed) % 101;
-        if ((uint) (f * 100.0f) > rnd && materialIdent(mNo, METALLIC))
+        rnd = Rand_frac(payload.Seed);
+        if (f > rnd && materialIdent(mNo, METALLIC))
         { //Speculer
             bsdf_f = 1;
         }
@@ -366,7 +342,7 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
         
         if (neeHit && !f)
         {
-            ret += neeCol * pathPay.throughput; //通常NEE処理
+            ret += neeCol * throughput; //通常NEE処理
         }
     }
     else

@@ -46,16 +46,10 @@ float Rand_float(inout uint Seed)
     return sin(dot(v2, float2(12.9898, 78.233)) * (SeedFrame % 100 + 1) * 0.001 + Seed + SeedFrame) * 43758.5453;
 }
 
-///////////////////////////////////////////ランダム整数////////////////////////////////////////////
-uint Rand_integer(inout uint Seed)
-{
-    return (uint) (abs(Rand_float(Seed)));
-}
-
 ///////////////////////////////////////////ランダム少数////////////////////////////////////////////
 float Rand_frac(inout uint Seed)
 {
-    return frac(Rand_float(Seed));
+    return abs(frac(Rand_float(Seed)));
 }
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
@@ -281,22 +275,6 @@ float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 //ピクセル値
 	float4 spe = g_texSpecular[materialID].SampleLevel(g_samLinear, UV, 0.0);
 	return spe.xyz;
-}
-
-///////////////////////////////////////////LightArea///////////////////////////////////////////////
-float LightArea(uint emIndex)
-{
-    float x = emissiveNo[emIndex].y;
-    float y = emissiveNo[emIndex].z;
-    float z = emissiveNo[emIndex].w;
-    
-    return 2 * (x * y + y * z + x * z);
-}
-
-///////////////////////////////////////////LightPDF////////////////////////////////////////////////
-float LightPDF(uint emIndex)
-{
-    return 1.0f / LightArea(emIndex);
 }
 
 ///////////////////////////////////////////IBL_PDF////////////////////////////////////////////////
@@ -586,8 +564,8 @@ float3 sampleRectLight(in float3 wePos, uint InstanceID, uint InstancingID, inou
     return global_v + wePos;
 }
 
-////////////////////////////////////短形ライトサンプリングPDF//////////////////////////////////////
-float RectLight_PDF(uint InstanceID, uint InstancingID)
+////////////////////////////////////短形ライトサンプリングArea/////////////////////////////////////
+float RectLightArea(uint InstanceID, uint InstancingID)
 {
     Vertex3 v3 = getVertex2(InstanceID, 0);
     
@@ -602,12 +580,11 @@ float RectLight_PDF(uint InstanceID, uint InstancingID)
     float3 global_u = mul(up, w);
     float3 global_v = mul(vp, w);
     
-    float area = length(cross(global_u, global_v));
-    return 1.0f / area;
+    return length(cross(global_u, global_v));
 }
 
 ////////////////////////////////////球体ライトサンプリング/////////////////////////////////////////
-float3 sampleSphereLight(uint emIndex, float3 wePos, inout uint Seed)
+float3 sampleSphereLight(int emIndex, float3 wePos, inout uint Seed)
 {
     float u = Rand_frac(Seed);
     float v = Rand_frac(Seed);
@@ -621,10 +598,67 @@ float3 sampleSphereLight(uint emIndex, float3 wePos, inout uint Seed)
     return global_r * float3(x, y, z) + wePos;
 }
 
-///////////////////////////////////球体ライトPDF//////////////////////////////////////////////////
-float SphereLight_PDF(uint emIndex)
+///////////////////////////////////球体ライトArea/////////////////////////////////////////////////
+float SphereLightArea(int emIndex)
 {
     float global_r = emissiveNo[emIndex].y * 0.5f;
-    float area = 4 * PI * global_r * global_r;
-    return 1.0f / area;
+    return 4 * PI * global_r * global_r;
+}
+
+///////////////////////////////////////////othersLightArea/////////////////////////////////////////
+float othersLightArea(int emIndex)
+{
+    float x = emissiveNo[emIndex].y;
+    float y = emissiveNo[emIndex].z;
+    float z = emissiveNo[emIndex].w;
+    
+    return 2 * (x * y + y * z + x * z);
+}
+
+///////////////////////////////////////////LightArea///////////////////////////////////////////////
+float LightArea(int emIndex)
+{
+    uint emInstanceID = (uint) emissiveNo[emIndex].x;
+    MaterialCB emMcb = getMaterialCB2(emInstanceID);
+    uint emInstancingID = getInstancingID2(emInstanceID);
+    uint NeeLightType = emMcb.NeeLightType;
+    
+    float Area = 0.0f;
+    
+    if (NeeLightType == RECTANGLE)
+    {
+        Area = RectLightArea(emInstanceID, emInstancingID);
+    }
+    else if (NeeLightType == SPHERE)
+    {
+        Area = SphereLightArea(emIndex);
+    }
+    else
+    {
+        Area = othersLightArea(emIndex);
+    }
+    return Area;
+}
+
+///////////////////////////////////////////AllLightArea////////////////////////////////////////////
+float AllLightArea(int emIndex)
+{
+    if (LIGHT_PCS <= emIndex)
+    {
+        return 0.0f;
+    }
+    
+    int NumEmissive = (int) numEmissive.x;
+    float sumSize = 0.0f;
+    for (int j = 0; j < NumEmissive; j++)
+    {
+        sumSize += LightArea(j);
+    }
+    return sumSize;
+}
+
+///////////////////////////////////////////LightPDF////////////////////////////////////////////////
+float LightPDF(int emIndex)
+{
+    return 1.0f / AllLightArea(emIndex);
 }

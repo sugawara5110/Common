@@ -7,7 +7,7 @@
 int getEmissiveIndex()
 {
     int ret = -1;
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < LIGHT_PCS; i++)
     {
         if (emissiveNo[i].x == InstanceID())
         {
