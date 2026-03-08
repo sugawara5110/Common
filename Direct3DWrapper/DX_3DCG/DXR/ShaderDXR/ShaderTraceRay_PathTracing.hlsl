@@ -13,6 +13,14 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload)
     float3 Lvec = normalize(lightVec);
     float cosine1 = saturate(dot(-Lvec, light_normal));
     float cosine2 = saturate(dot(Lvec, hitnormal));
+    
+    MaterialCB mcb = getMaterialCB();
+    uint mNo = mcb.materialNo;
+    if (materialIdent(mNo, DIFFUSE))
+    {
+        cosine2 = 1.0f;
+    }
+    
     float distance = length(lightVec);
     float distAtten = distance * distance;
     return cosine1 * cosine2 / distAtten;

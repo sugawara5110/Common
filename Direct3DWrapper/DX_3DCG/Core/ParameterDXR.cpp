@@ -43,7 +43,7 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 	SviewDXR = std::make_unique<std::unique_ptr<StreamView[]>[]>(numMaterial);
 	for (int i = 0; i < numMaterial; i++) {
 		SviewDXR[i] = std::make_unique<StreamView[]>(numMaxInstance);
-		mType[i] = NONREFLECTION;
+		mType[i] = DIFFUSE;
 		nlType[i] = OTHERS;
 	}
 	updateDXR[0].create(numMaterial, numMaxInstance);

@@ -40,10 +40,10 @@ struct UpdateDXR {
 };
 
 enum MaterialType {
-	NONREFLECTION = 0b1000000,
-	METALLIC      = 0b0100000,
-	EMISSIVE      = 0b0010000,
-	TRANSLUCENCE  = 0b0001000
+	DIFFUSE =      0b1000000,
+	METALLIC =     0b0100000,
+	EMISSIVE =     0b0010000,
+	TRANSLUCENCE = 0b0001000
 };
 
 enum NeeLightType {

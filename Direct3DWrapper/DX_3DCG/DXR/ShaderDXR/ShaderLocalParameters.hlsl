@@ -2,7 +2,7 @@
 //                                      ShaderLocalParameters.hlsl                                       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define NONREFLECTION  64 //0b1000000
+#define DIFFUSE        64 //0b1000000
 #define METALLIC       32 //0b0100000
 #define EMISSIVE       16 //0b0010000
 #define TRANSLUCENCE   8  //0b0001000

@@ -40,7 +40,7 @@ void rayGenIn()
     payload.normal = float3(0.0f, 0.0f, 0.0f);
     payload.hitInstanceId = -1;
     payload.throughput = float3(1.0f, 1.0f, 1.0f);
-    payload.mNo = NONREFLECTION;
+    payload.mNo = DIFFUSE;
 
     traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
 
