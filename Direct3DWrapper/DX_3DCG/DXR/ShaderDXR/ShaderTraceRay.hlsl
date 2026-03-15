@@ -18,7 +18,7 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
     LightOut Out;
     RayDesc ray;
 
-    float3 SpeculerCol = mcb.Speculer.xyz;
+    float3 SpecularCol = mcb.Specular.xyz;
     float3 Diffuse = mcb.Diffuse.xyz;
     float3 Ambient = mcb.Ambient.xyz + GlobalAmbientColor.xyz;
     float shininess = mcb.shininess;
@@ -51,7 +51,7 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
                 float4 emissiveHitPos = emissivePosition[emInd];
                 emissiveHitPos.xyz = payload.hitPosition;
 
-                Out = PointLightCom(SpeculerCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCGì‡ä÷êî
+                Out = PointLightCom(SpecularCol, Diffuse, Ambient, normal, emissiveHitPos, //ShaderCGì‡ä÷êî
                                   hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);
 
                 emissiveColor.Diffuse += Out.Diffuse;

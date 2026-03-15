@@ -33,6 +33,7 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 	NumMaxInstance = numMaxInstance;
 	mType = std::make_unique<MaterialType[]>(numMaterial);
 	nlType = std::make_unique<NeeLightType[]>(numMaterial);
+	saType = std::make_unique<NeeLightSampleType[]>(numMaterial);
 	IviewDXR = std::make_unique<IndexView[]>(numMaterial);
 	difTex = std::make_unique<ID3D12Resource * []>(numMaterial);
 	norTex = std::make_unique<ID3D12Resource * []>(numMaterial);
@@ -45,6 +46,7 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 		SviewDXR[i] = std::make_unique<StreamView[]>(numMaxInstance);
 		mType[i] = DIFFUSE;
 		nlType[i] = OTHERS;
+		saType[i] = AREA;
 	}
 	updateDXR[0].create(numMaterial, numMaxInstance);
 	updateDXR[1].create(numMaterial, numMaxInstance);

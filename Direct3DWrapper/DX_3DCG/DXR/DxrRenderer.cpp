@@ -480,6 +480,8 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 				cbObj[1].matCb[numIns].materialNo = PD[i]->mType[j];
 				cbObj[0].matCb[numIns].NeeLightType = PD[i]->nlType[j];
 				cbObj[1].matCb[numIns].NeeLightType = PD[i]->nlType[j];
+				cbObj[0].matCb[numIns].NeeLightSampleType = PD[i]->saType[j];
+				cbObj[1].matCb[numIns].NeeLightSampleType = PD[i]->saType[j];
 				numIns++;
 			}
 		}
@@ -1104,7 +1106,7 @@ void DxrRenderer::updateMaterial(CBobj* cbObj) {
 				VECTOR4& amb = PD[i]->ambient[j];
 				DxrMaterialCB& mcb = cbObj->matCb[MaterialCnt];
 				mcb.vDiffuse.as(dif.x, dif.y, dif.z, 0.0f);
-				mcb.vSpeculer.as(spe.x, spe.y, spe.z, 0.0f);
+				mcb.vSpecular.as(spe.x, spe.y, spe.z, 0.0f);
 				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;

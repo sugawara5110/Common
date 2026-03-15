@@ -28,6 +28,8 @@ public:
 
 	void setNeeLightType(NeeLightType type);
 
+	void setNeeLightSampleType(NeeLightSampleType type);
+
 	void setPointLight(int InstanceIndex, bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 

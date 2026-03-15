@@ -348,13 +348,13 @@ float3 FresnelSchlick2(float3 outDir, float3 speTexColor, float3 H, uint type)
 {
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
-    const float3 Speculer = mcb.Speculer.xyz * speTexColor;
+    const float3 Specular = mcb.Specular.xyz * speTexColor;
     
-    float3 F0 = 0.9.xxx * Speculer;
+    float3 F0 = 0.9.xxx * Specular;
     
     if (type == TRANSLUCENCE)
     {
-        F0 = 0.04.xxx * Speculer;
+        F0 = 0.04.xxx * Specular;
     }
     
     return FresnelSchlick(max(dot(outDir, H), 0), F0);
@@ -407,8 +407,8 @@ float3 DiffuseBRDF_PDF(float3 inDir, float3 difTexColor, float3 normal, out floa
     return BRDF;
 }
 
-///////////////////////////////////////////SpeculerBRDF_PDF///////////////////////////////////////
-float3 SpeculerBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 normal, out float PDF)
+///////////////////////////////////////////SpecularBRDF_PDF///////////////////////////////////////
+float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 normal, out float PDF)
 {
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
@@ -526,7 +526,7 @@ float3 BSDF(int bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3 
     }
     else if (bsdf_f == 1)
     {
-        bsdf = SpeculerBRDF_PDF(inDir, outDir, speTexColor, N, PDF);
+        bsdf = SpecularBRDF_PDF(inDir, outDir, speTexColor, N, PDF);
     }
     else if (bsdf_f == 2)
     {
@@ -544,27 +544,32 @@ float3 getSkyLight(float3 dir)
 }
 
 ////////////////////////////////////短形ライトサンプリング/////////////////////////////////////////
-float3 sampleRectLight(in float3 wePos, uint InstanceID, uint InstancingID, inout uint Seed)
+float3 sampleRectLight(uint InstanceID, uint InstancingID, inout uint Seed)
 {
     Vertex3 v3 = getVertex2(InstanceID, 0);
     
-    float3x3 w = wvp[InstancingID].world;
+    float4x4 w = wvp[InstancingID].world;
     float3 p0 = v3.v[0].Pos;
     float3 p1 = v3.v[1].Pos;
     float3 p2 = v3.v[2].Pos;
     
-    float3 up = p1 - p0;
-    float3 vp = p2 - p1;
+    // p0-----p1
+    // |      |
+    // |      |
+    // p3-----p2
+    
+    float3 edge1 = p1 - p0;
+    float3 edge2 = p2 - p1;
     
     float rand1 = Rand_frac(Seed);
     float rand2 = Rand_frac(Seed);
     
-    float3 local_v = (rand1 - 0.5f) * up + (rand2 - 0.5f) * vp;
-    float3 global_v = mul(local_v, w);
-    return global_v + wePos;
+    float4 local_v = float4(p0 + rand1 * edge1 + rand2 * edge2, 1);
+    float4 global_v = mul(local_v, w);
+    return global_v.xyz;
 }
 
-////////////////////////////////////短形ライトサンプリングArea/////////////////////////////////////
+////////////////////////////////////短形ライトArea////////////////////////////////////////////////
 float RectLightArea(uint InstanceID, uint InstancingID)
 {
     Vertex3 v3 = getVertex2(InstanceID, 0);
@@ -583,26 +588,98 @@ float RectLightArea(uint InstanceID, uint InstancingID)
     return length(cross(global_u, global_v));
 }
 
-////////////////////////////////////球体ライトサンプリング/////////////////////////////////////////
-float3 sampleSphereLight(int emIndex, float3 wePos, inout uint Seed)
+////////////////////////////////////球体ライトサンプリング面積/////////////////////////////////////
+float3 sampleSphereLightArea(int emIndex, float3 hitPosition, inout uint Seed)
 {
     float u = Rand_frac(Seed);
     float v = Rand_frac(Seed);
     
-    float z = -2.0f * u + 1.0f;
+    //float z = -2.0f * u + 1.0f;//全球
+    float z = u; //半球
     float y = sqrt(max(1.0f - z * z, 0.0f)) * sin(2.0f * PI * v);
     float x = sqrt(max(1.0f - z * z, 0.0f)) * cos(2.0f * PI * v);
     
     float global_r = emissiveNo[emIndex].y * 0.5f;
+    float3 spherePos = emissivePosition[emIndex].xyz;
+    float3 centerToHit = normalize(hitPosition - spherePos);
     
-    return global_r * float3(x, y, z) + wePos;
+    return global_r * localToWorld(centerToHit, float3(x, y, z)) + spherePos;
+}
+
+///////////////////////////////////球体ライトサンプリング立体角////////////////////////////////////
+float3 sampleSphereLightSolidAngle(int emIndex, float3 hitPosition, inout uint Seed)
+{
+    float global_r = emissiveNo[emIndex].y * 0.5f;
+    float3 spherePos = emissivePosition[emIndex].xyz;
+    
+    float3 L = spherePos - hitPosition;
+    float distSq = dot(L, L);
+    float dist = sqrt(distSq);
+    float3 L_norm = L / dist;
+
+    // ヒット点から見た球の「広がり角」の最大値を計算
+    float sinThetaMax2 = (global_r * global_r) / distSq;
+    float cosThetaMax = sqrt(max(0.0f, 1.0f - sinThetaMax2));
+
+    // 円錐内での一様サンプリング
+    float u1 = Rand_frac(Seed);
+    float u2 = Rand_frac(Seed);
+    
+    float cosTheta = 1.0f - u1 * (1.0f - cosThetaMax);
+    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
+    float phi = 2.0f * PI * u2;
+
+    // ローカル座標（コーンの方向）
+    float3 dir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+
+    // 方向ベクトルをワールド座標へ（L_normを中央軸にする）
+    float3 worldDir = localToWorld(L_norm, dir);
+
+    // 球面上の点を正確に計算
+    // レイと球の交差判定の解（近い方の点）を求める
+    float b = dot(L, worldDir);
+    float c = distSq - global_r * global_r;
+    float t = b - sqrt(max(0.0f, b * b - c));
+
+    return hitPosition + worldDir * t;
+}
+
+////////////////////////////////////球体ライトサンプリング////////////////////////////////////////
+float3 sampleSphereLight(int emIndex, float3 hitPosition, inout uint Seed)
+{
+    uint emInstanceID = (uint) emissiveNo[emIndex].x;
+    MaterialCB emMcb = getMaterialCB2(emInstanceID);
+    
+    float3 output = float3(0, 0, 0);
+    
+    if (emMcb.NeeLightSampleType == AREA)
+    {
+        output = sampleSphereLightArea(emIndex, hitPosition, Seed);
+    }
+    else
+    {
+        output = sampleSphereLightSolidAngle(emIndex, hitPosition, Seed);
+    }
+    return output;
 }
 
 ///////////////////////////////////球体ライトArea/////////////////////////////////////////////////
 float SphereLightArea(int emIndex)
 {
     float global_r = emissiveNo[emIndex].y * 0.5f;
-    return 4 * PI * global_r * global_r;
+    return 2 * PI * global_r * global_r; //半球
+}
+
+///////////////////////////////////球体ライト立体角///////////////////////////////////////////////
+float SphereLightSolidAngleArea(int emIndex, float3 hitPosition)
+{
+    float global_r = emissiveNo[emIndex].y * 0.5f;
+    float3 spherePos = emissivePosition[emIndex].xyz;
+    float3 L = spherePos - hitPosition;
+    float distSq = dot(L, L);
+    float sinThetaMax2 = (global_r * global_r) / distSq;
+    float cosThetaMax = sqrt(max(0.0f, 1.0f - sinThetaMax2));
+    return 2.0f * PI * (1.0f - cosThetaMax);
 }
 
 ///////////////////////////////////////////othersLightArea/////////////////////////////////////////
@@ -616,7 +693,7 @@ float othersLightArea(int emIndex)
 }
 
 ///////////////////////////////////////////LightArea///////////////////////////////////////////////
-float LightArea(int emIndex)
+float LightArea(int emIndex, float3 hitPosition)
 {
     uint emInstanceID = (uint) emissiveNo[emIndex].x;
     MaterialCB emMcb = getMaterialCB2(emInstanceID);
@@ -631,7 +708,14 @@ float LightArea(int emIndex)
     }
     else if (NeeLightType == SPHERE)
     {
-        Area = SphereLightArea(emIndex);
+        if (emMcb.NeeLightSampleType == AREA)
+        {
+            Area = SphereLightArea(emIndex);
+        }
+        else
+        {
+            Area = SphereLightSolidAngleArea(emIndex, hitPosition);
+        }
     }
     else
     {
@@ -641,7 +725,7 @@ float LightArea(int emIndex)
 }
 
 ///////////////////////////////////////////AllLightArea////////////////////////////////////////////
-float AllLightArea(int emIndex)
+float AllLightArea(int emIndex, float3 hitPosition)
 {
     if (LIGHT_PCS <= emIndex)
     {
@@ -652,13 +736,13 @@ float AllLightArea(int emIndex)
     float sumSize = 0.0f;
     for (int j = 0; j < NumEmissive; j++)
     {
-        sumSize += LightArea(j);
+        sumSize += LightArea(j, hitPosition);
     }
     return sumSize;
 }
 
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
-float LightPDF(int emIndex)
+float LightPDF(int emIndex, float3 hitPosition)
 {
-    return 1.0f / AllLightArea(emIndex);
+    return 1.0f / AllLightArea(emIndex, hitPosition);
 }

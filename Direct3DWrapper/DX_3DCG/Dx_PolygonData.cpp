@@ -45,6 +45,10 @@ void PolygonData::setNeeLightType(NeeLightType type) {
 	dxrPara.nlType[0] = type;
 }
 
+void PolygonData::setNeeLightSampleType(NeeLightSampleType type) {
+	dxrPara.saType[0] = type;
+}
+
 void PolygonData::setPointLight(int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 

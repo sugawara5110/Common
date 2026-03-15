@@ -14,6 +14,9 @@
 #define	RECTANGLE 1
 #define	SPHERE    2
 
+#define AREA        0
+#define SOLID_ANGLE 1
+
 RWTexture2D<float4> gOutput : register(u0, space0);
 RWTexture2D<float> gDepthOut : register(u1, space0);
 RWTexture2D<float> gInstanceIdMap : register(u2, space0);
@@ -26,13 +29,14 @@ StructuredBuffer<uint> Indices[] : register(t0, space1);//ñ≥êßå¿îzóÒÇÃèÍçá,ï Ç»É
 struct MaterialCB
 {
     float4 Diffuse;
-    float4 Speculer;
+    float4 Specular;
     float4 Ambient;
     float shininess;
     float RefractiveIndex; //ã¸ê‹ó¶
     float roughness; //ëeÇ≥
     uint materialNo;
     uint NeeLightType;
+    uint NeeLightSampleType;
 };
 
 ConstantBuffer<MaterialCB> material[] : register(b1, space3);

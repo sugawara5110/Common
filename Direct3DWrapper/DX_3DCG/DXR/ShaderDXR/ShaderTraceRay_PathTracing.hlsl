@@ -5,8 +5,13 @@
 #include "ShaderCommon.hlsl"
 
 ///////////////////////G項/////////////////////////////////////////////////////////////////////
-float G(in float3 hitPosition, in float3 normal, in RayPayload payload)
+float G(in float3 hitPosition, in float3 normal, in RayPayload payload, in int bsdf_f, in int emIndex)
 {
+    uint emInstanceID = (uint) emissiveNo[emIndex].x;
+    MaterialCB emMcb = getMaterialCB2(emInstanceID);
+    uint NeeLightType = emMcb.NeeLightType;
+    uint NeeLightSampleType = emMcb.NeeLightSampleType;
+    
     float3 lightVec = payload.hitPosition - hitPosition;
     float3 light_normal = payload.normal;
     float3 hitnormal = normal;
@@ -14,16 +19,20 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload)
     float cosine1 = saturate(dot(-Lvec, light_normal));
     float cosine2 = saturate(dot(Lvec, hitnormal));
     
-    MaterialCB mcb = getMaterialCB();
-    uint mNo = mcb.materialNo;
-    if (materialIdent(mNo, DIFFUSE))
+    if (bsdf_f == 2)
     {
         cosine2 = 1.0f;
     }
     
     float distance = length(lightVec);
     float distAtten = distance * distance;
-    return cosine1 * cosine2 / distAtten;
+    float g = cosine1 * cosine2 / distAtten;
+    
+    if (NeeLightSampleType == SOLID_ANGLE)
+    {
+        g = cosine2;
+    }
+    return g;
 }
 
 ///////////////////////NeeGetLight///////////////////////////////////////////////////////////////
@@ -32,7 +41,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
 {
     int NumEmissive = (int) numEmissive.x;
 /////光源サイズ合計
-    float sumSize = AllLightArea(emIndex);
+    float sumSize = AllLightArea(emIndex, hitPosition);
     
     if (useImageBasedLighting)
         sumSize += IBL_size;
@@ -46,7 +55,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     for (int i = 0; i < NumEmissive; i++)
     {
         sum_min = sum_max;
-        sum_max += LightArea(i) / sumSize; //サイズの割合を累積
+        sum_max += LightArea(i, hitPosition) / sumSize; //サイズの割合を累積
         if (sum_min <= rnd && rnd < sum_max)
         {
             emIndex = i;
@@ -71,17 +80,17 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     
         if (NeeLightType == RECTANGLE)
         {
-            payload.hitPosition = sampleRectLight(emissivePosition[emIndex].xyz, emInstanceID, emInstancingID, Seed);
+            payload.hitPosition = sampleRectLight(emInstanceID, emInstancingID, Seed);
             payload.hit = true;
             payload.Seed = Seed;
         }
-        else if (NeeLightType == SPHERE)
+        if (NeeLightType == SPHERE)
         {
-            payload.hitPosition = sampleSphereLight(emIndex, emissivePosition[emIndex].xyz, Seed);
+            payload.hitPosition = sampleSphereLight(emIndex, hitPosition, Seed);
             payload.hit = true;
             payload.Seed = Seed;
         }
-        else
+        if (NeeLightType == OTHERS)
         {
             ePos = emissivePosition[emIndex].xyz;
             ray_flag = RAY_FLAG_CULL_FRONT_FACING_TRIANGLES;
@@ -149,7 +158,7 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     int emIndex = -1;
     RayPayload neeP = NeeGetLight(RecursionCnt, hitPosition, normal, emIndex, Seed);
 
-    float g = G(hitPosition, normal, neeP);
+    float g = 1.0f;
 
     float3 inDir = normalize(neeP.hitPosition - hitPosition);
 
@@ -163,12 +172,12 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     
     if (emIndex >= 0)
     {
-        PDF = LightPDF(emIndex);
+        PDF = LightPDF(emIndex, hitPosition);
+        g = G(hitPosition, normal, neeP, bsdf_f, emIndex);
     }
     else
     {
         PDF = IBL_PDF();
-        g = 1.0f;
     }
      
     hit = neeP.hit;

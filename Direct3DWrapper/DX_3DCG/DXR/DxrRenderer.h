@@ -40,13 +40,14 @@ struct DxrConstantBuffer
 
 struct DxrMaterialCB {
 	CoordTf::VECTOR4 vDiffuse = { 0.8f,0.8f,0.8f,1.0f };//ディフューズ色
-	CoordTf::VECTOR4 vSpeculer = { 0.6f,0.6f,0.6f,1.0f };//スぺキュラ色
+	CoordTf::VECTOR4 vSpecular = { 0.6f,0.6f,0.6f,1.0f };//スぺキュラ色
 	CoordTf::VECTOR4 vAmbient = { 0.1f,0.1f,0.1f,0.0f };//アンビエント
 	float shininess = 4.0f;//スペキュラ強さ
 	float RefractiveIndex = 0.0f;//屈折率
 	float roughness;//粗さ
 	UINT materialNo = 0;
 	UINT NeeLightType = 0;
+	UINT NeeLightSampleType = 0;
 };
 
 struct DxrWVP_CB {
