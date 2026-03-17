@@ -264,7 +264,7 @@ void SkinMesh::createMaterial(int meshInd, UINT numMaterial, FbxMeshNode* mesh,
 		mObj[m].setRoughness(Roughness);
 
 		sg.vDiffuse = *diffuse;//ディフューズカラーをシェーダーに渡す
-		sg.vSpeculer = *specular;//スペキュラーをシェーダーに渡す
+		sg.vSpecular = *specular;//スペキュラーをシェーダーに渡す
 		sg.vAmbient = *ambient;//アンビエントをシェーダーに渡す
 		mObj[m].mObjectCB2->CopyData(i, sg);
 		if (dev->getDxrCreateResourceState()) {
@@ -323,7 +323,7 @@ void SkinMesh::SetNormalTextureName(char* textureName, int materialIndex, int me
 	mObj[meshIndex].dpara.material[materialIndex].nortex_no = dx->GetTexNumber(textureName);
 }
 
-void SkinMesh::SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex) {
+void SkinMesh::SetSpecularTextureName(char* textureName, int materialIndex, int meshIndex) {
 	Dx_TextureHolder* dx = Dx_TextureHolder::GetInstance();
 	mObj[meshIndex].dpara.material[materialIndex].spetex_no = dx->GetTexNumber(textureName);
 }

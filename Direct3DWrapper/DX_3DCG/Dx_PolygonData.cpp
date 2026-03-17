@@ -24,9 +24,9 @@ void PolygonData::SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VE
 	sg.vDiffuse.y = dif.y;
 	sg.vDiffuse.z = dif.z;
 
-	sg.vSpeculer.x = spe.x;
-	sg.vSpeculer.y = spe.y;
-	sg.vSpeculer.z = spe.z;
+	sg.vSpecular.x = spe.x;
+	sg.vSpecular.y = spe.y;
+	sg.vSpecular.z = spe.z;
 
 	sg.vAmbient.x = am.x;
 	sg.vAmbient.y = am.y;

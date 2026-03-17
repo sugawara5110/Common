@@ -53,7 +53,7 @@ public:
 	void Vertex_hold();
 	void SetDiffuseTextureName(char* textureName, int materialIndex, int meshIndex);
 	void SetNormalTextureName(char* textureName, int materialIndex, int meshIndex);
-	void SetSpeculerTextureName(char* textureName, int materialIndex, int meshIndex);
+	void SetSpecularTextureName(char* textureName, int materialIndex, int meshIndex);
 
 	void setMaterialType(MaterialType type, int materialIndex = -1, int meshIndex = -1);
 

@@ -73,10 +73,10 @@ BasicPolygon::BasicPolygon() {
 	sg.vDiffuse.z = 1.0f;
 	sg.vDiffuse.w = 0.0f;
 
-	sg.vSpeculer.x = 0.0f;
-	sg.vSpeculer.y = 0.0f;
-	sg.vSpeculer.z = 0.0f;
-	sg.vSpeculer.w = 0.0f;
+	sg.vSpecular.x = 0.0f;
+	sg.vSpecular.y = 0.0f;
+	sg.vSpecular.z = 0.0f;
+	sg.vSpecular.w = 0.0f;
 
 	sg.vAmbient.x = 0.0f;
 	sg.vAmbient.y = 0.0f;
@@ -328,7 +328,7 @@ void BasicPolygon::getIndexBuffer(int materialIndex, UINT IndexBufferByteSize, U
 void BasicPolygon::setColorDXR(int materialIndex, CONSTANT_BUFFER2& sg) {
 
 	dxrPara.diffuse[materialIndex].as(sg.vDiffuse.x, sg.vDiffuse.y, sg.vDiffuse.z, sg.vDiffuse.w);
-	dxrPara.specular[materialIndex].as(sg.vSpeculer.x, sg.vSpeculer.y, sg.vSpeculer.z, sg.vSpeculer.w);
+	dxrPara.specular[materialIndex].as(sg.vSpecular.x, sg.vSpecular.y, sg.vSpecular.z, sg.vSpecular.w);
 	dxrPara.ambient[materialIndex].as(sg.vAmbient.x, sg.vAmbient.y, sg.vAmbient.z, sg.vAmbient.w);
 }
 

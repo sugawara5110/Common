@@ -55,13 +55,13 @@ float3 EmissivePayloadCalculate(in uint RecursionCnt, in float3 hitPosition,
                                   hitPosition, lightst[emInd], payload.color, cameraPosition.xyz, shininess);
 
                 emissiveColor.Diffuse += Out.Diffuse;
-                emissiveColor.Speculer += Out.Speculer;
+                emissiveColor.Specular += Out.Specular;
             }
         }
     }
 ////////最後にテクスチャの色に掛け合わせ
     difTexColor *= emissiveColor.Diffuse;
-    speTexColor *= emissiveColor.Speculer;
+    speTexColor *= emissiveColor.Specular;
     return difTexColor + speTexColor;
 }
 

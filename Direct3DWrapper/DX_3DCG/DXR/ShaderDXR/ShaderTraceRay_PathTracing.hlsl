@@ -55,7 +55,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     for (int i = 0; i < NumEmissive; i++)
     {
         sum_min = sum_max;
-        sum_max += LightArea(i, hitPosition) / sumSize; //サイズの割合を累積
+        sum_max += LightArea(i, hitPosition, true) / sumSize; //サイズの割合を累積
         if (sum_min <= rnd && rnd < sum_max)
         {
             emIndex = i;

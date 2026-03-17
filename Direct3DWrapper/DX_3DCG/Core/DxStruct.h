@@ -55,7 +55,7 @@ struct CONSTANT_BUFFER {
 
 struct CONSTANT_BUFFER2 {
 	CoordTf::VECTOR4 vDiffuse;//ディフューズ色
-	CoordTf::VECTOR4 vSpeculer;//スぺキュラ色
+	CoordTf::VECTOR4 vSpecular;//スぺキュラ色
 	CoordTf::VECTOR4 vAmbient;//アンビエント
 };
 

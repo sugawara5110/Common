@@ -340,7 +340,7 @@ float GGX_GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 ///////////////////////////////////////////FresnelSchlick/////////////////////////////////////////
 float3 FresnelSchlick(float dotVH, float3 F0)
 {
-	return F0 + (1 - F0) * pow(1 - dotVH, 5.0);
+    return F0 + (1 - F0) * pow(saturate(1 - dotVH), 5.0);
 }
 
 ///////////////////////////////////////////FresnelSchlick2/////////////////////////////////////////
@@ -417,7 +417,7 @@ float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 
     if (dot(normal, inDir) <= 0)
     {
         PDF = 1.0f;
-        return float3(0, 0, 0);
+        return 0.001.xxx;
     }
 
     const float3 H = normalize(inDir + outDir);
@@ -446,7 +446,7 @@ float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 
     if (PDF <= 0)
     {
         PDF = 1.0f;
-        return float3(0, 0, 0);
+        return 0.001.xxx;
     }
 
     return BRDF;
@@ -671,7 +671,7 @@ float SphereLightArea(int emIndex)
 }
 
 ///////////////////////////////////‹…‘Ìƒ‰ƒCƒg—§‘ÌŠp///////////////////////////////////////////////
-float SphereLightSolidAngleArea(int emIndex, float3 hitPosition)
+float SphereLightSolidAngle(int emIndex, float3 hitPosition)
 {
     float global_r = emissiveNo[emIndex].y * 0.5f;
     float3 spherePos = emissivePosition[emIndex].xyz;
@@ -693,7 +693,7 @@ float othersLightArea(int emIndex)
 }
 
 ///////////////////////////////////////////LightArea///////////////////////////////////////////////
-float LightArea(int emIndex, float3 hitPosition)
+float LightArea(int emIndex, float3 hitPosition, bool area_f)
 {
     uint emInstanceID = (uint) emissiveNo[emIndex].x;
     MaterialCB emMcb = getMaterialCB2(emInstanceID);
@@ -708,13 +708,13 @@ float LightArea(int emIndex, float3 hitPosition)
     }
     else if (NeeLightType == SPHERE)
     {
-        if (emMcb.NeeLightSampleType == AREA)
+        if (emMcb.NeeLightSampleType == AREA || area_f)
         {
             Area = SphereLightArea(emIndex);
         }
         else
         {
-            Area = SphereLightSolidAngleArea(emIndex, hitPosition);
+            Area = SphereLightSolidAngle(emIndex, hitPosition);
         }
     }
     else
@@ -736,7 +736,7 @@ float AllLightArea(int emIndex, float3 hitPosition)
     float sumSize = 0.0f;
     for (int j = 0; j < NumEmissive; j++)
     {
-        sumSize += LightArea(j, hitPosition);
+        sumSize += LightArea(j, hitPosition, true);
     }
     return sumSize;
 }
@@ -744,5 +744,7 @@ float AllLightArea(int emIndex, float3 hitPosition)
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
 float LightPDF(int emIndex, float3 hitPosition)
 {
-    return 1.0f / AllLightArea(emIndex, hitPosition);
+    float choicePDF = LightArea(emIndex, hitPosition, true) / AllLightArea(emIndex, hitPosition);
+    float lightPDF = 1.0f / LightArea(emIndex, hitPosition, false);
+    return choicePDF * lightPDF;
 }
