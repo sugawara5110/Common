@@ -22,12 +22,9 @@ NormalTangent GetTangent(float3 normal, float3x3 world, float3 tangent)
 
 void getTangentBinormal(in float3 N, out float3 T, out float3 B)
 {
-	float3 a = abs(N);
-	uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;
-	uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
-	uint zm = 1 ^ (xm | ym);
-	B = cross(N, float3(xm, ym, zm));
-	T = cross(B, N);
+    float3 up = (abs(N.z) < 0.999f) ? float3(0, 0, 1) : float3(1, 0, 0);
+    B = normalize(cross(up, N));
+    T = cross(N, B);
 }
 
 float3 worldToLocal(float3 N, float3 localVec)

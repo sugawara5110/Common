@@ -38,25 +38,26 @@ void traceRay(in uint RecursionCnt,
     }
 }
 
-///////////////////////////////////////////ランダムfloat///////////////////////////////////////////
-float Rand_float(inout uint Seed)
+///////////////////////////////////////////ハッシュ関数///////////////////////////////////////////
+uint pcg_hash(uint input)
 {
-    Seed++;
-    float2 v2 = (float2) DispatchRaysIndex().xy;
-    return sin(dot(v2, float2(12.9898, 78.233)) * (SeedFrame % 100 + 1) * 0.001 + Seed + SeedFrame) * 43758.5453;
+    uint state = input * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
 }
 
 ///////////////////////////////////////////ランダム少数////////////////////////////////////////////
-float Rand_frac(inout uint Seed)
+float Rand(inout uint seed)
 {
-    return abs(frac(Rand_float(Seed)));
+    seed = pcg_hash(seed);
+    return float(seed) * (1.0 / 4294967296.0);
 }
 
 ///////////////////////////////////////////ランダムベクトル////////////////////////////////////////
 float3 RandomVector(in float3 v, in float area, inout uint Seed)
 {
-    float rand1 = Rand_frac(Seed);
-    float rand2 = Rand_frac(Seed);
+    float rand1 = Rand(Seed);
+    float rand2 = Rand(Seed);
 
 //ランダムなベクトルを生成
     float z = area * rand1 - 1.0f;
@@ -67,6 +68,44 @@ float3 RandomVector(in float3 v, in float area, inout uint Seed)
     float3 randV = float3(x, y, z);
 
     return -localToWorld(v, randV);
+}
+
+////////////////////////////////////コサイン重要度サンプリング////////////////////////////////////
+float3 SampleHemisphereCosine(float3 N, inout uint seed)
+{
+    float r1 = Rand(seed);
+    float r2 = Rand(seed);
+
+    // 極座標からローカル座標への変換（コサイン重み付き）
+    float phi = 2.0f * PI * r1;
+    float cosTheta = sqrt(r2);
+    float sinTheta = sqrt(1.0f - r2);
+
+    float3 localDir;
+    localDir.x = cos(phi) * sinTheta;
+    localDir.y = sin(phi) * sinTheta;
+    localDir.z = cosTheta;
+
+    return localToWorld(N, localDir);
+}
+
+////////////////////////////////////GGX重要度サンプリング//////////////////////////////////////////
+float3 SampleGGX(float3 N, float roughness, inout uint seed)
+{
+    float a = roughness * roughness;
+    float2 Xi = float2(Rand(seed), Rand(seed));
+    
+    //角度のサンプリング (GGXの分布に基づいた重み付け)
+    float phi = 2.0f * PI * Xi.x;
+    float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (a * a - 1.0f) * Xi.y));
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    
+    float3 localH;
+    localH.x = cos(phi) * sinTheta;
+    localH.y = sin(phi) * sinTheta;
+    localH.z = cosTheta;
+    
+    return localToWorld(N, localH);
 }
 
 ///////////////////////////////////////////Material識別////////////////////////////////////////////
@@ -417,7 +456,7 @@ float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 
     if (dot(normal, inDir) <= 0)
     {
         PDF = 1.0f;
-        return 0.001.xxx;
+        return float3(0, 0, 0);
     }
 
     const float3 H = normalize(inDir + outDir);
@@ -446,7 +485,7 @@ float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 
     if (PDF <= 0)
     {
         PDF = 1.0f;
-        return 0.001.xxx;
+        return float3(0, 0, 0);
     }
 
     return BRDF;
@@ -515,7 +554,7 @@ float3 RefractionBTDF_PDF(float3 inDir, float3 outDir, float3 speTexColor,
 }
 
 ///////////////////////////////////////////BSDF////////////////////////////////////////////////////
-float3 BSDF(int bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3 speTexColor, float3 N,
+float3 BSDF(int bsdf_f, float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 N,
             float in_eta, float out_eta, out float PDF)
 {
     float3 bsdf;
@@ -530,7 +569,7 @@ float3 BSDF(int bsdf_f, float3 inDir, float3 outDir, float4 difTexColor, float3 
     }
     else if (bsdf_f == 2)
     {
-        bsdf = DiffuseBRDF_PDF(inDir, difTexColor.xyz, N, PDF);
+        bsdf = DiffuseBRDF_PDF(inDir, difTexColor, N, PDF);
     }
     return bsdf;
 }
@@ -561,8 +600,8 @@ float3 sampleRectLight(uint InstanceID, uint InstancingID, inout uint Seed)
     float3 edge1 = p1 - p0;
     float3 edge2 = p2 - p1;
     
-    float rand1 = Rand_frac(Seed);
-    float rand2 = Rand_frac(Seed);
+    float rand1 = Rand(Seed);
+    float rand2 = Rand(Seed);
     
     float4 local_v = float4(p0 + rand1 * edge1 + rand2 * edge2, 1);
     float4 global_v = mul(local_v, w);
@@ -591,8 +630,8 @@ float RectLightArea(uint InstanceID, uint InstancingID)
 ////////////////////////////////////球体ライトサンプリング面積/////////////////////////////////////
 float3 sampleSphereLightArea(int emIndex, float3 hitPosition, inout uint Seed)
 {
-    float u = Rand_frac(Seed);
-    float v = Rand_frac(Seed);
+    float u = Rand(Seed);
+    float v = Rand(Seed);
     
     //float z = -2.0f * u + 1.0f;//全球
     float z = u; //半球
@@ -622,8 +661,8 @@ float3 sampleSphereLightSolidAngle(int emIndex, float3 hitPosition, inout uint S
     float cosThetaMax = sqrt(max(0.0f, 1.0f - sinThetaMax2));
 
     // 円錐内での一様サンプリング
-    float u1 = Rand_frac(Seed);
-    float u2 = Rand_frac(Seed);
+    float u1 = Rand(Seed);
+    float u2 = Rand(Seed);
     
     float cosTheta = 1.0f - u1 * (1.0f - cosThetaMax);
     float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
@@ -748,3 +787,4 @@ float LightPDF(int emIndex, float3 hitPosition)
     float lightPDF = 1.0f / LightArea(emIndex, hitPosition, false);
     return choicePDF * lightPDF;
 }
+

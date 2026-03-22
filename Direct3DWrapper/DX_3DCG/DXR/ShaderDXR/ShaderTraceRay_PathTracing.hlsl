@@ -5,11 +5,10 @@
 #include "ShaderCommon.hlsl"
 
 ///////////////////////G項/////////////////////////////////////////////////////////////////////
-float G(in float3 hitPosition, in float3 normal, in RayPayload payload, in int bsdf_f, in int emIndex)
+float G(in float3 hitPosition, in float3 normal, in RayPayload payload, in int emIndex)
 {
     uint emInstanceID = (uint) emissiveNo[emIndex].x;
     MaterialCB emMcb = getMaterialCB2(emInstanceID);
-    uint NeeLightType = emMcb.NeeLightType;
     uint NeeLightSampleType = emMcb.NeeLightSampleType;
     
     float3 lightVec = payload.hitPosition - hitPosition;
@@ -18,12 +17,7 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload, in int b
     float3 Lvec = normalize(lightVec);
     float cosine1 = saturate(dot(-Lvec, light_normal));
     float cosine2 = saturate(dot(Lvec, hitnormal));
-    
-    if (bsdf_f == 2)
-    {
-        cosine2 = 1.0f;
-    }
-    
+     
     float distance = length(lightVec);
     float distAtten = distance * distance;
     float g = cosine1 * cosine2 / distAtten;
@@ -47,7 +41,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
         sumSize += IBL_size;
 
 /////乱数を生成
-    float rnd = Rand_frac(Seed);
+    float rnd = Rand(Seed);
 
 /////光源毎のサイズから全光源の割合を計算,そこからインデックスを選択
     float sum_min = 0;
@@ -145,7 +139,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
 
 ///////////////////////NextEventEstimation////////////////////////////////////////////////////
 float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
-                           in float4 difTexColor, in float3 speTexColor, in float3 normal,
+                           in float3 difTexColor, in float3 speTexColor, in float3 normal,
                            in int bsdf_f, in float in_eta, in float out_eta, 
                            inout uint Seed, out bool hit)
 {
@@ -173,7 +167,11 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     if (emIndex >= 0)
     {
         PDF = LightPDF(emIndex, hitPosition);
-        g = G(hitPosition, normal, neeP, bsdf_f, emIndex);
+        g = G(hitPosition, normal, neeP, emIndex);
+        if (bsdf_f == 2)
+        {
+            bsdf *= PI;
+        }
     }
     else
     {
@@ -186,7 +184,7 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
 
 ///////////////////////PathTracing////////////////////////////////////////////////////////////
 RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
-                       in float4 difTexColor, in float3 speTexColor, in float3 normal, 
+                       in float3 difTexColor, in float3 speTexColor, in float3 normal, 
                        in float3 throughput, in uint matNo,
                        out int bsdf_f, out float in_eta, out float out_eta, inout uint seed)
 {
@@ -196,7 +194,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
 
     float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);
 /////確率的に処理を打ち切り これやらないと白っぽくなる
-    float rnd = Rand_frac(payload.Seed);
+    float rnd = Rand(payload.Seed);
     if (rnd > rouPDF)
     {
         payload.throughput = float3(0.0f, 0.0f, 0.0f);
@@ -224,73 +222,62 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     }
 
     bsdf_f = 2;
-    rnd = Rand_frac(payload.Seed);
+    rnd = Rand(payload.Seed);
     const float ft = 1.0f - FresnelSchlick3(outDir, speTexColor, normal, TRANSLUCENCE);
     
     if (ft > rnd && materialIdent(mNo, TRANSLUCENCE))
-    { //透過
+    {
         bsdf_f = 0;
-//////////////eta = 入射前物質の屈折率 / 入射後物質の屈折率
-        float eta = in_eta / out_eta;
+        float eta = in_eta / out_eta; //eta = 入射前物質の屈折率 / 入射後物質の屈折率
 
         float3 eyeVec = -outDir;
-        float3 refractVec = refract(eyeVec, normal, eta);
-        float Area = roughness * roughness;
         
         if (roughness <= 0.0f)
         {
-            rDir = refractVec;
+            rDir = refract(eyeVec, normal, eta);
         }
         else
         {
-            rDir = RandomVector(refractVec, Area, payload.Seed);
+            float3 H = SampleGGX(normal, roughness, payload.Seed);
+            rDir = refract(eyeVec, H, eta);
         }
     }
-    else
+    else if (materialIdent(mNo, METALLIC))
     {
-        float f = 0.0f;
-        if (materialIdent(mNo, METALLIC))
+        bsdf_f = 1;
+        float3 eyeVec = -outDir;
+        float3 H = float3(0, 0, 0);
+        if (roughness <= 0.0f)
         {
-            float3 eyeVec = -outDir;
-            float3 reflectVec = reflect(eyeVec, normal);
-            float Area = roughness * roughness;
-            if (roughness <= 0.0f)
-            {
-                rDir = reflectVec;
-            }
-            else
-            {
-                rDir = RandomVector(reflectVec, Area, payload.Seed);
-            }
-           
-            f = FresnelSchlick3(outDir, speTexColor, normalize(rDir + outDir), METALLIC);
-        }
-        
-        rnd = Rand_frac(payload.Seed);
-        if (f > rnd && materialIdent(mNo, METALLIC))
-        { //Speculer
-            bsdf_f = 1;
+            rDir = reflect(eyeVec, normal);
+            H = normalize(rDir + outDir);
         }
         else
-        { //Diffuse
-            bsdf_f = 2;
-            rDir = RandomVector(normal, 1.0f, payload.Seed); //1.0f半球
+        {
+            H = SampleGGX(normal, roughness, payload.Seed);
+            rDir = reflect(eyeVec, H);
         }
+    }
+        
+    if (materialIdent(mNo, DIFFUSE))
+    {
+        bsdf_f = 2;
+        rDir = SampleHemisphereCosine(normal, payload.Seed);
     }
 
     RayDesc ray;
     ray.Direction = rDir;
-
-    float3 local_inDir = worldToLocal(normal, ray.Direction);
+    
+    float3 local_inDir = worldToLocal(normal, rDir);
     float3 local_outDir = worldToLocal(normal, outDir);
-
+    
     float PDF = 0.0f;
     float cosine = abs(dot(local_normal, local_inDir));
     
     float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor, speTexColor, local_normal, in_eta, out_eta, PDF);
 
     throughput *= (bsdf * cosine / PDF / rouPDF);
-
+   
     payload.throughput = throughput;
 
     payload.hitPosition = hitPosition;
@@ -307,7 +294,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
 
 ///////////////////////PayloadCalculate_PathTracing///////////////////////////////////////////
 float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition, 
-                                    in float4 difTexColor, in float3 speTexColor, in float3 normal, 
+                                    in float3 difTexColor, in float3 speTexColor, in float3 normal, 
                                     in float3 throughput, inout int hitInstanceId, inout uint Seed)
 {
     float3 ret = float3(0.0f, 0.0f, 0.0f);
@@ -328,15 +315,15 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
     float in_eta;
     float out_eta;
     
-    RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal, throughput, matNo,
-                                     bsdf_f, in_eta, out_eta, Seed);
+    RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor,
+                                     normal, throughput, matNo, bsdf_f, in_eta, out_eta, Seed);
 
     if (traceMode == 2)
     {
         /////NextEventEstimation
         bool neeHit;
-        float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor, normal,
-                                            bsdf_f, in_eta, out_eta, Seed, neeHit);
+        float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor,
+                                            normal, bsdf_f, in_eta, out_eta, Seed, neeHit);
         
         bool f = roughness <= 0.0f && materialIdent(mNo, METALLIC) || //完全鏡面
              materialIdent(mNo, TRANSLUCENCE); //透過
