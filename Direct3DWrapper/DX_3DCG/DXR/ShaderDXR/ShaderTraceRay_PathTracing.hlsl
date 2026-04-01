@@ -193,16 +193,6 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     payload.hitPosition = hitPosition;
 
     float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);
-/////確率的に処理を打ち切り これやらないと白っぽくなる
-    float rnd = Rand(payload.Seed);
-    if (rnd > rouPDF)
-    {
-        payload.throughput = float3(0.0f, 0.0f, 0.0f);
-        payload.color = float3(0.0f, 0.0f, 0.0f);
-        payload.hit = false;
-        seed = payload.Seed;
-        return payload;
-    }
 
     MaterialCB mcb = getMaterialCB();
     uint mNo = mcb.materialNo;
@@ -222,7 +212,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     }
 
     bsdf_f = 2;
-    rnd = Rand(payload.Seed);
+    float rnd = Rand(payload.Seed);
     const float ft = 1.0f - FresnelSchlick3(outDir, speTexColor, normal, TRANSLUCENCE);
     
     if (ft > rnd && materialIdent(mNo, TRANSLUCENCE))
@@ -279,6 +269,17 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     throughput *= (bsdf * cosine / PDF / rouPDF);
    
     payload.throughput = throughput;
+    
+    /////確率的に処理を打ち切り
+    rnd = Rand(payload.Seed);
+    if (rnd > rouPDF)
+    {
+        payload.throughput = float3(0.0f, 0.0f, 0.0f);
+        payload.color = float3(0.0f, 0.0f, 0.0f);
+        payload.hit = false;
+        seed = payload.Seed;
+        return payload;
+    }
 
     payload.hitPosition = hitPosition;
     payload.mNo = matNo; //処理分岐用
