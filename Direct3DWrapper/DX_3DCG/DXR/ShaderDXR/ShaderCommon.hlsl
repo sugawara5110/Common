@@ -732,7 +732,7 @@ float othersLightArea(int emIndex)
 }
 
 ///////////////////////////////////////////LightArea///////////////////////////////////////////////
-float LightArea(int emIndex, float3 hitPosition, bool area_f)
+float LightArea(int emIndex, float3 hitPosition)
 {
     uint emInstanceID = (uint) emissiveNo[emIndex].x;
     MaterialCB emMcb = getMaterialCB2(emInstanceID);
@@ -747,7 +747,7 @@ float LightArea(int emIndex, float3 hitPosition, bool area_f)
     }
     else if (NeeLightType == SPHERE)
     {
-        if (emMcb.NeeLightSampleType == AREA || area_f)
+        if (emMcb.NeeLightSampleType == AREA)
         {
             Area = SphereLightArea(emIndex);
         }
@@ -775,7 +775,7 @@ float AllLightArea(int emIndex, float3 hitPosition)
     float sumSize = 0.0f;
     for (int j = 0; j < NumEmissive; j++)
     {
-        sumSize += LightArea(j, hitPosition, true);
+        sumSize += LightArea(j, hitPosition);
     }
     return sumSize;
 }
@@ -783,8 +783,8 @@ float AllLightArea(int emIndex, float3 hitPosition)
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
 float LightPDF(int emIndex, float3 hitPosition)
 {
-    float choicePDF = LightArea(emIndex, hitPosition, true) / AllLightArea(emIndex, hitPosition);
-    float lightPDF = 1.0f / LightArea(emIndex, hitPosition, false);
+    float choicePDF = LightArea(emIndex, hitPosition) / AllLightArea(emIndex, hitPosition);
+    float lightPDF = 1.0f / LightArea(emIndex, hitPosition);
     return choicePDF * lightPDF;
 }
 

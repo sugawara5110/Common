@@ -49,7 +49,7 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     for (int i = 0; i < NumEmissive; i++)
     {
         sum_min = sum_max;
-        sum_max += LightArea(i, hitPosition, true) / sumSize; //サイズの割合を累積
+        sum_max += LightArea(i, hitPosition) / sumSize; //サイズの割合を累積
         if (sum_min <= rnd && rnd < sum_max)
         {
             emIndex = i;
@@ -168,10 +168,7 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     {
         PDF = LightPDF(emIndex, hitPosition);
         g = G(hitPosition, normal, neeP, emIndex);
-        if (bsdf_f == 2)
-        {
-            bsdf *= PI;
-        }
+        bsdf *= PI;
     }
     else
     {
@@ -318,6 +315,11 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
     
     RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor,
                                      normal, throughput, matNo, bsdf_f, in_eta, out_eta, Seed);
+    
+    if (all(pathPay.throughput == float3(0, 0, 0)))
+    {
+        return ret;
+    }
 
     if (traceMode == 2)
     {
