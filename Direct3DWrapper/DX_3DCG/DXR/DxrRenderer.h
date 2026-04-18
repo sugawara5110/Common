@@ -45,6 +45,7 @@ struct DxrMaterialCB {
 	float shininess = 4.0f;//ƒXƒyƒLƒ…ƒ‰‹­‚³
 	float RefractiveIndex = 0.0f;//‹üÜ—¦
 	float roughness;//‘e‚³
+	float metallic;
 	UINT materialNo = 0;
 	UINT NeeLightType = 0;
 	UINT NeeLightSampleType = 0;

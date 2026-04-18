@@ -32,6 +32,7 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 	NumMaterial = numMaterial;
 	NumMaxInstance = numMaxInstance;
 	mType = std::make_unique<MaterialType[]>(numMaterial);
+	metallic = std::make_unique<float[]>(numMaterial);
 	nlType = std::make_unique<NeeLightType[]>(numMaterial);
 	saType = std::make_unique<NeeLightSampleType[]>(numMaterial);
 	IviewDXR = std::make_unique<IndexView[]>(numMaterial);
@@ -47,6 +48,7 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 		mType[i] = DIFFUSE;
 		nlType[i] = OTHERS;
 		saType[i] = AREA;
+		metallic[i] = 0.5f;
 	}
 	updateDXR[0].create(numMaterial, numMaxInstance);
 	updateDXR[1].create(numMaterial, numMaxInstance);
@@ -55,6 +57,11 @@ void ParameterDXR::create(int numMaterial, int numMaxInstance) {
 void ParameterDXR::setAllMaterialType(MaterialType type) {
 	for (int i = 0; i < NumMaterial; i++)
 		mType[i] = type;
+}
+
+void ParameterDXR::setAllMetallic(float met) {
+	for (int i = 0; i < NumMaterial; i++)
+		metallic[i] = met;
 }
 
 void ParameterDXR::resetCreateAS() {

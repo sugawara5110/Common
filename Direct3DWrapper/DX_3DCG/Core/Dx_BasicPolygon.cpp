@@ -73,9 +73,9 @@ BasicPolygon::BasicPolygon() {
 	sg.vDiffuse.z = 1.0f;
 	sg.vDiffuse.w = 0.0f;
 
-	sg.vSpecular.x = 0.0f;
-	sg.vSpecular.y = 0.0f;
-	sg.vSpecular.z = 0.0f;
+	sg.vSpecular.x = 1.0f;
+	sg.vSpecular.y = 1.0f;
+	sg.vSpecular.z = 1.0f;
 	sg.vSpecular.w = 0.0f;
 
 	sg.vAmbient.x = 0.0f;

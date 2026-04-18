@@ -26,6 +26,8 @@ public:
 
 	void setMaterialType(MaterialType type);
 
+	void setMetallic(float met);
+
 	void setNeeLightType(NeeLightType type);
 
 	void setNeeLightSampleType(NeeLightSampleType type);

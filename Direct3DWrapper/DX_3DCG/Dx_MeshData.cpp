@@ -375,6 +375,14 @@ void MeshData::setMaterialType(MaterialType type, int materialIndex) {
 	mObj.dxrPara.mType[materialIndex] = type;
 }
 
+void MeshData::setMetallic(float met, int materialIndex) {
+	if (materialIndex == -1) {
+		mObj.dxrPara.setAllMetallic(met);
+		return;
+	}
+	mObj.dxrPara.metallic[materialIndex] = met;
+}
+
 void MeshData::setPointLight(int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 

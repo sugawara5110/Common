@@ -355,6 +355,15 @@ void SkinMesh::setMaterialType(MaterialType type, int materialIndex, int meshInd
 	mObj[meshIndex].dxrPara.mType[materialIndex] = type;
 }
 
+void SkinMesh::setMetallic(float met, int materialIndex, int meshIndex) {
+	if (materialIndex == -1) {
+		for (int i = 0; i < getNumMesh(); i++)
+			mObj[i].dxrPara.setAllMetallic(met);
+		return;
+	}
+	mObj[meshIndex].dxrPara.metallic[materialIndex] = met;
+}
+
 void SkinMesh::setPointLight(int meshIndex, int materialIndex, int InstanceIndex, bool on_off,
 	float range, CoordTf::VECTOR3 atten) {
 

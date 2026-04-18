@@ -57,6 +57,8 @@ public:
 
 	void setMaterialType(MaterialType type, int materialIndex = -1, int meshIndex = -1);
 
+	void setMetallic(float met, int materialIndex = -1, int meshIndex = -1);
+
 	void setPointLight(int meshIndex, int materialIndex, int InstanceIndex, bool on_off,
 		float range, CoordTf::VECTOR3 atten = { 0.01f, 0.001f, 0.001f });
 

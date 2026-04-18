@@ -181,13 +181,15 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
 
 ///////////////////////PathTracing////////////////////////////////////////////////////////////
 RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
-                       in float3 difTexColor, in float3 speTexColor, in float3 normal, 
+                       in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                        in float3 throughput, in uint matNo,
                        out int bsdf_f, out float in_eta, out float out_eta, inout uint seed)
 {
     RayPayload payload;
     payload.Seed = seed;
     payload.hitPosition = hitPosition;
+    
+    float transparency = 1.0f - difTexColor.w;
 
     float rouPDF = min(max(max(throughput.x, throughput.y), throughput.z), 1.0f);
 
@@ -210,26 +212,9 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
 
     bsdf_f = 2;
     float rnd = Rand(payload.Seed);
-    const float ft = 1.0f - FresnelSchlick3(outDir, speTexColor, normal, TRANSLUCENCE);
+    const float F = FresnelSchlick3(outDir, difTexColor.xyz, speTexColor, normal);
     
-    if (ft > rnd && materialIdent(mNo, TRANSLUCENCE))
-    {
-        bsdf_f = 0;
-        float eta = in_eta / out_eta; //eta = “üË‘O•¨¿‚Ì‹üÜ—¦ / “üËŒã•¨¿‚Ì‹üÜ—¦
-
-        float3 eyeVec = -outDir;
-        
-        if (roughness <= 0.0f)
-        {
-            rDir = refract(eyeVec, normal, eta);
-        }
-        else
-        {
-            float3 H = SampleGGX(normal, roughness, payload.Seed);
-            rDir = refract(eyeVec, H, eta);
-        }
-    }
-    else if (materialIdent(mNo, METALLIC))
+    if (materialIdent(mNo, METALLIC) && rnd < F)
     {
         bsdf_f = 1;
         float3 eyeVec = -outDir;
@@ -245,11 +230,31 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
             rDir = reflect(eyeVec, H);
         }
     }
-        
-    if (materialIdent(mNo, DIFFUSE))
+    else
     {
-        bsdf_f = 2;
-        rDir = SampleHemisphereCosine(normal, payload.Seed);
+        rnd = Rand(payload.Seed);
+        if (materialIdent(mNo, TRANSLUCENCE) && rnd < transparency)
+        {
+            bsdf_f = 0;
+            float eta = in_eta / out_eta; //eta = “üË‘O•¨¿‚Ì‹üÜ—¦ / “üËŒã•¨¿‚Ì‹üÜ—¦
+
+            float3 eyeVec = -outDir;
+        
+            if (roughness <= 0.0f)
+            {
+                rDir = refract(eyeVec, normal, eta);
+            }
+            else
+            {
+                float3 H = SampleGGX(normal, roughness, payload.Seed);
+                rDir = refract(eyeVec, H, eta);
+            }
+        }
+        else
+        {
+            bsdf_f = 2;
+            rDir = SampleHemisphereCosine(normal, payload.Seed);
+        }
     }
 
     RayDesc ray;
@@ -261,9 +266,9 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     float PDF = 0.0f;
     float cosine = abs(dot(local_normal, local_inDir));
     
-    float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor, speTexColor, local_normal, in_eta, out_eta, PDF);
+    float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor.xyz, speTexColor, local_normal, in_eta, out_eta, PDF);
 
-    throughput *= (bsdf * cosine / PDF / rouPDF);
+    throughput *= (bsdf * cosine / (PDF * rouPDF));
    
     payload.throughput = throughput;
     
@@ -292,7 +297,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
 
 ///////////////////////PayloadCalculate_PathTracing///////////////////////////////////////////
 float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition, 
-                                    in float3 difTexColor, in float3 speTexColor, in float3 normal, 
+                                    in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                                     in float3 throughput, inout int hitInstanceId, inout uint Seed)
 {
     float3 ret = float3(0.0f, 0.0f, 0.0f);
@@ -325,7 +330,7 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
     {
         /////NextEventEstimation
         bool neeHit;
-        float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor,
+        float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor.xyz, speTexColor,
                                             normal, bsdf_f, in_eta, out_eta, Seed, neeHit);
         
         bool f = roughness <= 0.0f && materialIdent(mNo, METALLIC) || //Š®‘S‹¾–Ê

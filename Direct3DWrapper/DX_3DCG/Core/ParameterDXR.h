@@ -62,6 +62,7 @@ struct ParameterDXR {
 	UINT NumMaxInstance = 1;
 	bool hs = false;
 	std::unique_ptr<MaterialType[]> mType = nullptr;
+	std::unique_ptr<float[]> metallic = nullptr;
 	std::unique_ptr<NeeLightType[]> nlType = nullptr;
 	std::unique_ptr<NeeLightSampleType[]> saType = nullptr;
 	std::unique_ptr<ID3D12Resource* []> difTex = nullptr;
@@ -92,6 +93,8 @@ struct ParameterDXR {
 	void create(int numMaterial, int numMaxInstance);
 
 	void setAllMaterialType(MaterialType type);
+
+	void setAllMetallic(float met);
 
 	void resetCreateAS();
 

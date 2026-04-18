@@ -41,6 +41,10 @@ void PolygonData::setMaterialType(MaterialType type) {
 	dxrPara.mType[0] = type;
 }
 
+void PolygonData::setMetallic(float met) {
+	dxrPara.metallic[0] = met;
+}
+
 void PolygonData::setNeeLightType(NeeLightType type) {
 	dxrPara.nlType[0] = type;
 }

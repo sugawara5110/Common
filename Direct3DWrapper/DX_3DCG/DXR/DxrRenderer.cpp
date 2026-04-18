@@ -482,6 +482,8 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 				cbObj[1].matCb[numIns].NeeLightType = PD[i]->nlType[j];
 				cbObj[0].matCb[numIns].NeeLightSampleType = PD[i]->saType[j];
 				cbObj[1].matCb[numIns].NeeLightSampleType = PD[i]->saType[j];
+				cbObj[0].matCb[numIns].metallic = PD[i]->metallic[j];
+				cbObj[1].matCb[numIns].metallic = PD[i]->metallic[j];
 				numIns++;
 			}
 		}

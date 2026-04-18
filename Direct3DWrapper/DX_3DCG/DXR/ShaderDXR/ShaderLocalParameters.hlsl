@@ -34,6 +34,7 @@ struct MaterialCB
     float shininess;
     float RefractiveIndex; //‹üÜ—¦
     float roughness; //‘e‚³
+    float metallic;
     uint materialNo;
     uint NeeLightType;
     uint NeeLightSampleType;

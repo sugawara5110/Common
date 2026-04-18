@@ -383,26 +383,26 @@ float3 FresnelSchlick(float dotVH, float3 F0)
 }
 
 ///////////////////////////////////////////FresnelSchlick2/////////////////////////////////////////
-float3 FresnelSchlick2(float3 outDir, float3 speTexColor, float3 H, uint type)
+float3 FresnelSchlick2(float3 outDir, float3 difTexColor, float3 speTexColor, float3 H)
 {
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
     const float3 Specular = mcb.Specular.xyz * speTexColor;
+    const float3 Diffuse = mcb.Diffuse.xyz * difTexColor;
+    const float metallic = mcb.metallic;
     
-    float3 F0 = 0.9.xxx * Specular;
-    
-    if (type == TRANSLUCENCE)
-    {
-        F0 = 0.04.xxx * Specular;
-    }
+    float3 dief0 = float3(0.04f, 0.04f, 0.04f) * Specular;
+    float3 metf0 = Diffuse;
+
+    float3 F0 = lerp(dief0, metf0, metallic);
     
     return FresnelSchlick(max(dot(outDir, H), 0), F0);
 }
 
 ///////////////////////////////////////////FresnelSchlick3/////////////////////////////////////////
-float FresnelSchlick3(float3 outDir, float3 speTexColor, float3 H, uint type)
+float FresnelSchlick3(float3 outDir, float3 difTexColor, float3 speTexColor, float3 H)
 {
-    const float3 f = FresnelSchlick2(outDir, speTexColor, H, type);
+    const float3 f = FresnelSchlick2(outDir, difTexColor, speTexColor, H);
     return (f.x + f.y + f.z) / 3.0f;
 }
 
@@ -447,7 +447,7 @@ float3 DiffuseBRDF_PDF(float3 inDir, float3 difTexColor, float3 normal, out floa
 }
 
 ///////////////////////////////////////////SpecularBRDF_PDF///////////////////////////////////////
-float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 normal, out float PDF)
+float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor, float3 normal, out float PDF)
 {
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
@@ -464,7 +464,7 @@ float3 SpecularBRDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, float3 
     const float dotNH = abs(dot(normal, H));
     const float dotVH = abs(dot(outDir, H));
 
-    const float3 F = FresnelSchlick2(outDir, speTexColor, H, METALLIC);
+    const float3 F = FresnelSchlick2(outDir, difTexColor, speTexColor, H);
 
     const float NDF = GGX_Distribution(normal, H, roughness);
     const float G = GGX_GeometrySmith(normal, outDir, inDir, roughness);
@@ -515,7 +515,7 @@ float3 FullyRefractionBTDF(float3 F, float3 L, float3 N, float in_eta, float out
 }
 
 ///////////////////////////////////////////RefractionBTDF_PDF///////////////////////////////////////
-float3 RefractionBTDF_PDF(float3 inDir, float3 outDir, float3 speTexColor, 
+float3 RefractionBTDF_PDF(float3 inDir, float3 outDir, float3 difTexColor, float3 speTexColor,
                           float3 N, float in_eta, float out_eta, out float PDF)
 {
     float3 H = N;
@@ -526,7 +526,7 @@ float3 RefractionBTDF_PDF(float3 inDir, float3 outDir, float3 speTexColor,
     const MaterialCB mcb = material[materialID];
     const float roughness = mcb.roughness;
 
-    const float3 F = FresnelSchlick2(outDir, speTexColor, H, TRANSLUCENCE);
+    const float3 F = FresnelSchlick2(outDir, difTexColor, speTexColor, H);
 
     float NDF = GGX_Distribution(N, H, roughness);
     float G = GGX_GeometrySmith(N, outDir, inDir, roughness);
@@ -561,11 +561,11 @@ float3 BSDF(int bsdf_f, float3 inDir, float3 outDir, float3 difTexColor, float3 
 
     if (bsdf_f == 0)
     {
-        bsdf = RefractionBTDF_PDF(inDir, outDir, speTexColor, N, in_eta, out_eta, PDF);
+        bsdf = RefractionBTDF_PDF(inDir, outDir, difTexColor, speTexColor, N, in_eta, out_eta, PDF);
     }
     else if (bsdf_f == 1)
     {
-        bsdf = SpecularBRDF_PDF(inDir, outDir, speTexColor, N, PDF);
+        bsdf = SpecularBRDF_PDF(inDir, outDir, difTexColor, speTexColor, N, PDF);
     }
     else if (bsdf_f == 2)
     {

@@ -39,7 +39,7 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
         if (!materialIdent(payload.mNo, NEE))
         {
             payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition,
-                                                         difTex.xyz, speTex, normalMap,
+                                                         difTex, speTex, normalMap,
                                                          payload.throughput, payload.hitInstanceId, payload.Seed);
         }
     }
