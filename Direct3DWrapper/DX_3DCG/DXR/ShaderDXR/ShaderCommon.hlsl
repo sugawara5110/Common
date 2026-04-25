@@ -316,12 +316,6 @@ float3 getSpePixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 	return spe.xyz;
 }
 
-///////////////////////////////////////////IBL_PDF////////////////////////////////////////////////
-float IBL_PDF()
-{
-	return 1.0f / (4 * PI);
-}
-
 ///////////////////////////////////////////radiusPDF///////////////////////////////////////////////
 float radiusPDF()
 {
@@ -731,6 +725,12 @@ float othersLightArea(int emIndex)
     return 2 * (x * y + y * z + x * z);
 }
 
+///////////////////////////////////////////IBL_Area////////////////////////////////////////////////
+float IBL_Area()
+{
+    return 4 * PI * IBL_size * IBL_size;
+}
+
 ///////////////////////////////////////////LightArea///////////////////////////////////////////////
 float LightArea(int emIndex, float3 hitPosition)
 {
@@ -764,27 +764,38 @@ float LightArea(int emIndex, float3 hitPosition)
 }
 
 ///////////////////////////////////////////AllLightArea////////////////////////////////////////////
-float AllLightArea(int emIndex, float3 hitPosition)
+float AllLightArea(float3 hitPosition)
 {
-    if (LIGHT_PCS <= emIndex)
-    {
-        return 0.0f;
-    }
-    
     int NumEmissive = (int) numEmissive.x;
     float sumSize = 0.0f;
     for (int j = 0; j < NumEmissive; j++)
     {
         sumSize += LightArea(j, hitPosition);
     }
+    
+    if (useImageBasedLighting)
+    {
+        sumSize += IBL_Area();
+    }
+    
     return sumSize;
 }
 
 ///////////////////////////////////////////LightPDF////////////////////////////////////////////////
 float LightPDF(int emIndex, float3 hitPosition)
 {
-    float choicePDF = LightArea(emIndex, hitPosition) / AllLightArea(emIndex, hitPosition);
-    float lightPDF = 1.0f / LightArea(emIndex, hitPosition);
+    float lightArea = 0.0f;
+    if (emIndex >= 0)
+    {
+        lightArea = LightArea(emIndex, hitPosition);
+    }
+    else if (useImageBasedLighting)
+    {
+        lightArea = IBL_Area();
+    }
+    
+    float choicePDF = lightArea / AllLightArea(hitPosition);
+    float lightPDF = 1.0f / lightArea;
     return choicePDF * lightPDF;
 }
 
