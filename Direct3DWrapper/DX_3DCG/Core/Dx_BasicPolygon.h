@@ -150,6 +150,11 @@ public:
 		dxrPara.updateDXR[dev->dxrBuffSwapIndex()].RefractiveIndex = index;
 	}
 
+	void setAbbe(float abbe) {
+		Dx_Device* dev = Dx_Device::GetInstance();
+		dxrPara.updateDXR[dev->dxrBuffSwapIndex()].Abbe = abbe;
+	}
+
 	void setRoughness(float roug) {
 		Dx_Device* dev = Dx_Device::GetInstance();
 		dxrPara.updateDXR[dev->dxrBuffSwapIndex()].roughness = roug;

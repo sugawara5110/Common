@@ -15,6 +15,10 @@ void rayGenIn()
 	
     uint pixelID = pixelPos.y * dim.x + pixelPos.x;
     payload.Seed = pcg_hash(pixelID ^ pcg_hash(SeedFrame));
+    
+    float rand = Rand(payload.Seed);
+    payload.wavelength_choice = (rand < 0.333f) ? 0 : (rand < 0.666f ? 1 : 2);
+    payload.wavelength_mask_sw = true;
 
     RayDesc ray;
 //光線の原点, ここが光線スタート, 視線から始まる

@@ -33,6 +33,7 @@ struct MaterialCB
     float4 Ambient;
     float shininess;
     float RefractiveIndex; //‹üÜ—¦
+    float Abbe;
     float roughness; //‘e‚³
     float metallic;
     uint materialNo;

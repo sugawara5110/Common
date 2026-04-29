@@ -22,6 +22,8 @@ struct RayPayload
     float depth;
     int hitInstanceId;
     uint Seed;
+    uint wavelength_choice;
+    bool wavelength_mask_sw;
 };
 
 cbuffer global : register(b0, space0)

@@ -277,20 +277,25 @@ float3 getNormalMap(in float3 normal, in float2 uv, in float3 tangent)
 }
 
 //////////////////////////////////////ピクセル値取得///////////////////////////////////////////
+//////////////ディフェーズテクスチャ
+float4 getDifPixelTex(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
+{
+    uint materialID = getMaterialID();
+//UV計算
+    float2 UV = getUV(attr, 0, v3);
+//ピクセル値
+    return g_texDiffuse[materialID].SampleLevel(g_samLinear, UV, 0.0);
+}
 //////////////ディフェーズ
 float4 getDifPixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 {
-	uint materialID = getMaterialID();
-//UV計算
-	float2 UV = getUV(attr, 0, v3);
-//ピクセル値
-	float4 difTex = g_texDiffuse[materialID].SampleLevel(g_samLinear, UV, 0.0);
-	float4 add = wvp[getInstancingID()].AddObjColor;
-	difTex.x = saturate(difTex.x + add.x);
-	difTex.y = saturate(difTex.y + add.y);
-	difTex.z = saturate(difTex.z + add.z);
-	difTex.w = saturate(difTex.w + add.w);
-	return difTex;
+    float4 difTex = getDifPixelTex(attr, v3);
+    float4 add = wvp[getInstancingID()].AddObjColor;
+    difTex.x = saturate(difTex.x + add.x);
+    difTex.y = saturate(difTex.y + add.y);
+    difTex.z = saturate(difTex.z + add.z);
+    difTex.w = saturate(difTex.w + add.w);
+    return difTex;
 }
 //////////////ノーマル
 float3 getNorPixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)

@@ -101,9 +101,16 @@ public:
 	void setRefractiveIndex(int meshIndex, float RefractiveIndex) {
 		mObj[meshIndex].setRefractiveIndex(RefractiveIndex);
 	}
+	void setAbbe(int meshIndex, float abbe) {
+		mObj[meshIndex].setAbbe(abbe);
+	}
 	void setAllRefractiveIndex(float Index) {
 		for (int i = 0; i < getNumMesh(); i++)
 			mObj[i].setRefractiveIndex(Index);
+	}
+	void setAllAbbe(float abbe) {
+		for (int i = 0; i < getNumMesh(); i++)
+			mObj[i].setAbbe(abbe);
 	}
 	void SetName(char* name) {
 		for (int i = 0; i < getNumMesh(); i++)

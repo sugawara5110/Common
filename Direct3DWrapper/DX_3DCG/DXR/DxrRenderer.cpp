@@ -446,7 +446,7 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 	norRange = 0.999f;
 	traceMode = 0;
 	SeedFrame = 0;
-	IBL_size = 5000.0f;
+	IBL_size = 1.0f;
 	useImageBasedLighting = false;
 	CoordTf::MatrixIdentity(&ImageBasedLighting_Matrix);
 
@@ -789,7 +789,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 21;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 23;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects.push_back(shaderConfig.subobject);
 	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];
@@ -1112,6 +1112,7 @@ void DxrRenderer::updateMaterial(CBobj* cbObj) {
 				mcb.vAmbient.as(amb.x, amb.y, amb.z, 0.0f);
 				mcb.shininess = ud.shininess;
 				mcb.RefractiveIndex = ud.RefractiveIndex;
+				mcb.Abbe = ud.Abbe;
 				mcb.roughness = ud.roughness;
 				MaterialCnt++;
 			}

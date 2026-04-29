@@ -84,6 +84,9 @@ public:
 	void setRefractiveIndex(float index) {
 		mObj.setRefractiveIndex(index);
 	}
+	void setAbbe(float abbe) {
+		mObj.setAbbe(abbe);
+	}
 	void setRoughness(float roug) {
 		mObj.setRoughness(roug);
 	}

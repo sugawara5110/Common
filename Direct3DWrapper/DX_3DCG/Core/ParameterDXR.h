@@ -22,6 +22,7 @@ struct UpdateDXR {
 	bool createAS = false;//ASの最初の構築完了フラグ
 	UINT InstanceMask = 0xFF;
 	float RefractiveIndex = 1.0f;//屈折率:1.0f:空気(基準), 1.33f:水, 1.5f:ガラス, 2.4f:ダイヤ 
+	float Abbe = 0.0f;//アッベ数:55.0f:空気, 55.7:水, 64.2:ガラス, 24.4:ダイヤ
 	float roughness = 0.05f;//粗さ
 
 	//ParticleData, SkinMesh用

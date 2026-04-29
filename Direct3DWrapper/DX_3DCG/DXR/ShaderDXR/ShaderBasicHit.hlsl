@@ -23,10 +23,9 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
 
             payload.depth = getDepth(attr, v3);
             payload.normal = normalMap;
-
+            payload.Alpha = difTex.w;
             payload.color = difTex.xyz;
             payload.hit = true;
-            payload.Alpha = difTex.w;
         }
     }
     else
@@ -40,7 +39,8 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
         {
             payload.color = PayloadCalculate_PathTracing(payload.RecursionCnt, payload.hitPosition,
                                                          difTex, speTex, normalMap,
-                                                         payload.throughput, payload.hitInstanceId, payload.Seed);
+                                                         payload.throughput, payload.hitInstanceId, payload.Seed,
+                                                         payload.wavelength_choice, payload.wavelength_mask_sw);
         }
     }
     payload.mNo = getMaterialCB().materialNo;

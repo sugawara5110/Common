@@ -171,16 +171,63 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     return bsdf * g * neeP.color / (PDF * prob);
 }
 
+///////////////////////CalculateDispersionIOR/////////////////////////////////////////////////
+float CalculateDispersionIOR(in uint wavelength_choice, inout float3 wavelength_mask, inout bool wavelength_mask_sw)
+{
+    MaterialCB mcb = getMaterialCB();
+    float base_ior = mcb.RefractiveIndex;
+    float abbe = mcb.Abbe;
+    
+    if (abbe <= 0.0f)
+    {
+        wavelength_mask = float3(1.0f, 1.0f, 1.0f);
+        return base_ior; //•ªŽU‚È‚µ
+    }
+    
+    float delta = (base_ior - 1.0f) / (2.0f * abbe);
+    
+    float ior = 0.0f;
+     
+    if (wavelength_choice == 0)
+    {
+        ior = base_ior - delta; // Red
+        wavelength_mask = float3(3.0f, 0.0f, 0.0f);
+    }
+    else if (wavelength_choice == 1)
+    {
+        ior = base_ior; // Green
+        wavelength_mask = float3(0.0f, 3.0f, 0.0f);
+    }
+    else
+    {
+        ior = base_ior + delta; // Blue
+        wavelength_mask = float3(0.0f, 0.0f, 3.0f);
+    }
+    
+    if (wavelength_mask_sw)
+    {
+        wavelength_mask_sw = false;
+    }
+    else
+    {
+        wavelength_mask = float3(1.0f, 1.0f, 1.0f);
+    }
+    
+    return ior;
+}
+
 ///////////////////////PathTracing////////////////////////////////////////////////////////////
 RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
                        in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                        in float3 throughput, in uint matNo,
                        out int bsdf_f, out float in_eta, out float out_eta, inout uint seed,
-                       out float prob)
+                       out float prob, in uint wavelength_choice, in bool wavelength_mask_sw)
 {
     RayPayload payload;
     payload.Seed = seed;
     payload.hitPosition = hitPosition;
+    payload.wavelength_choice = wavelength_choice;
+    payload.wavelength_mask_sw = wavelength_mask_sw;
     
     float transparency = 1.0f - difTexColor.w;
 
@@ -191,22 +238,12 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     float roughness = mcb.roughness;
 
     float3 rDir = float3(0.0f, 0.0f, 0.0f);
-
-    in_eta = AIR_RefractiveIndex;
-    out_eta = mcb.RefractiveIndex;
-
-    float norDir = dot(outDir, normal);
-    if (norDir < 0.0f)
-    { //–@ü‚ª”½‘Î‘¤‚Ìê‡, •¨Ž¿“à•”‚Æ”»’f
-        normal *= -1.0f;
-        in_eta = mcb.RefractiveIndex;
-        out_eta = AIR_RefractiveIndex;
-    }
-
+    
     bsdf_f = 2;
     float rnd = Rand(payload.Seed);
     const float F = FresnelSchlick3(outDir, difTexColor.xyz, speTexColor, normal);
     float probability = 1.0f;
+    float3 wavelength_mask = float3(1.0f, 1.0f, 1.0f);
     
     if (materialIdent(mNo, METALLIC) && rnd < F)
     {
@@ -232,6 +269,19 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
         {
             bsdf_f = 0;
             probability = (1.0f - F) * transparency;
+            
+            in_eta = AIR_RefractiveIndex;
+            out_eta = CalculateDispersionIOR(wavelength_choice, wavelength_mask, payload.wavelength_mask_sw);
+
+            float norDir = dot(outDir, normal);
+            
+            if (norDir < 0.0f)
+            { //–@ü‚ª”½‘Î‘¤‚Ìê‡, •¨Ž¿“à•”‚Æ”»’f
+                normal *= -1.0f;
+                in_eta = out_eta;
+                out_eta = AIR_RefractiveIndex;
+            }
+            
             float eta = in_eta / out_eta; //eta = “üŽË‘O•¨Ž¿‚Ì‹üÜ—¦ / “üŽËŒã•¨Ž¿‚Ì‹üÜ—¦
 
             float3 eyeVec = -outDir;
@@ -266,7 +316,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     
     float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor.xyz, speTexColor, local_normal, in_eta, out_eta, PDF);
 
-    throughput *= (bsdf * cosine / (PDF * rouPDF * probability));
+    throughput *= (bsdf * cosine / (PDF * rouPDF * probability)) * wavelength_mask;
    
     payload.throughput = throughput;
     
@@ -296,7 +346,8 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
 ///////////////////////PayloadCalculate_PathTracing///////////////////////////////////////////
 float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition, 
                                     in float4 difTexColor, in float3 speTexColor, in float3 normal, 
-                                    in float3 throughput, inout int hitInstanceId, inout uint Seed)
+                                    in float3 throughput, inout int hitInstanceId, inout uint Seed,
+                                    in uint wavelength_choice, in bool wavelength_mask_sw)
 {
     float3 ret = float3(0.0f, 0.0f, 0.0f);
 
@@ -318,7 +369,8 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
     float prob;
     
     RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor,
-                                     normal, throughput, matNo, bsdf_f, in_eta, out_eta, Seed, prob);
+                                     normal, throughput, matNo, bsdf_f, in_eta, out_eta, Seed,
+                                     prob, wavelength_choice, wavelength_mask_sw);
     
     if (all(pathPay.throughput == float3(0, 0, 0)))
     {
