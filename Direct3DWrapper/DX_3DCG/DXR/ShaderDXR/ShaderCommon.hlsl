@@ -291,10 +291,10 @@ float4 getDifPixel(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 {
     float4 difTex = getDifPixelTex(attr, v3);
     float4 add = wvp[getInstancingID()].AddObjColor;
-    difTex.x = saturate(difTex.x + add.x);
-    difTex.y = saturate(difTex.y + add.y);
-    difTex.z = saturate(difTex.z + add.z);
-    difTex.w = saturate(difTex.w + add.w);
+    difTex.x = difTex.x + add.x;
+    difTex.y = difTex.y + add.y;
+    difTex.z = difTex.z + add.z;
+    difTex.w = difTex.w + add.w;
     return difTex;
 }
 //////////////ノーマル
@@ -581,20 +581,28 @@ float3 getSkyLight(float3 dir)
     return ret.xyz;
 }
 
-////////////////////////////////////短形ライトサンプリング/////////////////////////////////////////
-float3 sampleRectLight(uint InstanceID, uint InstancingID, inout uint Seed)
+////////////////////////////////////短形ライトグローバル頂点///////////////////////////////////////
+void getRectLightVertex(in uint InstanceID, out float3 p0, out float3 p1, out float3 p2)
 {
     Vertex3 v3 = getVertex2(InstanceID, 0);
-    
-    float4x4 w = wvp[InstancingID].world;
-    float3 p0 = v3.v[0].Pos;
-    float3 p1 = v3.v[1].Pos;
-    float3 p2 = v3.v[2].Pos;
-    
+    float4x4 w = wvp[getInstancingID2(InstanceID)].world;
     // p0-----p1
     // |      |
     // |      |
     // p3-----p2
+    //インデックスも 0,1,2,0,2,3 で固定
+    p0 = mul(float4(v3.v[0].Pos, 1.0f), w).xyz;
+    p1 = mul(float4(v3.v[1].Pos, 1.0f), w).xyz;
+    p2 = mul(float4(v3.v[2].Pos, 1.0f), w).xyz;
+}
+
+////////////////////////////////////短形ライトサンプリング/////////////////////////////////////////
+float3 sampleRectLight(uint InstanceID, uint InstancingID, inout uint Seed)
+{
+    float3 p0;
+    float3 p1;
+    float3 p2;
+    getRectLightVertex(InstanceID, p0, p1, p2);
     
     float3 edge1 = p1 - p0;
     float3 edge2 = p2 - p1;
@@ -602,28 +610,21 @@ float3 sampleRectLight(uint InstanceID, uint InstancingID, inout uint Seed)
     float rand1 = Rand(Seed);
     float rand2 = Rand(Seed);
     
-    float4 local_v = float4(p0 + rand1 * edge1 + rand2 * edge2, 1);
-    float4 global_v = mul(local_v, w);
-    return global_v.xyz;
+    return p0 + rand1 * edge1 + rand2 * edge2;
 }
 
 ////////////////////////////////////短形ライトArea////////////////////////////////////////////////
 float RectLightArea(uint InstanceID, uint InstancingID)
 {
-    Vertex3 v3 = getVertex2(InstanceID, 0);
-    
-    float3x3 w = wvp[InstancingID].world;
-    float3 p0 = v3.v[0].Pos;
-    float3 p1 = v3.v[1].Pos;
-    float3 p2 = v3.v[2].Pos;
+    float3 p0;
+    float3 p1;
+    float3 p2;
+    getRectLightVertex(InstanceID, p0, p1, p2);
     
     float3 up = p1 - p0;
     float3 vp = p2 - p1;
     
-    float3 global_u = mul(up, w);
-    float3 global_v = mul(vp, w);
-    
-    return length(cross(global_u, global_v));
+    return length(cross(up, vp));
 }
 
 ////////////////////////////////////球体ライトサンプリング面積/////////////////////////////////////

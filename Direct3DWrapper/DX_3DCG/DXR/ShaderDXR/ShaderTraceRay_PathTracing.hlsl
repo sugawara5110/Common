@@ -10,6 +10,7 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload, in int e
     uint emInstanceID = (uint) emissiveNo[emIndex].x;
     MaterialCB emMcb = getMaterialCB2(emInstanceID);
     uint NeeLightSampleType = emMcb.NeeLightSampleType;
+    uint NeeLightType = emMcb.NeeLightType;
     
     float3 lightVec = payload.hitPosition - hitPosition;
     float3 light_normal = payload.normal;
@@ -22,7 +23,7 @@ float G(in float3 hitPosition, in float3 normal, in RayPayload payload, in int e
     float distAtten = distance * distance;
     float g = cosine1 * cosine2 / distAtten;
     
-    if (NeeLightSampleType == SOLID_ANGLE)
+    if (NeeLightSampleType == SOLID_ANGLE && NeeLightType == SPHERE)
     {
         g = cosine2;
     }
@@ -134,11 +135,24 @@ RayPayload NeeGetLight(in uint RecursionCnt, in float3 hitPosition, in float3 no
     return payload;
 }
 
+///////////////////////ConvertAreaPdfToSolidAnglePdf//////////////////////////////////////////
+float ConvertAreaPdfToSolidAnglePdf(float pdfArea, float3 hitPosition, float3 lightSamplePos, float3 lightNormal)
+{
+    float3 toLight = lightSamplePos - hitPosition;
+    float distanceSq = max(0.0001f, dot(toLight, toLight));
+    float3 worldDir = normalize(toLight);
+
+    float cosThetaLight = max(0.0001f, dot(-worldDir, lightNormal));
+
+    return pdfArea * (distanceSq / cosThetaLight);
+}
+
 ///////////////////////NextEventEstimation////////////////////////////////////////////////////
 float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hitPosition, 
                            in float3 difTexColor, in float3 speTexColor, in float3 normal,
                            in int bsdf_f, in float in_eta, in float out_eta, 
-                           inout uint Seed, out bool hit, in float prob)
+                           inout uint Seed, in float prob, 
+                           in float pdfBRDFW, out float outLightPDFW)
 {
     float norDir = dot(outDir, normal);
     if (norDir < 0.0f)
@@ -156,19 +170,53 @@ float3 NextEventEstimation(in float3 outDir, in uint RecursionCnt, in float3 hit
     float3 local_inDir = worldToLocal(normal, inDir);
     float3 local_outDir = worldToLocal(normal, outDir);
 
-    float pdf;
-    float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor, speTexColor, local_normal, in_eta, out_eta, pdf);
+    float no_use_pdf;
+    float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor, speTexColor, local_normal, in_eta, out_eta, no_use_pdf);
+    
+    if (!neeP.hit)
+    {
+        outLightPDFW = 0.0f;
+        return float3(0, 0, 0);
+    }
 
-    float PDF = LightPDF(emIndex, hitPosition);
+    float pdfLightW = LightPDF(emIndex, hitPosition);
+    
+    float weightLight = 1.0f;
     
     if (emIndex >= 0)
     {
-        g = G(hitPosition, normal, neeP, emIndex);
         bsdf *= PI;
+        g = G(hitPosition, normal, neeP, emIndex);
+        
+        if (traceMode == 3)
+        {
+            uint emInstanceID = (uint) emissiveNo[emIndex].x;
+            MaterialCB emMcb = getMaterialCB2(emInstanceID);
+            
+            if (emMcb.NeeLightType == RECTANGLE)
+            {
+                float3 p0;
+                float3 p1;
+                float3 p2;
+                getRectLightVertex(emInstanceID, p0, p1, p2);
+                float3 RectLightNormal = normalize(cross(p1 - p0, p2 - p1));
+
+                pdfLightW = ConvertAreaPdfToSolidAnglePdf(pdfLightW, hitPosition, neeP.hitPosition, RectLightNormal);
+            }
+
+            outLightPDFW = pdfLightW;
+
+            //MISバランスヒューリスティックのウエイト計算
+            weightLight = pdfLightW / (pdfLightW + pdfBRDFW);
+
+            if (emMcb.NeeLightType == RECTANGLE || emMcb.NeeLightType == SPHERE && emMcb.NeeLightSampleType == SOLID_ANGLE)
+            {
+                g = saturate(dot(inDir, normal));
+            }
+        }
     }
-     
-    hit = neeP.hit;
-    return bsdf * g * neeP.color / (PDF * prob);
+    
+    return bsdf * g * neeP.color / (pdfLightW * prob) * weightLight;
 }
 
 ///////////////////////CalculateDispersionIOR/////////////////////////////////////////////////
@@ -221,7 +269,8 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
                        in float4 difTexColor, in float3 speTexColor, in float3 normal, 
                        in float3 throughput, in uint matNo,
                        out int bsdf_f, out float in_eta, out float out_eta, inout uint seed,
-                       out float prob, in uint wavelength_choice, in bool wavelength_mask_sw)
+                       out float prob, in uint wavelength_choice, in bool wavelength_mask_sw, 
+                       out float pdf)
 {
     RayPayload payload;
     payload.Seed = seed;
@@ -316,6 +365,7 @@ RayPayload PathTracing(in float3 outDir, in uint RecursionCnt, in float3 hitPosi
     
     float3 bsdf = BSDF(bsdf_f, local_inDir, local_outDir, difTexColor.xyz, speTexColor, local_normal, in_eta, out_eta, PDF);
 
+    pdf = PDF;
     throughput *= (bsdf * cosine / (PDF * rouPDF * probability)) * wavelength_mask;
    
     payload.throughput = throughput;
@@ -367,23 +417,28 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
     float in_eta;
     float out_eta;
     float prob;
+    float path_pdf;
     
     RayPayload pathPay = PathTracing(outDir, RecursionCnt, hitPosition, difTexColor, speTexColor,
                                      normal, throughput, matNo, bsdf_f, in_eta, out_eta, Seed,
-                                     prob, wavelength_choice, wavelength_mask_sw);
+                                     prob, wavelength_choice, wavelength_mask_sw, path_pdf);
     
     if (all(pathPay.throughput == float3(0, 0, 0)))
     {
         return ret;
     }
-
-    if (traceMode == 2)
+    
+    float3 neeCol = float3(0, 0, 0);
+    float LightPDFW = 0.0f;
+    
+    if (traceMode == 2 || traceMode == 3)
     {
-        /////NextEventEstimation
-        bool neeHit;
-        float3 neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor.xyz, speTexColor,
-                                            normal, bsdf_f, in_eta, out_eta, Seed, neeHit, prob);
-        
+        neeCol = NextEventEstimation(outDir, RecursionCnt, hitPosition, difTexColor.xyz, speTexColor,
+                                     normal, bsdf_f, in_eta, out_eta, Seed, prob, path_pdf, LightPDFW);
+    }
+    
+    if (traceMode == 2 || traceMode == 3)
+    {
         bool f = roughness <= 0.0f && materialIdent(mNo, METALLIC) || //完全鏡面
              materialIdent(mNo, TRANSLUCENCE); //透過
         
@@ -395,7 +450,16 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
             }
             else
             {
-                ret = float3(0.0f, 0.0f, 0.0f);
+                if (traceMode == 2)
+                {
+                    ret = float3(0.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    float pdfBRDFW = path_pdf;
+                    float weightBRDF = pdfBRDFW / (LightPDFW + pdfBRDFW);
+                    ret = (pathPay.color * pathPay.throughput) * weightBRDF;
+                }
             }
         }
         else
@@ -403,14 +467,13 @@ float3 PayloadCalculate_PathTracing(in uint RecursionCnt, in float3 hitPosition,
             ret = pathPay.color; //光源ヒットがない場合はそのまま値を返す
         }
         
-        if (neeHit && !f)
+        if (!f)
         {
             ret += neeCol * throughput; //通常NEE処理
         }
     }
     else
     {
-        /////PathTracing
         if (pathPay.hit)
         {
             ret = pathPay.color * pathPay.throughput; //光源ヒット時のみthroughputを乗算し値を返す

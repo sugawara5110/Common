@@ -98,6 +98,9 @@ void rayGenIn()
     }
     else
     {
+        col.x = saturate(col.x);
+        col.y = saturate(col.y);
+        col.z = saturate(col.z);
         gOutput[pixelPos] = float4(col, 1.0f);
     }
 }

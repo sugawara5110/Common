@@ -84,7 +84,8 @@ enum ShaderTestMode {
 enum TraceMode {
 	ONE_RAY = 0,
 	PathTracing = 1,
-	NEE = 2
+	NEE = 2,
+	MIS = 3
 };
 
 class DxrRenderer {
