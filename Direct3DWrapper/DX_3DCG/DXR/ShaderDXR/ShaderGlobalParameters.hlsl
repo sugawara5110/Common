@@ -28,6 +28,7 @@ struct RayPayload
 
 cbuffer global : register(b0, space0)
 {
+    matrix currViewProjection;
     matrix prevViewProjection;
     matrix projectionToWorld;
     matrix ImageBasedLighting_Matrix;

@@ -20,6 +20,7 @@ struct AccelerationStructureBuffers
 
 struct DxrConstantBuffer
 {
+	CoordTf::MATRIX currViewProjection;
 	CoordTf::MATRIX prevViewProjection;
 	CoordTf::MATRIX projectionToWorld;
 	CoordTf::MATRIX ImageBasedLighting_Matrix;
@@ -88,6 +89,22 @@ enum TraceMode {
 	MIS = 3
 };
 
+struct CameraData {
+	CoordTf::MATRIX View;
+	CoordTf::MATRIX Proj;
+	CoordTf::MATRIX CurrentVP;
+	CoordTf::MATRIX PreviousVP;
+	CoordTf::VECTOR3 Position;
+	CoordTf::VECTOR3 Right;
+	CoordTf::VECTOR3 Up;
+	CoordTf::VECTOR3 Forward;
+	float Near;
+	float Far;
+	float Fov;
+	uint32_t Width;
+	uint32_t Height;
+};
+
 class DxrRenderer {
 
 private:
@@ -122,6 +139,7 @@ private:
 	Dx_Resource mpPrevDepthResource = {};
 	Dx_Resource prev_normalMap = {};
 	Dx_Resource ImageBasedLighting = {};
+	Dx_Resource MotionVector = {};
 
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[numSwapIndex];
 
@@ -171,12 +189,14 @@ public:
 	void update_c(int comNo, UINT numRecursion);
 	void raytrace_g(int comNo);
 	void raytrace_c(int comNo);
-	void copyBackBuffer(uint32_t comNo);
-	void copyDepthBuffer(uint32_t comNo);
+	void copyTemporalAccumulationResource(uint32_t comNo);
 	void setASswapIndex(int index) { buffSwap[0] = index; }
 	void setRaytraceSwapIndex(int index) { buffSwap[1] = index; }
 
 	Dx_Resource* getInstanceIdMap();
+	Dx_Resource* getOutputResource();
+	Dx_Resource* getDepthResource();
+	Dx_Resource* getMotionVector();
 
 	void allSwapIndex() {
 		Dx_Device* dev = Dx_Device::GetInstance();
@@ -191,6 +211,7 @@ public:
 	void useImageBasedLightingTexture(bool on);
 	void setImageBasedLighting_size(float size);
 	void setImageBasedLighting_Direction(CoordTf::VECTOR3 dir);
+	CameraData getCameraData();
 };
 
 #endif

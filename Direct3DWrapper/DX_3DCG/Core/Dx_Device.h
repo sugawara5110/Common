@@ -51,6 +51,8 @@ public:
 
 	IDXGIFactory4* getFactory();
 
+	IDXGIAdapter1* getAdapter();
+
 	UINT64 getRequiredIntermediateSize(ID3D12Resource* res);
 
 	HRESULT createDefaultResourceTEXTURE2D(ID3D12Resource** def, UINT64 width, UINT height,

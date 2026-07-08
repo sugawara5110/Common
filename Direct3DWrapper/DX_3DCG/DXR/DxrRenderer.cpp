@@ -285,7 +285,7 @@ namespace {
 
 	RootSignatureDesc createLocalRootDescRayGen() {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 6;
+		int numDescriptorRanges = 7;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
 
@@ -330,6 +330,13 @@ namespace {
 		desc.range[5].RegisterSpace = 0;
 		desc.range[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		desc.range[5].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gMotionVector(u7)
+		desc.range[6].BaseShaderRegister = 7;
+		desc.range[6].NumDescriptors = 1;
+		desc.range[6].RegisterSpace = 0;
+		desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[6].OffsetInDescriptorsFromTableStart = descCnt++;
 
 		desc.rootParams.resize(1);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -827,6 +834,7 @@ void DxrRenderer::createShaderResources() {
 
 	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
+
 	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight());
 
 	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
@@ -838,7 +846,7 @@ void DxrRenderer::createShaderResources() {
 		DXGI_FORMAT_R32_FLOAT);
 
 	std::unique_ptr<UINT[]> uintArr = std::make_unique<UINT[]>(sw->getClientWidth() * sw->getClientHeight());
-	for (int i = 0; i < sw->getClientWidth() * sw->getClientHeight(); i++)uintArr[i] = 0;
+	for (uint32_t i = 0; i < sw->getClientWidth() * sw->getClientHeight(); i++)uintArr[i] = 0;
 	frameIndexMap.createTexture(0, uintArr.get(), DXGI_FORMAT_R32_UINT,
 		sw->getClientWidth(), sw->getClientWidth() * 4, sw->getClientHeight(), true);
 
@@ -854,6 +862,10 @@ void DxrRenderer::createShaderResources() {
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R8G8B8A8_SNORM);
 
+	MotionVector.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R16G16_FLOAT);
+
 	mpOutputResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpInstanceIdMapResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -861,6 +873,7 @@ void DxrRenderer::createShaderResources() {
 	normalMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpPrevDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	prev_normalMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	MotionVector.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//Local
 	int num_u0 = 1;
@@ -869,7 +882,8 @@ void DxrRenderer::createShaderResources() {
 	int num_u3 = 1;
 	int num_u4 = 1;
 	int num_u5 = 1;
-	int numLocalHeapRay = num_u0 + num_u1 + num_u2 + num_u3 + num_u4 + num_u5;
+	int num_u7 = 1;
+	int numLocalHeapRay = num_u0 + num_u1 + num_u2 + num_u3 + num_u4 + num_u5 + num_u7;
 	int num_t0 = numMaterial;
 	int num_b1 = numMaterial;
 	int num_b2 = maxNumInstancing;
@@ -912,6 +926,9 @@ void DxrRenderer::createShaderResources() {
 
 		//UAVを作成 gPrevNormalMap(u5)
 		prev_normalMap.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gMotionVector(u7)
+		MotionVector.CreateUavTexture(srvHandle);
 
 		//SRVを作成 Indices(t0)
 		for (auto i = 0; i < PD.size(); i++) {
@@ -1124,13 +1141,15 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	using namespace CoordTf;
 	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 	Dx_Device* dev = Dx_Device::GetInstance();
-	MATRIX VP;
 	Dx_SwapChain::Update& upd = sw->getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
-	MatrixMultiply(&VP, &upd.mView, &upd.mProj);
-	MatrixTranspose(&VP);
 	DxrConstantBuffer& cb = cbObj->cb;
-	MatrixInverse(&cb.prevViewProjection, &cb.projectionToWorld);
-	MatrixInverse(&cb.projectionToWorld, &VP);
+
+	cb.prevViewProjection = cb.currViewProjection;
+	MatrixMultiply(&cb.currViewProjection, &upd.mView, &upd.mProj);
+	MatrixTranspose(&cb.currViewProjection);
+
+	MatrixInverse(&cb.projectionToWorld, &cb.currViewProjection);
+
 	cb.ImageBasedLighting_Matrix = ImageBasedLighting_Matrix;
 	cb.cameraPosition.as(upd.pos.x, upd.pos.y, upd.pos.z, 1.0f);
 	cb.maxRecursion = numRecursion;
@@ -1260,19 +1279,9 @@ void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 	}
 }
 
-void DxrRenderer::copyBackBuffer(uint32_t comNo) {
-	//結果をバックバッファにコピー
-	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
-	sw->GetRtBuffer()->delayCopyResource(comNo, &mpOutputResource);
-
+void DxrRenderer::copyTemporalAccumulationResource(uint32_t comNo) {
 	mpPrevDepthResource.CopyResource(comNo, &mpDepthResource);
 	prev_normalMap.CopyResource(comNo, &normalMap);
-}
-
-void DxrRenderer::copyDepthBuffer(uint32_t comNo) {
-
-	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
-	sw->GetDepthBuffer()->delayCopyResource(comNo, &mpDepthResource);
 }
 
 void DxrRenderer::update_g(int comNo, UINT numRecursion) {
@@ -1303,6 +1312,18 @@ DxrRenderer::~DxrRenderer() {
 
 Dx_Resource* DxrRenderer::getInstanceIdMap() {
 	return &mpInstanceIdMapResource;
+}
+
+Dx_Resource* DxrRenderer::getOutputResource() {
+	return &mpOutputResource;
+}
+
+Dx_Resource* DxrRenderer::getDepthResource() {
+	return &mpDepthResource;
+}
+
+Dx_Resource* DxrRenderer::getMotionVector() {
+	return &MotionVector;
 }
 
 void DxrRenderer::setGIparameter(TraceMode mode) {
@@ -1341,4 +1362,35 @@ void DxrRenderer::setImageBasedLighting_Direction(CoordTf::VECTOR3 dir) {
 	MatrixRotationY(&rotY, dir.y);
 	MatrixRotationX(&rotX, dir.x);
 	ImageBasedLighting_Matrix = rotZ * rotY * rotX;
+}
+
+CameraData DxrRenderer::getCameraData() {
+
+	CameraData cam = {};
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	Dx_Device* dev = Dx_Device::GetInstance();
+	Dx_SwapChain::Update& upd = sw->getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
+	DxrConstantBuffer& cb = cbObj->cb;
+
+	cam.View = upd.mView;
+	cam.Proj = upd.mProj;
+	cam.CurrentVP = cb.currViewProjection;
+	cam.PreviousVP = cb.prevViewProjection;
+	cam.Position.as(cb.cameraPosition.x, cb.cameraPosition.y, cb.cameraPosition.z);
+	cam.Fov = sw->GetViewY_theta();
+	cam.Near = sw->GetNearPlane();
+	cam.Far = sw->GetFarPlane();
+
+	using namespace CoordTf;
+	VECTOR3 out_c = {};
+	VectorCross(&out_c, &upd.dir, &upd.up);
+	VectorNormalize(&cam.Right, &out_c);
+
+	cam.Up = upd.up;
+	cam.Forward = upd.dir;
+
+	cam.Width = sw->getClientWidth();
+	cam.Height = sw->getClientHeight();
+
+	return cam;
 }

@@ -23,6 +23,7 @@ RWTexture2D<float> gInstanceIdMap : register(u2, space0);
 RWTexture2D<float4> gNormalMap : register(u3, space0);
 RWTexture2D<float> gPrevDepthOut : register(u4, space0);
 RWTexture2D<float4> gPrevNormalMap : register(u5, space0);
+RWTexture2D<float2> gMotionVector : register(u7, space0);
 
 StructuredBuffer<uint> Indices[] : register(t0, space1);//無制限配列の場合,別なレジスタ空間にした方が(・∀・)ｲｲ!! みたい
 

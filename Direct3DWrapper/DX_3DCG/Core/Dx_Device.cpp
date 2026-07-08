@@ -10,6 +10,7 @@ namespace {
 
 	IDXGIFactory4* mdxgiFactory = nullptr;
 	ID3D12Device5* md3dDevice = nullptr;
+	IDXGIAdapter1* Adapter = nullptr;
 	UINT mCbvSrvUavDescriptorSize = 0;
 
 	HRESULT createDefaultResourceCommon(ID3D12Resource** def,
@@ -67,47 +68,63 @@ void Dx_Device::DeleteInstance() {
 void Dx_Device::createDevice() {
 
 #if defined(DEBUG) || defined(_DEBUG) 
-		//デバッグ中はデバッグレイヤーを有効化する
-	{
-		ComPtr<ID3D12Debug> debugController;
-		HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf()));
-		if (FAILED(hr)) {
-			throw std::runtime_error("D3D12GetDebugInterface Error");
-		}
-		debugController->EnableDebugLayer();
+	//デバッグ中はデバッグレイヤーを有効化する
+
+	ComPtr<ID3D12Debug> debugController;
+	HRESULT hr1 = D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf()));
+	if (FAILED(hr1)) {
+		throw std::runtime_error("D3D12GetDebugInterface Error");
 	}
+	debugController->EnableDebugLayer();
+
 #endif
 
-		//ファクトリ生成
-		//アダプターの列挙、スワップ チェーンの作成、
-		//および全画面表示モードとの間の切り替えに使用される Alt + 
-		//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
+	//ファクトリ生成
+	//アダプターの列挙、スワップ チェーンの作成、
+	//および全画面表示モードとの間の切り替えに使用される Alt + 
+	//Enter キー シーケンスとのウィンドウの関連付けを行うオブジェクトを生成するために使用
 	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory));
 	if (FAILED(hr)) {
 		throw std::runtime_error("CreateDXGIFactory1 Error");
 	}
 
-	HRESULT hardwareResult = D3D12CreateDevice(
-		nullptr,   //default adapter
-		D3D_FEATURE_LEVEL_11_0,
-		IID_PPV_ARGS(&md3dDevice));
+	for (UINT i = 0; mdxgiFactory->EnumAdapters1(i, &Adapter) != DXGI_ERROR_NOT_FOUND; ++i) {
 
-	//↑ハードウエア処理不可の場合ソフトウエア処理にする,ソフトウエア処理デバイス生成
-	if (FAILED(hardwareResult))
-	{
-		ComPtr<IDXGIAdapter> pWarpAdapter;
-		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(pWarpAdapter.GetAddressOf())))) {
+		DXGI_ADAPTER_DESC1 desc;
+		Adapter->GetDesc1(&desc);
 
+		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+		{
+			Adapter->Release();
+			continue;
+		}
+
+		//アダプターが使えるかのチェック
+		if (SUCCEEDED(D3D12CreateDevice(
+			Adapter,
+			D3D_FEATURE_LEVEL_11_0,
+			__uuidof(ID3D12Device),
+			nullptr)))
+		{
+			// このAdapterを保持
+			break;
+		}
+
+		RELEASE(Adapter);
+	}
+
+	if (Adapter == nullptr) {
+		if (FAILED(mdxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&Adapter)))) {
 			throw std::runtime_error("EnumWarpAdapter Error");
 		}
+	}
 
-		if (FAILED(D3D12CreateDevice(
-			pWarpAdapter.Get(),
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&md3dDevice)))) {
-
-			throw std::runtime_error("D3D12CreateDevice Error");
-		}
+	if (FAILED(D3D12CreateDevice(
+		Adapter,
+		D3D_FEATURE_LEVEL_11_0,
+		IID_PPV_ARGS(&md3dDevice))))
+	{
+		throw std::runtime_error("D3D12CreateDevice Error");
 	}
 
 	if (DXR_CreateResource) {
@@ -126,6 +143,8 @@ void Dx_Device::createDevice() {
 }
 
 Dx_Device::~Dx_Device() {
+
+	RELEASE(Adapter);
 
 #if defined(DEBUG) || defined(_DEBUG) 
 	//ReportLiveDeviceObjectsを呼び出したタイミングでの
@@ -150,6 +169,10 @@ ID3D12Device5* Dx_Device::getDevice() {
 
 IDXGIFactory4* Dx_Device::getFactory() {
 	return mdxgiFactory;
+}
+
+IDXGIAdapter1* Dx_Device::getAdapter() {
+	return Adapter;
 }
 
 UINT64 Dx_Device::getRequiredIntermediateSize(ID3D12Resource* res) {

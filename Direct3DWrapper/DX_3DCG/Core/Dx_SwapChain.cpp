@@ -23,7 +23,7 @@ void Dx_SwapChain::DeleteInstance() {
 	}
 }
 
-void Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
+void Dx_SwapChain::Initialize(HWND hWnd, uint32_t width, uint32_t height) {
 
 	mClientWidth = width;
 	mClientHeight = height;
@@ -189,7 +189,7 @@ void Dx_SwapChain::Initialize(HWND hWnd, int width, int height) {
 	mScreenViewport.MinDepth = 0.0f;
 	mScreenViewport.MaxDepth = 1.0f;
 
-	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
+	mScissorRect = { 0, 0, (long)mClientWidth, (long)mClientHeight };
 
 	MatrixIdentity(&upd[0].mProj);
 	MatrixIdentity(&upd[1].mProj);
@@ -286,4 +286,8 @@ Dx_Resource* Dx_SwapChain::GetRtBuffer() {
 
 Dx_Resource* Dx_SwapChain::GetDepthBuffer() {
 	return &mDepthStencilBuffer;
+}
+
+IDXGISwapChain3* Dx_SwapChain::getSwapChain() {
+	return mSwapChain.Get();
 }

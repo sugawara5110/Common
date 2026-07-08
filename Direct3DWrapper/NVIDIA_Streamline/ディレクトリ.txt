@@ -1,0 +1,23 @@
+DLSS_Test/
+
+│  DLSS_Test.sln
+│  DLSS_Test.vcxproj
+│
+├─src
+│      main.cpp
+│      dx12.cpp
+│
+├─include
+│      （Streamlineのinclude）
+│
+├─lib
+│      （Streamlineのlib）
+│
+└─x64
+    └─Debug
+          DLSS_Test.exe
+          sl.interposer.dll
+          sl.common.dll
+          sl.dlss.dll
+          sl.reflex.dll
+          sl.nis.dll

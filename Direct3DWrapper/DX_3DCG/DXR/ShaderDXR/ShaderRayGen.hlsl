@@ -66,6 +66,16 @@ void rayGenIn()
 
     if (traceMode != 0)
     {
+        //MotionVector
+        float3 worldPos = payload.hitPosition;
+        float4 currentClip = mul(float4(worldPos, 1), currViewProjection);
+        float4 prevClip = mul(float4(worldPos, 1), prevViewProjection);
+        currentClip /= currentClip.w;
+        prevClip /= prevClip.w;
+        float2 mv = currentClip.xy - prevClip.xy;
+        gMotionVector[pixelPos] = mv;
+        
+        //Temporal accumulation
         float4 prev_screenPos4 = mul(float4(payload.hitPosition, 1.0f), prevViewProjection);
         float2 prev_screenPos = (prev_screenPos4.xy / prev_screenPos4.z * payload.depth);
         prev_screenPos.y *= -1.0f;

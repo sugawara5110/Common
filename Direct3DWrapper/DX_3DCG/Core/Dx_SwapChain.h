@@ -50,8 +50,8 @@ private:
 	DXGI_FORMAT mDepthStencilResFormat = DXGI_FORMAT_R32_TYPELESS;
 	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D32_FLOAT;
 	DXGI_FORMAT mDepthStencilSrvFormat = DXGI_FORMAT_R32_FLOAT;
-	int mClientWidth;
-	int mClientHeight;
+	uint32_t mClientWidth;
+	uint32_t mClientHeight;
 
 	Update upd[2] = {};//cBuffSwap
 
@@ -74,7 +74,7 @@ public:
 	static Dx_SwapChain* GetInstance();
 	static void DeleteInstance();
 
-	void Initialize(HWND hWnd, int width = 800, int height = 600);
+	void Initialize(HWND hWnd, uint32_t width = 800, uint32_t height = 600);
 
 	void setPerspectiveFov(float ViewAngle, float NearPlane, float FarPlane);
 
@@ -93,13 +93,15 @@ public:
 
 	DXGI_FORMAT getDepthStencilSrvFormat() { return mDepthStencilSrvFormat; }
 
-	int getClientWidth() { return mClientWidth; }
-	int getClientHeight() { return mClientHeight; }
+	uint32_t getClientWidth() { return mClientWidth; }
+	uint32_t getClientHeight() { return mClientHeight; }
 	Dx_Resource* GetRtBuffer();
 	Dx_Resource* GetDepthBuffer();
 
 	bool get_m4xMsaaState() { return m4xMsaaState; }
 	UINT get_m4xMsaaQuality() { return m4xMsaaQuality; }
+
+	IDXGISwapChain3* getSwapChain();
 };
 
 #endif
