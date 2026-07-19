@@ -250,6 +250,10 @@ void Dx_SwapChain::DrawScreen() {
 	mCurrBackBuffer = mSwapChain->GetCurrentBackBufferIndex();
 }
 
+void Dx_SwapChain::Jitter_SW(bool sw) {
+	cam.Jitter_F = sw;
+}
+
 void Dx_SwapChain::Cameraset(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 dir, CoordTf::VECTOR3 up) {
 	//ƒJƒƒ‰‚ÌˆÊ’u‚Æ•ûŒü‚ðÝ’è
 	Dx_Device* dev = Dx_Device::GetInstance();
@@ -262,6 +266,12 @@ void Dx_SwapChain::Cameraset(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 dir, CoordTf
 	u.pos.as(pos.x, pos.y, pos.z);
 	u.dir.as(dir.x, dir.y, dir.z);
 	u.up.as(up.x, up.y, up.z);
+
+	u.prevViewProjection = u.currViewProjection;
+	MatrixMultiply(&u.currViewProjection, &u.mView, &u.mProj);
+	MatrixTranspose(&u.currViewProjection);
+
+	cam.countUpFrameIndex();
 }
 
 float Dx_SwapChain::GetViewY_theta() {
@@ -290,4 +300,55 @@ Dx_Resource* Dx_SwapChain::GetDepthBuffer() {
 
 IDXGISwapChain3* Dx_SwapChain::getSwapChain() {
 	return mSwapChain.Get();
+}
+
+CameraData Dx_SwapChain::getCameraData() {
+
+	Dx_Device* dev = Dx_Device::GetInstance();
+	Update& upd = getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
+
+	cam.View = upd.mView;
+	cam.Proj = upd.mProj;
+
+	if (cam.Jitter_F) {
+		cam.jitter =
+			Dx_Util::GetHaltonJitter(
+				cam.FrameIndex,
+				mClientWidth,
+				mClientHeight);
+
+		cam.Proj._31 =
+			cam.jitter.projX;
+
+		cam.Proj._32 =
+			cam.jitter.projY;
+	}
+	else {
+		cam.Proj._31 = 0.0f;
+
+		cam.Proj._32 = 0.0f;
+	}
+
+	MatrixMultiply(&upd.currViewProjection, &upd.mView, &cam.Proj);
+	MatrixTranspose(&upd.currViewProjection);
+
+	cam.CurrentVP = upd.currViewProjection;
+	cam.PreviousVP = upd.prevViewProjection;
+	cam.Position = upd.pos;
+	cam.Fov = GetViewY_theta();
+	cam.Near = GetNearPlane();
+	cam.Far = GetFarPlane();
+
+	using namespace CoordTf;
+	VECTOR3 out_c = {};
+	VectorCross(&out_c, &upd.dir, &upd.up);
+	VectorNormalize(&cam.Right, &out_c);
+
+	cam.Up = upd.up;
+	cam.Forward = upd.dir;
+
+	cam.Width = getClientWidth();
+	cam.Height = getClientHeight();
+
+	return cam;
 }

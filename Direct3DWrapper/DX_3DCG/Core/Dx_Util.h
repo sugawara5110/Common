@@ -35,6 +35,19 @@ namespace Dx_Util {
 	std::unique_ptr<char[]> ConvertFileToChar(char* file_path);
 
 	CoordTf::MATRIX calculationMatrixWorld(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 theta, CoordTf::VECTOR3 scale);
+
+	float Halton(uint32_t index, uint32_t base);
+
+	struct Jitter
+	{
+		float pixelX;
+		float pixelY;
+
+		float projX;
+		float projY;
+	};
+
+	Jitter GetHaltonJitter(uint32_t frameIndex, uint32_t width, uint32_t height);
 }
 
 #endif

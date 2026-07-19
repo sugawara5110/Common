@@ -169,6 +169,7 @@ bool DLSSManager::Configure(
     option.outputHeight = outputHeight;
     option.colorBuffersHDR = sl::Boolean::eFalse;
     option.useAutoExposure = sl::Boolean::eTrue;
+    option.sharpness = 0.0f;
 
     auto result = slDLSSSetOptions(
         mViewport,
@@ -397,7 +398,7 @@ void DLSSManager::FillConstants(
         sl::Boolean::eFalse;
 
     c.motionVectorsJittered =
-        sl::Boolean::eFalse;
+        sl::Boolean::eTrue;
 
     c.mvecScale =
     {
@@ -410,8 +411,8 @@ void DLSSManager::FillConstants(
 
     c.jitterOffset =
     {
-        0.0f,
-        0.0f
+        camera.jitter.pixelX,
+        camera.jitter.pixelY
     };
 
     c.reset =

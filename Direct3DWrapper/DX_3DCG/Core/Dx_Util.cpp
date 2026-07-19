@@ -150,3 +150,39 @@ CoordTf::MATRIX Dx_Util::calculationMatrixWorld(CoordTf::VECTOR3 pos, CoordTf::V
 	MatrixTranslation(&mov, pos.x, pos.y, pos.z);
 	return sca * rotZYX * mov;
 }
+
+float Dx_Util::Halton(uint32_t index, uint32_t base)
+{
+	float result = 0.0f;
+	float f = 1.0f / float(base);
+
+	while (index > 0)
+	{
+		result += f * (index % base);
+
+		index /= base;
+
+		f /= float(base);
+	}
+
+	return result;
+}
+
+Dx_Util::Jitter Dx_Util::GetHaltonJitter(
+	uint32_t frameIndex,
+	uint32_t width,
+	uint32_t height)
+{
+	Jitter j{};
+
+	uint32_t i = (frameIndex % 8) + 1;
+
+	j.pixelX = Halton(i, 2) - 0.5f;
+	j.pixelY = Halton(i, 3) - 0.5f;
+
+	j.projX = j.pixelX * 2.0f / float(width);
+	j.projY = j.pixelY * 2.0f / float(height);
+
+	return j;
+}
+

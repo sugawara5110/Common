@@ -10,6 +10,44 @@
 #include "Dx_TextureHolder.h"
 #include <DirectXColors.h>
 
+class Dx_SwapChain;
+
+class CameraData {
+
+public:
+	CoordTf::MATRIX View{};
+	CoordTf::MATRIX Proj{};
+	CoordTf::MATRIX CurrentVP{};
+	CoordTf::MATRIX PreviousVP{};
+	CoordTf::VECTOR3 Position{};
+	CoordTf::VECTOR3 Right{};
+	CoordTf::VECTOR3 Up{};
+	CoordTf::VECTOR3 Forward{};
+	float Near = 0;
+	float Far = 0;
+	float Fov = 0;
+	uint32_t Width = 0;
+	uint32_t Height = 0;
+
+	Dx_Util::Jitter jitter{};
+
+	bool getFrameIndexReset()const {
+		if (FrameIndex <= 0)return true;
+		return false;
+	}
+
+private:
+	friend Dx_SwapChain;
+	uint32_t FrameIndex = 0;
+	bool Jitter_F = false;
+
+	void countUpFrameIndex() {
+		if (INT_MAX <= FrameIndex++) {
+			FrameIndex = 0;
+		}
+	}
+};
+
 class Dx_SwapChain {
 
 public:
@@ -20,6 +58,9 @@ public:
 		CoordTf::VECTOR3 pos = {};
 		CoordTf::VECTOR3 dir = {};
 		CoordTf::VECTOR3 up = {};
+
+		CoordTf::MATRIX currViewProjection = {};
+		CoordTf::MATRIX prevViewProjection = {};
 	};
 
 private:
@@ -54,6 +95,7 @@ private:
 	uint32_t mClientHeight;
 
 	Update upd[2] = {};//cBuffSwap
+	CameraData cam = {};
 
 	//ƒJƒƒ‰‰æŠp
 	float ViewY_theta = 0.0f;
@@ -82,6 +124,7 @@ public:
 	void EndDraw(int com_no);
 	void DrawScreen();
 
+	void Jitter_SW(bool sw);
 	void Cameraset(CoordTf::VECTOR3 pos, CoordTf::VECTOR3 dir, CoordTf::VECTOR3 up = { 0.0f,0.0f,1.0f });
 
 	float GetViewY_theta();
@@ -93,8 +136,8 @@ public:
 
 	DXGI_FORMAT getDepthStencilSrvFormat() { return mDepthStencilSrvFormat; }
 
-	uint32_t getClientWidth() { return mClientWidth; }
-	uint32_t getClientHeight() { return mClientHeight; }
+	uint32_t getClientWidth()const { return mClientWidth; }
+	uint32_t getClientHeight()const { return mClientHeight; }
 	Dx_Resource* GetRtBuffer();
 	Dx_Resource* GetDepthBuffer();
 
@@ -102,6 +145,8 @@ public:
 	UINT get_m4xMsaaQuality() { return m4xMsaaQuality; }
 
 	IDXGISwapChain3* getSwapChain();
+
+	CameraData getCameraData();
 };
 
 #endif

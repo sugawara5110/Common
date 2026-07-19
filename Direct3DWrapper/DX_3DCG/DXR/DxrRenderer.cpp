@@ -447,7 +447,6 @@ void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, cha
 	TMin = 0.001f;
 	TMax = 10000.0f;
 
-	frameInd = 0;
 	frameReset = 0.0f;
 	depthRange = 0.0001f;
 	norRange = 0.999f;
@@ -1144,9 +1143,8 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	Dx_SwapChain::Update& upd = sw->getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
 	DxrConstantBuffer& cb = cbObj->cb;
 
-	cb.prevViewProjection = cb.currViewProjection;
-	MatrixMultiply(&cb.currViewProjection, &upd.mView, &upd.mProj);
-	MatrixTranspose(&cb.currViewProjection);
+	cb.prevViewProjection = upd.prevViewProjection;
+	cb.currViewProjection = upd.currViewProjection;
 
 	MatrixInverse(&cb.projectionToWorld, &cb.currViewProjection);
 
@@ -1269,8 +1267,8 @@ void DxrRenderer::raytrace(Dx_CommandListObj* com) {
 	com->getCommandList()->SetPipelineState1(mpPipelineState.Get());
 	com->getCommandList()->DispatchRays(&raytraceDesc[dev->dxrBuffSwapRaytraceIndex()]);
 
-	if (INT_MAX <= frameInd++) {
-		frameInd = 0;
+	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
+	if (sw->getCameraData().getFrameIndexReset()) {
 		resetFrameIndex();
 	}
 
@@ -1364,33 +1362,3 @@ void DxrRenderer::setImageBasedLighting_Direction(CoordTf::VECTOR3 dir) {
 	ImageBasedLighting_Matrix = rotZ * rotY * rotX;
 }
 
-CameraData DxrRenderer::getCameraData() {
-
-	CameraData cam = {};
-	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
-	Dx_Device* dev = Dx_Device::GetInstance();
-	Dx_SwapChain::Update& upd = sw->getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
-	DxrConstantBuffer& cb = cbObj->cb;
-
-	cam.View = upd.mView;
-	cam.Proj = upd.mProj;
-	cam.CurrentVP = cb.currViewProjection;
-	cam.PreviousVP = cb.prevViewProjection;
-	cam.Position.as(cb.cameraPosition.x, cb.cameraPosition.y, cb.cameraPosition.z);
-	cam.Fov = sw->GetViewY_theta();
-	cam.Near = sw->GetNearPlane();
-	cam.Far = sw->GetFarPlane();
-
-	using namespace CoordTf;
-	VECTOR3 out_c = {};
-	VectorCross(&out_c, &upd.dir, &upd.up);
-	VectorNormalize(&cam.Right, &out_c);
-
-	cam.Up = upd.up;
-	cam.Forward = upd.dir;
-
-	cam.Width = sw->getClientWidth();
-	cam.Height = sw->getClientHeight();
-
-	return cam;
-}

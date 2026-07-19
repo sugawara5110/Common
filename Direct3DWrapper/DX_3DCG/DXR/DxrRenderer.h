@@ -89,22 +89,6 @@ enum TraceMode {
 	MIS = 3
 };
 
-struct CameraData {
-	CoordTf::MATRIX View;
-	CoordTf::MATRIX Proj;
-	CoordTf::MATRIX CurrentVP;
-	CoordTf::MATRIX PreviousVP;
-	CoordTf::VECTOR3 Position;
-	CoordTf::VECTOR3 Right;
-	CoordTf::VECTOR3 Up;
-	CoordTf::VECTOR3 Forward;
-	float Near;
-	float Far;
-	float Fov;
-	uint32_t Width;
-	uint32_t Height;
-};
-
 class DxrRenderer {
 
 private:
@@ -114,7 +98,6 @@ private:
 	CBobj cbObj[numSwapIndex] = {};
 	int buffSwap[numSwapIndex] = { 0,0 };
 
-	UINT frameInd;
 	float frameReset;
 	float depthRange;
 	float norRange;
@@ -211,7 +194,6 @@ public:
 	void useImageBasedLightingTexture(bool on);
 	void setImageBasedLighting_size(float size);
 	void setImageBasedLighting_Direction(CoordTf::VECTOR3 dir);
-	CameraData getCameraData();
 };
 
 #endif
