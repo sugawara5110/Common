@@ -29,13 +29,13 @@ public:
 
     enum Mode
     {
-        eOff,
-        eMaxPerformance,
-        eBalanced,
-        eMaxQuality,
-        eUltraPerformance,
-        eUltraQuality,
-        eDLAA,
+        eOff,              //DLSSを使わない通常描画
+        eMaxPerformance,   //高フレームレート重視, 画質は落ちる
+        eBalanced,         //画質と速度のバランス
+        eMaxQuality,       //一般的な高画質設定
+        eUltraPerformance, //8Kなど超高解像度向け
+        eUltraQuality,     //画質重視
+        eDLAA,             //AIアンチエイリアスのみ, inout同サイズ
     };
 
     bool Configure(

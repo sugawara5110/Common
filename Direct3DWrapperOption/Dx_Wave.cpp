@@ -50,10 +50,10 @@ Wave::Wave() {
 	sg.vDiffuse.z = 1.0f;
 	sg.vDiffuse.w = 1.0f;
 
-	sg.vSpeculer.x = 1.0f;
-	sg.vSpeculer.y = 1.0f;
-	sg.vSpeculer.z = 1.0f;
-	sg.vSpeculer.w = 1.0f;
+	sg.vSpecular.x = 1.0f;
+	sg.vSpecular.y = 1.0f;
+	sg.vSpecular.z = 1.0f;
+	sg.vSpecular.w = 1.0f;
 
 	sg.vAmbient.x = 0.0f;
 	sg.vAmbient.y = 0.0f;
@@ -283,9 +283,9 @@ void Wave::SetCol(CoordTf::VECTOR3 dif, CoordTf::VECTOR3 spe, CoordTf::VECTOR3 a
 	sg.vDiffuse.y = dif.y;
 	sg.vDiffuse.z = dif.z;
 
-	sg.vSpeculer.x = spe.x;
-	sg.vSpeculer.y = spe.y;
-	sg.vSpeculer.z = spe.z;
+	sg.vSpecular.x = spe.x;
+	sg.vSpecular.y = spe.y;
+	sg.vSpecular.z = spe.z;
 
 	sg.vAmbient.x = am.x;
 	sg.vAmbient.y = am.y;

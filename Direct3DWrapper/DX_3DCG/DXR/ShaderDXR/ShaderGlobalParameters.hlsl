@@ -43,6 +43,7 @@ cbuffer global : register(b0, space0)
     uint maxRecursion;
     uint traceMode;
     uint SeedFrame;
+    uint numSPP;
     float IBL_size;
     bool useImageBasedLighting;
 };

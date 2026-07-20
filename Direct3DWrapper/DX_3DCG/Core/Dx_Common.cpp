@@ -437,6 +437,12 @@ ComPtr <ID3D12PipelineState> DxCommon::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 	D3D12_DEPTH_STENCIL_DESC stencilDesc = {};
 	stencilDesc.DepthEnable = TRUE;
 	stencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+
+	if (NotUseDepthBuffer) {
+		stencilDesc.DepthEnable = FALSE;
+		stencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	}
+
 	stencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 	stencilDesc.StencilEnable = FALSE;
 	stencilDesc.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;

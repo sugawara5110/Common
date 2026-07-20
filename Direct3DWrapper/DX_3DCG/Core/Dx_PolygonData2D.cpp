@@ -59,7 +59,8 @@ void PolygonData2D::Instancing(CoordTf::VECTOR3 pos, float angle, CoordTf::VECTO
 	Instancing(world, Color, px, py, mx, my);
 }
 
-void PolygonData2D::GetVBarray2D(UINT numMaxInstance) {
+void PolygonData2D::GetVBarray2D(UINT numMaxInstance, bool notUseDepthBuffer) {
+	NotUseDepthBuffer = notUseDepthBuffer;
 	NumMaxInstance = numMaxInstance;
 	mObjectCB = NEW ConstantBuffer<WVP_CB2D>(NumMaxInstance);
 	cb2[0] = std::make_unique<WVP_CB2D[]>(NumMaxInstance);

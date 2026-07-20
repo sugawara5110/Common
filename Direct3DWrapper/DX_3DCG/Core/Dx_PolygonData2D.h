@@ -57,7 +57,7 @@ public:
 
 	PolygonData2D();
 	~PolygonData2D();
-	void GetVBarray2D(UINT numMaxInstance);
+	void GetVBarray2D(UINT numMaxInstance, bool NotUseDepthBuffer = false);
 
 	void TexOn();
 	bool Create(int comIndex, bool blend, bool alpha, int Tex, VERTEX2* v2, int num_v2, UINT* index, int num_index);

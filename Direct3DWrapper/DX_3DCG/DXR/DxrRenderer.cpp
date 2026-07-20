@@ -441,12 +441,21 @@ namespace {
 	}
 }
 
-void DxrRenderer::initDXR(std::vector<ParameterDXR*>& pd, UINT MaxRecursion, char* IBL_FileName, ShaderTestMode Mode) {
+void DxrRenderer::initDXR(
+	std::vector<ParameterDXR*>& pd, UINT MaxRecursion,
+	uint32_t renderWid,
+	uint32_t renderHei,
+	char* IBL_FileName,
+	ShaderTestMode Mode) {
+
+	renderWidth = renderWid;
+	renderHeight = renderHei;
 
 	PD = pd;
 	TMin = 0.001f;
 	TMax = 10000.0f;
 
+	numSPP = 1;
 	frameReset = 0.0f;
 	depthRange = 0.0001f;
 	norRange = 0.999f;
@@ -831,37 +840,36 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 void DxrRenderer::createShaderResources() {
 
-	Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
 	Dx_Device* device = Dx_Device::GetInstance();
 
-	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight());
+	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight);
 
-	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
-	mpInstanceIdMapResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+	mpInstanceIdMapResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
-	std::unique_ptr<UINT[]> uintArr = std::make_unique<UINT[]>(sw->getClientWidth() * sw->getClientHeight());
-	for (uint32_t i = 0; i < sw->getClientWidth() * sw->getClientHeight(); i++)uintArr[i] = 0;
+	std::unique_ptr<UINT[]> uintArr = std::make_unique<UINT[]>(renderWidth * renderHeight);
+	for (uint32_t i = 0; i < renderWidth * renderHeight; i++)uintArr[i] = 0;
 	frameIndexMap.createTexture(0, uintArr.get(), DXGI_FORMAT_R32_UINT,
-		sw->getClientWidth(), sw->getClientWidth() * 4, sw->getClientHeight(), true);
+		renderWidth, renderWidth * 4, renderHeight, true);
 
-	normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+	normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R8G8B8A8_SNORM);
 
-	mpPrevDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+	mpPrevDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R32_FLOAT);
 
-	prev_normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+	prev_normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R8G8B8A8_SNORM);
 
-	MotionVector.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(sw->getClientWidth(), sw->getClientHeight(),
+	MotionVector.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R16G16_FLOAT);
 
@@ -1084,12 +1092,10 @@ void DxrRenderer::createShaderTable() {
 
 		mpShaderTable[i].Get()->Unmap(0, nullptr);
 
-		Dx_SwapChain* sw = Dx_SwapChain::GetInstance();
-
 		D3D12_DISPATCH_RAYS_DESC& rDesc = raytraceDesc[i];
 
-		rDesc.Width = sw->getClientWidth();
-		rDesc.Height = sw->getClientHeight();
+		rDesc.Width = renderWidth;
+		rDesc.Height = renderHeight;
 		rDesc.Depth = 1;
 
 		D3D12_GPU_VIRTUAL_ADDRESS startAddress = mpShaderTable[i].Get()->GetGPUVirtualAddress();
@@ -1153,6 +1159,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 	cb.maxRecursion = numRecursion;
 	cb.traceMode = traceMode;
 	cb.SeedFrame = SeedFrame;
+	cb.numSPP = numSPP;
 	cb.IBL_size = IBL_size;
 	cb.useImageBasedLighting = useImageBasedLighting;
 	cb.TMin_TMax.x = TMin;
@@ -1362,3 +1369,6 @@ void DxrRenderer::setImageBasedLighting_Direction(CoordTf::VECTOR3 dir) {
 	ImageBasedLighting_Matrix = rotZ * rotY * rotX;
 }
 
+void DxrRenderer::setSPP(uint32_t num) {
+	numSPP = num;
+}

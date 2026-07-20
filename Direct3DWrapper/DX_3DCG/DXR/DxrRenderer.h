@@ -35,6 +35,7 @@ struct DxrConstantBuffer
 	UINT maxRecursion;
 	UINT traceMode;
 	UINT SeedFrame;
+	UINT numSPP;
 	float IBL_size;
 	bool useImageBasedLighting;
 };
@@ -98,6 +99,9 @@ private:
 	CBobj cbObj[numSwapIndex] = {};
 	int buffSwap[numSwapIndex] = { 0,0 };
 
+	uint32_t renderWidth = 0;
+	uint32_t renderHeight = 0;
+
 	float frameReset;
 	float depthRange;
 	float norRange;
@@ -142,6 +146,7 @@ private:
 	UINT maxNumInstancing = 0;
 	float TMin = 0;
 	float TMax = 0;
+	uint32_t numSPP = 1;
 
 	void createBottomLevelAS1(Dx_CommandListObj* com, VertexView* vv,
 		IndexView* iv, UINT currentIndexCount, UINT MaterialNo,
@@ -165,7 +170,10 @@ public:
 	~DxrRenderer();
 
 	void initDXR(std::vector<ParameterDXR*>& pd, UINT maxRecursion,
-		char* ImageBasedLightingTextureFileName = nullptr, ShaderTestMode Mode = Standard);
+		uint32_t renderWidth,
+		uint32_t renderHeight,
+		char* ImageBasedLightingTextureFileName = nullptr,
+		ShaderTestMode Mode = Standard);
 
 	void setTMin_TMax(float TMin, float TMax);
 	void update_g(int comNo, UINT numRecursion);
@@ -194,6 +202,7 @@ public:
 	void useImageBasedLightingTexture(bool on);
 	void setImageBasedLighting_size(float size);
 	void setImageBasedLighting_Direction(CoordTf::VECTOR3 dir);
+	void setSPP(uint32_t num);
 };
 
 #endif

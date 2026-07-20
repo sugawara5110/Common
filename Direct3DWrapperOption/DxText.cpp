@@ -138,7 +138,7 @@ DxText::DxText() {
 	for (int i = 0; i < STRTEX_MAX_PCS; i++) {
 		Using[i] = false;
 		text[i].SetName("DxText_text");
-		text[i].GetVBarray2D(256);
+		text[i].GetVBarray2D(256, true);
 		text[i].TexOn();
 		text[i].Create(0, true, true, -1, v2, 4, index, 6);
 
@@ -149,7 +149,7 @@ DxText::DxText() {
 	//�ϗp
 	for (int i = 0; i < VAL_PCS; i++) {
 		value[i].SetName("DxText_value");
-		value[i].GetVBarray2D(256);
+		value[i].GetVBarray2D(256, true);
 		value[i].TexOn();
 		value[i].Create(0, true, true, -1, v2, 4, index, 6);
 		TCHAR* va = CreateTextValue(i);

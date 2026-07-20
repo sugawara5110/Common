@@ -18,6 +18,8 @@ protected:
 
 	char objName[256] = {};
 
+	bool NotUseDepthBuffer = false;
+
 	//テクスチャ
 	std::unique_ptr<bool[]> createRes = nullptr;
 	std::unique_ptr<ID3D12Resource* []> textureUp = nullptr;

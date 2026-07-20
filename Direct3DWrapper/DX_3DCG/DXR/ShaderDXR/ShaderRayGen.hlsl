@@ -16,17 +16,21 @@ void rayGenIn()
     uint pixelID = pixelPos.y * dim.x + pixelPos.x;
     payload.Seed = pcg_hash(pixelID ^ pcg_hash(SeedFrame));
     
-    float rand = Rand(payload.Seed);
-    payload.wavelength_choice = (rand < 0.333f) ? 0 : (rand < 0.666f ? 1 : 2);
-    payload.wavelength_mask_sw = true;
+    float3 sumcol = float3(0, 0, 0);
+    
+    for (int spp = 0; spp < numSPP; spp++)
+    {
+        float rand = Rand(payload.Seed);
+        payload.wavelength_choice = (rand < 0.333f) ? 0 : (rand < 0.666f ? 1 : 2);
+        payload.wavelength_mask_sw = true;
 
-    RayDesc ray;
+        RayDesc ray;
 //光線の原点, ここが光線スタート, 視線から始まる
-    ray.Origin = cameraPosition.xyz;
+        ray.Origin = cameraPosition.xyz;
 //光線の方向
-    float4 world = mul(float4(screenPos.x, -screenPos.y, 0, 1), projectionToWorld);
-    world.xyz /= world.w;
-    ray.Direction = normalize(world.xyz - ray.Origin);
+        float4 world = mul(float4(screenPos.x, -screenPos.y, 0, 1), projectionToWorld);
+        world.xyz /= world.w;
+        ray.Direction = normalize(world.xyz - ray.Origin);
 
 //TraceRay(AccelerationStructure, 
 //         RAY_FLAG, 
@@ -38,24 +42,25 @@ void rayGenIn()
 //         Payload);
 //この関数からRayがスタートする
 //payloadに各hit, miss シェーダーで計算された値が格納される
-    payload.RecursionCnt = 0;
-    payload.hitPosition = ray.Origin;
-    gDepthOut[pixelPos] = 1.0f;
-    payload.depth = 1.0f;
-    payload.normal = float3(0.0f, 0.0f, 0.0f);
-    payload.hitInstanceId = -1;
-    payload.throughput = float3(1.0f, 1.0f, 1.0f);
-    payload.mNo = DIFFUSE;
+        payload.RecursionCnt = 0;
+        payload.hitPosition = ray.Origin;
+        gDepthOut[pixelPos] = 1.0f;
+        payload.depth = 1.0f;
+        payload.normal = float3(0.0f, 0.0f, 0.0f);
+        payload.hitInstanceId = -1;
+        payload.throughput = float3(1.0f, 1.0f, 1.0f);
+        payload.mNo = DIFFUSE;
 
-    traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
+        traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
 
+        sumcol += payload.color;
+    }
+
+    float3 col = sumcol / numSPP;
+    
     gDepthOut[pixelPos] = payload.depth;
-
     gNormalMap[pixelPos] = float4(payload.normal, 1.0f);
-
     gInstanceIdMap[pixelPos] = payload.hitInstanceId;
-
-    float3 col = payload.color;
     
     if (any(isnan(col)) || any(isinf(col)))
     {
