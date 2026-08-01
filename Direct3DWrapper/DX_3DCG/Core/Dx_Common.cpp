@@ -350,7 +350,12 @@ ComPtr <ID3D12PipelineState> DxCommon::CreatePSO(ID3DBlob* vs, ID3DBlob* hs,
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
 	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	psoDesc.InputLayout = { pVertexLayout->data(), (UINT)pVertexLayout->size() };
+	if (pVertexLayout) {
+		psoDesc.InputLayout = { pVertexLayout->data(), (UINT)pVertexLayout->size() };
+	}
+	else {
+		psoDesc.InputLayout = { nullptr, 0 };
+	}
 	psoDesc.pRootSignature = mRootSignature;
 	psoDesc.VS =
 	{

@@ -445,6 +445,7 @@ void DxrRenderer::initDXR(
 	std::vector<ParameterDXR*>& pd, UINT MaxRecursion,
 	uint32_t renderWid,
 	uint32_t renderHei,
+	bool HDR,
 	char* IBL_FileName,
 	ShaderTestMode Mode) {
 
@@ -508,7 +509,7 @@ void DxrRenderer::initDXR(
 
 	createRtPipelineState(Mode);
 	createImageBasedLightingTexture(0, IBL_FileName);
-	createShaderResources();
+	createShaderResources(HDR);
 	createShaderTable();
 	cObj->End();
 	cMa->RunGpu();
@@ -838,11 +839,18 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 	}
 }
 
-void DxrRenderer::createShaderResources() {
+void DxrRenderer::createShaderResources(bool HDR) {
 
 	Dx_Device* device = Dx_Device::GetInstance();
 
-	mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight);
+	if (HDR) {
+		mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
+			D3D12_RESOURCE_STATE_COMMON,
+			DXGI_FORMAT_R16G16B16A16_FLOAT);
+	}
+	else {
+		mpOutputResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight);
+	}
 
 	mpDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,

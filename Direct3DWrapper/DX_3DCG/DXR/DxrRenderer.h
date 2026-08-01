@@ -8,7 +8,7 @@
 #define Class_DxrRenderer_Header
 
 #include "../Core/ParameterDXR.h"
-#include "../../MicroSoftLibrary/DXCAPI/dxcapi.use.h"
+#include "../../ThirdParty/MicroSoftLibrary/DXCAPI/dxcapi.use.h"
 
 struct AccelerationStructureBuffers
 {
@@ -156,7 +156,7 @@ private:
 	ComPtr<ID3D12RootSignature> createRootSignature(D3D12_ROOT_SIGNATURE_DESC& desc);
 	void createAccelerationStructures();
 	void createRtPipelineState(ShaderTestMode Mode);
-	void createShaderResources();
+	void createShaderResources(bool HDR);
 	void createShaderTable();
 	void createImageBasedLightingTexture(int comIndex, char* FileName);
 
@@ -172,6 +172,7 @@ public:
 	void initDXR(std::vector<ParameterDXR*>& pd, UINT maxRecursion,
 		uint32_t renderWidth,
 		uint32_t renderHeight,
+		bool HDR = false,
 		char* ImageBasedLightingTextureFileName = nullptr,
 		ShaderTestMode Mode = Standard);
 

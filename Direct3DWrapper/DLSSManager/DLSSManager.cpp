@@ -40,13 +40,18 @@ DLSSManager::~DLSSManager() {
 
 bool DLSSManager::Initialize(
     ID3D12Device* device,
-    IDXGIAdapter1* adapter)
+    IDXGIAdapter1* adapter,
+    bool show_log)
 {
     //Streamlineê›íË
     sl::Preferences pref{};
 
     pref.showConsole = false;
-    pref.logLevel = sl::LogLevel::eVerbose;
+    pref.logLevel = sl::LogLevel::eOff;
+
+    if (show_log) {
+        pref.logLevel = sl::LogLevel::eVerbose;
+    }
 
     pref.applicationId = 0;//äJî≠ópdllÇ»ÇÁ0
 
@@ -148,14 +153,15 @@ bool DLSSManager::Configure(
     uint32_t outputWidth,
     uint32_t outputHeight,
     uint32_t* renderWidth,
-    uint32_t* renderHeight)
+    uint32_t* renderHeight,
+    bool HDR)
 {
     SetMode(mode);
 
     mOutputWidth = outputWidth;
     mOutputHeight = outputHeight;
 
-    if (!CreateOutputTexture(comIndex))
+    if (!CreateOutputTexture(comIndex, HDR))
     {
         return false;
     }
@@ -168,6 +174,7 @@ bool DLSSManager::Configure(
     option.outputWidth = outputWidth;
     option.outputHeight = outputHeight;
     option.colorBuffersHDR = sl::Boolean::eFalse;
+    if (HDR)option.colorBuffersHDR = sl::Boolean::eTrue;
     option.useAutoExposure = sl::Boolean::eTrue;
     option.sharpness = 0.0f;
 
@@ -200,9 +207,13 @@ void DLSSManager::Shutdown()
     slShutdown();
 }
 
-bool DLSSManager::CreateOutputTexture(uint32_t comIndex)
+bool DLSSManager::CreateOutputTexture(uint32_t comIndex, bool HDR)
 {
-    if (FAILED(mOutputTexture.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputWidth, mOutputHeight))) {
+    DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    if (HDR)format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+    if (FAILED(mOutputTexture.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(mOutputWidth, mOutputHeight,
+        D3D12_RESOURCE_STATE_COMMON, format))) {
         return false;
     }
     mOutputTexture.ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -398,7 +409,12 @@ void DLSSManager::FillConstants(
         sl::Boolean::eFalse;
 
     c.motionVectorsJittered =
-        sl::Boolean::eTrue;
+        sl::Boolean::eFalse;
+
+    if (camera.isJitter_F()) {
+        c.motionVectorsJittered =
+            sl::Boolean::eTrue;
+    }
 
     c.mvecScale =
     {

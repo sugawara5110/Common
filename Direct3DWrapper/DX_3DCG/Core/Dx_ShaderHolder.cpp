@@ -171,6 +171,9 @@ bool Dx_ShaderHolder::CreateShaderByteCode() {
 
 	pVertexShader_SKIN_Com = CompileShader("ShaderSkinMeshCom.hlsl", "VSSkinCS", "cs_5_1");
 
+	pVertexShader_Post = CompileShader("ShaderPost.hlsl", "VSMain", "vs_5_1");
+	pPixelShader_Post = CompileShader("ShaderPost.hlsl", "PSMain", "ps_5_1");
+
 	CreateFin = true;
 
 	return CreateShaderByteCodeBool;
@@ -212,6 +215,9 @@ ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_2D = nullptr;
 ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_2DTC = nullptr;
 
 ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_SKIN_Com = nullptr;
+
+ComPtr<ID3DBlob> Dx_ShaderHolder::pVertexShader_Post = nullptr;
+ComPtr<ID3DBlob> Dx_ShaderHolder::pPixelShader_Post = nullptr;
 
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderNormalTangentCopy = nullptr;
 std::unique_ptr<char[]> Dx_ShaderHolder::ShaderCalculateLightingCopy = nullptr;

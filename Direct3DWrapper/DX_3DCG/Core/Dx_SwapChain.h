@@ -36,6 +36,8 @@ public:
 		return false;
 	}
 
+	bool isJitter_F()const { return Jitter_F; }
+
 private:
 	friend Dx_SwapChain;
 	uint32_t FrameIndex = 0;

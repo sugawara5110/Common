@@ -81,6 +81,9 @@ public:
 
 	static ComPtr<ID3DBlob> pVertexShader_SKIN_Com;
 
+	static ComPtr<ID3DBlob> pVertexShader_Post;
+	static ComPtr<ID3DBlob> pPixelShader_Post;
+
 	static std::unique_ptr<char[]> ShaderNormalTangentCopy;
 	static std::unique_ptr<char[]> ShaderCalculateLightingCopy;
 	static std::unique_ptr<char[]> ShaderCommonParametersCopy;

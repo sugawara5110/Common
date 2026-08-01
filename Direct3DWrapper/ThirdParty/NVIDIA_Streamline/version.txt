@@ -1,0 +1,3 @@
+NVIDIA Streamline SDK 2.12.0
+
+dllファイルを .exeと同じディレクトリに配置してください。

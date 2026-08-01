@@ -307,9 +307,6 @@ CameraData Dx_SwapChain::getCameraData() {
 	Dx_Device* dev = Dx_Device::GetInstance();
 	Update& upd = getUpdate(dev->cBuffSwapDrawOrStreamoutputIndex());
 
-	cam.View = upd.mView;
-	cam.Proj = upd.mProj;
-
 	if (cam.Jitter_F) {
 		cam.jitter =
 			Dx_Util::GetHaltonJitter(
@@ -317,23 +314,26 @@ CameraData Dx_SwapChain::getCameraData() {
 				mClientWidth,
 				mClientHeight);
 
-		cam.Proj._31 =
+		upd.mProj._31 =
 			cam.jitter.projX;
 
-		cam.Proj._32 =
+		upd.mProj._32 =
 			cam.jitter.projY;
 	}
 	else {
-		cam.Proj._31 = 0.0f;
+		upd.mProj._31 = 0.0f;
 
-		cam.Proj._32 = 0.0f;
+		upd.mProj._32 = 0.0f;
 	}
 
-	MatrixMultiply(&upd.currViewProjection, &upd.mView, &cam.Proj);
+	cam.View = upd.mView;
+	cam.Proj = upd.mProj;
+
+	MatrixMultiply(&upd.currViewProjection, &cam.View, &cam.Proj);
+	cam.PreviousVP = cam.CurrentVP;
+	cam.CurrentVP = upd.currViewProjection;//“]’u‚µ‚È‚¢
 	MatrixTranspose(&upd.currViewProjection);
 
-	cam.CurrentVP = upd.currViewProjection;
-	cam.PreviousVP = upd.prevViewProjection;
 	cam.Position = upd.pos;
 	cam.Fov = GetViewY_theta();
 	cam.Near = GetNearPlane();

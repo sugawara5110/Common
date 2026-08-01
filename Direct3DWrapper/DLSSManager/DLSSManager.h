@@ -11,8 +11,8 @@
 #ifdef free
 #undef free
 #endif
-#include "../NVIDIA_Streamline/include/sl.h"
-#include "../NVIDIA_Streamline/include/sl_dlss.h"
+#include "../ThirdParty/NVIDIA_Streamline/include/sl.h"
+#include "../ThirdParty/NVIDIA_Streamline/include/sl_dlss.h"
 #pragma comment(lib, "sl.interposer.lib")
 
 class DLSSManager {
@@ -25,7 +25,8 @@ public:
 
     bool Initialize(
         ID3D12Device* device,
-        IDXGIAdapter1* adapter);
+        IDXGIAdapter1* adapter,
+        bool show_log = false);
 
     enum Mode
     {
@@ -44,7 +45,8 @@ public:
         uint32_t outputWidth,
         uint32_t outputHeight,
         uint32_t* renderWidth,
-        uint32_t* renderHeight);
+        uint32_t* renderHeight,
+        bool HDR = false);
 
     bool Evaluate(
         uint32_t comIndex,
@@ -60,7 +62,7 @@ public:
 
 private:
 
-    bool CreateOutputTexture(uint32_t comIndex);
+    bool CreateOutputTexture(uint32_t comIndex, bool HDR);
 
     void FillConstants(sl::Constants& c, CameraData& camera);
 
