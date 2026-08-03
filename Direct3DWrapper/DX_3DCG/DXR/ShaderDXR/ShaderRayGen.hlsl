@@ -50,6 +50,8 @@ void rayGenIn()
         payload.hitInstanceId = -1;
         payload.throughput = float3(1.0f, 1.0f, 1.0f);
         payload.mNo = DIFFUSE;
+        payload.DiffuseAlbedo = float3(0.0f, 0.0f, 0.0f);
+        payload.SpecularAlbedo = float3(0.0f, 0.0f, 0.0f);
 
         traceRay(payload.RecursionCnt, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0, 0, ray, payload);
 
@@ -61,6 +63,9 @@ void rayGenIn()
     gDepthOut[pixelPos] = payload.depth;
     gNormalMap[pixelPos] = float4(payload.normal, 1.0f);
     gInstanceIdMap[pixelPos] = payload.hitInstanceId;
+    gDiffuseAlbedoMap[pixelPos] = float4(payload.DiffuseAlbedo, 1.0f);
+    gRoughnessMap[pixelPos] = payload.roughness;
+    gSpecularAlbedoMap[pixelPos] = float4(payload.SpecularAlbedo, 1.0f);
     
     if (any(isnan(col)) || any(isinf(col)))
     {

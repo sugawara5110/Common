@@ -13,9 +13,12 @@ struct RayPayload
     float3 hitPosition;
     float3 normal;
     float3 throughput;
+    float3 DiffuseAlbedo;
+    float3 SpecularAlbedo;
     bool reTry;
     bool hit;
     float Alpha;
+    float roughness;
     uint RecursionCnt;
     int EmissiveIndex;
     uint mNo;

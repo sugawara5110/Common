@@ -13,6 +13,11 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     float4 difTex = getDifPixel(attr, v3);
     float3 normalMap = getNorPixel(attr, v3);
     float3 speTex = getSpePixel(attr, v3);
+    payload.SpecularAlbedo = getF0(difTex.xyz, speTex);
+    
+    const uint materialID = getMaterialID();
+    const MaterialCB mcb = material[materialID];
+    const float3 Albedo = mcb.Diffuse.xyz * difTex.xyz;
 
     if (traceMode == 0)
     {
@@ -44,6 +49,12 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
         }
     }
     payload.mNo = getMaterialCB().materialNo;
+    payload.DiffuseAlbedo = Albedo;
+    payload.roughness = getMaterialCB().roughness;
+    if (payload.mNo == DIFFUSE)
+    {
+        payload.roughness = 1.0f;
+    }
 }
 
 //法線マップテスト用

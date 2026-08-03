@@ -285,7 +285,7 @@ namespace {
 
 	RootSignatureDesc createLocalRootDescRayGen() {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 7;
+		int numDescriptorRanges = 10;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
 
@@ -337,6 +337,27 @@ namespace {
 		desc.range[6].RegisterSpace = 0;
 		desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 		desc.range[6].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gDiffuseAlbedoMap(u8)
+		desc.range[7].BaseShaderRegister = 8;
+		desc.range[7].NumDescriptors = 1;
+		desc.range[7].RegisterSpace = 0;
+		desc.range[7].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[7].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gRoughnessMap(u9)
+		desc.range[8].BaseShaderRegister = 9;
+		desc.range[8].NumDescriptors = 1;
+		desc.range[8].RegisterSpace = 0;
+		desc.range[8].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[8].OffsetInDescriptorsFromTableStart = descCnt++;
+
+		//gSpecularAlbedoMap(u10)
+		desc.range[9].BaseShaderRegister = 10;
+		desc.range[9].NumDescriptors = 1;
+		desc.range[9].RegisterSpace = 0;
+		desc.range[9].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[9].OffsetInDescriptorsFromTableStart = descCnt++;
 
 		desc.rootParams.resize(1);
 		desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -805,7 +826,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 23;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 30;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects.push_back(shaderConfig.subobject);
 	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];
@@ -867,7 +888,7 @@ void DxrRenderer::createShaderResources(bool HDR) {
 
 	normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
-		DXGI_FORMAT_R8G8B8A8_SNORM);
+		DXGI_FORMAT_R16G16B16A16_FLOAT);
 
 	mpPrevDepthResource.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
@@ -875,11 +896,23 @@ void DxrRenderer::createShaderResources(bool HDR) {
 
 	prev_normalMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
-		DXGI_FORMAT_R8G8B8A8_SNORM);
+		DXGI_FORMAT_R16G16B16A16_FLOAT);
 
 	MotionVector.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R16G16_FLOAT);
+
+	DiffuseAlbedoMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+	Roughness.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R16_FLOAT);
+
+	SpecularAlbedoMap.createDefaultResourceTEXTURE2D_UNORDERED_ACCESS(renderWidth, renderHeight,
+		D3D12_RESOURCE_STATE_COMMON,
+		DXGI_FORMAT_R16G16B16A16_FLOAT);
 
 	mpOutputResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -889,6 +922,9 @@ void DxrRenderer::createShaderResources(bool HDR) {
 	mpPrevDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	prev_normalMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	MotionVector.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	DiffuseAlbedoMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	Roughness.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	SpecularAlbedoMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	//Local
 	int num_u0 = 1;
@@ -898,7 +934,10 @@ void DxrRenderer::createShaderResources(bool HDR) {
 	int num_u4 = 1;
 	int num_u5 = 1;
 	int num_u7 = 1;
-	int numLocalHeapRay = num_u0 + num_u1 + num_u2 + num_u3 + num_u4 + num_u5 + num_u7;
+	int num_u8 = 1;
+	int num_u9 = 1;
+	int num_u10 = 1;
+	int numLocalHeapRay = num_u0 + num_u1 + num_u2 + num_u3 + num_u4 + num_u5 + num_u7 + num_u8 + num_u9 + num_u10;
 	int num_t0 = numMaterial;
 	int num_b1 = numMaterial;
 	int num_b2 = maxNumInstancing;
@@ -944,6 +983,15 @@ void DxrRenderer::createShaderResources(bool HDR) {
 
 		//UAVを作成 gMotionVector(u7)
 		MotionVector.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gDiffuseAlbedoMap(u8)
+		DiffuseAlbedoMap.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gRoughnessMap(u9)
+		Roughness.CreateUavTexture(srvHandle);
+
+		//UAVを作成 gSpecularAlbedoMap(u10)
+		SpecularAlbedoMap.CreateUavTexture(srvHandle);
 
 		//SRVを作成 Indices(t0)
 		for (auto i = 0; i < PD.size(); i++) {
@@ -1337,6 +1385,22 @@ Dx_Resource* DxrRenderer::getDepthResource() {
 
 Dx_Resource* DxrRenderer::getMotionVector() {
 	return &MotionVector;
+}
+
+Dx_Resource* DxrRenderer::getNormalMap() {
+	return &normalMap;
+}
+
+Dx_Resource* DxrRenderer::getDiffuseAlbedoMap() {
+	return &DiffuseAlbedoMap;
+}
+
+Dx_Resource* DxrRenderer::getSpecularAlbedoMap() {
+	return &SpecularAlbedoMap;
+}
+
+Dx_Resource* DxrRenderer::getRoughness() {
+	return &Roughness;
 }
 
 void DxrRenderer::setGIparameter(TraceMode mode) {

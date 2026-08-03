@@ -127,6 +127,9 @@ private:
 	Dx_Resource prev_normalMap = {};
 	Dx_Resource ImageBasedLighting = {};
 	Dx_Resource MotionVector = {};
+	Dx_Resource DiffuseAlbedoMap = {};
+	Dx_Resource SpecularAlbedoMap = {};
+	Dx_Resource Roughness = {};
 
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[numSwapIndex];
 
@@ -189,6 +192,10 @@ public:
 	Dx_Resource* getOutputResource();
 	Dx_Resource* getDepthResource();
 	Dx_Resource* getMotionVector();
+	Dx_Resource* getNormalMap();
+	Dx_Resource* getDiffuseAlbedoMap();
+	Dx_Resource* getSpecularAlbedoMap();
+	Dx_Resource* getRoughness();
 
 	void allSwapIndex() {
 		Dx_Device* dev = Dx_Device::GetInstance();

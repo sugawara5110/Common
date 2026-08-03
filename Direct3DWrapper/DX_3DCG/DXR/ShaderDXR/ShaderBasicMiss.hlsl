@@ -24,4 +24,7 @@ void basicMiss(inout RayPayload payload)
             payload.mNo = EMISSIVE;
         }
     }
+    
+    payload.DiffuseAlbedo = payload.color;
+    payload.roughness = 0.0f;
 }

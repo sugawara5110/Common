@@ -41,4 +41,7 @@ void EmissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttribu
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
     payload.color = mcb.Diffuse.xyz * difTex.xyz;
+    payload.DiffuseAlbedo = payload.color;
+    payload.roughness = getMaterialCB().roughness;
+    payload.SpecularAlbedo = getF0(difTex.xyz, getSpePixel(attr, v3));
 }

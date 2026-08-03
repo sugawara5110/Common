@@ -381,8 +381,8 @@ float3 FresnelSchlick(float dotVH, float3 F0)
     return F0 + (1 - F0) * pow(saturate(1 - dotVH), 5.0);
 }
 
-///////////////////////////////////////////FresnelSchlick2/////////////////////////////////////////
-float3 FresnelSchlick2(float3 outDir, float3 difTexColor, float3 speTexColor, float3 H)
+//////////////////////////////////////////F0///////////////////////////////////////////////////////
+float3 getF0(float3 difTexColor, float3 speTexColor)
 {
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
@@ -393,8 +393,13 @@ float3 FresnelSchlick2(float3 outDir, float3 difTexColor, float3 speTexColor, fl
     float3 dief0 = float3(0.04f, 0.04f, 0.04f) * Specular;
     float3 metf0 = Diffuse;
 
-    float3 F0 = lerp(dief0, metf0, metallic);
-    
+    return lerp(dief0, metf0, metallic);
+}
+
+///////////////////////////////////////////FresnelSchlick2/////////////////////////////////////////
+float3 FresnelSchlick2(float3 outDir, float3 difTexColor, float3 speTexColor, float3 H)
+{
+    float3 F0 = getF0(difTexColor, speTexColor);
     return FresnelSchlick(max(dot(outDir, H), 0), F0);
 }
 

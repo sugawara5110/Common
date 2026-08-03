@@ -57,7 +57,8 @@ bool DLSSManager::Initialize(
 
     sl::Feature features[] =
     {
-        sl::kFeatureDLSS
+        sl::kFeatureDLSS,
+        sl::kFeatureDLSS_RR
     };
 
     pref.featuresToLoad = features;
@@ -94,7 +95,7 @@ bool DLSSManager::Initialize(
     info.deviceLUIDSizeInBytes = sizeof(LUID);
     //DLSS‘Î‰žŠm”F
     result = slIsFeatureSupported(
-        sl::kFeatureDLSS,
+        sl::kFeatureDLSS_RR,
         info);
 
     if (result == sl::Result::eOk)
@@ -154,8 +155,9 @@ bool DLSSManager::Configure(
     uint32_t outputHeight,
     uint32_t* renderWidth,
     uint32_t* renderHeight,
-    bool HDR)
+    bool Hdr)
 {
+    HDR = Hdr;
     SetMode(mode);
 
     mOutputWidth = outputWidth;
@@ -169,16 +171,19 @@ bool DLSSManager::Configure(
     mViewport = sl::ViewportHandle(0);
 
     //DLSSÝ’è
-    sl::DLSSOptions option{};
+    sl::DLSSDOptions option{};
     option.mode = dlssmode;
     option.outputWidth = outputWidth;
     option.outputHeight = outputHeight;
-    option.colorBuffersHDR = sl::Boolean::eFalse;
-    if (HDR)option.colorBuffersHDR = sl::Boolean::eTrue;
-    option.useAutoExposure = sl::Boolean::eTrue;
-    option.sharpness = 0.0f;
 
-    auto result = slDLSSSetOptions(
+    option.colorBuffersHDR =
+        HDR ? sl::Boolean::eTrue
+        : sl::Boolean::eFalse;
+
+    option.normalRoughnessMode =
+        sl::DLSSDNormalRoughnessMode::eUnpacked;
+
+    auto result = slDLSSDSetOptions(
         mViewport,
         option);
 
@@ -187,9 +192,9 @@ bool DLSSManager::Configure(
         return false;
     }
 
-    sl::DLSSOptimalSettings setting{};
+    sl::DLSSDOptimalSettings setting{};
 
-    result = slDLSSGetOptimalSettings(option, setting);
+    result = slDLSSDGetOptimalSettings(option, setting);
 
     if (result != sl::Result::eOk)
     {
@@ -222,9 +227,13 @@ bool DLSSManager::CreateOutputTexture(uint32_t comIndex, bool HDR)
 
 bool DLSSManager::Evaluate(
     uint32_t comIndex,
-    Dx_Resource* color,
+    Dx_Resource* Radiance,
     Dx_Resource* depth,
     Dx_Resource* motion,
+    Dx_Resource* normalBuffer,
+    Dx_Resource* DiffuseAlbedoBuffer,
+    Dx_Resource* SpecularAlbedoBuffer,
+    Dx_Resource* roughnessBuffer,
     CameraData& camera)
 {
     Dx_CommandListObj* d = Dx_CommandManager::GetInstance()->getGraphicsComListObj(comIndex);
@@ -249,13 +258,17 @@ bool DLSSManager::Evaluate(
     if (result != sl::Result::eOk)
         return false;
 
-    color->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Radiance->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     depth->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     motion->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    normalBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    DiffuseAlbedoBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    roughnessBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    SpecularAlbedoBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-    sl::Resource colorRes(
+    sl::Resource RadianceRes(
         sl::ResourceType::eTex2d,
-        color->getResource(),
+        Radiance->getResource(),
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
     sl::Resource depthRes(
@@ -268,6 +281,26 @@ bool DLSSManager::Evaluate(
         motion->getResource(),
         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+    sl::Resource normalBufferRes(
+        sl::ResourceType::eTex2d,
+        normalBuffer->getResource(),
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    sl::Resource DiffuseAlbedoBufferRes(
+        sl::ResourceType::eTex2d,
+        DiffuseAlbedoBuffer->getResource(),
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    sl::Resource SpecularAlbedoBufferRes(
+        sl::ResourceType::eTex2d,
+        SpecularAlbedoBuffer->getResource(),
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+    sl::Resource roughnessBufferRes(
+        sl::ResourceType::eTex2d,
+        roughnessBuffer->getResource(),
+        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
     sl::Resource outputRes(
         sl::ResourceType::eTex2d,
         mOutputTexture.getResource(),
@@ -276,7 +309,7 @@ bool DLSSManager::Evaluate(
     sl::ResourceTag tags[]
     {
         {
-            &colorRes,
+            &RadianceRes,
             sl::kBufferTypeScalingInputColor,
             sl::eValidUntilPresent
         },
@@ -290,6 +323,30 @@ bool DLSSManager::Evaluate(
         {
             &motionRes,
             sl::kBufferTypeMotionVectors,
+            sl::eValidUntilPresent
+        },
+
+        {
+            &normalBufferRes,
+            sl::kBufferTypeNormals,
+            sl::eValidUntilPresent
+        },
+
+        {
+            &DiffuseAlbedoBufferRes,
+            sl::kBufferTypeAlbedo,
+            sl::eValidUntilPresent
+        },
+
+        {
+            &SpecularAlbedoBufferRes,
+            sl::kBufferTypeSpecularAlbedo,
+            sl::eValidUntilPresent
+        },
+
+        {
+            &roughnessBufferRes,
+            sl::kBufferTypeRoughness,
             sl::eValidUntilPresent
         },
 
@@ -315,15 +372,11 @@ bool DLSSManager::Evaluate(
     };
 
     result = slEvaluateFeature(
-        sl::kFeatureDLSS,
+        sl::kFeatureDLSS_RR,
         *frame,
         inputs,
         _countof(inputs),
         reinterpret_cast<sl::CommandBuffer*>(cmdList));
-
-    color->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    depth->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    motion->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     if (result != sl::Result::eOk)
     {
@@ -333,6 +386,14 @@ bool DLSSManager::Evaluate(
 
         return false;
     }
+
+    Radiance->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    depth->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    motion->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    normalBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    DiffuseAlbedoBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    roughnessBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    SpecularAlbedoBuffer->ResourceBarrier(comIndex, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     return true;
 }
@@ -431,6 +492,31 @@ void DLSSManager::FillConstants(
         camera.jitter.pixelY
     };
 
-    c.reset =
-        sl::Boolean::eFalse;
+    c.reset = sl::Boolean::eFalse;
+
+    sl::DLSSDOptions option{};
+
+    option.mode = dlssmode;
+    option.outputWidth = mOutputWidth;
+    option.outputHeight = mOutputHeight;
+
+    option.colorBuffersHDR =
+        HDR ? sl::Boolean::eTrue
+        : sl::Boolean::eFalse;
+
+    option.normalRoughnessMode =
+        sl::DLSSDNormalRoughnessMode::eUnpacked;
+
+    option.worldToCameraView =
+        ToSLMatrix(camera.View);
+
+    MATRIX invView{};
+    MatrixInverse(&invView, &camera.View);
+
+    option.cameraViewToWorld =
+        ToSLMatrix(invView);
+
+    slDLSSDSetOptions(
+        mViewport,
+        option);
 }

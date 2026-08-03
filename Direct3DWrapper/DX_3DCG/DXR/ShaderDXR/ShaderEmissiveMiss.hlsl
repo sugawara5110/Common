@@ -11,4 +11,6 @@ void EmissiveMiss(inout RayPayload payload)
     payload.hit = false;
     payload.reTry = false;
     payload.mNo = NONE;
+    payload.DiffuseAlbedo = payload.color;
+    payload.roughness = 0.0f;
 }

@@ -12,7 +12,8 @@
 #undef free
 #endif
 #include "../ThirdParty/NVIDIA_Streamline/include/sl.h"
-#include "../ThirdParty/NVIDIA_Streamline/include/sl_dlss.h"
+#include "../ThirdParty/NVIDIA_Streamline/include/sl_dlss_d.h"
+#include "../ThirdParty/NVIDIA_Streamline/include/sl_dlss_g.h"
 #pragma comment(lib, "sl.interposer.lib")
 
 class DLSSManager {
@@ -50,9 +51,13 @@ public:
 
     bool Evaluate(
         uint32_t comIndex,
-        Dx_Resource* color,
+        Dx_Resource* Radiance,
         Dx_Resource* depth,
         Dx_Resource* motion,
+        Dx_Resource* normalBuffer,
+        Dx_Resource* DiffuseAlbedoBuffer,
+        Dx_Resource* SpecularAlbedoBuffer,
+        Dx_Resource* roughnessBuffer,
         CameraData& camera);
 
     Dx_Resource* GetOutput()
@@ -71,6 +76,8 @@ private:
     void Shutdown();
 
     static DLSSManager* dl;
+
+    bool HDR = false;
 
     DLSSManager() {}
     DLSSManager(const DLSSManager& obj) = delete;
