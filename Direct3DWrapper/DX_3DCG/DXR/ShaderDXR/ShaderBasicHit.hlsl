@@ -15,9 +15,13 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     float3 speTex = getSpePixel(attr, v3);
     payload.SpecularAlbedo = getF0(difTex.xyz, speTex);
     
+    matrix p_w = wvp[getInstancingID()].PrevWorld;
+    float4 p_p4 = float4(getPrevBarycentricVertex(attr, getPrevVertex()), 1);
+    payload.Prev_hitPosition = mul(p_p4, p_w).xyz;
+    
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];
-    const float3 Albedo = mcb.Diffuse.xyz * difTex.xyz;
+    payload.DiffuseAlbedo = mcb.Diffuse.xyz * difTex.xyz;
 
     if (traceMode == 0)
     {
@@ -49,7 +53,6 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
         }
     }
     payload.mNo = getMaterialCB().materialNo;
-    payload.DiffuseAlbedo = Albedo;
     payload.roughness = getMaterialCB().roughness;
     if (payload.mNo == DIFFUSE)
     {

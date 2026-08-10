@@ -11,6 +11,7 @@ struct RayPayload
 {
     float3 color;
     float3 hitPosition;
+    float3 Prev_hitPosition;
     float3 normal;
     float3 throughput;
     float3 DiffuseAlbedo;

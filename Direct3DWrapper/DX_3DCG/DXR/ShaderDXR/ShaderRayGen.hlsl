@@ -77,9 +77,10 @@ void rayGenIn()
     if (traceMode != 0)
     {
         //MotionVector
-        float3 worldPos = payload.hitPosition;
-        float4 currentClip = mul(float4(worldPos, 1), currViewProjection);
-        float4 prevClip = mul(float4(worldPos, 1), prevViewProjection);
+        float3 currWorldPos = payload.hitPosition;
+        float3 prevWorldPos = payload.Prev_hitPosition;
+        float4 currentClip = mul(float4(currWorldPos, 1), currViewProjection);
+        float4 prevClip = mul(float4(prevWorldPos, 1), prevViewProjection);
         currentClip /= currentClip.w;
         prevClip /= prevClip.w;
         float2 mv = currentClip.xy - prevClip.xy;

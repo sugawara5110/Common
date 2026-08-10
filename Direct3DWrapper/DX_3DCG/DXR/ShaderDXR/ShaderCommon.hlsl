@@ -175,6 +175,31 @@ Vertex3 getVertex()
 	return ver;
 }
 
+///////////////////////////////////////前回の頂点取得///////////////////////////////////////////////
+PrevVertex3 getPrevVertex()
+{
+    uint indicesPerTriangle = 3;
+    uint baseIndex = PrimitiveIndex() * indicesPerTriangle;
+    uint materialID = getMaterialID();
+    
+    uint i0 = Indices[materialID][baseIndex + 0];
+    uint i1 = Indices[materialID][baseIndex + 1];
+    uint i2 = Indices[materialID][baseIndex + 2];
+    
+    PrevVertex3 ver =
+    {
+        prev_Vertices[materialID][i0],
+        prev_Vertices[materialID][i1],
+        prev_Vertices[materialID][i2]
+    };
+    
+    prev_Vertices[materialID][i0] = Vertices[materialID][i0].Pos;
+    prev_Vertices[materialID][i1] = Vertices[materialID][i1].Pos;
+    prev_Vertices[materialID][i2] = Vertices[materialID][i2].Pos;
+    
+    return ver;
+}
+
 ///////////////////////////////////////頂点取得2///////////////////////////////////////////////////
 Vertex3 getVertex2(uint InstanceID, uint PrimitiveIndex)
 {
@@ -191,24 +216,46 @@ Vertex3 getVertex2(uint InstanceID, uint PrimitiveIndex)
     return ver;
 }
 
+///////////////////////////////////////前回の重心頂点//////////////////////////////////////////////
+float3 getPrevBarycentricVertex(in BuiltInTriangleIntersectionAttributes attr, PrevVertex3 v3)
+{
+    float3 vertex[3] =
+    {
+        v3.v[0],
+        v3.v[1],
+        v3.v[2]
+    };
+
+    return vertex[0] +
+        attr.barycentrics.x * (vertex[1] - vertex[0]) +
+        attr.barycentrics.y * (vertex[2] - vertex[0]);
+}
+
+///////////////////////////////////////重心頂点////////////////////////////////////////////////////
+float3 getBarycentricVertex(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
+{
+    float3 vertex[3] =
+    {
+        v3.v[0].Pos,
+        v3.v[1].Pos,
+        v3.v[2].Pos
+    };
+
+    return vertex[0] +
+        attr.barycentrics.x * (vertex[1] - vertex[0]) +
+        attr.barycentrics.y * (vertex[2] - vertex[0]);
+}
+
 ///////////////////////////////////////深度値取得//////////////////////////////////////////////////
 float getDepth(in BuiltInTriangleIntersectionAttributes attr, Vertex3 v3)
 {
-	float3 vertex[3] =
-	{
-		v3.v[0].Pos,
-        v3.v[1].Pos,
-        v3.v[2].Pos
-	};
+    float3 v = getBarycentricVertex(attr, v3);
+        
+    float4 ver = float4(v, 1.0f);
 
-	float3 v = vertex[0] +
-        attr.barycentrics.x * (vertex[1] - vertex[0]) +
-        attr.barycentrics.y * (vertex[2] - vertex[0]);
-	float4 ver = float4(v, 1.0f);
-
-	matrix m = wvp[getInstancingID()].wvp;
-	float4 ver2 = mul(ver, m);
-	return ver2.z / ver2.w;
+    matrix m = wvp[getInstancingID()].wvp;
+    float4 ver2 = mul(ver, m);
+    return ver2.z / ver2.w;
 }
 
 ////////////////Hitの重心を使用して、頂点属性から補間されたhit位置の属性を取得(法線)///////////////

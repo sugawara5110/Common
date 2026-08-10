@@ -28,7 +28,7 @@ RWTexture2D<float4> gDiffuseAlbedoMap : register(u8, space0);
 RWTexture2D<float> gRoughnessMap : register(u9, space0);
 RWTexture2D<float4> gSpecularAlbedoMap : register(u10, space0);
 
-StructuredBuffer<uint> Indices[] : register(t0, space1);//無制限配列の場合,別なレジスタ空間にした方が(・∀・)ｲｲ!! みたい
+StructuredBuffer<uint> Indices[] : register(t0, space1);//無制限配列の場合,別なレジスタ空間にした方がいいようだ。
 
 struct MaterialCB
 {
@@ -50,6 +50,7 @@ ConstantBuffer<MaterialCB> material[] : register(b1, space3);
 struct WVPCB
 {
     matrix wvp;
+    matrix PrevWorld;
     matrix world;
     float4 AddObjColor;
 };
@@ -70,7 +71,14 @@ struct Vertex
 
 struct Vertex3
 {
-	Vertex v[3];
+    Vertex v[3];
+};
+
+struct PrevVertex3
+{
+    float3 v[3];
 };
 
 StructuredBuffer<Vertex> Vertices[] : register(t3, space13);
+
+RWStructuredBuffer<float3> prev_Vertices[] : register(u11, space17);

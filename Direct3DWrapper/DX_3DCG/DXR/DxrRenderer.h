@@ -56,6 +56,7 @@ struct DxrMaterialCB {
 
 struct DxrWVP_CB {
 	CoordTf::MATRIX wvp;
+	CoordTf::MATRIX PrevWorld;
 	CoordTf::MATRIX world;
 	CoordTf::VECTOR4 AddObjColor;
 };
@@ -130,6 +131,7 @@ private:
 	Dx_Resource DiffuseAlbedoMap = {};
 	Dx_Resource SpecularAlbedoMap = {};
 	Dx_Resource Roughness = {};
+	std::unique_ptr<Dx_Resource[]> prev_vertices = {};
 
 	ComPtr<ID3D12DescriptorHeap> mpSrvUavCbvHeap[numSwapIndex];
 

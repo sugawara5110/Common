@@ -374,7 +374,7 @@ namespace {
 
 	RootSignatureDesc createLocalRootDescHit(UINT numMaterial, UINT numInstancing) {
 		RootSignatureDesc desc = {};
-		int numDescriptorRanges = 7;
+		int numDescriptorRanges = 8;
 		desc.range.resize(numDescriptorRanges);
 		UINT descCnt = 0;
 
@@ -432,6 +432,14 @@ namespace {
 		desc.range[6].RegisterSpace = 13;
 		desc.range[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		desc.range[6].OffsetInDescriptorsFromTableStart = descCnt;
+		descCnt += numMaterial;
+
+		//prev_Vertices(u11)
+		desc.range[7].BaseShaderRegister = 11;
+		desc.range[7].NumDescriptors = numMaterial;
+		desc.range[7].RegisterSpace = 17;
+		desc.range[7].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		desc.range[7].OffsetInDescriptorsFromTableStart = descCnt;
 		descCnt += numMaterial;
 
 		desc.rootParams.resize(1);
@@ -826,7 +834,7 @@ void DxrRenderer::createRtPipelineState(ShaderTestMode Mode) {
 
 	//ペイロードサイズをプログラムにバインドする SUBOBJECT作成
 	uint32_t MaxAttributeSizeInBytes = sizeof(float) * 2;
-	uint32_t maxPayloadSizeInBytes = sizeof(float) * 30;
+	uint32_t maxPayloadSizeInBytes = sizeof(float) * 33;
 	ShaderConfig shaderConfig(MaxAttributeSizeInBytes, maxPayloadSizeInBytes);
 	subobjects.push_back(shaderConfig.subobject);
 	D3D12_STATE_SUBOBJECT* p_conf = &subobjects[subobjects.size() - 1];
@@ -914,6 +922,32 @@ void DxrRenderer::createShaderResources(bool HDR) {
 		D3D12_RESOURCE_STATE_COMMON,
 		DXGI_FORMAT_R16G16B16A16_FLOAT);
 
+	uint32_t cnt_prev_vertices = 0;
+
+	for (auto i = 0; i < PD.size(); i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
+				cnt_prev_vertices++;
+			}
+		}
+	}
+
+	prev_vertices = std::make_unique<Dx_Resource[]>(cnt_prev_vertices);
+
+	cnt_prev_vertices = 0;
+
+	for (auto i = 0; i < PD.size(); i++) {
+		for (int j = 0; j < PD[i]->NumMaterial; j++) {
+			for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
+				VertexView& vv = PD[i]->updateDXR[0].VviewDXR[j][t];
+				UINT numVertices = vv.VertexBufferByteSize / vv.VertexByteStride;
+				UINT size = numVertices * sizeof(CoordTf::VECTOR3);
+				prev_vertices[cnt_prev_vertices].createDefaultResourceBuffer_UNORDERED_ACCESS(size);
+				cnt_prev_vertices++;
+			}
+		}
+	}
+
 	mpOutputResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpDepthResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	mpInstanceIdMapResource.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -925,6 +959,10 @@ void DxrRenderer::createShaderResources(bool HDR) {
 	DiffuseAlbedoMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	Roughness.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	SpecularAlbedoMap.ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+	for (uint32_t i = 0; i < cnt_prev_vertices; i++) {
+		prev_vertices[i].ResourceBarrier(0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	}
 
 	//Local
 	int num_u0 = 1;
@@ -945,7 +983,8 @@ void DxrRenderer::createShaderResources(bool HDR) {
 	int num_t01 = numMaterial;
 	int num_t02 = numMaterial;
 	int num_t03 = numMaterial;
-	int numLocalHeapHit = num_t0 + num_b1 + num_b2 + num_t00 + num_t01 + num_t02 + num_t03;
+	int num_u11 = numMaterial;
+	int numLocalHeapHit = num_t0 + num_b1 + num_b2 + num_t00 + num_t01 + num_t02 + num_t03 + num_u11;
 	numLocalHeap = numLocalHeapRay + numLocalHeapHit;
 	//Global
 	int num_b0 = 1;
@@ -1041,13 +1080,26 @@ void DxrRenderer::createShaderResources(bool HDR) {
 			}
 		}
 
-		//SRVを作成 Vertex(t3)
+		//SRVを作成 Vertices(t3)
 		for (auto i = 0; i < PD.size(); i++) {
 			for (int j = 0; j < PD[i]->NumMaterial; j++) {
 				for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
 					VertexView& vv = PD[i]->updateDXR[heapInd].VviewDXR[j][t];
 					UINT size = vv.VertexByteStride;
 					vv.VertexBufferGPU.CreateSrvBuffer(srvHandle, size);
+				}
+			}
+		}
+
+		//UAVを作成 prev_Vertices(u11)
+		cnt_prev_vertices = 0;
+		for (auto i = 0; i < PD.size(); i++) {
+			for (int j = 0; j < PD[i]->NumMaterial; j++) {
+				for (UINT t = 0; t < numMaterialMaxInstance(PD[i]); t++) {
+					VertexView& vv = PD[i]->updateDXR[heapInd].VviewDXR[j][t];
+					UINT numVertices = vv.VertexBufferByteSize / vv.VertexByteStride;
+					prev_vertices[cnt_prev_vertices].CreateUavBuffer(srvHandle, sizeof(CoordTf::VECTOR3), numVertices);
+					cnt_prev_vertices++;
 				}
 			}
 		}
@@ -1291,6 +1343,7 @@ void DxrRenderer::updateCB(CBobj* cbObj, UINT numRecursion) {
 		for (UINT k = 0; k < ud.NumInstance; k++) {
 			int index = InstancingCnt + k;
 			memcpy(&cbObj->wvpCb[index].wvp, &ud.WVP[k], sizeof(MATRIX));
+			memcpy(&cbObj->wvpCb[index].PrevWorld, &cbObj->wvpCb[index].world, sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].world, &ud.Transform[k], sizeof(MATRIX));
 			memcpy(&cbObj->wvpCb[index].AddObjColor, &ud.AddObjColor[k], sizeof(VECTOR4));
 			wvp->CopyData(index, cbObj->wvpCb[index]);
