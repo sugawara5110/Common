@@ -13,11 +13,15 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     float4 difTex = getDifPixel(attr, v3);
     float3 normalMap = getNorPixel(attr, v3);
     float3 speTex = getSpePixel(attr, v3);
-    payload.SpecularAlbedo = getF0(difTex.xyz, speTex);
     
-    matrix p_w = wvp[getInstancingID()].PrevWorld;
-    float4 p_p4 = float4(getPrevBarycentricVertex(attr, getPrevVertex()), 1);
-    payload.Prev_hitPosition = mul(p_p4, p_w).xyz;
+    if (payload.RecursionCnt == 1)
+    {
+        matrix p_w = wvp[getInstancingID()].PrevWorld;
+        float4 p_p4 = float4(getPrevBarycentricVertex(attr, getPrevVertex()), 1);
+        payload.Prev_hitPosition = mul(p_p4, p_w).xyz;
+    }
+        
+    payload.SpecularAlbedo = getF0(difTex.xyz, speTex);
     
     const uint materialID = getMaterialID();
     const MaterialCB mcb = material[materialID];

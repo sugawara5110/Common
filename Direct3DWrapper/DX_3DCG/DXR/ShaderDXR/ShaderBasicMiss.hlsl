@@ -17,6 +17,7 @@ void basicMiss(inout RayPayload payload)
     {
         payload.color = getSkyLight(mul(WorldRayDirection(), (float3x3) ImageBasedLighting_Matrix));
         payload.hitPosition = HitWorldPosition();
+        payload.Prev_hitPosition = payload.hitPosition;
         
         if (traceMode != 0)
         {

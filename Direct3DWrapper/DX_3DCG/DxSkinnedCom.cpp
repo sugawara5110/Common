@@ -110,11 +110,15 @@ void SkinnedCom::skinning(int comIndex) {
 	mCList->SetComputeRootSignature(rootSignature.Get());
 
 	UINT numVer = pd->dpara.Vview.get()->VertexBufferByteSize / sizeof(SkinMeshHelper::Skin_VERTEX);
+	const UINT ThreadMax = 65535;
+	UINT CountX = numVer > ThreadMax ? ThreadMax : numVer;
+	UINT CountY = numVer / ThreadMax + 1;//ThreadGroupCountYは65535を超えない前提、超える場合は変更必要
+
 	D3D12_GPU_DESCRIPTOR_HANDLE des = descHeap->GetGPUDescriptorHandleForHeapStart();
 	UpdateDXR& ud = pd->dxrPara.updateDXR[dev->dxrBuffSwapIndex()];
 
 	mCList->SetComputeRootDescriptorTable(0, des);
-	mCList->Dispatch(numVer, 1, 1);
+	mCList->Dispatch(CountX, CountY, 1);
 
 	for (int i = 0; i < pd->dpara.NumMaterial; i++) {
 		//使用されていないマテリアル対策

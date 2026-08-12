@@ -88,21 +88,32 @@ Skin SkinVert(VSSkinIn Input)
 [numthreads(1, 1, 1)]
 void VSSkinCS(int2 id : SV_DispatchThreadID)
 {
-	int verID = id.x;
+    const uint ThreadMax = 65535;
+    uint numVer;
+    uint stride;
 
-	DXR_INPUT output = (DXR_INPUT) 0;
+    VerticesSkin.GetDimensions(numVer, stride);
+	
+    uint CountX = numVer > ThreadMax ? ThreadMax : numVer;
+	
+    uint verID = CountX * uint(id.y) + uint(id.x);
+	
+    if (verID >= numVer)
+        return;
 
-	VSSkinIn input = VerticesSkin[verID];
+    DXR_INPUT output = (DXR_INPUT) 0;
 
-	Skin vSkinned = SkinVert(input);
+    VSSkinIn input = VerticesSkin[verID];
 
-	output.Pos = vSkinned.Pos.xyz;
-	output.Nor = vSkinned.Nor;
-	output.Tan = vSkinned.Tan;
-	output.Tex0 = input.Tex0;
-	output.Tex1 = input.Tex1;
+    Skin vSkinned = SkinVert(input);
 
-	VerticesDXR[verID] = output;
+    output.Pos = vSkinned.Pos.xyz;
+    output.Nor = vSkinned.Nor;
+    output.Tan = vSkinned.Tan;
+    output.Tex0 = input.Tex0;
+    output.Tex1 = input.Tex1;
+
+    VerticesDXR[verID] = output;
 }
 //****************************************ƒƒbƒVƒ…’¸“_**************************************************************//
 

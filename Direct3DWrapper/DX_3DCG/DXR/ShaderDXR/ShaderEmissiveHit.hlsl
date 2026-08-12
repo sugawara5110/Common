@@ -26,6 +26,13 @@ void EmissiveHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttribu
     float3 normalMap = getNorPixel(attr, v3);
     payload.normal = normalMap;
     payload.hitPosition = HitWorldPosition();
+    
+    if (payload.RecursionCnt == 1)
+    {
+        matrix p_w = wvp[getInstancingID()].PrevWorld;
+        float4 p_p4 = float4(getPrevBarycentricVertex(attr, getPrevVertex()), 1);
+        payload.Prev_hitPosition = mul(p_p4, p_w).xyz;
+    }
 
     if (difTex.w < 1.0f)
     {
