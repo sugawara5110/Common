@@ -32,7 +32,7 @@ void basicHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
         if (!materialIdent(payload.mNo, EMISSIVE))
         {
             difTex.xyz = PayloadCalculate_OneRay(payload.RecursionCnt, payload.hitPosition, difTex, speTex,
-                                             normalMap, payload.hitInstanceId);
+                                             normalMap, payload.hitInstanceId, payload.Seed);
 
             payload.depth = getDepth(attr, v3);
             payload.normal = normalMap;
